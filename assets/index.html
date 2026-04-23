@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>St. Francis School, Laitkor</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ================================================================
+     PUBLIC NAVBAR
+================================================================ -->
+<nav id="public-nav">
+  <div class="nav-inner">
+    <div class="nav-brand" onclick="showPage('home')">
+      <img src="assets/images/logo.jpg" class="nav-logo-img" alt="School Logo">
+      <div class="nav-brand-text">
+        <strong>St. Francis School</strong>
+        <span>Laitkor, Meghalaya</span>
+      </div>
+    </div>
+    <ul class="nav-links">
+      <li><button onclick="showPage('home')">Home</button></li>
+      <li><button onclick="showPage('about')">About</button></li>
+      <li><button onclick="showPage('staff')">Staff</button></li>
+      <li><button onclick="showPage('gallery')">Gallery</button></li>
+      <li><button onclick="showPage('notices')">Notices</button></li>
+      <li><button onclick="showPage('events')">Events</button></li>
+      <li><button onclick="showPage('contact')">Contact</button></li>
+      <li><button onclick="showPage('admission')" class="btn btn-outline btn-sm" style="margin-left:4px">Apply</button></li>
+      <li class="nav-cta"><button onclick="showPage('login')" class="btn btn-primary btn-sm">Login Portal</button></li>
+    </ul>
+    <button class="nav-hamburger" onclick="toggleMobileMenu()" id="hamburgerBtn">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <button onclick="showPage('home');toggleMobileMenu()">🏠 Home</button>
+    <button onclick="showPage('about');toggleMobileMenu()">ℹ️ About</button>
+    <button onclick="showPage('staff');toggleMobileMenu()">👥 Staff</button>
+    <button onclick="showPage('gallery');toggleMobileMenu()">🖼️ Gallery</button>
+    <button onclick="showPage('notices');toggleMobileMenu()">📌 Notices</button>
+    <button onclick="showPage('events');toggleMobileMenu()">📅 Events</button>
+    <button onclick="showPage('contact');toggleMobileMenu()">📞 Contact</button>
+    <button onclick="showPage('admission');toggleMobileMenu()">✏️ Apply for Admission</button>
+    <button onclick="showPage('login');toggleMobileMenu()">🔑 Login Portal</button>
+  </div>
+</nav>
+
+<!-- ================================================================
+     PAGE: HOME
+================================================================ -->
+<div id="page-home" class="page active">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge"><i class="fas fa-cross"></i> Est. 1978 &nbsp;|&nbsp; Excellence in Education</div>
+      <h1>St. Francis School<br><span class="text-accent">Laitkor</span></h1>
+      <p class="hero-motto">"Learning to know, to grow, to love, to care and to serve"</p>
+      <div class="hero-buttons">
+        <button class="btn btn-primary" onclick="showPage('admission')"><i class="fas fa-file-alt"></i> Apply for Admission</button>
+        <button class="btn btn-outline" onclick="showPage('about')"><i class="fas fa-info-circle"></i> About Our School</button>
+        <button class="btn btn-outline" onclick="showPage('login')"><i class="fas fa-sign-in-alt"></i> Login Portal</button>
+      </div>
+    </div>
+    <div class="hero-scroll"><i class="fas fa-chevron-down"></i></div>
+  </section>
+
+  <!-- Ticker -->
+  <div class="ticker">
+    <div class="ticker-label"><i class="fas fa-bullhorn"></i> ANNOUNCEMENTS</div>
+    <div class="ticker-wrap">
+      <div class="ticker-content">
+        <span>📢 Admission open for academic year 2025–26</span>
+        <span>🏆 Annual Sports Day on 15th February – All students to participate</span>
+        <span>📝 Half-Yearly Examinations scheduled from 20th September</span>
+        <span>🎄 Christmas Celebration on 23rd December – Parents are invited</span>
+        <span>📚 School Library extended hours: 8:00 AM – 4:00 PM daily</span>
+        <span>🎓 Grade 10 Board Exam results: 98% pass rate! Congratulations!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="stats-bar">
+    <div class="stats-inner">
+      <div class="stat-item"><div class="stat-num">1200+</div><div class="stat-label">Students Enrolled</div></div>
+      <div class="stat-item"><div class="stat-num">65+</div><div class="stat-label">Qualified Teachers</div></div>
+      <div class="stat-item"><div class="stat-num">45+</div><div class="stat-label">Years of Excellence</div></div>
+      <div class="stat-item"><div class="stat-num">98%</div><div class="stat-label">Board Pass Rate</div></div>
+      <div class="stat-item"><div class="stat-num">20+</div><div class="stat-label">Clubs & Activities</div></div>
+    </div>
+  </div>
+
+  <!-- Why Choose Us -->
+  <div class="section">
+    <p class="section-sub">Why Choose Us</p>
+    <h2 class="section-title">A Tradition of Excellence</h2>
+    <div class="divider"></div>
+    <div class="grid-3">
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-graduation-cap"></i></div>
+        <h3>Academic Excellence</h3>
+        <p>Consistent top results in board examinations with holistic curriculum designed to nurture each child's potential.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-heart"></i></div>
+        <h3>Value-Based Education</h3>
+        <p>Rooted in Franciscan values of compassion, love, and service — we shape character alongside academics.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-users"></i></div>
+        <h3>Experienced Faculty</h3>
+        <p>65+ dedicated educators bringing passion and expertise to every classroom, ensuring quality learning.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-running"></i></div>
+        <h3>Sports & Activities</h3>
+        <p>State-level athletes, cultural programs, and 20+ clubs ensure well-rounded development for every student.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-laptop"></i></div>
+        <h3>Modern Infrastructure</h3>
+        <p>Smart classrooms, a well-stocked library, computer labs, and science labs equipped with modern tools.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+        <h3>Safe Environment</h3>
+        <p>CCTV-equipped campus, trained security personnel, and a strict anti-bullying policy ensuring student safety.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Events Preview -->
+  <div style="background: var(--white); padding: 80px 24px;">
+    <div style="max-width:1200px; margin:0 auto;">
+      <p class="section-sub">What's Happening</p>
+      <h2 class="section-title">Upcoming Events</h2>
+      <div class="divider"></div>
+      <div class="grid-2" style="margin-bottom:24px">
+        <div class="event-card">
+          <div class="event-date-box"><div class="event-day">15</div><div class="event-month">FEB</div></div>
+          <div class="event-info"><h4>Annual Sports Day</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM — School Ground</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Celebrate athletic talent with track & field events, team sports, and prize distribution.</p></div>
+        </div>
+        <div class="event-card">
+          <div class="event-date-box"><div class="event-day">23</div><div class="event-month">DEC</div></div>
+          <div class="event-info"><h4>Christmas Celebration</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 10:00 AM — School Auditorium</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Cultural performances, carol singing, and a special message from our Principal. Parents welcome.</p></div>
+        </div>
+        <div class="event-card">
+          <div class="event-date-box"><div class="event-day">20</div><div class="event-month">SEP</div></div>
+          <div class="event-info"><h4>Half-Yearly Examinations</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM — All Classrooms</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">All classes from Grade 1–10. Admit cards distributed one week prior. No late entry.</p></div>
+        </div>
+        <div class="event-card">
+          <div class="event-date-box"><div class="event-day">05</div><div class="event-month">MAR</div></div>
+          <div class="event-info"><h4>Science & Cultural Fair</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM — School Hall</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Students showcase projects, cultural dances, and art. Open to parents and guests.</p></div>
+        </div>
+      </div>
+      <button class="btn btn-outline" onclick="showPage('events')">View All Events <i class="fas fa-arrow-right"></i></button>
+    </div>
+  </div>
+
+  <!-- Quick Login Links -->
+  <div class="section" style="text-align:center">
+    <p class="section-sub">Online Portals</p>
+    <h2 class="section-title">Access Your Dashboard</h2>
+    <div class="divider" style="margin:0.5rem auto 2rem"></div>
+    <div style="display:flex; gap:20px; justify-content:center; flex-wrap:wrap;">
+      <div class="card" style="padding:28px 32px; width:200px; cursor:pointer; transition:transform .2s" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform=''" onclick="loginAs('student')">
+        <i class="fas fa-user-graduate" style="font-size:2.4rem;color:var(--accent);display:block;margin-bottom:12px"></i>
+        <div style="font-weight:700;color:var(--accent-dark)">Student Portal</div>
+        <div style="font-size:13px;color:var(--text-light);margin-top:4px">View attendance, fees, homework</div>
+      </div>
+      <div class="card" style="padding:28px 32px; width:200px; cursor:pointer; transition:transform .2s" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform=''" onclick="loginAs('teacher')">
+        <i class="fas fa-chalkboard-teacher" style="font-size:2.4rem;color:var(--accent);display:block;margin-bottom:12px"></i>
+        <div style="font-weight:700;color:var(--accent-dark)">Teacher Portal</div>
+        <div style="font-size:13px;color:var(--text-light);margin-top:4px">Manage classes, homework, marks</div>
+      </div>
+      <div class="card" style="padding:28px 32px; width:200px; cursor:pointer; transition:transform .2s" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform=''" onclick="loginAs('admin')">
+        <i class="fas fa-user-shield" style="font-size:2.4rem;color:var(--accent);display:block;margin-bottom:12px"></i>
+        <div style="font-weight:700;color:var(--accent-dark)">Admin Portal</div>
+        <div style="font-size:13px;color:var(--text-light);margin-top:4px">Manage school operations</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <h3>St. Francis School</h3>
+        <p>"Learning to know, to grow, to love, to care and to serve"<br>A school rooted in Franciscan values, committed to shaping future leaders with compassion and integrity.</p>
+        <div class="footer-social" style="margin-top:16px">
+          <a href="#" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+          <a href="#" title="Instagram"><i class="fab fa-instagram"></i></a>
+          <a href="#" title="YouTube"><i class="fab fa-youtube"></i></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="#" onclick="showPage('about')">About School</a></li>
+          <li><a href="#" onclick="showPage('about');showSubPage('principal')">Principal's Message</a></li>
+          <li><a href="#" onclick="showPage('about');showSubPage('mission')">Mission & Vision</a></li>
+          <li><a href="#" onclick="showPage('gallery')">Gallery</a></li>
+          <li><a href="#" onclick="showPage('admission')">Admissions</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Contact Us</h4>
+        <ul>
+          <li><i class="fas fa-map-marker-alt" style="color:var(--primary);margin-right:8px"></i> Laitkor, Shillong, Meghalaya – 793010</li>
+          <li style="margin-top:8px"><i class="fas fa-phone" style="color:var(--primary);margin-right:8px"></i> +91 98000 00000</li>
+          <li style="margin-top:8px"><i class="fas fa-envelope" style="color:var(--primary);margin-right:8px"></i> info@stfrancislaitkor.edu.in</li>
+          <li style="margin-top:8px"><i class="fas fa-clock" style="color:var(--primary);margin-right:8px"></i> Mon–Fri: 8:00 AM – 3:30 PM</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2025 St. Francis School, Laitkor. All rights reserved. &nbsp;|&nbsp; Designed for educational use.</div>
+  </footer>
+</div>
+
+<!-- ================================================================
+     PAGE: ABOUT
+================================================================ -->
+<div id="page-about" class="page">
+  <div class="page-header">
+    <h1>About Our School</h1>
+    <p>Discover the history, values, and vision of St. Francis School</p>
+    <div class="breadcrumb">Home <span>›</span> About</div>
+  </div>
+
+  <!-- Sub-navigation -->
+  <div style="background:var(--white); border-bottom:2px solid var(--bg);">
+    <div style="max-width:1200px; margin:0 auto; padding:0 24px; display:flex; gap:0;">
+      <button class="sub-nav-btn active" onclick="showSubPage('about-main')" style="padding:16px 20px; font-weight:700; font-size:13px; border:none; background:none; cursor:pointer; font-family:var(--font-body); color:var(--accent); border-bottom:3px solid var(--accent)">About School</button>
+      <button class="sub-nav-btn" onclick="showSubPage('principal')" style="padding:16px 20px; font-weight:600; font-size:13px; border:none; background:none; cursor:pointer; font-family:var(--font-body); color:var(--text-light); border-bottom:3px solid transparent">Principal's Message</button>
+      <button class="sub-nav-btn" onclick="showSubPage('mission')" style="padding:16px 20px; font-weight:600; font-size:13px; border:none; background:none; cursor:pointer; font-family:var(--font-body); color:var(--text-light); border-bottom:3px solid transparent">Mission & Vision</button>
+    </div>
+  </div>
+
+  <!-- About Main -->
+  <div id="subpage-about-main" class="subpage active">
+    <div class="section">
+      <div class="grid-2">
+        <div>
+          <p class="section-sub">Our Story</p>
+          <h2 class="section-title">A Legacy of 45+ Years</h2>
+          <div class="divider"></div>
+          <p style="color:var(--text-light);line-height:1.8;margin-bottom:16px;">St. Francis School, Laitkor was established in 1978 by the Franciscan Brothers under the Diocese of Shillong. For over four decades, the school has been a beacon of quality education in Meghalaya, nurturing thousands of young minds who have gone on to serve in every walk of life.</p>
+          <p style="color:var(--text-light);line-height:1.8;margin-bottom:24px;">The school is affiliated with the Meghalaya Board of School Education (MBOSE) and follows the national curriculum, offering classes from Kindergarten to Grade 10. With a strong emphasis on both academic excellence and character formation, St. Francis School stands as one of the premier educational institutions in the region.</p>
+          <button class="btn btn-primary" onclick="showPage('admission')"><i class="fas fa-file-alt"></i> Apply for Admission</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div class="card" style="padding:20px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:40px;height:40px;background:rgba(139,111,71,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--accent)"><i class="fas fa-school"></i></div><strong style="color:var(--accent-dark)">Affiliation</strong></div>
+            <p style="font-size:14px;color:var(--text-light)">Meghalaya Board of School Education (MBOSE)<br>Affiliated School Code: MB-7823</p>
+          </div>
+          <div class="card" style="padding:20px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:40px;height:40px;background:rgba(139,111,71,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--accent)"><i class="fas fa-book"></i></div><strong style="color:var(--accent-dark)">Curriculum</strong></div>
+            <p style="font-size:14px;color:var(--text-light)">KG to Grade 10 &nbsp;|&nbsp; English Medium<br>Subjects: English, Hindi, Science, Math, Social Studies, Computer, Arts</p>
+          </div>
+          <div class="card" style="padding:20px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:40px;height:40px;background:rgba(139,111,71,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--accent)"><i class="fas fa-building"></i></div><strong style="color:var(--accent-dark)">Infrastructure</strong></div>
+            <p style="font-size:14px;color:var(--text-light)">40 Smart Classrooms &nbsp;|&nbsp; 2 Science Labs<br>Computer Lab &nbsp;|&nbsp; Library &nbsp;|&nbsp; Sports Ground &nbsp;|&nbsp; Chapel</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Principal Message -->
+  <div id="subpage-principal" class="subpage hidden">
+    <div class="section" style="max-width:900px;">
+      <p class="section-sub">A Word From</p>
+      <h2 class="section-title">Principal's Message</h2>
+      <div class="divider"></div>
+      <div style="display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="text-align:center;flex-shrink:0;">
+          <div style="width:130px;height:130px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:3rem;color:var(--accent);margin:0 auto 12px;border:4px solid var(--accent)"><i class="fas fa-user-tie"></i></div>
+          <strong style="color:var(--accent-dark);">Fr. Thomas Xavier</strong><br>
+          <span style="font-size:13px;color:var(--text-light)">Principal</span>
+        </div>
+        <div style="flex:1;min-width:280px;">
+          <p style="font-size:1.05rem;color:var(--text-light);line-height:1.8;font-style:italic;margin-bottom:16px;">"Dear Parents, Students, and Well-Wishers,</p>
+          <p style="color:var(--text-light);line-height:1.8;margin-bottom:14px;">It is with great joy and a deep sense of responsibility that I address you as the Principal of St. Francis School, Laitkor. Education, as we believe it, is not merely the transfer of knowledge — it is the transformation of a human soul.</p>
+          <p style="color:var(--text-light);line-height:1.8;margin-bottom:14px;">Our motto — <em>'Learning to know, to grow, to love, to care and to serve'</em> — encapsulates everything we strive for. We do not only prepare students for examinations; we prepare them for life. We want our students to be kind, honest, compassionate, and responsible citizens of tomorrow.</p>
+          <p style="color:var(--text-light);line-height:1.8;margin-bottom:14px;">I invite every parent to partner with us in this noble mission. Your involvement, encouragement at home, and trust in our faculty make a world of difference in your child's journey.</p>
+          <p style="color:var(--text-light);line-height:1.8;margin-bottom:14px;">Together, let us build a community of learners who are not only brilliant in mind but rich in heart.</p>
+          <p style="color:var(--accent-dark);font-weight:700;">God bless you all.</p>
+          <p style="color:var(--text-light);font-size:14px;margin-top:4px;">Fr. Thomas Xavier, SJ<br>Principal, St. Francis School</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mission & Vision -->
+  <div id="subpage-mission" class="subpage hidden">
+    <div class="section">
+      <div class="grid-2">
+        <div>
+          <div class="feature-icon" style="width:60px;height:60px;font-size:1.8rem;margin-bottom:16px;background:rgba(139,111,71,.15)"><i class="fas fa-eye"></i></div>
+          <h2 class="section-title">Our Vision</h2>
+          <div class="divider"></div>
+          <p style="color:var(--text-light);line-height:1.8;">To be a leading educational institution that empowers every student with knowledge, values, and skills to become compassionate, responsible, and contributing members of society — inspired by the spirit of St. Francis of Assisi.</p>
+        </div>
+        <div>
+          <div class="feature-icon" style="width:60px;height:60px;font-size:1.8rem;margin-bottom:16px;background:rgba(139,111,71,.15)"><i class="fas fa-bullseye"></i></div>
+          <h2 class="section-title">Our Mission</h2>
+          <div class="divider"></div>
+          <p style="color:var(--text-light);line-height:1.8;">To provide holistic, quality education rooted in Christian values that nurtures intellectual growth, spiritual awareness, physical development, and social responsibility — making each student a life-long learner and servant leader.</p>
+        </div>
+      </div>
+      <div style="margin-top:48px;">
+        <h3 style="font-family:var(--font-head);font-size:1.4rem;color:var(--accent-dark);margin-bottom:20px">Our Core Values</h3>
+        <div class="grid-3">
+          <div class="feature-card"><div class="feature-icon"><i class="fas fa-book-open"></i></div><h3>Knowledge</h3><p>We believe in the transformative power of learning. Education opens doors and shapes destinies.</p></div>
+          <div class="feature-card"><div class="feature-icon"><i class="fas fa-seedling"></i></div><h3>Growth</h3><p>Every child has unique potential. We nurture it with patience, creativity, and encouragement.</p></div>
+          <div class="feature-card"><div class="feature-icon"><i class="fas fa-heart"></i></div><h3>Love</h3><p>Inspired by St. Francis, we build a community of unconditional love and mutual respect.</p></div>
+          <div class="feature-card"><div class="feature-icon"><i class="fas fa-hands-helping"></i></div><h3>Care</h3><p>We care for the whole person — mind, body, and spirit — leaving no child behind.</p></div>
+          <div class="feature-card"><div class="feature-icon"><i class="fas fa-hand-holding-heart"></i></div><h3>Service</h3><p>True education leads to service. We instil a spirit of giving back to society and community.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer" style="margin-top:60px">
+    <div class="footer-inner">
+      <div class="footer-brand"><h3>St. Francis School</h3><p>Laitkor, Shillong, Meghalaya</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div>
+      <div class="footer-col"><h4>Contact</h4><ul><li>Laitkor, Shillong – 793010</li><li style="margin-top:6px">+91 98000 00000</li><li style="margin-top:6px">info@stfrancislaitkor.edu.in</li></ul></div>
+    </div>
+    <div class="footer-bottom">© 2025 St. Francis School, Laitkor</div>
+  </footer>
+</div>
+
+<!-- ================================================================
+     PAGE: GALLERY
+================================================================ -->
+<div id="page-gallery" class="page">
+  <div class="page-header"><h1>Photo Gallery</h1><p>Glimpses of school life at St. Francis</p></div>
+  <div class="section">
+    <p class="section-sub">Our Memories</p><h2 class="section-title">School Gallery</h2><div class="divider"></div>
+    <div class="gallery-grid">
+      <div class="gallery-item"><i class="fas fa-graduation-cap"></i><div class="gallery-label">Annual Graduation Day</div></div>
+      <div class="gallery-item"><i class="fas fa-running"></i><div class="gallery-label">Sports Day 2024</div></div>
+      <div class="gallery-item"><i class="fas fa-music"></i><div class="gallery-label">Cultural Program</div></div>
+      <div class="gallery-item"><i class="fas fa-flask"></i><div class="gallery-label">Science Exhibition</div></div>
+      <div class="gallery-item"><i class="fas fa-tree"></i><div class="gallery-label">Nature Camp</div></div>
+      <div class="gallery-item"><i class="fas fa-palette"></i><div class="gallery-label">Art Competition</div></div>
+      <div class="gallery-item"><i class="fas fa-pray"></i><div class="gallery-label">Annual Mass</div></div>
+      <div class="gallery-item"><i class="fas fa-trophy"></i><div class="gallery-label">Prize Distribution</div></div>
+      <div class="gallery-item"><i class="fas fa-chalkboard"></i><div class="gallery-label">Classroom Activities</div></div>
+      <div class="gallery-item"><i class="fas fa-snowflake"></i><div class="gallery-label">Christmas 2024</div></div>
+      <div class="gallery-item"><i class="fas fa-laptop-code"></i><div class="gallery-label">Computer Lab</div></div>
+      <div class="gallery-item"><i class="fas fa-book"></i><div class="gallery-label">Library Reading Day</div></div>
+    </div>
+  </div>
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis School</h3><p>Laitkor, Meghalaya</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div></div><div class="footer-bottom">© 2025 St. Francis School, Laitkor</div></footer>
+</div>
+
+<!-- ================================================================
+     PAGE: NOTICES
+================================================================ -->
+<div id="page-notices" class="page">
+  <div class="page-header"><h1>Notice Board</h1><p>Stay updated with the latest school announcements</p></div>
+  <div class="section" style="max-width:900px;">
+    <p class="section-sub">Official Announcements</p><h2 class="section-title">Notice Board</h2><div class="divider"></div>
+    <div class="notice-card"><div class="notice-icon"><i class="fas fa-exclamation-circle"></i></div><div><div class="notice-title">Examination Schedule – Half-Yearly 2025</div><div class="notice-date">📅 Posted: 01 Sept 2025 &nbsp;|&nbsp; <span class="badge badge-danger">Important</span></div><div class="notice-body">Half-yearly examinations for all classes will commence from 20th September 2025. Students are advised to collect their admit cards from the class teacher by 15th September.</div></div></div>
+    <div class="notice-card"><div class="notice-icon"><i class="fas fa-bell"></i></div><div><div class="notice-title">Parent-Teacher Meeting – Grade 6 to 10</div><div class="notice-date">📅 Posted: 28 Aug 2025 &nbsp;|&nbsp; <span class="badge badge-warning">Upcoming</span></div><div class="notice-body">A Parent-Teacher Meeting is scheduled on 10th September 2025 from 10:00 AM to 1:00 PM. All parents of Grade 6–10 students are requested to attend.</div></div></div>
+    <div class="notice-card"><div class="notice-icon"><i class="fas fa-info-circle"></i></div><div><div class="notice-title">Admission Open – Academic Year 2025–26</div><div class="notice-date">📅 Posted: 01 Mar 2025 &nbsp;|&nbsp; <span class="badge badge-success">Active</span></div><div class="notice-body">Admissions for KG to Grade 9 are now open for the academic year 2025–26. Interested parents may visit the school office between 9:00 AM and 1:00 PM on working days.</div></div></div>
+    <div class="notice-card"><div class="notice-icon"><i class="fas fa-calendar-alt"></i></div><div><div class="notice-title">School Holiday – Independence Day</div><div class="notice-date">📅 Posted: 12 Aug 2025 &nbsp;|&nbsp; <span class="badge badge-info">Holiday</span></div><div class="notice-body">School will remain closed on 15th August 2025 on the occasion of Independence Day. Flag hoisting ceremony at 8:00 AM. Attendance for staff and student representatives is mandatory.</div></div></div>
+    <div class="notice-card"><div class="notice-icon"><i class="fas fa-money-bill-wave"></i></div><div><div class="notice-title">Fee Payment Reminder – Q2</div><div class="notice-date">📅 Posted: 01 Aug 2025 &nbsp;|&nbsp; <span class="badge badge-warning">Reminder</span></div><div class="notice-body">Second quarter fee payment is due by 31st August 2025. Late fee of ₹50 per day will be charged after the due date. Parents are requested to pay via school office or online portal.</div></div></div>
+  </div>
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis School</h3><p>Laitkor, Meghalaya</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div></div><div class="footer-bottom">© 2025 St. Francis School, Laitkor</div></footer>
+</div>
+
+<!-- ================================================================
+     PAGE: EVENTS
+================================================================ -->
+<div id="page-events" class="page">
+  <div class="page-header"><h1>Events</h1><p>All school events, celebrations, and activities</p></div>
+  <div class="section">
+    <p class="section-sub">School Calendar</p><h2 class="section-title">Events & Activities</h2><div class="divider"></div>
+    <div class="grid-2">
+      <div class="event-card"><div class="event-date-box"><div class="event-day">15</div><div class="event-month">FEB</div></div><div class="event-info"><h4>Annual Sports Day</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM — School Ground</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Track & field events, team sports, tug-of-war, relay races. Prize distribution by Chief Guest.</p><p style="margin-top:8px"><span class="badge badge-warning">Upcoming</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">23</div><div class="event-month">DEC</div></div><div class="event-info"><h4>Christmas Celebration</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 10:00 AM — Auditorium</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Carol singing, nativity play, cultural performances, and gift distribution. All parents invited.</p><p style="margin-top:8px"><span class="badge badge-info">Annual</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">20</div><div class="event-month">SEP</div></div><div class="event-info"><h4>Half-Yearly Examinations</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM onwards</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">All grades Grade 1–10. Duration: 2.5 hours per paper. Timetable attached separately.</p><p style="margin-top:8px"><span class="badge badge-danger">Important</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">05</div><div class="event-month">MAR</div></div><div class="event-info"><h4>Science & Cultural Fair</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM — School Hall</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Student science projects, cultural performances, and art display. Open to parents and guests.</p><p style="margin-top:8px"><span class="badge badge-success">Open to All</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">10</div><div class="event-month">SEP</div></div><div class="event-info"><h4>Parent-Teacher Meeting</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 10:00 AM – 1:00 PM</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Grade 6–10 parents. Discuss academic progress, attendance, and behaviour with class teachers.</p><p style="margin-top:8px"><span class="badge badge-warning">Upcoming</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">15</div><div class="event-month">AUG</div></div><div class="event-info"><h4>Independence Day Celebration</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 8:00 AM — Ground</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Flag hoisting, national anthem, march past, and patriotic performances by students.</p><p style="margin-top:8px"><span class="badge badge-info">National Holiday</span></p></div></div>
+    </div>
+  </div>
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis School</h3><p>Laitkor, Meghalaya</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div></div><div class="footer-bottom">© 2025 St. Francis School, Laitkor</div></footer>
+</div>
+
+<!-- ================================================================
+     PAGE: CONTACT
+================================================================ -->
+<div id="page-contact" class="page">
+  <div class="page-header"><h1>Contact Us</h1><p>We'd love to hear from you</p></div>
+  <div class="section">
+    <div class="contact-grid">
+      <div class="contact-info-card">
+        <h3>Get in Touch</h3>
+        <div class="contact-item"><i class="fas fa-map-marker-alt"></i><p>St. Francis School, Laitkor<br>Shillong, Meghalaya – 793010<br>India</p></div>
+        <div class="contact-item"><i class="fas fa-phone-alt"></i><p>+91 98000 00000<br>+91 0364 000000</p></div>
+        <div class="contact-item"><i class="fas fa-envelope"></i><p>info@stfrancislaitkor.edu.in<br>admissions@stfrancislaitkor.edu.in</p></div>
+        <div class="contact-item"><i class="fas fa-clock"></i><p>Monday – Friday: 8:00 AM – 3:30 PM<br>Saturday: 8:00 AM – 12:00 PM<br>Sunday: Closed</p></div>
+        <div style="margin-top:24px;">
+          <p style="font-size:13px;opacity:.8;margin-bottom:12px;">Follow us on social media:</p>
+          <div class="footer-social">
+            <a href="#"><i class="fab fa-facebook-f"></i></a>
+            <a href="#"><i class="fab fa-instagram"></i></a>
+            <a href="#"><i class="fab fa-youtube"></i></a>
+          </div>
+        </div>
+      </div>
+      <div class="contact-form">
+        <h3>Send Us a Message</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Your Name</label><input type="text" placeholder="Full Name"></div>
+          <div class="form-group"><label>Email Address</label><input type="email" placeholder="email@example.com"></div>
+        </div>
+        <div class="form-group"><label>Subject</label><input type="text" placeholder="What is this about?"></div>
+        <div class="form-group"><label>Message</label><textarea placeholder="Write your message here..."></textarea></div>
+        <button class="btn btn-primary" onclick="showToast('✅ Message sent! We will get back to you shortly.')"><i class="fas fa-paper-plane"></i> Send Message</button>
+      </div>
+    </div>
+  </div>
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis School</h3><p>Laitkor, Meghalaya</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div></div><div class="footer-bottom">© 2025 St. Francis School, Laitkor</div></footer>
+</div>
+
+<!-- ================================================================
+     PAGE: STAFF
+================================================================ -->
+<div id="page-staff" class="page">
+  <div class="page-header"><h1>Who Is Who</h1><p>Meet the dedicated team behind St. Francis School</p></div>
+  <div class="section">
+
+    <h3 style="font-family:var(--font-head);color:var(--accent-dark);margin-bottom:20px;font-size:1.3rem"><i class="fas fa-star" style="color:var(--accent);margin-right:8px"></i>Leadership</h3>
+    <div class="staff-grid" style="margin-bottom:40px">
+      <div class="staff-card"><div class="staff-avatar"><i class="fas fa-user-tie"></i></div><div class="staff-name">Fr. Thomas Xavier</div><div class="staff-role">Principal</div><div class="staff-desc">M.Ed, Ph.D in Education. 25+ years in educational leadership. Passionate about holistic learning.</div></div>
+      <div class="staff-card"><div class="staff-avatar"><i class="fas fa-user-tie"></i></div><div class="staff-name">Sr. Maria D'Souza</div><div class="staff-role">Vice Principal</div><div class="staff-desc">M.A., B.Ed. Overseeing academics and student welfare for 18 years. Specialises in English Literature.</div></div>
+    </div>
+
+    <h3 style="font-family:var(--font-head);color:var(--accent-dark);margin-bottom:20px;font-size:1.3rem"><i class="fas fa-chalkboard-teacher" style="color:var(--accent);margin-right:8px"></i>Teachers</h3>
+    <div class="staff-grid" style="margin-bottom:40px">
+      <div class="staff-card"><div class="staff-avatar"><i class="fas fa-user"></i></div><div class="staff-name">Mr. Rajesh Kumar</div><div class="staff-role">Mathematics</div><div class="staff-desc">M.Sc. Mathematics. Known for making numbers fun. 15 years experience, Grade 8–10.</div></div>
+      <div class="staff-card"><div class="staff-avatar"><i class="fas fa-user"></i></div><div class="staff-name">Ms. Priya Sharma</div><div class="staff-role">Science</div><div class="staff-desc">M.Sc. Physics, B.Ed. Science teacher for Grade 7–10. Passionate about experiments and discovery.</div></div>
+      <div class="staff-card"><div class="staff-avatar"><i class="fas fa-user"></i></div><div class="staff-name">Ms. Lyngdoh Mary</div><div class="staff-role">English</div><div class="staff-desc">M.A. English Literature. Teaches Grade 5–10. Creative writing mentor and school magazine editor.</div></div>
+      <div class="staff-card"><div class="staff-avatar"><i class="fas fa-user"></i></div><div class="staff-name">Mr. David Nongkynmaw</div><div class="staff-role">Social Studies</div><div class="staff-desc">M.A. History. Grade 6–10 Social Studies. School quiz club coordinator.</div></div>
+      <div class="staff-card"><div class="staff-avatar"><i class="fas fa-user"></i></div><div class="staff-name">Ms. Anita Devi</div><div class="staff-role">Hindi</div><div class="staff-desc">M.A. Hindi. Grade 1–10. Organises Hindi Diwas celebrations and language activities.</div></div>
+      <div class="staff-card"><div class="staff-avatar"><i class="fas fa-user"></i></div><div class="staff-name">Mr. Kevin Marbaniang</div><div class="staff-role">Computer Science</div><div class="staff-desc">B.Tech, B.Ed. Manages the computer lab and digital literacy programs. Grade 4–10.</div></div>
+    </div>
+
+    <h3 style="font-family:var(--font-head);color:var(--accent-dark);margin-bottom:20px;font-size:1.3rem"><i class="fas fa-cogs" style="color:var(--accent);margin-right:8px"></i>Other Staff</h3>
+    <div class="staff-grid">
+      <div class="staff-card"><div class="staff-avatar"><i class="fas fa-book"></i></div><div class="staff-name">Ms. Agnes Kynshi</div><div class="staff-role">Librarian</div><div class="staff-desc">B.Lib.Sc. Manages the school library, reading programs, and book clubs.</div></div>
+      <div class="staff-card"><div class="staff-avatar"><i class="fas fa-briefcase-medical"></i></div><div class="staff-name">Mr. Suresh Patel</div><div class="staff-role">School Nurse</div><div class="staff-desc">BSc Nursing. Handles medical first aid, health records, and student wellness programs.</div></div>
+      <div class="staff-card"><div class="staff-avatar"><i class="fas fa-calculator"></i></div><div class="staff-name">Ms. Rebecca Lal</div><div class="staff-role">Accounts Officer</div><div class="staff-desc">B.Com, MBA Finance. Manages school fees, accounts, and financial reporting.</div></div>
+    </div>
+  </div>
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis School</h3><p>Laitkor, Meghalaya</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div></div><div class="footer-bottom">© 2025 St. Francis School, Laitkor</div></footer>
+</div>
+
+<!-- ================================================================
+     PAGE: ADMISSION FORM
+================================================================ -->
+<div id="page-admission" class="page">
+  <div class="page-header"><h1>Apply for Admission</h1><p>Academic Year 2025–2026</p></div>
+  <div class="admission-wrapper">
+    <div class="admission-card">
+      <h2>Admission Application Form</h2>
+      <p>Please fill in all details carefully. Our team will contact you within 2–3 working days.</p>
+      <h4 style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px"><i class="fas fa-user"></i> Student Information</h4>
+      <div class="form-row">
+        <div class="form-group"><label>Student's Full Name *</label><input type="text" placeholder="First and Last Name"></div>
+        <div class="form-group"><label>Date of Birth *</label><input type="date"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Class Applying For *</label><select><option value="">-- Select Class --</option><option>KG (Kindergarten)</option><option>Grade 1</option><option>Grade 2</option><option>Grade 3</option><option>Grade 4</option><option>Grade 5</option><option>Grade 6</option><option>Grade 7</option><option>Grade 8</option><option>Grade 9</option></select></div>
+        <div class="form-group"><label>Academic Year *</label><select><option>2025–2026</option><option>2026–2027</option></select></div>
+      </div>
+      <div class="form-group"><label>Gender</label><select><option value="">-- Select --</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+
+      <h4 style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:20px 0 14px"><i class="fas fa-users"></i> Parent / Guardian Information</h4>
+      <div class="form-row">
+        <div class="form-group"><label>Parent/Guardian Name *</label><input type="text" placeholder="Full Name"></div>
+        <div class="form-group"><label>Relationship to Student</label><select><option>Father</option><option>Mother</option><option>Guardian</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Contact Number *</label><input type="tel" placeholder="+91 XXXXX XXXXX"></div>
+        <div class="form-group"><label>Email Address</label><input type="email" placeholder="parent@email.com"></div>
+      </div>
+      <div class="form-group"><label>Residential Address *</label><textarea placeholder="Full address including village/town, district, state, PIN"></textarea></div>
+      <div class="form-group"><label>Previous School (if applicable)</label><input type="text" placeholder="Name of previous school"></div>
+      <div class="form-group"><label>Any Special Needs / Medical Conditions</label><textarea placeholder="Leave blank if none" style="min-height:70px"></textarea></div>
+
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn btn-primary" onclick="showToast('✅ Application submitted! Our team will contact you within 3 working days.')"><i class="fas fa-paper-plane"></i> Submit Application</button>
+        <button class="btn btn-outline" onclick="showPage('home')"><i class="fas fa-home"></i> Back to Home</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     LOGIN PAGE
+================================================================ -->
+<div id="page-login" class="page">
+  <div id="page-login-inner" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#E5D3B3 0%,#C9A97B 100%);">
+    <div class="login-box">
+      <button class="login-back-btn" onclick="showPage('home')"><i class="fas fa-arrow-left"></i> Back to Website</button>
+      <div class="login-logo">
+        <div class="logo-circle">SF</div>
+        <h2>St. Francis School</h2>
+        <p>Laitkor, Meghalaya</p>
+      </div>
+      <div class="role-tabs">
+        <button class="role-tab active" onclick="setRole('student',this)"><i class="fas fa-user-graduate"></i> Student</button>
+        <button class="role-tab" onclick="setRole('teacher',this)"><i class="fas fa-chalkboard-teacher"></i> Teacher</button>
+        <button class="role-tab" onclick="setRole('admin',this)"><i class="fas fa-user-shield"></i> Admin</button>
+      </div>
+      <div class="form-group"><label>Username / Roll No.</label><input type="text" id="loginUser" placeholder="Enter your username"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="loginPass" placeholder="Enter password"></div>
+     <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="firebaseLogin(document.getElementById('loginUser').value, document.getElementById('loginPass').value)">
+  <i class="fas fa-sign-in-alt"></i> Login
+</button>
+      <p style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-light)">Demo: any username/password works &nbsp;<span style="color:var(--accent)">🔓</span></p>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     STUDENT DASHBOARD
+================================================================ -->
+<div id="page-student-dash" class="page">
+  <div class="dash-shell">
+    <!-- Sidebar -->
+    <nav class="sidebar" id="studentSidebar">
+      <div class="sidebar-brand">
+        <div class="s-logo">SF</div>
+        <h4>St. Francis School</h4>
+        <p>Student Portal</p>
+      </div>
+      <div class="sidebar-nav">
+        <button class="active" onclick="showDash('s','s-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
+        <button onclick="showDash('s','s-profile',this)"><i class="fas fa-user"></i> My Profile</button>
+        <button onclick="showDash('s','s-attendance',this)"><i class="fas fa-calendar-check"></i> Attendance</button>
+        <button onclick="showDash('s','s-homework',this)"><i class="fas fa-book-open"></i> Homework</button>
+        <button onclick="showDash('s','s-notices',this)"><i class="fas fa-bullhorn"></i> Notices</button>
+        <button onclick="showDash('s','s-fees',this)"><i class="fas fa-money-bill-wave"></i> Fees</button>
+        <button onclick="showDash('s','s-contact',this)"><i class="fas fa-envelope"></i> Contact</button>
+      </div>
+      <div class="sidebar-footer"><button onclick="showPage('home')"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="dash-main">
+      <div class="dash-header">
+        <div style="display:flex;align-items:center">
+          <button class="sidebar-toggle" onclick="toggleSidebar('studentSidebar')"><i class="fas fa-bars"></i></button>
+          <div><h2 id="s-dash-title">Dashboard</h2><p>Welcome back, Arjun!</p></div>
+        </div>
+        <div class="dash-user">
+          <div><div class="dash-username" style="text-align:right">Arjun Sharma</div><div class="dash-role">Student · Grade 9A · Roll No. 12</div></div>
+          <div class="dash-avatar">AS</div>
+        </div>
+      </div>
+
+      <div class="dash-content">
+
+        <!-- Dashboard Overview -->
+        <div id="s-dashboard" class="dash-section active">
+          <div class="dash-stats">
+            <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-calendar-check"></i></div><div><div class="dash-stat-val">87%</div><div class="dash-stat-label">Attendance</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-book-open"></i></div><div><div class="dash-stat-val">4</div><div class="dash-stat-label">Pending HW</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-check-circle"></i></div><div><div class="dash-stat-val">78%</div><div class="dash-stat-label">Avg. Marks</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-money-bill-wave"></i></div><div><div class="dash-stat-val">1</div><div class="dash-stat-label">Fee Pending</div></div></div>
+          </div>
+          <div class="grid-2">
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-book-open" style="margin-right:8px;color:var(--accent)"></i>Recent Homework</h4>
+              <div class="chapter-item"><span class="chapter-no">Math</span> Chapter 5 — Exercise 5.3, Q1–Q10 <span class="badge badge-warning" style="float:right">Due Today</span></div>
+              <div class="chapter-item"><span class="chapter-no">English</span> Write a letter to the editor (150 words) <span class="badge badge-danger" style="float:right">Overdue</span></div>
+              <div class="chapter-item"><span class="chapter-no">Science</span> Diagram of Human Heart — Label all parts <span class="badge badge-info" style="float:right">Tomorrow</span></div>
+            </div>
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Latest Notices</h4>
+              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--danger);font-size:8px;margin-right:8px"></i>Half-Yearly Exam from 20th Sept</div>
+              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>PTM on 10th Sept – Parents informed</div>
+              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-right:8px"></i>Library extended hours starting Monday</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profile -->
+        <div id="s-profile" class="dash-section">
+          <div class="profile-header-card">
+            <div class="profile-avatar-lg"><i class="fas fa-user-graduate"></i></div>
+            <div class="profile-basic">
+              <h2>Arjun Sharma</h2>
+              <p>Grade 9A &nbsp;|&nbsp; Roll No. 12</p>
+              <div class="profile-tags">
+                <span class="profile-tag">Admission No: SFS/2018/042</span>
+                <span class="profile-tag">Academic Year: 2025–26</span>
+              </div>
+            </div>
+          </div>
+          <div class="profile-info-grid">
+            <div class="profile-info-card">
+              <h4><i class="fas fa-info-circle"></i> Basic Information</h4>
+              <div class="profile-row"><span class="label">Full Name</span><span class="value">Arjun Prasad Sharma</span></div>
+              <div class="profile-row"><span class="label">Class & Section</span><span class="value">Grade 9 – Section A</span></div>
+              <div class="profile-row"><span class="label">Roll Number</span><span class="value">12</span></div>
+              <div class="profile-row"><span class="label">Admission No.</span><span class="value">SFS/2018/042</span></div>
+            </div>
+            <div class="profile-info-card">
+              <h4><i class="fas fa-user"></i> Personal Information</h4>
+              <div class="profile-row"><span class="label">Date of Birth</span><span class="value">14 March 2010</span></div>
+              <div class="profile-row"><span class="label">Blood Group</span><span class="value">B+</span></div>
+              <div class="profile-row"><span class="label">Gender</span><span class="value">Male</span></div>
+              <div class="profile-row"><span class="label">Nationality</span><span class="value">Indian</span></div>
+            </div>
+            <div class="profile-info-card">
+              <h4><i class="fas fa-phone"></i> Contact Information</h4>
+              <div class="profile-row"><span class="label">Student Contact</span><span class="value">+91 97000 11122</span></div>
+              <div class="profile-row"><span class="label">Address</span><span class="value">H.No. 12, Laitkor Peak, Shillong – 793010</span></div>
+            </div>
+            <div class="profile-info-card">
+              <h4><i class="fas fa-users"></i> Guardian Information</h4>
+              <div class="profile-row"><span class="label">Father's Name</span><span class="value">Mr. Ramesh Sharma</span></div>
+              <div class="profile-row"><span class="label">Mother's Name</span><span class="value">Mrs. Sunita Sharma</span></div>
+              <div class="profile-row"><span class="label">Parent Contact</span><span class="value">+91 98000 22233</span></div>
+            </div>
+            <div class="profile-info-card">
+              <h4><i class="fas fa-id-card"></i> Official Information</h4>
+              <div class="profile-row"><span class="label">PEN Number</span><span class="value">1234567890</span></div>
+              <div class="profile-row"><span class="label">Aadhaar (Demo)</span><span class="value">XXXX XXXX 4521</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Attendance -->
+        <div id="s-attendance" class="dash-section">
+          <div class="card" style="padding:28px;max-width:480px;text-align:center;margin-bottom:24px">
+            <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Attendance Overview</h4>
+            <div class="attendance-circle"><span class="attendance-pct">87%</span></div>
+            <p style="color:var(--text-light);font-size:14px;margin-bottom:20px">87% Attendance — <span style="color:var(--warning);font-weight:700">Needs Improvement</span></p>
+            <div style="display:flex;justify-content:center;gap:32px">
+              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--success)">116</div><div style="font-size:12px;color:var(--text-light)">Days Present</div></div>
+              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--danger)">17</div><div style="font-size:12px;color:var(--text-light)">Days Absent</div></div>
+              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--accent)">133</div><div style="font-size:12px;color:var(--text-light)">Total Working Days</div></div>
+            </div>
+          </div>
+          <div class="card" style="padding:24px">
+            <h4 style="color:var(--accent-dark);margin-bottom:16px">Monthly Attendance Log</h4>
+            <div class="table-wrap">
+              <table><thead><tr><th>Month</th><th>Total Days</th><th>Present</th><th>Absent</th><th>%</th></tr></thead><tbody>
+                <tr><td>April 2025</td><td>22</td><td>20</td><td>2</td><td><span class="badge badge-success">91%</span></td></tr>
+                <tr><td>May 2025</td><td>18</td><td>16</td><td>2</td><td><span class="badge badge-success">89%</span></td></tr>
+                <tr><td>June 2025</td><td>20</td><td>17</td><td>3</td><td><span class="badge badge-warning">85%</span></td></tr>
+                <tr><td>July 2025</td><td>23</td><td>20</td><td>3</td><td><span class="badge badge-warning">87%</span></td></tr>
+                <tr><td>August 2025</td><td>21</td><td>18</td><td>3</td><td><span class="badge badge-warning">86%</span></td></tr>
+                <tr><td>September 2025</td><td>19</td><td>14</td><td>5</td><td><span class="badge badge-danger">74%</span></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Homework -->
+        <div id="s-homework" class="dash-section">
+          <div class="card" style="padding:24px">
+            <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-book-open" style="margin-right:8px;color:var(--accent)"></i>Homework Assignments</h4>
+            <div class="table-wrap">
+              <table><thead><tr><th>Subject</th><th>Assignment</th><th>Given By</th><th>Due Date</th><th>Status</th></tr></thead><tbody>
+                <tr><td><strong>Mathematics</strong></td><td>Chapter 5 – Ex. 5.3, Q1–10</td><td>Mr. Rajesh Kumar</td><td>Today</td><td><span class="badge badge-warning">Pending</span></td></tr>
+                <tr><td><strong>English</strong></td><td>Letter to the Editor (150 words)</td><td>Ms. Lyngdoh Mary</td><td>Yesterday</td><td><span class="badge badge-danger">Overdue</span></td></tr>
+                <tr><td><strong>Science</strong></td><td>Label diagram of Human Heart</td><td>Ms. Priya Sharma</td><td>Tomorrow</td><td><span class="badge badge-info">Not Started</span></td></tr>
+                <tr><td><strong>Social Studies</strong></td><td>Map: Rivers of India</td><td>Mr. David N.</td><td>25 Sept</td><td><span class="badge badge-info">Not Started</span></td></tr>
+                <tr><td><strong>Hindi</strong></td><td>Essay: मेरा देश (200 words)</td><td>Ms. Anita Devi</td><td>22 Sept</td><td><span class="badge badge-success">Submitted</span></td></tr>
+                <tr><td><strong>Computer</strong></td><td>Create a flowchart for login system</td><td>Mr. Kevin M.</td><td>18 Sept</td><td><span class="badge badge-success">Submitted</span></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notices (Student) -->
+        <div id="s-notices" class="dash-section">
+          <h3 style="color:var(--accent-dark);margin-bottom:20px">School Notices</h3>
+          <div class="notice-card"><div class="notice-icon"><i class="fas fa-exclamation-circle"></i></div><div><div class="notice-title">Half-Yearly Examinations from 20th September</div><div class="notice-date">📅 01 Sept 2025 &nbsp;|&nbsp; <span class="badge badge-danger">Important</span></div><div class="notice-body">Examinations for Grade 9A will be from 20th–28th September. Timetable pinned on the notice board. All students must carry their admit cards.</div></div></div>
+          <div class="notice-card"><div class="notice-icon"><i class="fas fa-bell"></i></div><div><div class="notice-title">Parent-Teacher Meeting on 10th September</div><div class="notice-date">📅 28 Aug 2025 &nbsp;|&nbsp; <span class="badge badge-warning">Action Required</span></div><div class="notice-body">Please inform your parents about the PTM on 10th September from 10:00 AM – 1:00 PM. All parents of Grade 9 are expected to attend.</div></div></div>
+          <div class="notice-card"><div class="notice-icon"><i class="fas fa-book"></i></div><div><div class="notice-title">Library Extended Hours</div><div class="notice-date">📅 25 Aug 2025 &nbsp;|&nbsp; <span class="badge badge-info">Info</span></div><div class="notice-body">The school library will be open from 8:00 AM to 4:00 PM on all working days to support exam preparation.</div></div></div>
+        </div>
+
+        <!-- Fees -->
+        <div id="s-fees" class="dash-section">
+          <div class="card" style="padding:24px; max-width:600px; margin-bottom:24px">
+            <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-money-bill-wave" style="margin-right:8px;color:var(--accent)"></i>Fee Summary – 2025–26</h4>
+            <div class="fee-row"><div><div class="fee-name">Tuition Fee – Q1 (April–June)</div><div class="fee-amount">₹4,500</div></div><span class="badge badge-success">Approved</span></div>
+            <div class="fee-row"><div><div class="fee-name">Tuition Fee – Q2 (July–Sept)</div><div class="fee-amount">₹4,500</div></div><span class="badge badge-warning">Pending</span></div>
+            <div class="fee-row"><div><div class="fee-name">Exam Fee – Half-Yearly</div><div class="fee-amount">₹500</div></div><span class="badge badge-success">Approved</span></div>
+            <div class="fee-row"><div><div class="fee-name">Library Fee – Annual</div><div class="fee-amount">₹300</div></div><span class="badge badge-success">Approved</span></div>
+            <div class="fee-row"><div><div class="fee-name">Sports & Activity Fee</div><div class="fee-amount">₹600</div></div><span class="badge badge-danger">Rejected</span></div>
+            <div style="margin-top:16px;padding-top:16px;border-top:2px solid var(--bg);display:flex;justify-content:space-between;font-weight:700">
+              <span>Total Due:</span><span style="color:var(--danger)">₹5,100</span>
+            </div>
+          </div>
+          <div class="card" style="padding:24px;max-width:600px">
+            <h4 style="color:var(--accent-dark);margin-bottom:16px">Submit Fee Receipt</h4>
+            <div class="form-group"><label>Fee Type</label><select><option>Tuition Fee – Q2</option><option>Sports Fee</option></select></div>
+            <div class="form-group"><label>Payment Mode</label><select><option>Bank Transfer</option><option>Cash</option><option>Online</option></select></div>
+            <div class="form-group"><label>Transaction / Receipt No.</label><input type="text" placeholder="e.g. TXN123456"></div>
+            <button class="btn btn-primary" onclick="showToast('✅ Fee receipt submitted for approval.')"><i class="fas fa-upload"></i> Submit for Approval</button>
+          </div>
+        </div>
+
+        <!-- Contact (Student) -->
+        <div id="s-contact" class="dash-section">
+          <div class="card" style="padding:28px;max-width:560px">
+            <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-envelope" style="margin-right:8px;color:var(--accent)"></i>Contact School Administration</h4>
+            <div class="form-group"><label>To</label><select><option>Class Teacher – Ms. Lyngdoh Mary</option><option>Vice Principal</option><option>Principal's Office</option><option>Accounts Office</option></select></div>
+            <div class="form-group"><label>Subject</label><input type="text" placeholder="Subject of your message"></div>
+            <div class="form-group"><label>Message</label><textarea placeholder="Write your message here..."></textarea></div>
+            <button class="btn btn-primary" onclick="showToast('✅ Message sent to the administration.')"><i class="fas fa-paper-plane"></i> Send Message</button>
+          </div>
+        </div>
+
+      </div><!-- end dash-content -->
+    </div><!-- end dash-main -->
+  </div>
+</div>
+
+<!-- ================================================================
+     TEACHER DASHBOARD
+================================================================ -->
+<div id="page-teacher-dash" class="page">
+  <div class="dash-shell">
+    <nav class="sidebar" id="teacherSidebar">
+      <div class="sidebar-brand"><div class="s-logo">SF</div><h4>St. Francis School</h4><p>Teacher Portal</p></div>
+      <div class="sidebar-nav">
+        <button class="active" onclick="showDash('t','t-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
+        <button onclick="showDash('t','t-students',this)"><i class="fas fa-users"></i> Students</button>
+        <button onclick="showDash('t','t-attendance',this)"><i class="fas fa-calendar-check"></i> Attendance</button>
+        <button onclick="showDash('t','t-homework',this)"><i class="fas fa-book-open"></i> Homework</button>
+        <button onclick="showDash('t','t-notices',this)"><i class="fas fa-bullhorn"></i> Notices</button>
+        <button onclick="showDash('t','t-exams',this)"><i class="fas fa-file-alt"></i> Exams</button>
+        <button onclick="showDash('t','t-leave',this)"><i class="fas fa-calendar-times"></i> Leave</button>
+      </div>
+      <div class="sidebar-footer"><button onclick="showPage('home')"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
+    </nav>
+    <div class="dash-main">
+      <div class="dash-header">
+        <div style="display:flex;align-items:center">
+          <button class="sidebar-toggle" onclick="toggleSidebar('teacherSidebar')"><i class="fas fa-bars"></i></button>
+          <div><h2 id="t-dash-title">Dashboard</h2><p>Class Teacher – Grade 9A</p></div>
+        </div>
+        <div class="dash-user">
+          <div><div class="dash-username" style="text-align:right">Ms. Lyngdoh Mary</div><div class="dash-role">Teacher · English · Grade 9A</div></div>
+          <div class="dash-avatar">LM</div>
+        </div>
+      </div>
+      <div class="dash-content">
+
+        <!-- Teacher Dashboard -->
+        <div id="t-dashboard" class="dash-section active">
+          <div class="dash-stats">
+            <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-users"></i></div><div><div class="dash-stat-val">38</div><div class="dash-stat-label">My Students</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-book-open"></i></div><div><div class="dash-stat-val">3</div><div class="dash-stat-label">Pending HW Reviews</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-calendar-check"></i></div><div><div class="dash-stat-val">Today</div><div class="dash-stat-label">Attendance Due</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-file-alt"></i></div><div><div class="dash-stat-val">10</div><div class="dash-stat-label">Days to Exam</div></div></div>
+          </div>
+          <div class="grid-2">
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-calendar" style="margin-right:8px;color:var(--accent)"></i>Today's Schedule</h4>
+              <div class="chapter-item"><strong>8:00 AM</strong> – English Grammar (Grade 9A)</div>
+              <div class="chapter-item"><strong>9:00 AM</strong> – English Literature (Grade 8B)</div>
+              <div class="chapter-item"><strong>10:30 AM</strong> – Free Period</div>
+              <div class="chapter-item"><strong>11:00 AM</strong> – English Composition (Grade 9A)</div>
+              <div class="chapter-item"><strong>12:00 PM</strong> – Staff Meeting</div>
+              <div class="chapter-item"><strong>2:00 PM</strong> – English (Grade 7C)</div>
+            </div>
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Recent Notices</h4>
+              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--danger);font-size:8px;margin-right:8px"></i>Exam timetable finalised – check admin board</div>
+              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>PTM on 10th Sept – prepare progress cards</div>
+              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>Staff meeting every Friday at 2:30 PM</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Students -->
+        <div id="t-students" class="dash-section">
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+              <h4 style="color:var(--accent-dark)"><i class="fas fa-users" style="margin-right:8px;color:var(--accent)"></i>Grade 9A – Student List</h4>
+              <input type="text" placeholder="🔍 Search student..." style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--primary);font-family:var(--font-body);font-size:13px;width:220px">
+            </div>
+            <div class="table-wrap">
+              <table><thead><tr><th>Roll No.</th><th>Name</th><th>Gender</th><th>Attendance</th><th>Last Marks</th><th>Action</th></tr></thead><tbody>
+                <tr><td>01</td><td>Ailin Khyriem</td><td>F</td><td><span class="badge badge-success">92%</span></td><td>85/100</td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+                <tr><td>02</td><td>Bankerlang Mawrie</td><td>M</td><td><span class="badge badge-success">88%</span></td><td>78/100</td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+                <tr><td>03</td><td>Chadalyne Pyrbot</td><td>F</td><td><span class="badge badge-warning">79%</span></td><td>72/100</td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+                <tr><td>04</td><td>Donbor Kynshi</td><td>M</td><td><span class="badge badge-warning">74%</span></td><td>65/100</td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+                <tr><td>05</td><td>Elisa Marbaniang</td><td>F</td><td><span class="badge badge-success">95%</span></td><td>91/100</td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+                <tr><td>12</td><td>Arjun Sharma</td><td>M</td><td><span class="badge badge-warning">87%</span></td><td>80/100</td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Attendance (Teacher) -->
+        <div id="t-attendance" class="dash-section">
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+              <h4 style="color:var(--accent-dark)"><i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Mark Attendance – Grade 9A</h4>
+              <span style="font-size:13px;color:var(--text-light)">Date: <strong>20 Sept 2025</strong></span>
+            </div>
+            <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+              <button class="btn btn-success btn-sm" onclick="showToast('✅ All students marked Present.')"><i class="fas fa-check"></i> Mark All Present</button>
+              <button class="btn btn-danger btn-sm" onclick="showToast('⚠️ All students marked Absent.')"><i class="fas fa-times"></i> Mark All Absent</button>
+            </div>
+            <div class="table-wrap">
+              <table><thead><tr><th>Roll</th><th>Name</th><th>Mark Attendance</th></tr></thead><tbody>
+                <tr><td>01</td><td>Ailin Khyriem</td><td style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="this.style.opacity=1;this.nextElementSibling.style.opacity=.4">Present</button><button class="btn btn-danger btn-sm" style="opacity:.4" onclick="this.style.opacity=1;this.previousElementSibling.style.opacity=.4">Absent</button></td></tr>
+                <tr><td>02</td><td>Bankerlang Mawrie</td><td style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="this.style.opacity=1;this.nextElementSibling.style.opacity=.4">Present</button><button class="btn btn-danger btn-sm" style="opacity:.4" onclick="this.style.opacity=1;this.previousElementSibling.style.opacity=.4">Absent</button></td></tr>
+                <tr><td>03</td><td>Chadalyne Pyrbot</td><td style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="this.style.opacity=1;this.nextElementSibling.style.opacity=.4">Present</button><button class="btn btn-danger btn-sm" style="opacity:.4" onclick="this.style.opacity=1;this.previousElementSibling.style.opacity=.4">Absent</button></td></tr>
+                <tr><td>04</td><td>Donbor Kynshi</td><td style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="this.style.opacity=1;this.nextElementSibling.style.opacity=.4">Present</button><button class="btn btn-danger btn-sm" style="opacity:.4" onclick="this.style.opacity=1;this.previousElementSibling.style.opacity=.4">Absent</button></td></tr>
+                <tr><td>12</td><td>Arjun Sharma</td><td style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="this.style.opacity=1;this.nextElementSibling.style.opacity=.4">Present</button><button class="btn btn-danger btn-sm" style="opacity:.4" onclick="this.style.opacity=1;this.previousElementSibling.style.opacity=.4">Absent</button></td></tr>
+              </tbody></table>
+            </div>
+            <button class="btn btn-primary" style="margin-top:16px" onclick="showToast('✅ Attendance saved successfully.')"><i class="fas fa-save"></i> Save Attendance</button>
+          </div>
+        </div>
+
+        <!-- Homework (Teacher) -->
+        <div id="t-homework" class="dash-section">
+          <div class="card" style="padding:24px;max-width:600px">
+            <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-book-open" style="margin-right:8px;color:var(--accent)"></i>Post New Homework</h4>
+            <div class="form-group"><label>Class</label><select><option>Grade 9A</option><option>Grade 8B</option><option>Grade 7C</option></select></div>
+            <div class="form-group"><label>Subject</label><input type="text" value="English" readonly></div>
+            <div class="form-group"><label>Assignment Title</label><input type="text" placeholder="e.g., Letter Writing Exercise"></div>
+            <div class="form-group"><label>Description</label><textarea placeholder="Detailed instructions for students..."></textarea></div>
+            <div class="form-group"><label>Due Date</label><input type="date"></div>
+            <button class="btn btn-primary" onclick="showToast('✅ Homework posted for Grade 9A.')"><i class="fas fa-plus"></i> Post Homework</button>
+          </div>
+        </div>
+
+        <!-- Notices (Teacher) -->
+        <div id="t-notices" class="dash-section">
+          <div class="card" style="padding:24px;max-width:600px">
+            <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Post a Notice</h4>
+            <div class="form-group"><label>Notice Title</label><input type="text" placeholder="e.g., Important Exam Reminder"></div>
+            <div class="form-group"><label>Visible To</label><select><option>Grade 9A Students</option><option>All My Classes</option><option>All Students</option></select></div>
+            <div class="form-group"><label>Notice Content</label><textarea placeholder="Write the full notice here..."></textarea></div>
+            <div class="form-group"><label>Priority</label><select><option>Normal</option><option>Important</option><option>Urgent</option></select></div>
+            <button class="btn btn-primary" onclick="showToast('✅ Notice published successfully.')"><i class="fas fa-paper-plane"></i> Publish Notice</button>
+          </div>
+        </div>
+
+        <!-- Exams / Syllabus -->
+        <div id="t-exams" class="dash-section">
+          <div class="grid-2">
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-book" style="margin-right:8px;color:var(--accent)"></i>Half-Yearly Syllabus – English (Grade 9)</h4>
+              <div class="chapter-item"><span class="chapter-no">Ch 1</span> Prose: The Road Not Taken – Comprehension & Analysis</div>
+              <div class="chapter-item"><span class="chapter-no">Ch 2</span> Grammar: Tenses, Voice, Narration</div>
+              <div class="chapter-item"><span class="chapter-no">Ch 3</span> Writing: Letter Writing – Formal & Informal</div>
+              <div class="chapter-item"><span class="chapter-no">Ch 4</span> Literature: Poem – Ozymandias (Analysis)</div>
+              <div class="chapter-item"><span class="chapter-no">Ch 5</span> Composition: Essay & Paragraph Writing</div>
+            </div>
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-calendar-alt" style="margin-right:8px;color:var(--accent)"></i>Exam Schedule – Grade 9A</h4>
+              <div class="table-wrap">
+                <table class="schedule-table"><thead><tr><th>Date</th><th>Subject</th><th>Time</th></tr></thead><tbody>
+                  <tr><td>20 Sept</td><td>English</td><td>9:00–11:30</td></tr>
+                  <tr><td>21 Sept</td><td>Mathematics</td><td>9:00–11:30</td></tr>
+                  <tr><td>23 Sept</td><td>Science</td><td>9:00–11:30</td></tr>
+                  <tr><td>24 Sept</td><td>Social Studies</td><td>9:00–11:30</td></tr>
+                  <tr><td>25 Sept</td><td>Hindi</td><td>9:00–11:30</td></tr>
+                  <tr><td>26 Sept</td><td>Computer</td><td>9:00–10:30</td></tr>
+                </tbody></table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leave -->
+        <div id="t-leave" class="dash-section">
+          <div class="card" style="padding:24px;max-width:560px;margin-bottom:24px">
+            <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-calendar-times" style="margin-right:8px;color:var(--accent)"></i>Apply for Leave</h4>
+            <div class="form-row">
+              <div class="form-group"><label>From Date</label><input type="date"></div>
+              <div class="form-group"><label>To Date</label><input type="date"></div>
+            </div>
+            <div class="form-group"><label>Leave Type</label><select><option>Casual Leave</option><option>Medical Leave</option><option>Earned Leave</option><option>Special Leave</option></select></div>
+            <div class="form-group"><label>Reason</label><textarea placeholder="Brief reason for leave..."></textarea></div>
+            <button class="btn btn-primary" onclick="showToast('✅ Leave application submitted for approval.')"><i class="fas fa-paper-plane"></i> Submit Application</button>
+          </div>
+          <div class="card" style="padding:24px">
+            <h4 style="color:var(--accent-dark);margin-bottom:16px">Leave History</h4>
+            <div class="table-wrap">
+              <table><thead><tr><th>From</th><th>To</th><th>Type</th><th>Reason</th><th>Status</th></tr></thead><tbody>
+                <tr><td>05 Aug</td><td>06 Aug</td><td>Medical</td><td>Fever</td><td><span class="badge badge-success">Approved</span></td></tr>
+                <tr><td>12 Jul</td><td>12 Jul</td><td>Casual</td><td>Family function</td><td><span class="badge badge-success">Approved</span></td></tr>
+                <tr><td>15 Jun</td><td>17 Jun</td><td>Special</td><td>Training workshop</td><td><span class="badge badge-warning">Pending</span></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     ADMIN DASHBOARD
+================================================================ -->
+<div id="page-admin-dash" class="page">
+  <div class="dash-shell">
+    <nav class="sidebar" id="adminSidebar">
+      <div class="sidebar-brand"><div class="s-logo">SF</div><h4>St. Francis School</h4><p>Admin Portal</p></div>
+      <div class="sidebar-nav">
+        <button class="active" onclick="showDash('a','a-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
+        <button onclick="showDash('a','a-students',this)"><i class="fas fa-user-graduate"></i> Students</button>
+        <button onclick="showDash('a','a-teachers',this)"><i class="fas fa-chalkboard-teacher"></i> Teachers</button>
+        <button onclick="showDash('a','a-fees',this)"><i class="fas fa-money-bill-wave"></i> Fees</button>
+        <button onclick="showDash('a','a-notices',this)"><i class="fas fa-bullhorn"></i> Notices</button>
+        <button onclick="showDash('a','a-contacts',this)"><i class="fas fa-envelope"></i> Contacts</button>
+      </div>
+      <div class="sidebar-footer"><button onclick="showPage('home')"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
+    </nav>
+    <div class="dash-main">
+      <div class="dash-header">
+        <div style="display:flex;align-items:center">
+          <button class="sidebar-toggle" onclick="toggleSidebar('adminSidebar')"><i class="fas fa-bars"></i></button>
+          <div><h2 id="a-dash-title">Admin Dashboard</h2><p>School Management Overview</p></div>
+        </div>
+        <div class="dash-user">
+          <div><div class="dash-username" style="text-align:right">Admin</div><div class="dash-role">Administrator</div></div>
+          <div class="dash-avatar">AD</div>
+        </div>
+      </div>
+      <div class="dash-content">
+
+        <!-- Admin Dashboard -->
+        <div id="a-dashboard" class="dash-section active">
+          <div class="dash-stats">
+            <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-user-graduate"></i></div><div><div class="dash-stat-val">1,218</div><div class="dash-stat-label">Total Students</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-chalkboard-teacher"></i></div><div><div class="dash-stat-val">68</div><div class="dash-stat-label">Total Teachers</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-money-bill-wave"></i></div><div><div class="dash-stat-val">42</div><div class="dash-stat-label">Fee Pending</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-envelope"></i></div><div><div class="dash-stat-val">7</div><div class="dash-stat-label">New Messages</div></div></div>
+          </div>
+          <div class="grid-2">
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-chart-bar" style="margin-right:8px;color:var(--accent)"></i>Class-wise Enrollment</h4>
+              <div class="table-wrap">
+                <table><thead><tr><th>Class</th><th>Boys</th><th>Girls</th><th>Total</th></tr></thead><tbody>
+                  <tr><td>KG – II</td><td>45</td><td>42</td><td>87</td></tr>
+                  <tr><td>Grade 1–3</td><td>98</td><td>105</td><td>203</td></tr>
+                  <tr><td>Grade 4–6</td><td>122</td><td>118</td><td>240</td></tr>
+                  <tr><td>Grade 7–8</td><td>140</td><td>135</td><td>275</td></tr>
+                  <tr><td>Grade 9–10</td><td>202</td><td>211</td><td>413</td></tr>
+                </tbody></table>
+              </div>
+            </div>
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-tasks" style="margin-right:8px;color:var(--accent)"></i>Pending Actions</h4>
+              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--danger);font-size:8px;margin-right:8px"></i>Fee approvals pending</span><span class="badge badge-danger">42</span></div>
+              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>Leave applications</span><span class="badge badge-warning">5</span></div>
+              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>New admission enquiries</span><span class="badge badge-info">12</span></div>
+              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-right:8px"></i>Contact messages</span><span class="badge badge-success">7</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Students -->
+        <div id="a-students" class="dash-section">
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+              <h4 style="color:var(--accent-dark)"><i class="fas fa-user-graduate" style="margin-right:8px;color:var(--accent)"></i>Student Management</h4>
+              <button class="btn btn-primary btn-sm" onclick="showToast('📝 Add Student form would open here.')"><i class="fas fa-plus"></i> Add Student</button>
+            </div>
+            <div class="table-wrap">
+              <table><thead><tr><th>Adm. No.</th><th>Name</th><th>Class</th><th>Parent Contact</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+                <tr><td>SFS/042</td><td>Arjun Sharma</td><td>Grade 9A</td><td>+91 98000 22233</td><td><span class="badge badge-success">Active</span></td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-outline" onclick="showToast('✏️ Edit mode activated.')"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-danger" onclick="showToast('🗑️ Student record deleted.')"><i class="fas fa-trash"></i></button></td></tr>
+                <tr><td>SFS/043</td><td>Ailin Khyriem</td><td>Grade 9A</td><td>+91 97000 33344</td><td><span class="badge badge-success">Active</span></td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-outline"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>
+                <tr><td>SFS/044</td><td>Donbor Kynshi</td><td>Grade 9A</td><td>+91 96000 44455</td><td><span class="badge badge-warning">Transfer Pending</span></td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-outline"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>
+                <tr><td>SFS/015</td><td>Elisa Marbaniang</td><td>Grade 9A</td><td>+91 95000 55566</td><td><span class="badge badge-success">Active</span></td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-outline"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Teachers -->
+        <div id="a-teachers" class="dash-section">
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+              <h4 style="color:var(--accent-dark)"><i class="fas fa-chalkboard-teacher" style="margin-right:8px;color:var(--accent)"></i>Teacher Management</h4>
+              <button class="btn btn-primary btn-sm" onclick="showToast('📝 Add Teacher form would open here.')"><i class="fas fa-plus"></i> Add Teacher</button>
+            </div>
+            <div class="table-wrap">
+              <table><thead><tr><th>ID</th><th>Name</th><th>Subject</th><th>Class</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+                <tr><td>T001</td><td>Ms. Lyngdoh Mary</td><td>English</td><td>7C, 8B, 9A</td><td>+91 98000 11111</td><td><span class="badge badge-success">Active</span></td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-outline" onclick="showToast('✏️ Edit mode.')"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-danger" onclick="showToast('🗑️ Deleted.')"><i class="fas fa-trash"></i></button></td></tr>
+                <tr><td>T002</td><td>Mr. Rajesh Kumar</td><td>Mathematics</td><td>8A, 9A, 10B</td><td>+91 98000 22222</td><td><span class="badge badge-success">Active</span></td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-outline"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>
+                <tr><td>T003</td><td>Ms. Priya Sharma</td><td>Science</td><td>7A, 8B, 9A</td><td>+91 98000 33333</td><td><span class="badge badge-success">Active</span></td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-outline"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>
+                <tr><td>T004</td><td>Mr. Kevin Marbaniang</td><td>Computer</td><td>6–10</td><td>+91 98000 44444</td><td><span class="badge badge-warning">On Leave</span></td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-outline"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Fees -->
+        <div id="a-fees" class="dash-section">
+          <div class="card" style="padding:24px">
+            <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-money-bill-wave" style="margin-right:8px;color:var(--accent)"></i>Fee Approval Panel</h4>
+            <div class="table-wrap">
+              <table><thead><tr><th>Student</th><th>Class</th><th>Fee Type</th><th>Amount</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>
+                <tr><td>Arjun Sharma</td><td>9A</td><td>Tuition Q2</td><td>₹4,500</td><td>18 Sept 2025</td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-success" onclick="this.closest('tr').cells[5].innerHTML='<span class=badge badge-success>Approved</span>'">Approve</button><button class="btn btn-sm btn-danger" onclick="this.closest('tr').cells[5].innerHTML='<span class=badge badge-danger>Rejected</span>'">Reject</button></td></tr>
+                <tr><td>Ailin Khyriem</td><td>9A</td><td>Sports Fee</td><td>₹600</td><td>17 Sept 2025</td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-success" onclick="this.closest('tr').cells[5].innerHTML='<span class=badge badge-success>Approved</span>'">Approve</button><button class="btn btn-sm btn-danger" onclick="this.closest('tr').cells[5].innerHTML='<span class=badge badge-danger>Rejected</span>'">Reject</button></td></tr>
+                <tr><td>Donbor Kynshi</td><td>9A</td><td>Tuition Q2</td><td>₹4,500</td><td>15 Sept 2025</td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-success" onclick="this.closest('tr').cells[5].innerHTML='<span class=badge badge-success>Approved</span>'">Approve</button><button class="btn btn-sm btn-danger" onclick="this.closest('tr').cells[5].innerHTML='<span class=badge badge-danger>Rejected</span>'">Reject</button></td></tr>
+                <tr><td>Bankerlang Mawrie</td><td>9A</td><td>Exam Fee</td><td>₹500</td><td>14 Sept 2025</td><td style="display:flex;gap:6px"><button class="btn btn-sm btn-success" onclick="this.closest('tr').cells[5].innerHTML='<span class=badge badge-success>Approved</span>'">Approve</button><button class="btn btn-sm btn-danger" onclick="this.closest('tr').cells[5].innerHTML='<span class=badge badge-danger>Rejected</span>'">Reject</button></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Notices -->
+        <div id="a-notices" class="dash-section">
+          <div class="grid-2">
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Send School Notice</h4>
+              <div class="form-group"><label>Notice Title</label><input type="text" placeholder="e.g., Exam Schedule Released"></div>
+              <div class="form-group"><label>Audience</label><select><option>All Students</option><option>All Teachers</option><option>All (Students + Teachers)</option><option>Parents</option><option>Specific Class</option></select></div>
+              <div class="form-group"><label>Notice Content</label><textarea placeholder="Full notice content..."></textarea></div>
+              <div class="form-group"><label>Priority</label><select><option>Normal</option><option>Important</option><option>Urgent</option></select></div>
+              <button class="btn btn-primary" onclick="showToast('✅ Notice published to all students.')"><i class="fas fa-paper-plane"></i> Publish Notice</button>
+            </div>
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:16px">Published Notices</h4>
+              <div class="notice-card" style="margin-bottom:12px"><div class="notice-icon"><i class="fas fa-exclamation-circle"></i></div><div><div class="notice-title">Exam Schedule – Half-Yearly</div><div class="notice-date">01 Sept 2025 &nbsp;|&nbsp; <span class="badge badge-danger">Urgent</span></div></div></div>
+              <div class="notice-card" style="margin-bottom:12px"><div class="notice-icon"><i class="fas fa-bell"></i></div><div><div class="notice-title">Parent-Teacher Meeting</div><div class="notice-date">28 Aug 2025 &nbsp;|&nbsp; <span class="badge badge-warning">Important</span></div></div></div>
+              <div class="notice-card"><div class="notice-icon"><i class="fas fa-info-circle"></i></div><div><div class="notice-title">Admission Open 2025–26</div><div class="notice-date">01 Mar 2025 &nbsp;|&nbsp; <span class="badge badge-success">Active</span></div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Contacts -->
+        <div id="a-contacts" class="dash-section">
+          <div class="card" style="padding:24px">
+            <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-envelope" style="margin-right:8px;color:var(--accent)"></i>Contact Messages Panel</h4>
+            <div class="table-wrap">
+              <table><thead><tr><th>Name</th><th>Subject</th><th>Message</th><th>Date</th><th>Status</th><th>Action</th></tr></thead><tbody>
+                <tr><td>Ramesh Sharma</td><td>Admission Enquiry</td><td>Would like to enroll my child in Grade 4...</td><td>18 Sept</td><td><span class="badge badge-warning">Unread</span></td><td><button class="btn btn-sm btn-outline" onclick="showToast('📧 Message opened.')">View</button></td></tr>
+                <tr><td>Mary Lyngdoh</td><td>Fee Issue</td><td>My child's fee was rejected. Please review...</td><td>17 Sept</td><td><span class="badge badge-warning">Unread</span></td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+                <tr><td>Robert Nongkynmaw</td><td>Transfer Certificate</td><td>Requesting TC for my son Donbor...</td><td>15 Sept</td><td><span class="badge badge-success">Replied</span></td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+                <tr><td>Priya Das</td><td>General Enquiry</td><td>What are the school timings and uniform rules?</td><td>14 Sept</td><td><span class="badge badge-success">Replied</span></td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<script src="script.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBXq3fe0uY8UB7-uLGzGIIvZOQf8YjNqaM",
+    authDomain: "st-francis-school-a3e7e.firebaseapp.com",
+    projectId: "st-francis-school-a3e7e",
+    storageBucket: "st-francis-school-a3e7e.firebasestorage.app",
+    messagingSenderId: "180123372524",
+    appId: "1:180123372524:web:caed0f2a44d35f19d90ec9"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  window.firebaseLogin = function(email, password) {
+    signInWithEmailAndPassword(auth, email, password)
+      .then(() => {
+        alert("Login successful ✅");
+        showPage('page-student-dash');
+      })
+      .catch((error) => {
+        alert("Login failed ❌: " + error.message);
+      });
+  };
+</script>
+</body>
+</html>
