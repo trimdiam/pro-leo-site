@@ -21,3 +21,4 @@ These rules are mandatory to prevent 'Stream idle timeout' errors on mobile envi
 3. **Step-by-Step Execution:** For complex tasks, provide a brief numbered plan, execute ONLY step one, then wait for the user to say "continue" before proceeding.
 
 4. **Concise Explanations:** Keep explanations brief and get straight to the tool use or code output.
+
