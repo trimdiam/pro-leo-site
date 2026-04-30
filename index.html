@@ -1441,7 +1441,7 @@
             <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-user-graduate"></i></div><div><div class="dash-stat-val" id="a-stat-students"><i class="fas fa-spinner fa-spin" style="font-size:14px"></i></div><div class="dash-stat-label">Total Students</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-chalkboard-teacher"></i></div><div><div class="dash-stat-val" id="a-stat-teachers"><i class="fas fa-spinner fa-spin" style="font-size:14px"></i></div><div class="dash-stat-label">Total Teachers</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-money-bill-wave"></i></div><div><div class="dash-stat-val">42</div><div class="dash-stat-label">Fee Pending</div></div></div>
-            <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-envelope"></i></div><div><div class="dash-stat-val">7</div><div class="dash-stat-label">New Messages</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-building"></i></div><div><div class="dash-stat-val" id="a-stat-office-staff">—</div><div class="dash-stat-label">Office Staff</div></div></div>
           </div>
           <div class="grid-2">
             <div class="card" style="padding:24px">
@@ -1454,6 +1454,29 @@
               <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>Leave applications</span><span class="badge badge-warning">5</span></div>
               <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>New admission enquiries</span><span class="badge badge-info" id="a-admission-count">—</span></div>
               <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-right:8px"></i>Contact messages</span><span class="badge badge-success">7</span></div>
+            </div>
+          </div>
+          <!-- Portal Shortcuts -->
+          <div class="grid-2" style="margin-top:24px">
+            <div class="card" style="padding:24px;border-top:4px solid var(--accent);display:flex;align-items:center;gap:20px">
+              <div class="dash-stat-icon blue" style="width:52px;height:52px;border-radius:14px;flex-shrink:0"><i class="fas fa-building"></i></div>
+              <div style="flex:1">
+                <div style="font-family:var(--font-head);font-size:1.05rem;color:var(--accent-dark);margin-bottom:4px">Office Staff Portal</div>
+                <div style="font-size:13px;color:var(--text-light);margin-bottom:14px">Fee collection, payment processing &amp; receipts</div>
+                <button class="btn btn-primary btn-sm" onclick="showPage('login');setTimeout(()=>{ const t=document.querySelector('.role-tab[onclick*=office]'); if(t) t.click(); },200)">
+                  <i class="fas fa-sign-in-alt"></i> Open Office Portal
+                </button>
+              </div>
+            </div>
+            <div class="card" style="padding:24px;border-top:4px solid var(--success);display:flex;align-items:center;gap:20px">
+              <div class="dash-stat-icon green" style="width:52px;height:52px;border-radius:14px;flex-shrink:0"><i class="fas fa-exchange-alt"></i></div>
+              <div style="flex:1">
+                <div style="font-family:var(--font-head);font-size:1.05rem;color:var(--accent-dark);margin-bottom:4px">Fee Approvals</div>
+                <div style="font-size:13px;color:var(--text-light);margin-bottom:14px">Review and approve pending fee transactions</div>
+                <button class="btn btn-sm btn-outline" onclick="showDash('a','a-fee-transactions',document.querySelector('[onclick*=a-fee-transactions]'))">
+                  <i class="fas fa-exchange-alt"></i> View Approvals
+                </button>
+              </div>
             </div>
           </div>
         </div>
