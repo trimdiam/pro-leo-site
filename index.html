@@ -5641,6 +5641,118 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, quer
 </script>
 <script type="module">
 /* ================================================================
+   OFFICE STAFF ACCOUNT MANAGEMENT
+   Admin can create / list / delete Office Staff logins
+================================================================ */
+import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDocs, deleteDoc, collection, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+(async () => {
+  let app;
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length > 0) { app = getApp(); break; }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  if (!app) return;
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  const idToEmail = id => id.trim().toLowerCase().replace(/[^a-z0-9]/g,'_') + '@stfrancis.school';
+
+  function _osMsg(type, text) {
+    const errEl = document.getElementById('os-create-error');
+    const okEl  = document.getElementById('os-create-success');
+    if (!errEl || !okEl) return;
+    errEl.style.display = 'none';
+    okEl.style.display  = 'none';
+    if (type === 'error') { errEl.textContent = text; errEl.style.display = 'block'; }
+    if (type === 'ok')    { okEl.textContent  = text; okEl.style.display  = 'block'; }
+  }
+
+  window.createOfficeStaffAccount = async function() {
+    const name     = (document.getElementById('os-name')?.value     || '').trim();
+    const staffId  = (document.getElementById('os-staffid')?.value  || '').trim().toUpperCase();
+    const password = (document.getElementById('os-password')?.value || '').trim();
+
+    if (!name)              { _osMsg('error','Full name is required.');           return; }
+    if (!staffId)           { _osMsg('error','Staff Login ID is required.');      return; }
+    if (password.length < 6){ _osMsg('error','Password must be at least 6 characters.'); return; }
+
+    const btn = document.getElementById('os-create-btn');
+    if (btn) { btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Creating…'; btn.disabled=true; }
+    _osMsg('', '');
+
+    try {
+      const email = idToEmail(staffId);
+      let uid = '';
+
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        uid = cred.user.uid;
+      } catch(e) {
+        if (e.code === 'auth/email-already-in-use') {
+          const snap = await getDocs(query(collection(db,'users'), where('loginId','==',staffId), limit(1)));
+          if (!snap.empty) uid = snap.docs[0].id;
+          else { _osMsg('error','Login ID already taken. Choose a different ID.'); return; }
+        } else throw e;
+      }
+
+      await setDoc(doc(db,'users',uid), {
+        name, staffId, loginId: staffId,
+        email, role: 'office',
+        createdAt: new Date().toISOString()
+      }, { merge: true });
+
+      _osMsg('ok', `✅ Account created! Staff ID: ${staffId} · Password: ${password}`);
+      document.getElementById('os-name').value     = '';
+      document.getElementById('os-staffid').value  = '';
+      document.getElementById('os-password').value = '';
+      loadOfficeStaffList();
+    } catch(e) {
+      _osMsg('error', '❌ ' + (e.message || 'Could not create account.'));
+    } finally {
+      if (btn) { btn.innerHTML='<i class="fas fa-user-plus"></i> Create Account'; btn.disabled=false; }
+    }
+  };
+
+  window.loadOfficeStaffList = async function() {
+    const el = document.getElementById('os-staff-list');
+    if (!el) return;
+    el.innerHTML = '<p style="font-size:13px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      const snap = await getDocs(query(collection(db,'users'), where('role','==','office'), orderBy('createdAt','desc'), limit(50)));
+      if (snap.empty) { el.innerHTML='<p style="font-size:13px;color:var(--text-light)">No office staff accounts yet.</p>'; return; }
+      el.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Login ID</th><th>Created</th><th></th></tr></thead><tbody>' +
+        snap.docs.map(d => {
+          const u = d.data();
+          const date = u.createdAt ? u.createdAt.split('T')[0] : '—';
+          return `<tr>
+            <td><strong>${u.name||'—'}</strong></td>
+            <td style="font-family:monospace;font-size:13px">${u.loginId||u.staffId||'—'}</td>
+            <td style="font-size:12px;color:var(--text-light)">${date}</td>
+            <td><button onclick="deleteOfficeStaff('${d.id}','${u.name||''}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px" title="Remove"><i class="fas fa-trash"></i></button></td>
+          </tr>`;
+        }).join('') + '</tbody></table></div>';
+    } catch(e) {
+      el.innerHTML = `<p style="color:var(--danger);font-size:13px">❌ ${e.message}</p>`;
+    }
+  };
+
+  window.deleteOfficeStaff = async function(uid, name) {
+    if (!confirm(`Remove "${name}" from office staff? Their Firebase Auth account will remain but portal access will be revoked.`)) return;
+    try {
+      await deleteDoc(doc(db,'users',uid));
+      showToast('🗑️ Staff record removed.');
+      loadOfficeStaffList();
+    } catch(e) { showToast('❌ '+e.message); }
+  };
+
+  console.log('[OfficeStaffMgmt] ✅ Loaded');
+})();
+</script>
+<script type="module">
+/* ================================================================
    FEE MANAGEMENT MODULE — Part 5 (Final)
    Approve/Reject · Student Notifications · showDash hooks · loginAs
 ================================================================ */
