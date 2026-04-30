@@ -5333,6 +5333,127 @@ import {
 
 })();
 </script>
+<script type="module">
+/* ================================================================
+   FEE MANAGEMENT MODULE — Part 3
+   processPayment · _populateReceipt · loadOfficeReports
+================================================================ */
+import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+(async () => {
+  let app;
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length > 0) { app = getApp(); break; }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  if (!app) return;
+  const db = getFirestore(app);
+  const CLS = { PLG:'Play Group', SKG:'SKG', LKG:'LKG' };
+  const clsLabel = c => CLS[c] || (c ? 'Class ' + c : '—');
+  const fmtINR   = n => '₹' + (parseFloat(n)||0).toLocaleString('en-IN');
+  const fmtDate  = d => d ? new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}) : '—';
+
+  window.processPayment = async function() {
+    if (!window._feeSelectedStudent) { showToast('⚠️ No student selected.'); return; }
+    const amount    = parseFloat(document.getElementById('pay-amount')?.value||0);
+    const mode      = document.getElementById('pay-mode')?.value||'Cash';
+    const receiptNo = (document.getElementById('pay-receipt-no')?.value||'').trim();
+    const date      = document.getElementById('pay-date')?.value||new Date().toISOString().split('T')[0];
+    const notes     = (document.getElementById('pay-notes')?.value||'').trim();
+    if (!amount||amount<=0) { showToast('⚠️ Enter a valid payment amount.'); return; }
+    if (!date)              { showToast('⚠️ Select a payment date.'); return; }
+    const s  = window._feeSelectedStudent;
+    const fd = window._feeSelectedFeeData||{};
+    const balBefore = fd.feeBalance!==undefined ? fd.feeBalance : fd.feeTotal||0;
+    const balAfter  = Math.max(0, balBefore - amount);
+    const btn = document.querySelector('#o-fee-collection .btn-primary');
+    if (btn) { btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Saving…'; btn.disabled=true; }
+    try {
+      const txnData = {
+        studentId:     s.studentId||'',
+        studentName:   s.name||'',
+        studentClass:  String(s.class||''),
+        studentRollNo: String(s.rollNo||''),
+        amount, paymentMode: mode,
+        receiptNo: receiptNo||('RCP-'+Date.now()),
+        date, notes,
+        staffId:   window._officeStaffId||'',
+        staffName: window._officeStaffName||'Office Staff',
+        balanceBefore: balBefore,
+        balanceAfter:  balAfter,
+        feeTotal: fd.feeTotal||0,
+        status:   'pending',
+        createdAt: new Date().toISOString()
+      };
+      const txnRef = await addDoc(collection(db,'fee_transactions'), txnData);
+      showToast('✅ Payment recorded (Pending approval). Opening receipt…');
+      _populateReceipt({ ...txnData, txnId: txnRef.id });
+      ['pay-amount','pay-receipt-no','pay-notes'].forEach(id => {
+        const el=document.getElementById(id); if(el) el.value='';
+      });
+      if (window._loadFeeDataForStudent) await window._loadFeeDataForStudent(s);
+    } catch(e) {
+      showToast('❌ Could not record payment: '+e.message);
+    } finally {
+      if (btn) { btn.innerHTML='<i class="fas fa-save"></i> Record Payment'; btn.disabled=false; }
+    }
+  };
+
+  function _populateReceipt(txn) {
+    const set = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v||'—'; };
+    set('rcp-no',           txn.receiptNo||(txn.txnId||'').slice(0,8).toUpperCase());
+    set('rcp-date',         fmtDate(txn.date));
+    set('rcp-student-name', txn.studentName);
+    set('rcp-student-id',   txn.studentId);
+    set('rcp-class',        clsLabel(txn.studentClass));
+    set('rcp-roll',         txn.studentRollNo||'—');
+    set('rcp-description',  (txn.notes||'Fee Payment')+' — '+clsLabel(txn.studentClass));
+    set('rcp-amount',       fmtINR(txn.amount));
+    set('rcp-total',        txn.feeTotal>0 ? fmtINR(txn.feeTotal) : '₹—');
+    set('rcp-paid-this',    fmtINR(txn.amount));
+    set('rcp-balance',      fmtINR(txn.balanceAfter));
+    set('rcp-mode',         txn.paymentMode);
+    set('rcp-notes',        txn.notes||'N/A');
+    set('rcp-staff-name',   txn.staffName);
+    set('rcp-generated-at', new Date().toLocaleString('en-IN'));
+    const rcpEl = document.getElementById('printable-receipt');
+    if (rcpEl) rcpEl.style.display='block';
+  }
+
+  window.loadOfficeReports = async function() {
+    const tbody = document.getElementById('o-reports-tbody');
+    if (!tbody) return;
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:14px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    const filter = document.getElementById('o-report-filter')?.value||'all';
+    try {
+      const snap = filter==='all'
+        ? await getDocs(query(collection(db,'fee_transactions'), orderBy('createdAt','desc'), limit(60)))
+        : await getDocs(query(collection(db,'fee_transactions'), where('status','==',filter), orderBy('createdAt','desc'), limit(60)));
+      if (snap.empty) {
+        tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:14px;color:var(--text-light)">No records found.</td></tr>';
+        return;
+      }
+      const bc = s => s==='approved'?'badge-success':s==='rejected'?'badge-danger':'badge-warning';
+      tbody.innerHTML = snap.docs.map(d => {
+        const t=d.data();
+        return `<tr>
+          <td style="font-size:12px">${t.date||'—'}</td>
+          <td><strong>${t.studentName||'—'}</strong></td>
+          <td>${clsLabel(t.studentClass)}</td>
+          <td style="font-weight:700">${fmtINR(t.amount)}</td>
+          <td style="font-size:12px">${t.paymentMode||'—'}</td>
+          <td style="font-size:12px;font-family:monospace">${t.receiptNo||'—'}</td>
+          <td style="font-size:12px">${t.staffName||'—'}</td>
+          <td><span class="badge ${bc(t.status)}">${t.status||'pending'}</span></td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
+    }
+  };
+})();
+</script>
 <script src="notification-center.js"></script>
 
 <!-- ================================================================
