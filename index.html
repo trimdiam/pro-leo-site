@@ -37,7 +37,7 @@
       /* Prevent text overflow */
       * { word-break: break-word; }
       table { font-size: 12px; }
-      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
       /* Dashboard mobile */
       .dash-layout { flex-direction: column !important; }
       .sidebar { width: 100% !important; height: auto !important; position: fixed !important; }
@@ -4097,7 +4097,7 @@
   }
 
   window.saveHousePoints=async function(){const name=document.getElementById('house-name')?.value||'';const monthly=parseInt(document.getElementById('house-monthly')?.value||0)||0;const total=parseInt(document.getElementById('house-total')?.value||0)||0;if(!name){showToast('⚠️ Select a house.');return;}try{const snap=await getDocs(query(collection(db,'house_points'),where('houseName','==',name)));if(!snap.empty){await setDoc(doc(db,'house_points',snap.docs[0].id),{houseName:name,monthlyPoints:monthly,totalPoints:total,updatedAt:new Date().toISOString()},{merge:true});}else{await addDoc(collection(db,'house_points'),{houseName:name,monthlyPoints:monthly,totalPoints:total,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});}showToast('✅ House points saved!');loadAdminHousePoints();}catch(e){showToast('❌ '+e.message);}};
-  window.loadAdminHousePoints=async function(){const el=document.getElementById('admin-house-list');if(!el)return;el.innerHTML='<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i></p>';try{const snap=await getDocs(collection(db,'house_points'));if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No data yet.</p>';return;}const sorted=[...snap.docs].map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.totalPoints||0)-(a.totalPoints||0));el.innerHTML=`<table style="width:100%;font-size:13px"><thead><tr><th style="text-align:left">House</th><th>Monthly</th><th>Total</th><th></th></tr></thead><tbody>`+sorted.map(h=>`<tr><td><strong>${HOUSE_EMOJI[h.houseName]||''} ${h.houseName}</strong></td><td style="text-align:center">${h.monthlyPoints||0}</td><td style="text-align:center;font-weight:700;color:var(--accent-dark)">${h.totalPoints||0}</td><td><button onclick="prefillHouseForm('${h.houseName}',${h.monthlyPoints||0},${h.totalPoints||0})" style="background:none;border:none;color:var(--accent);cursor:pointer"><i class="fas fa-edit"></i></button></td></tr>`).join('')+'</tbody></table>';}catch(e){el.innerHTML=`<p style="color:var(--danger)">❌ ${e.message}</p>`;}};
+  window.loadAdminHousePoints=async function(){const el=document.getElementById('admin-house-list');if(!el)return;el.innerHTML='<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i></p>';try{const snap=await getDocs(collection(db,'house_points'));if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No data yet.</p>';return;}const sorted=[...snap.docs].map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.totalPoints||0)-(a.totalPoints||0));el.innerHTML='<div class="table-wrap"><table style="width:100%;font-size:13px"><thead><tr><th style="text-align:left">House</th><th>Monthly</th><th>Total</th><th></th></tr></thead><tbody>'+sorted.map(h=>`<tr><td><strong>${HOUSE_EMOJI[h.houseName]||''} ${h.houseName}</strong></td><td style="text-align:center">${h.monthlyPoints||0}</td><td style="text-align:center;font-weight:700;color:var(--accent-dark)">${h.totalPoints||0}</td><td><button onclick="prefillHouseForm('${h.houseName}',${h.monthlyPoints||0},${h.totalPoints||0})" style="background:none;border:none;color:var(--accent);cursor:pointer"><i class="fas fa-edit"></i></button></td></tr>`).join('')+'</tbody></table></div>';}catch(e){el.innerHTML=`<p style="color:var(--danger)">❌ ${e.message}</p>`;}};
   window.prefillHouseForm=function(name,monthly,total){document.getElementById('house-name').value=name;document.getElementById('house-monthly').value=monthly;document.getElementById('house-total').value=total;};
 
   // ================================================================
@@ -5503,7 +5503,7 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, quer
       if (snap.empty) { el.innerHTML='<p style="color:var(--text-light);font-size:13px">No fee structure set yet.</p>'; return; }
       const ORDER = ['PLG','SKG','LKG','1','2','3','4','5','6','7','8','9','10'];
       const sorted = [...snap.docs].sort((a,b)=>ORDER.indexOf(a.data().class)-ORDER.indexOf(b.data().class));
-      el.innerHTML = `<table style="width:100%;font-size:13px;border-collapse:collapse">
+      el.innerHTML = `<div class="table-wrap"><table style="width:100%;font-size:13px;border-collapse:collapse">
         <thead><tr>
           <th style="text-align:left;padding:8px 4px;border-bottom:1.5px solid var(--bg);color:var(--accent-dark)">Class</th>
           <th style="text-align:right;padding:8px 4px;border-bottom:1.5px solid var(--bg);color:var(--accent-dark)">Annual Fee</th>
@@ -5519,7 +5519,7 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, quer
               <button onclick="deleteFeeStructure('${f.class}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;margin-left:8px"><i class="fas fa-trash"></i></button>
             </td>
           </tr>`;
-        }).join('')+`</tbody></table>`;
+        }).join('')+`</tbody></table></div>`;
     } catch(e) { el.innerHTML=`<p style="color:var(--danger)">❌ ${e.message}</p>`; }
   };
 
