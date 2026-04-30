@@ -5102,6 +5102,116 @@
   };
 
 </script>
+<script type="module">
+/* ================================================================
+   FEE MANAGEMENT MODULE  (Part 1 of 5)
+   Office Portal Bootstrap · Stats · Recent Transactions
+================================================================ */
+import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc,
+  collection, getDocs, query, where, orderBy, limit, updateDoc
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+(async () => {
+  let app;
+  for (let i = 0; i < 60; i++) {
+    const apps = getApps();
+    if (apps.length > 0) { app = getApp(); break; }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  if (!app) { console.error('[FeeModule] Firebase app unavailable'); return; }
+
+  const db = getFirestore(app);
+
+  const CLS = { PLG:'Play Group', SKG:'SKG', LKG:'LKG' };
+  const clsLabel = c => CLS[c] || (c ? 'Class ' + c : '—');
+  const fmtINR   = n => '₹' + (parseFloat(n) || 0).toLocaleString('en-IN');
+
+  window._officeStaffId       = '';
+  window._officeStaffName     = '';
+  window._feeSelectedStudent  = null;
+  window._feeSelectedFeeData  = null;
+
+  window.loadOfficePortal = async function(user) {
+    try {
+      const uSnap = await getDoc(doc(db, 'users', user.uid));
+      if (!uSnap.exists()) return;
+      const u = uSnap.data();
+      window._officeStaffId   = u.staffId || u.loginId || user.uid;
+      window._officeStaffName = u.name || 'Office Staff';
+      const nm = document.getElementById('o-header-name');
+      if (nm) nm.textContent = window._officeStaffName;
+      const av = document.getElementById('o-header-avatar');
+      if (av) {
+        const parts = window._officeStaffName.split(' ');
+        av.textContent = parts.length >= 2
+          ? parts[0][0] + parts[parts.length - 1][0]
+          : (parts[0][0] || 'O').toUpperCase();
+      }
+      const payDateEl = document.getElementById('pay-date');
+      if (payDateEl && !payDateEl.value)
+        payDateEl.value = new Date().toISOString().split('T')[0];
+      loadOfficeDashboardStats();
+    } catch(e) { console.warn('[OfficePortal]', e.message); }
+  };
+
+  window.loadOfficeDashboardStats = async function() {
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      const [pendSnap, todaySnap] = await Promise.all([
+        getDocs(query(collection(db,'fee_transactions'), where('status','==','pending'), limit(200))),
+        getDocs(query(collection(db,'fee_transactions'), where('date','==',today),       limit(200)))
+      ]);
+      const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      set('o-stat-pending', pendSnap.size);
+      set('o-stat-today',   todaySnap.size);
+      let approvedAmt = 0, approvedCount = 0;
+      todaySnap.forEach(d => {
+        if (d.data().status === 'approved') {
+          approvedAmt += parseFloat(d.data().amount) || 0;
+          approvedCount++;
+        }
+      });
+      set('o-stat-total-today',    fmtINR(approvedAmt));
+      set('o-stat-approved-today', approvedCount);
+      loadOfficeRecentTransactions();
+    } catch(e) { console.warn('[OfficeDash]', e.message); }
+  };
+
+  window.loadOfficeRecentTransactions = async function() {
+    const tbody = document.getElementById('o-recent-txn-tbody');
+    if (!tbody) return;
+    try {
+      const snap = await getDocs(query(
+        collection(db,'fee_transactions'), orderBy('createdAt','desc'), limit(20)
+      ));
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:14px;color:var(--text-light)">No transactions yet.</td></tr>';
+        return;
+      }
+      const bc = s => s==='approved'?'badge-success':s==='rejected'?'badge-danger':'badge-warning';
+      tbody.innerHTML = snap.docs.map(d => {
+        const t = d.data();
+        return `<tr>
+          <td style="font-size:12px">${t.date||'—'}</td>
+          <td><strong>${t.studentName||'—'}</strong></td>
+          <td>${clsLabel(t.studentClass)}</td>
+          <td style="font-weight:700">${fmtINR(t.amount)}</td>
+          <td style="font-size:12px">${t.paymentMode||'—'}</td>
+          <td><span class="badge ${bc(t.status)}">${t.status||'pending'}</span></td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
+    }
+  };
+
+  /* ── STUDENT SEARCH ── (Part 2 continues below) */
+  window.__feeModuleDb = db;
+  window.__feeModuleHelpers = { clsLabel, fmtINR };
+})();
+</script>
 <script src="notification-center.js"></script>
 
 <!-- ================================================================
