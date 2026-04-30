@@ -1404,6 +1404,7 @@
         <button class="active" onclick="showDash('a','a-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
         <button onclick="showDash('a','a-students',this)"><i class="fas fa-user-graduate"></i> Students</button>
         <button onclick="showDash('a','a-teachers',this)"><i class="fas fa-chalkboard-teacher"></i> Teachers</button>
+        <button onclick="showDash('a','a-office-staff',this)"><i class="fas fa-building"></i> Office Staff</button>
         <button onclick="showDash('a','a-fees',this)"><i class="fas fa-money-bill-wave"></i> Fees</button>
         <button onclick="showDash('a','a-fee-structure',this)"><i class="fas fa-rupee-sign"></i> Fee Structure</button>
         <button onclick="showDash('a','a-fee-transactions',this)"><i class="fas fa-exchange-alt"></i> Fee Approvals</button>
@@ -1441,7 +1442,7 @@
             <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-user-graduate"></i></div><div><div class="dash-stat-val" id="a-stat-students"><i class="fas fa-spinner fa-spin" style="font-size:14px"></i></div><div class="dash-stat-label">Total Students</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-chalkboard-teacher"></i></div><div><div class="dash-stat-val" id="a-stat-teachers"><i class="fas fa-spinner fa-spin" style="font-size:14px"></i></div><div class="dash-stat-label">Total Teachers</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-money-bill-wave"></i></div><div><div class="dash-stat-val">42</div><div class="dash-stat-label">Fee Pending</div></div></div>
-            <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-envelope"></i></div><div><div class="dash-stat-val">7</div><div class="dash-stat-label">New Messages</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-building"></i></div><div><div class="dash-stat-val" id="a-stat-office-staff">—</div><div class="dash-stat-label">Office Staff</div></div></div>
           </div>
           <div class="grid-2">
             <div class="card" style="padding:24px">
@@ -1454,6 +1455,29 @@
               <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>Leave applications</span><span class="badge badge-warning">5</span></div>
               <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>New admission enquiries</span><span class="badge badge-info" id="a-admission-count">—</span></div>
               <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-right:8px"></i>Contact messages</span><span class="badge badge-success">7</span></div>
+            </div>
+          </div>
+          <!-- Portal Shortcuts -->
+          <div class="grid-2" style="margin-top:24px">
+            <div class="card" style="padding:24px;border-top:4px solid var(--accent);display:flex;align-items:center;gap:20px">
+              <div class="dash-stat-icon blue" style="width:52px;height:52px;border-radius:14px;flex-shrink:0"><i class="fas fa-building"></i></div>
+              <div style="flex:1">
+                <div style="font-family:var(--font-head);font-size:1.05rem;color:var(--accent-dark);margin-bottom:4px">Office Staff Portal</div>
+                <div style="font-size:13px;color:var(--text-light);margin-bottom:14px">Fee collection, payment processing &amp; receipts</div>
+                <button class="btn btn-primary btn-sm" onclick="showPage('login');setTimeout(()=>{ const t=document.querySelector('.role-tab[onclick*=office]'); if(t) t.click(); },200)">
+                  <i class="fas fa-sign-in-alt"></i> Open Office Portal
+                </button>
+              </div>
+            </div>
+            <div class="card" style="padding:24px;border-top:4px solid var(--success);display:flex;align-items:center;gap:20px">
+              <div class="dash-stat-icon green" style="width:52px;height:52px;border-radius:14px;flex-shrink:0"><i class="fas fa-exchange-alt"></i></div>
+              <div style="flex:1">
+                <div style="font-family:var(--font-head);font-size:1.05rem;color:var(--accent-dark);margin-bottom:4px">Fee Approvals</div>
+                <div style="font-size:13px;color:var(--text-light);margin-bottom:14px">Review and approve pending fee transactions</div>
+                <button class="btn btn-sm btn-outline" onclick="showDash('a','a-fee-transactions',document.querySelector('[onclick*=a-fee-transactions]'))">
+                  <i class="fas fa-exchange-alt"></i> View Approvals
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1740,6 +1764,41 @@
                 <button id="slm-create-btn" onclick="createStudentLogin()" style="flex:2;padding:11px;background:linear-gradient(135deg,#6B5030,#8B6F47);color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-weight:700;font-size:14px;cursor:pointer"><i class="fas fa-user-plus"></i> Create Login Account</button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- ── OFFICE STAFF MANAGEMENT ── -->
+        <div id="a-office-staff" class="dash-section">
+          <div class="grid-2">
+
+            <!-- Create Account Form -->
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-user-plus" style="margin-right:8px;color:var(--accent)"></i>Create Office Staff Account</h4>
+              <div class="form-group"><label>Full Name *</label><input type="text" id="os-name" placeholder="e.g. Mary Lyngdoh"></div>
+              <div class="form-group"><label>Staff Login ID *</label><input type="text" id="os-staffid" placeholder="e.g. SFSO001" style="text-transform:uppercase"></div>
+              <div class="form-group"><label>Password *</label><input type="password" id="os-password" placeholder="Min. 6 characters"></div>
+              <div id="os-create-error" style="display:none;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;color:#991b1b;margin-bottom:14px"></div>
+              <div id="os-create-success" style="display:none;background:#d4edda;border:1.5px solid #c3e6cb;border-radius:8px;padding:10px 14px;font-size:13px;color:#155724;margin-bottom:14px"></div>
+              <button class="btn btn-primary" id="os-create-btn" onclick="createOfficeStaffAccount()">
+                <i class="fas fa-user-plus"></i> Create Account
+              </button>
+              <p style="font-size:12px;color:var(--text-light);margin-top:12px">
+                <i class="fas fa-info-circle" style="margin-right:4px"></i>
+                Staff logs in using their Login ID and password via the <strong>Office</strong> tab on the login page.
+              </p>
+            </div>
+
+            <!-- Staff List -->
+            <div class="card" style="padding:24px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+                <h4 style="color:var(--accent-dark)"><i class="fas fa-users" style="margin-right:8px;color:var(--accent)"></i>Office Staff Accounts</h4>
+                <button class="btn btn-sm btn-outline" onclick="loadOfficeStaffList()"><i class="fas fa-sync-alt"></i> Refresh</button>
+              </div>
+              <div id="os-staff-list">
+                <p style="font-size:13px;color:var(--text-light)">Click Refresh to load.</p>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -5578,6 +5637,118 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, quer
       tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
     }
   };
+})();
+</script>
+<script type="module">
+/* ================================================================
+   OFFICE STAFF ACCOUNT MANAGEMENT
+   Admin can create / list / delete Office Staff logins
+================================================================ */
+import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDocs, deleteDoc, collection, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+(async () => {
+  let app;
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length > 0) { app = getApp(); break; }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  if (!app) return;
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  const idToEmail = id => id.trim().toLowerCase().replace(/[^a-z0-9]/g,'_') + '@stfrancis.school';
+
+  function _osMsg(type, text) {
+    const errEl = document.getElementById('os-create-error');
+    const okEl  = document.getElementById('os-create-success');
+    if (!errEl || !okEl) return;
+    errEl.style.display = 'none';
+    okEl.style.display  = 'none';
+    if (type === 'error') { errEl.textContent = text; errEl.style.display = 'block'; }
+    if (type === 'ok')    { okEl.textContent  = text; okEl.style.display  = 'block'; }
+  }
+
+  window.createOfficeStaffAccount = async function() {
+    const name     = (document.getElementById('os-name')?.value     || '').trim();
+    const staffId  = (document.getElementById('os-staffid')?.value  || '').trim().toUpperCase();
+    const password = (document.getElementById('os-password')?.value || '').trim();
+
+    if (!name)              { _osMsg('error','Full name is required.');           return; }
+    if (!staffId)           { _osMsg('error','Staff Login ID is required.');      return; }
+    if (password.length < 6){ _osMsg('error','Password must be at least 6 characters.'); return; }
+
+    const btn = document.getElementById('os-create-btn');
+    if (btn) { btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Creating…'; btn.disabled=true; }
+    _osMsg('', '');
+
+    try {
+      const email = idToEmail(staffId);
+      let uid = '';
+
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        uid = cred.user.uid;
+      } catch(e) {
+        if (e.code === 'auth/email-already-in-use') {
+          const snap = await getDocs(query(collection(db,'users'), where('loginId','==',staffId), limit(1)));
+          if (!snap.empty) uid = snap.docs[0].id;
+          else { _osMsg('error','Login ID already taken. Choose a different ID.'); return; }
+        } else throw e;
+      }
+
+      await setDoc(doc(db,'users',uid), {
+        name, staffId, loginId: staffId,
+        email, role: 'office',
+        createdAt: new Date().toISOString()
+      }, { merge: true });
+
+      _osMsg('ok', `✅ Account created! Staff ID: ${staffId} · Password: ${password}`);
+      document.getElementById('os-name').value     = '';
+      document.getElementById('os-staffid').value  = '';
+      document.getElementById('os-password').value = '';
+      loadOfficeStaffList();
+    } catch(e) {
+      _osMsg('error', '❌ ' + (e.message || 'Could not create account.'));
+    } finally {
+      if (btn) { btn.innerHTML='<i class="fas fa-user-plus"></i> Create Account'; btn.disabled=false; }
+    }
+  };
+
+  window.loadOfficeStaffList = async function() {
+    const el = document.getElementById('os-staff-list');
+    if (!el) return;
+    el.innerHTML = '<p style="font-size:13px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      const snap = await getDocs(query(collection(db,'users'), where('role','==','office'), orderBy('createdAt','desc'), limit(50)));
+      if (snap.empty) { el.innerHTML='<p style="font-size:13px;color:var(--text-light)">No office staff accounts yet.</p>'; return; }
+      el.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Login ID</th><th>Created</th><th></th></tr></thead><tbody>' +
+        snap.docs.map(d => {
+          const u = d.data();
+          const date = u.createdAt ? u.createdAt.split('T')[0] : '—';
+          return `<tr>
+            <td><strong>${u.name||'—'}</strong></td>
+            <td style="font-family:monospace;font-size:13px">${u.loginId||u.staffId||'—'}</td>
+            <td style="font-size:12px;color:var(--text-light)">${date}</td>
+            <td><button onclick="deleteOfficeStaff('${d.id}','${u.name||''}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px" title="Remove"><i class="fas fa-trash"></i></button></td>
+          </tr>`;
+        }).join('') + '</tbody></table></div>';
+    } catch(e) {
+      el.innerHTML = `<p style="color:var(--danger);font-size:13px">❌ ${e.message}</p>`;
+    }
+  };
+
+  window.deleteOfficeStaff = async function(uid, name) {
+    if (!confirm(`Remove "${name}" from office staff? Their Firebase Auth account will remain but portal access will be revoked.`)) return;
+    try {
+      await deleteDoc(doc(db,'users',uid));
+      showToast('🗑️ Staff record removed.');
+      loadOfficeStaffList();
+    } catch(e) { showToast('❌ '+e.message); }
+  };
+
+  console.log('[OfficeStaffMgmt] ✅ Loaded');
 })();
 </script>
 <script type="module">
