@@ -6170,6 +6170,182 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   console.log('[FeeModule] ✅ Loaded — Office Portal · Fee Structure · Approvals · Notifications');
 })();
 </script>
+<!-- ================================================================
+     ADMISSIONS LOGIC — Office Staff Portal (Step 4)
+================================================================ -->
+<script type="module">
+(async () => {
+  let db, currentAdmissionId = null, currentAdmissionData = null;
+
+  // Wait for Firebase app
+  const { getApps, getApp } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js');
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length) break;
+    await new Promise(r => setTimeout(r, 150));
+  }
+  const app = getApp();
+  const { getFirestore, collection, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp }
+    = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js');
+  db = getFirestore(app);
+
+  // ── Load admissions list ──────────────────────────────────────
+  window.loadAdmissions = async function() {
+    const tbody = document.getElementById('adm-list-body');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
+    try {
+      const statusFilter = document.getElementById('adm-filter-status')?.value || 'pending';
+      let q;
+      if (statusFilter === 'all') {
+        q = query(collection(db, 'admissions'), orderBy('submittedAt', 'desc'));
+      } else {
+        q = query(collection(db, 'admissions'), where('status', '==', statusFilter), orderBy('submittedAt', 'desc'));
+      }
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light)">No applications found.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = '';
+      snap.forEach(d => {
+        const a = d.data();
+        const date = a.submittedAt?.toDate ? a.submittedAt.toDate().toLocaleDateString('en-IN') : '—';
+        const statusBadge = a.status === 'forwarded_to_admin'
+          ? '<span style="background:#d1fae5;color:#065f46;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600">Forwarded</span>'
+          : '<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600">Pending</span>';
+        const tr = document.createElement('tr');
+        tr.style.cssText = 'border-bottom:1px solid var(--border);cursor:pointer';
+        tr.innerHTML = `
+          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${a.fullName || '—'}</td>
+          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${a.classApplied || '—'}</td>
+          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${date}</td>
+          <td style="padding:10px 12px;font-size:13px">${statusBadge}</td>
+          <td style="padding:10px 12px">
+            <button onclick="viewAdmission('${d.id}')" style="padding:6px 12px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer"><i class="fas fa-eye"></i> View</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      window.__admissionsCache = {};
+      snap.forEach(d => { window.__admissionsCache[d.id] = d.data(); });
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:#ef4444">Error: ${e.message}</td></tr>`;
+    }
+  };
+
+  // ── View single application ───────────────────────────────────
+  window.viewAdmission = function(id) {
+    const a = (window.__admissionsCache || {})[id];
+    if (!a) { showToast('⚠️ Application data not loaded.'); return; }
+    currentAdmissionId   = id;
+    currentAdmissionData = a;
+
+    document.getElementById('adm-d-name').textContent       = a.fullName      || '—';
+    document.getElementById('adm-d-class').textContent      = a.classApplied  || '—';
+    document.getElementById('adm-d-dob').textContent        = a.dob           || '—';
+    document.getElementById('adm-d-gender').textContent     = a.gender        || '—';
+    document.getElementById('adm-d-parent').textContent     = a.parentName    || '—';
+    document.getElementById('adm-d-contact').textContent    = a.contact       || '—';
+    document.getElementById('adm-d-address').textContent    = a.address       || '—';
+    document.getElementById('adm-d-prevschool').textContent = a.previousSchool || '—';
+    document.getElementById('adm-d-notes').value            = '';
+
+    // Documents
+    const docsEl = document.getElementById('adm-d-docs');
+    const docs = a.documents || [];
+    if (docs.length) {
+      docsEl.innerHTML = docs.map(d =>
+        `<a href="${d.url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--primary);text-decoration:none"><i class="fas fa-file"></i>${d.name}</a>`
+      ).join('');
+    } else {
+      docsEl.innerHTML = '<span style="color:var(--text-light);font-size:13px">No documents attached.</span>';
+    }
+
+    // Forward button state
+    const fwdBtn = document.getElementById('adm-forward-btn');
+    if (fwdBtn) {
+      if (a.status === 'forwarded_to_admin') {
+        fwdBtn.disabled = true;
+        fwdBtn.textContent = '✓ Already Forwarded';
+        fwdBtn.style.opacity = '0.6';
+      } else {
+        fwdBtn.disabled = false;
+        fwdBtn.innerHTML = '<i class="fas fa-share" style="margin-right:6px"></i>Forward to Admin';
+        fwdBtn.style.opacity = '1';
+      }
+    }
+
+    document.getElementById('adm-detail-panel').style.display = 'block';
+    document.getElementById('adm-detail-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // ── Close detail panel ────────────────────────────────────────
+  window.closeAdmissionDetail = function() {
+    currentAdmissionId   = null;
+    currentAdmissionData = null;
+    document.getElementById('adm-detail-panel').style.display = 'none';
+  };
+
+  // ── Print / Save PDF ──────────────────────────────────────────
+  window.printAdmissionForm = function() {
+    if (!currentAdmissionData) { showToast('⚠️ No application selected.'); return; }
+    const a = currentAdmissionData;
+    const date = a.submittedAt?.toDate ? a.submittedAt.toDate().toLocaleDateString('en-IN') : 'N/A';
+    const docsHtml = (a.documents||[]).map(d => `<li>${d.name}</li>`).join('') || '<li>None</li>';
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>Admission Form — ${a.fullName||''}</title>
+<style>body{font-family:Arial,sans-serif;padding:40px;color:#1e293b}h2{text-align:center;color:#4f46e5}table{width:100%;border-collapse:collapse;margin-top:16px}td{padding:8px 12px;border:1px solid #e2e8f0;font-size:13px}.label{background:#f8fafc;font-weight:600;width:35%}@media print{body{padding:20px}}</style>
+</head><body>
+<h2>St. Francis De Sales Secondary School</h2>
+<h3 style="text-align:center;color:#64748b;margin-top:4px">Admission Application Form</h3>
+<table>
+<tr><td class="label">Full Name</td><td>${a.fullName||'—'}</td><td class="label">Class Applied</td><td>${a.classApplied||'—'}</td></tr>
+<tr><td class="label">Date of Birth</td><td>${a.dob||'—'}</td><td class="label">Gender</td><td>${a.gender||'—'}</td></tr>
+<tr><td class="label">Parent / Guardian</td><td>${a.parentName||'—'}</td><td class="label">Contact</td><td>${a.contact||'—'}</td></tr>
+<tr><td class="label">Address</td><td colspan="3">${a.address||'—'}</td></tr>
+<tr><td class="label">Previous School</td><td colspan="3">${a.previousSchool||'—'}</td></tr>
+<tr><td class="label">Date Submitted</td><td colspan="3">${date}</td></tr>
+<tr><td class="label">Documents</td><td colspan="3"><ul style="margin:0;padding-left:16px">${docsHtml}</ul></td></tr>
+</table>
+<p style="margin-top:40px;font-size:12px;color:#94a3b8">Reviewed by Office Staff — St. Francis De Sales Secondary School</p>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`);
+    win.document.close();
+  };
+
+  // ── Forward to Admin ──────────────────────────────────────────
+  window.forwardAdmissionToAdmin = async function() {
+    if (!currentAdmissionId) { showToast('⚠️ No application selected.'); return; }
+    const btn = document.getElementById('adm-forward-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Forwarding…'; }
+    try {
+      const notes = document.getElementById('adm-d-notes')?.value || '';
+      await updateDoc(doc(db, 'admissions', currentAdmissionId), {
+        status: 'forwarded_to_admin',
+        officeNotes: notes,
+        forwardedAt: serverTimestamp()
+      });
+      showToast('✅ Application forwarded to Admin.');
+      if (window.__admissionsCache?.[currentAdmissionId]) {
+        window.__admissionsCache[currentAdmissionId].status = 'forwarded_to_admin';
+      }
+      if (btn) { btn.disabled = true; btn.innerHTML = '✓ Already Forwarded'; btn.style.opacity = '0.6'; }
+      await window.loadAdmissions();
+    } catch(e) {
+      showToast('❌ Error: ' + e.message);
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-share" style="margin-right:6px"></i>Forward to Admin'; }
+    }
+  };
+
+  // Auto-load when navigating to admissions section
+  const _prevShowDash = window.showDash;
+  window.showDash = function(prefix, sectionId, btn) {
+    _prevShowDash(prefix, sectionId, btn);
+    if (sectionId === 'o-admissions') window.loadAdmissions();
+  };
+
+  console.log('[Admissions] ✅ Loaded — Office Staff admissions review module');
+})();
+</script>
 <script src="notification-center.js"></script>
 
 <!-- ================================================================
