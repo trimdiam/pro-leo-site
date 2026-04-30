@@ -2368,6 +2368,8 @@
       <div class="sidebar-nav">
         <button class="active" onclick="showDash('o','o-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
         <button onclick="showDash('o','o-fee-collection',this)"><i class="fas fa-money-bill-wave"></i> Fee Collection</button>
+        <button onclick="showDash('o','o-fee-structure',this)"><i class="fas fa-rupee-sign"></i> Fee Structure</button>
+        <button onclick="showDash('o','o-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('o','o-reports',this)"><i class="fas fa-chart-bar"></i> Reports</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
@@ -2563,6 +2565,89 @@
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- ── FEE STRUCTURE (Office Staff) ── -->
+        <div id="o-fee-structure" class="dash-section">
+          <div class="grid-2">
+
+            <!-- Set Fee Form -->
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:20px">
+                <i class="fas fa-rupee-sign" style="margin-right:8px;color:var(--accent)"></i>Set Annual Fee per Class
+              </h4>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Class *</label>
+                  <select id="ofs-class">
+                    <option value="">— Select Class —</option>
+                    <option value="PLG">Play Group</option>
+                    <option value="SKG">SKG</option>
+                    <option value="LKG">LKG</option>
+                    <option value="1">Class 1</option><option value="2">Class 2</option>
+                    <option value="3">Class 3</option><option value="4">Class 4</option>
+                    <option value="5">Class 5</option><option value="6">Class 6</option>
+                    <option value="7">Class 7</option><option value="8">Class 8</option>
+                    <option value="9">Class 9</option><option value="10">Class 10</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Total Annual Fee (₹) *</label>
+                  <input type="number" id="ofs-annual-fee" placeholder="e.g. 20000" min="0">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Tuition (₹)</label>
+                  <input type="number" id="ofs-tuition" placeholder="e.g. 15000">
+                </div>
+                <div class="form-group">
+                  <label>Exam Fee (₹)</label>
+                  <input type="number" id="ofs-exam-fee" placeholder="e.g. 2000">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Sports Fee (₹)</label>
+                  <input type="number" id="ofs-sports-fee" placeholder="e.g. 1500">
+                </div>
+                <div class="form-group">
+                  <label>Annual Charge (₹)</label>
+                  <input type="number" id="ofs-annual-charge" placeholder="e.g. 1500">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Notes</label>
+                <input type="text" id="ofs-notes" placeholder="e.g. Applicable for AY 2025-26">
+              </div>
+              <button class="btn btn-primary" onclick="officeStaffSaveFeeStructure()">
+                <i class="fas fa-save"></i> Save Fee Structure
+              </button>
+            </div>
+
+            <!-- Current Fee Structure List -->
+            <div class="card" style="padding:24px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+                <h4 style="color:var(--accent-dark)">Current Fee Structure</h4>
+                <button class="btn btn-sm btn-outline" onclick="officeStaffLoadFeeStructure()">
+                  <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+              </div>
+              <div id="ofs-structure-list">
+                <p style="color:var(--text-light);font-size:13px">Click Refresh to load.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── ADMISSIONS REVIEW (Office Staff) — placeholder for Step 3 ── -->
+        <div id="o-admissions" class="dash-section">
+          <div class="card" style="padding:32px;text-align:center">
+            <i class="fas fa-file-alt" style="font-size:2.5rem;color:var(--primary);margin-bottom:16px"></i>
+            <h4 style="color:var(--accent-dark);margin-bottom:8px">Admissions Review</h4>
+            <p style="color:var(--text-light);font-size:14px">Coming soon — Step 3 will build this section.</p>
           </div>
         </div>
 
