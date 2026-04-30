@@ -12,7 +12,7 @@ let currentUserRole = null;
 //  showPage() — central router with auth guard
 // ================================================================
 function showPage(name) {
-  const dashPages = ['student-dash', 'teacher-dash', 'admin-dash'];
+  const dashPages = ['student-dash', 'teacher-dash', 'admin-dash', 'office-dash'];
   if (dashPages.includes(name) && !isLoggedIn) {
     showToast('⚠️ Please login first.');
     name = 'home';
@@ -100,7 +100,7 @@ function setRole(role, btn) {
 // ================================================================
 function loginAs(role) {
   const cleanRole = role.toString().trim().toLowerCase();
-  if (!['student', 'teacher', 'admin'].includes(cleanRole)) return;
+  if (!['student', 'teacher', 'admin', 'office'].includes(cleanRole)) return;
   isLoggedIn      = true;
   currentUserRole = cleanRole;
   currentRole     = cleanRole;
@@ -109,6 +109,7 @@ function loginAs(role) {
   if      (cleanRole === 'student') showPage('student-dash');
   else if (cleanRole === 'teacher') showPage('teacher-dash');
   else if (cleanRole === 'admin')   showPage('admin-dash');
+  else if (cleanRole === 'office')  showPage('office-dash');
 }
 
 // ================================================================
