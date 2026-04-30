@@ -5454,6 +5454,132 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   };
 })();
 </script>
+<script type="module">
+/* ================================================================
+   FEE MANAGEMENT MODULE — Part 4
+   Admin Fee Structure CRUD · loadAdminFeeTransactions
+================================================================ */
+import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+(async () => {
+  let app;
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length > 0) { app = getApp(); break; }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  if (!app) return;
+  const db = getFirestore(app);
+  const CLS = { PLG:'Play Group', SKG:'SKG', LKG:'LKG' };
+  const clsLabel = c => CLS[c] || (c ? 'Class ' + c : '—');
+  const fmtINR   = n => '₹' + (parseFloat(n)||0).toLocaleString('en-IN');
+
+  window.saveFeeStructure = async function() {
+    const cls       = document.getElementById('fs-class')?.value||'';
+    const annualFee = parseFloat(document.getElementById('fs-annual-fee')?.value||0);
+    if (!cls||!annualFee) { showToast('⚠️ Class and annual fee are required.'); return; }
+    const data = {
+      class: cls, annualFee,
+      tuition:      parseFloat(document.getElementById('fs-tuition')?.value     ||0)||0,
+      examFee:      parseFloat(document.getElementById('fs-exam-fee')?.value    ||0)||0,
+      sportsFee:    parseFloat(document.getElementById('fs-sports-fee')?.value  ||0)||0,
+      annualCharge: parseFloat(document.getElementById('fs-annual-charge')?.value||0)||0,
+      notes:       (document.getElementById('fs-notes')?.value||'').trim(),
+      updatedAt:    new Date().toISOString()
+    };
+    try {
+      await setDoc(doc(db,'fee_structure',cls), data, { merge:true });
+      showToast('✅ Fee structure saved for '+clsLabel(cls));
+      loadAdminFeeStructure();
+    } catch(e) { showToast('❌ '+e.message); }
+  };
+
+  window.loadAdminFeeStructure = async function() {
+    const el = document.getElementById('admin-fee-structure-list');
+    if (!el) return;
+    el.innerHTML='<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i></p>';
+    try {
+      const snap = await getDocs(collection(db,'fee_structure'));
+      if (snap.empty) { el.innerHTML='<p style="color:var(--text-light);font-size:13px">No fee structure set yet.</p>'; return; }
+      const ORDER = ['PLG','SKG','LKG','1','2','3','4','5','6','7','8','9','10'];
+      const sorted = [...snap.docs].sort((a,b)=>ORDER.indexOf(a.data().class)-ORDER.indexOf(b.data().class));
+      el.innerHTML = `<table style="width:100%;font-size:13px;border-collapse:collapse">
+        <thead><tr>
+          <th style="text-align:left;padding:8px 4px;border-bottom:1.5px solid var(--bg);color:var(--accent-dark)">Class</th>
+          <th style="text-align:right;padding:8px 4px;border-bottom:1.5px solid var(--bg);color:var(--accent-dark)">Annual Fee</th>
+          <th style="text-align:right;padding:8px 4px;border-bottom:1.5px solid var(--bg)"></th>
+        </tr></thead><tbody>`+
+        sorted.map(d => {
+          const f=d.data();
+          return `<tr>
+            <td style="padding:8px 4px;border-bottom:1px solid var(--bg)"><strong>${clsLabel(f.class)}</strong>${f.notes?`<div style="font-size:11px;color:var(--text-light)">${f.notes}</div>`:''}</td>
+            <td style="padding:8px 4px;border-bottom:1px solid var(--bg);text-align:right;font-weight:700;color:var(--accent-dark)">${fmtINR(f.annualFee)}</td>
+            <td style="padding:8px 4px;border-bottom:1px solid var(--bg);text-align:right;white-space:nowrap">
+              <button onclick="prefillFeeStructure('${f.class}',${f.annualFee||0},${f.tuition||0},${f.examFee||0},${f.sportsFee||0},${f.annualCharge||0})" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px"><i class="fas fa-edit"></i></button>
+              <button onclick="deleteFeeStructure('${f.class}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;margin-left:8px"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('')+`</tbody></table>`;
+    } catch(e) { el.innerHTML=`<p style="color:var(--danger)">❌ ${e.message}</p>`; }
+  };
+
+  window.prefillFeeStructure = function(cls,annual,tuition,exam,sports,annualCharge) {
+    const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.value=v; };
+    set('fs-class',cls); set('fs-annual-fee',annual); set('fs-tuition',tuition);
+    set('fs-exam-fee',exam); set('fs-sports-fee',sports); set('fs-annual-charge',annualCharge);
+  };
+
+  window.deleteFeeStructure = async function(cls) {
+    if (!confirm('Delete fee structure for '+clsLabel(cls)+'?')) return;
+    try {
+      await deleteDoc(doc(db,'fee_structure',cls));
+      showToast('🗑️ Fee structure deleted.');
+      loadAdminFeeStructure();
+    } catch(e) { showToast('❌ '+e.message); }
+  };
+
+  window.loadAdminFeeTransactions = async function() {
+    const tbody = document.getElementById('admin-fee-txn-tbody');
+    if (!tbody) return;
+    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    const filter = document.getElementById('a-txn-filter')?.value||'pending';
+    try {
+      const snap = filter==='all'
+        ? await getDocs(query(collection(db,'fee_transactions'), orderBy('createdAt','desc'), limit(80)))
+        : await getDocs(query(collection(db,'fee_transactions'), where('status','==',filter), orderBy('createdAt','desc'), limit(80)));
+      if (snap.empty) {
+        tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:18px;color:var(--text-light)">No records found.</td></tr>';
+        return;
+      }
+      const bc = s => s==='approved'?'badge-success':s==='rejected'?'badge-danger':'badge-warning';
+      tbody.innerHTML = snap.docs.map(d => {
+        const t=d.data();
+        const acts = t.status==='pending'
+          ? `<div style="display:flex;gap:4px">
+               <button class="btn btn-sm btn-success" style="font-size:11px;padding:3px 8px" onclick="approveFeeTransaction('${d.id}')"><i class="fas fa-check"></i> Approve</button>
+               <button class="btn btn-sm btn-danger"  style="font-size:11px;padding:3px 7px" onclick="rejectFeeTransaction('${d.id}')"><i class="fas fa-times"></i></button>
+             </div>`
+          : `<span style="font-size:11px;color:var(--text-light)">${t.status==='approved'?(t.approvedBy||'Admin'):'Rejected'}</span>`;
+        return `<tr>
+          <td style="font-size:12px">${t.date||'—'}</td>
+          <td><strong>${t.studentName||'—'}</strong></td>
+          <td>${clsLabel(t.studentClass)}</td>
+          <td style="font-weight:700">${fmtINR(t.amount)}</td>
+          <td style="font-size:12px">${t.paymentMode||'—'}</td>
+          <td style="font-size:12px;font-family:monospace">${t.receiptNo||'—'}</td>
+          <td style="font-size:12px">${fmtINR(t.balanceBefore)}</td>
+          <td style="font-size:12px;font-weight:700;color:var(--accent-dark)">${fmtINR(t.balanceAfter)}</td>
+          <td style="font-size:12px">${t.staffName||'—'}</td>
+          <td><span class="badge ${bc(t.status)}">${t.status||'pending'}</span></td>
+          <td>${acts}</td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
+    }
+  };
+})();
+</script>
 <script src="notification-center.js"></script>
 
 <!-- ================================================================
