@@ -2644,10 +2644,100 @@
 
         <!-- ── ADMISSIONS REVIEW (Office Staff) — placeholder for Step 3 ── -->
         <div id="o-admissions" class="dash-section">
-          <div class="card" style="padding:32px;text-align:center">
-            <i class="fas fa-file-alt" style="font-size:2.5rem;color:var(--primary);margin-bottom:16px"></i>
-            <h4 style="color:var(--accent-dark);margin-bottom:8px">Admissions Review</h4>
-            <p style="color:var(--text-light);font-size:14px">Coming soon — Step 3 will build this section.</p>
+          <div class="card" style="padding:24px;margin-bottom:20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+              <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-file-alt" style="color:var(--primary);margin-right:8px"></i>Admissions Review</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <select id="adm-filter-status" onchange="loadAdmissions()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg)">
+                  <option value="pending">Pending</option>
+                  <option value="forwarded_to_admin">Forwarded to Admin</option>
+                  <option value="all">All</option>
+                </select>
+                <button onclick="loadAdmissions()" style="padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-sync-alt"></i> Refresh</button>
+              </div>
+            </div>
+            <div id="adm-list-wrap">
+              <div class="table-wrap">
+                <table id="adm-list-table" style="width:100%;border-collapse:collapse">
+                  <thead><tr style="background:rgba(99,102,241,0.08)">
+                    <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Name</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Class Applied</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Date</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Status</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Action</th>
+                  </tr></thead>
+                  <tbody id="adm-list-body">
+                    <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detail Panel (hidden until a row is selected) -->
+          <div id="adm-detail-panel" style="display:none">
+            <div class="card" style="padding:24px;margin-bottom:20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+                <h4 style="margin:0;color:var(--accent-dark)"><i class="fas fa-user-graduate" style="color:var(--primary);margin-right:8px"></i>Application Detail</h4>
+                <button onclick="closeAdmissionDetail()" style="padding:8px 14px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-times"></i> Close</button>
+              </div>
+
+              <!-- Bento info grid -->
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Full Name</div>
+                  <div id="adm-d-name" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Class Applied</div>
+                  <div id="adm-d-class" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Date of Birth</div>
+                  <div id="adm-d-dob" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Gender</div>
+                  <div id="adm-d-gender" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Parent / Guardian</div>
+                  <div id="adm-d-parent" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Contact</div>
+                  <div id="adm-d-contact" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Address</div>
+                  <div id="adm-d-address" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Previous School</div>
+                  <div id="adm-d-prevschool" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+              </div>
+
+              <!-- Documents -->
+              <div style="margin-bottom:20px">
+                <div style="font-size:13px;font-weight:600;color:var(--accent-dark);margin-bottom:10px"><i class="fas fa-paperclip" style="color:var(--primary);margin-right:6px"></i>Submitted Documents</div>
+                <div id="adm-d-docs" style="display:flex;flex-wrap:wrap;gap:8px">
+                  <span style="color:var(--text-light);font-size:13px">No documents attached.</span>
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div style="margin-bottom:20px">
+                <label style="font-size:13px;font-weight:600;color:var(--accent-dark);display:block;margin-bottom:6px"><i class="fas fa-sticky-note" style="color:var(--primary);margin-right:6px"></i>Office Notes (optional)</label>
+                <textarea id="adm-d-notes" rows="3" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;resize:vertical;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box" placeholder="Add any review notes before forwarding…"></textarea>
+              </div>
+
+              <!-- Action Buttons -->
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <button onclick="printAdmissionForm()" style="padding:10px 20px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-print" style="color:var(--primary);margin-right:6px"></i>Print / Save PDF</button>
+                <button id="adm-forward-btn" onclick="forwardAdmissionToAdmin()" style="padding:10px 20px;background:linear-gradient(135deg,var(--primary),var(--accent-dark));color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-share" style="margin-right:6px"></i>Forward to Admin</button>
+              </div>
+            </div>
           </div>
         </div>
 
