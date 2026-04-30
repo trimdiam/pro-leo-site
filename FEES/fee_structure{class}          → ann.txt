@@ -1,0 +1,9 @@
+fee_structure/{class}          → annualFee, tuition, examFee, sportsFee, annualCharge, notes
+fee_transactions/{txnId}       → studentId, studentName, studentClass, amount, paymentMode,
+                                  receiptNo, date, notes, staffId, staffName,
+                                  balanceBefore, balanceAfter, feeTotal,
+                                  status ("pending"|"approved"|"rejected"),
+                                  approvedBy, approvedAt, createdAt
+students/{docId}               → (existing) + feeTotal, feePaid, feeBalance
+users/{uid}/notifications/{id} → message, type, amountPaid, remainingBalance,
+                                  txnId, read, createdAt

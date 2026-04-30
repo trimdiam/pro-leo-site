@@ -1,0 +1,749 @@
+<script type="module">
+/* ================================================================
+   FEE MANAGEMENT MODULE
+   Office Staff Portal · Admin Approvals · Student Notifications
+================================================================ */
+import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc,
+  collection, getDocs, query, where, orderBy, limit, updateDoc
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+(async () => {
+  // Wait for primary Firebase module to initialise the app
+  let app;
+  for (let i = 0; i < 60; i++) {
+    const apps = getApps();
+    if (apps.length > 0) { app = getApp(); break; }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  if (!app) { console.error('[FeeModule] Firebase app unavailable'); return; }
+
+  const db = getFirestore(app);
+
+  // ── Class label helper ──────────────────────────────────────
+  const CLS = { PLG:'Play Group', SKG:'SKG', LKG:'LKG' };
+  const clsLabel = c => CLS[c] || (c ? 'Class ' + c : '—');
+  const fmtINR   = n => '₹' + (parseFloat(n) || 0).toLocaleString('en-IN');
+
+  // ── Staff state ─────────────────────────────────────────────
+  window._officeStaffId   = '';
+  window._officeStaffName = '';
+  window._feeSelectedStudent  = null;
+  window._feeSelectedFeeData  = null;
+
+  /* ============================================================
+     OFFICE PORTAL BOOTSTRAP
+  ============================================================ */
+  window.loadOfficePortal = async function(user) {
+    try {
+      const uSnap = await getDoc(doc(db, 'users', user.uid));
+      if (!uSnap.exists()) return;
+      const u = uSnap.data();
+      window._officeStaffId   = u.staffId || u.loginId || user.uid;
+      window._officeStaffName = u.name || 'Office Staff';
+
+      const nm = document.getElementById('o-header-name');
+      if (nm) nm.textContent = window._officeStaffName;
+
+      const av = document.getElementById('o-header-avatar');
+      if (av) {
+        const parts = window._officeStaffName.split(' ');
+        av.textContent = parts.length >= 2
+          ? parts[0][0] + parts[parts.length - 1][0]
+          : (parts[0][0] || 'O').toUpperCase();
+      }
+
+      const payDateEl = document.getElementById('pay-date');
+      if (payDateEl && !payDateEl.value)
+        payDateEl.value = new Date().toISOString().split('T')[0];
+
+      loadOfficeDashboardStats();
+    } catch(e) { console.warn('[OfficePortal]', e.message); }
+  };
+
+  /* ============================================================
+     OFFICE DASHBOARD STATS
+  ============================================================ */
+  window.loadOfficeDashboardStats = async function() {
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      const [pendSnap, todaySnap] = await Promise.all([
+        getDocs(query(collection(db,'fee_transactions'), where('status','==','pending'),  limit(200))),
+        getDocs(query(collection(db,'fee_transactions'), where('date','==',today),        limit(200)))
+      ]);
+
+      const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      set('o-stat-pending', pendSnap.size);
+      set('o-stat-today',   todaySnap.size);
+
+      let approvedAmt = 0, approvedCount = 0;
+      todaySnap.forEach(d => {
+        if (d.data().status === 'approved') {
+          approvedAmt += parseFloat(d.data().amount) || 0;
+          approvedCount++;
+        }
+      });
+      set('o-stat-total-today',    fmtINR(approvedAmt));
+      set('o-stat-approved-today', approvedCount);
+
+      loadOfficeRecentTransactions();
+    } catch(e) { console.warn('[OfficeDash]', e.message); }
+  };
+
+  /* ============================================================
+     OFFICE RECENT TRANSACTIONS
+  ============================================================ */
+  window.loadOfficeRecentTransactions = async function() {
+    const tbody = document.getElementById('o-recent-txn-tbody');
+    if (!tbody) return;
+    try {
+      const snap = await getDocs(query(
+        collection(db,'fee_transactions'), orderBy('createdAt','desc'), limit(20)
+      ));
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:14px;color:var(--text-light)">No transactions yet.</td></tr>';
+        return;
+      }
+      const bc = s => s==='approved'?'badge-success':s==='rejected'?'badge-danger':'badge-warning';
+      tbody.innerHTML = snap.docs.map(d => {
+        const t = d.data();
+        return `<tr>
+          <td style="font-size:12px">${t.date||'—'}</td>
+          <td><strong>${t.studentName||'—'}</strong></td>
+          <td>${clsLabel(t.studentClass)}</td>
+          <td style="font-weight:700">${fmtINR(t.amount)}</td>
+          <td style="font-size:12px">${t.paymentMode||'—'}</td>
+          <td><span class="badge ${bc(t.status)}">${t.status||'pending'}</span></td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
+    }
+  };
+
+  /* ============================================================
+     STUDENT SEARCH FOR FEE
+  ============================================================ */
+  let _searchTimer = null;
+  window.searchStudentForFee = function(val) {
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(() => _execFeeSearch(val), 300);
+  };
+
+  async function _execFeeSearch(raw) {
+    const resultsBox = document.getElementById('fee-search-results');
+    const listEl     = document.getElementById('fee-search-list');
+    if (!resultsBox || !listEl) return;
+
+    const classFilter = document.getElementById('fee-class-filter')?.value || '';
+    const q = (raw || '').trim().toLowerCase();
+
+    if (!q && !classFilter) { resultsBox.style.display = 'none'; return; }
+
+    listEl.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i></div>';
+    resultsBox.style.display = 'block';
+
+    try {
+      const snap = classFilter
+        ? await getDocs(query(collection(db,'students'), where('class','==',classFilter), orderBy('rollNo'), limit(40)))
+        : await getDocs(query(collection(db,'students'), orderBy('name'), limit(60)));
+
+      let students = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+      if (q) {
+        students = students.filter(s =>
+          (s.name     || '').toLowerCase().includes(q) ||
+          (s.studentId|| '').toLowerCase().includes(q) ||
+          String(s.rollNo || '').includes(q)
+        );
+      }
+
+      if (!students.length) {
+        listEl.innerHTML = '<div style="font-size:13px;color:var(--text-light);padding:10px">No students found.</div>';
+        return;
+      }
+
+      listEl.innerHTML = students.slice(0, 15).map(s => {
+        const initials = (s.name || 'S').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        // Safely JSON-encode once, escape single quotes for onclick attribute
+        const safe = JSON.stringify(JSON.stringify(s)).slice(1,-1).replace(/'/g,"&#39;");
+        return `<div class="fee-search-item" onclick="selectStudentForFee('${safe}')">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-dark));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;flex-shrink:0">${initials}</div>
+            <div>
+              <div style="font-weight:700;font-size:13px;color:var(--text)">${s.name||'—'}</div>
+              <div style="font-size:11px;color:var(--text-light)">${s.studentId||'—'} · ${clsLabel(s.class)} · Roll: ${s.rollNo||'—'}</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--accent);font-weight:600">${clsLabel(s.class)}</div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      listEl.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:10px">❌ ${e.message}</div>`;
+    }
+  }
+
+  window.selectStudentForFee = async function(sStr) {
+    let s;
+    try { s = JSON.parse(sStr); } catch(e) { return; }
+    window._feeSelectedStudent = s;
+
+    document.getElementById('fee-search-results').style.display = 'none';
+    document.getElementById('fee-student-panel').style.display  = 'block';
+
+    const initials = (s.name||'S').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    const avEl = document.getElementById('fee-avatar'); if (avEl) avEl.textContent = initials;
+    set('fee-sname', s.name || '—');
+    set('fee-sinfo', `${s.studentId||'—'} · ${clsLabel(s.class)} · Roll No. ${s.rollNo||'—'}`);
+
+    await _loadFeeDataForStudent(s);
+    document.getElementById('fee-student-panel')?.scrollIntoView({ behavior:'smooth', block:'start' });
+  };
+
+  window.clearFeeStudent = function() {
+    window._feeSelectedStudent = null;
+    window._feeSelectedFeeData = null;
+    document.getElementById('fee-student-panel').style.display = 'none';
+    const si = document.getElementById('fee-student-search'); if (si) si.value = '';
+    document.getElementById('fee-search-results').style.display = 'none';
+  };
+
+  /* ============================================================
+     LOAD STUDENT FEE DATA
+  ============================================================ */
+  async function _loadFeeDataForStudent(s) {
+    try {
+      const [fsSnap, txnSnap] = await Promise.all([
+        getDoc(doc(db, 'fee_structure', String(s.class))),
+        getDocs(query(
+          collection(db,'fee_transactions'),
+          where('studentId','==', s.studentId || ''),
+          limit(100)
+        ))
+      ]);
+
+      const annualFee = fsSnap.exists() ? (parseFloat(fsSnap.data().annualFee)||0) : 0;
+
+      // Fetch student doc for stored feeTotal
+      let sDocFeeTotal = 0;
+      if (s._docId) {
+        const sDocSnap = await getDoc(doc(db,'students', s._docId));
+        if (sDocSnap.exists()) sDocFeeTotal = parseFloat(sDocSnap.data().feeTotal||0);
+      }
+
+      const feeTotal = annualFee || sDocFeeTotal;
+
+      let feePaid = 0;
+      txnSnap.forEach(d => {
+        if (d.data().status === 'approved') feePaid += parseFloat(d.data().amount)||0;
+      });
+
+      const feeBalance = Math.max(0, feeTotal - feePaid);
+      const pct        = feeTotal > 0 ? Math.min(100, Math.round((feePaid / feeTotal) * 100)) : 0;
+      window._feeSelectedFeeData = { feeTotal, feePaid, feeBalance, pct };
+
+      const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      set('fee-total-amt',    feeTotal   > 0 ? fmtINR(feeTotal)   : '₹—');
+      set('fee-paid-amt',     fmtINR(feePaid));
+      set('fee-balance-amt',  feeTotal   > 0 ? fmtINR(feeBalance) : '₹—');
+      set('fee-progress-pct', pct + '%');
+
+      const bar = document.getElementById('fee-progress-bar');
+      if (bar) bar.style.width = pct + '%';
+
+      const bb = document.getElementById('fee-balance-block');
+      if (bb) bb.classList.toggle('cleared', feeBalance === 0 && feeTotal > 0);
+
+      // Mini history list (all statuses, most recent 10)
+      const allTxns = [...txnSnap.docs]
+        .sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||''))
+        .slice(0,10);
+
+      const mini = document.getElementById('fee-txn-mini-list');
+      if (mini) {
+        if (!allTxns.length) {
+          mini.innerHTML = '<p style="font-size:12px;color:var(--text-light)">No payment history.</p>';
+        } else {
+          const col = st => st==='approved'?'#16a34a':st==='rejected'?'#dc2626':'#d97706';
+          mini.innerHTML = allTxns.map(d => {
+            const t = d.data();
+            return `<div class="txn-mini-item">
+              <div>
+                <div style="font-weight:700;color:var(--text)">${fmtINR(t.amount)}</div>
+                <div style="font-size:11px;color:var(--text-light)">${t.date||'—'} · ${t.paymentMode||'—'}</div>
+              </div>
+              <span style="color:${col(t.status)};font-weight:700;font-size:10px;white-space:nowrap;text-transform:uppercase">${t.status||'—'}</span>
+            </div>`;
+          }).join('');
+        }
+      }
+    } catch(e) {
+      console.warn('[FeeData]', e.message);
+      showToast('⚠️ Could not load fee data: ' + e.message);
+    }
+  }
+
+  /* ============================================================
+     PROCESS PAYMENT (Office Staff)
+  ============================================================ */
+  window.processPayment = async function() {
+    if (!window._feeSelectedStudent) { showToast('⚠️ No student selected.'); return; }
+
+    const amount    = parseFloat(document.getElementById('pay-amount')?.value || 0);
+    const mode      = document.getElementById('pay-mode')?.value    || 'Cash';
+    const receiptNo = (document.getElementById('pay-receipt-no')?.value||'').trim();
+    const date      = document.getElementById('pay-date')?.value    || new Date().toISOString().split('T')[0];
+    const notes     = (document.getElementById('pay-notes')?.value||'').trim();
+
+    if (!amount || amount <= 0) { showToast('⚠️ Enter a valid payment amount.'); return; }
+    if (!date)                  { showToast('⚠️ Select a payment date.'); return; }
+
+    const s  = window._feeSelectedStudent;
+    const fd = window._feeSelectedFeeData || {};
+    const balBefore = fd.feeBalance !== undefined ? fd.feeBalance : fd.feeTotal || 0;
+    const balAfter  = Math.max(0, balBefore - amount);
+
+    const btn = document.querySelector('#o-fee-collection .btn-primary');
+    if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; btn.disabled = true; }
+
+    try {
+      const txnData = {
+        studentId:     s.studentId || '',
+        studentName:   s.name      || '',
+        studentClass:  String(s.class || ''),
+        studentRollNo: String(s.rollNo || ''),
+        amount,
+        paymentMode:   mode,
+        receiptNo:     receiptNo || ('RCP-' + Date.now()),
+        date,
+        notes,
+        staffId:       window._officeStaffId   || '',
+        staffName:     window._officeStaffName || 'Office Staff',
+        balanceBefore: balBefore,
+        balanceAfter:  balAfter,
+        feeTotal:      fd.feeTotal || 0,
+        status:        'pending',
+        createdAt:     new Date().toISOString()
+      };
+
+      const txnRef = await addDoc(collection(db, 'fee_transactions'), txnData);
+      showToast('✅ Payment recorded (Pending approval). Opening receipt…');
+
+      _populateReceipt({ ...txnData, txnId: txnRef.id });
+
+      // Reset form
+      ['pay-amount','pay-receipt-no','pay-notes'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+
+      // Reload fee display
+      await _loadFeeDataForStudent(s);
+
+    } catch(e) {
+      showToast('❌ Could not record payment: ' + e.message);
+    } finally {
+      if (btn) { btn.innerHTML = '<i class="fas fa-save"></i> Record Payment'; btn.disabled = false; }
+    }
+  };
+
+  /* ============================================================
+     POPULATE & SHOW RECEIPT
+  ============================================================ */
+  function _populateReceipt(txn) {
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v || '—'; };
+    const fmtDate = d => d
+      ? new Date(d + 'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})
+      : '—';
+
+    set('rcp-no',           txn.receiptNo || (txn.txnId||'').slice(0,8).toUpperCase());
+    set('rcp-date',         fmtDate(txn.date));
+    set('rcp-student-name', txn.studentName);
+    set('rcp-student-id',   txn.studentId);
+    set('rcp-class',        clsLabel(txn.studentClass));
+    set('rcp-roll',         txn.studentRollNo || '—');
+    set('rcp-description',  (txn.notes || 'Fee Payment') + ' — ' + clsLabel(txn.studentClass));
+    set('rcp-amount',       fmtINR(txn.amount));
+    set('rcp-total',        txn.feeTotal > 0 ? fmtINR(txn.feeTotal) : '₹—');
+    set('rcp-paid-this',    fmtINR(txn.amount));
+    set('rcp-balance',      fmtINR(txn.balanceAfter));
+    set('rcp-mode',         txn.paymentMode);
+    set('rcp-notes',        txn.notes || 'N/A');
+    set('rcp-staff-name',   txn.staffName);
+    set('rcp-generated-at', new Date().toLocaleString('en-IN'));
+
+    const rcpEl = document.getElementById('printable-receipt');
+    if (rcpEl) rcpEl.style.display = 'block';
+  }
+
+  /* ============================================================
+     OFFICE REPORTS
+  ============================================================ */
+  window.loadOfficeReports = async function() {
+    const tbody = document.getElementById('o-reports-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:14px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    const filter = document.getElementById('o-report-filter')?.value || 'all';
+    try {
+      const snap = filter === 'all'
+        ? await getDocs(query(collection(db,'fee_transactions'), orderBy('createdAt','desc'), limit(60)))
+        : await getDocs(query(collection(db,'fee_transactions'), where('status','==',filter), orderBy('createdAt','desc'), limit(60)));
+
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:14px;color:var(--text-light)">No records found.</td></tr>';
+        return;
+      }
+      const bc = s => s==='approved'?'badge-success':s==='rejected'?'badge-danger':'badge-warning';
+      tbody.innerHTML = snap.docs.map(d => {
+        const t = d.data();
+        return `<tr>
+          <td style="font-size:12px">${t.date||'—'}</td>
+          <td><strong>${t.studentName||'—'}</strong></td>
+          <td>${clsLabel(t.studentClass)}</td>
+          <td style="font-weight:700">${fmtINR(t.amount)}</td>
+          <td style="font-size:12px">${t.paymentMode||'—'}</td>
+          <td style="font-size:12px;font-family:monospace">${t.receiptNo||'—'}</td>
+          <td style="font-size:12px">${t.staffName||'—'}</td>
+          <td><span class="badge ${bc(t.status)}">${t.status||'pending'}</span></td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
+    }
+  };
+
+  /* ============================================================
+     ADMIN — Fee Structure CRUD
+  ============================================================ */
+  window.saveFeeStructure = async function() {
+    const cls       = document.getElementById('fs-class')?.value     || '';
+    const annualFee = parseFloat(document.getElementById('fs-annual-fee')?.value || 0);
+    if (!cls || !annualFee) { showToast('⚠️ Class and annual fee are required.'); return; }
+
+    const data = {
+      class:        cls,
+      annualFee,
+      tuition:      parseFloat(document.getElementById('fs-tuition')?.value      ||0)||0,
+      examFee:      parseFloat(document.getElementById('fs-exam-fee')?.value     ||0)||0,
+      sportsFee:    parseFloat(document.getElementById('fs-sports-fee')?.value   ||0)||0,
+      annualCharge: parseFloat(document.getElementById('fs-annual-charge')?.value||0)||0,
+      notes:       (document.getElementById('fs-notes')?.value||'').trim(),
+      updatedAt:    new Date().toISOString()
+    };
+
+    try {
+      await setDoc(doc(db, 'fee_structure', cls), data, { merge: true });
+      showToast('✅ Fee structure saved for ' + clsLabel(cls));
+      loadAdminFeeStructure();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.loadAdminFeeStructure = async function() {
+    const el = document.getElementById('admin-fee-structure-list');
+    if (!el) return;
+    el.innerHTML = '<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i></p>';
+    try {
+      const snap = await getDocs(collection(db,'fee_structure'));
+      if (snap.empty) { el.innerHTML = '<p style="color:var(--text-light);font-size:13px">No fee structure set yet.</p>'; return; }
+
+      const ORDER = ['PLG','SKG','LKG','1','2','3','4','5','6','7','8','9','10'];
+      const sorted = [...snap.docs].sort((a,b) =>
+        ORDER.indexOf(a.data().class) - ORDER.indexOf(b.data().class)
+      );
+
+      el.innerHTML = `<table style="width:100%;font-size:13px;border-collapse:collapse">
+        <thead><tr>
+          <th style="text-align:left;padding:8px 4px;border-bottom:1.5px solid var(--bg);color:var(--accent-dark)">Class</th>
+          <th style="text-align:right;padding:8px 4px;border-bottom:1.5px solid var(--bg);color:var(--accent-dark)">Annual Fee</th>
+          <th style="text-align:right;padding:8px 4px;border-bottom:1.5px solid var(--bg)"></th>
+        </tr></thead>
+        <tbody>` +
+        sorted.map(d => {
+          const f = d.data();
+          return `<tr>
+            <td style="padding:8px 4px;border-bottom:1px solid var(--bg)"><strong>${clsLabel(f.class)}</strong>${f.notes?`<div style="font-size:11px;color:var(--text-light)">${f.notes}</div>`:''}</td>
+            <td style="padding:8px 4px;border-bottom:1px solid var(--bg);text-align:right;font-weight:700;color:var(--accent-dark)">${fmtINR(f.annualFee)}</td>
+            <td style="padding:8px 4px;border-bottom:1px solid var(--bg);text-align:right;white-space:nowrap">
+              <button onclick="prefillFeeStructure('${f.class}',${f.annualFee||0},${f.tuition||0},${f.examFee||0},${f.sportsFee||0},${f.annualCharge||0})" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px" title="Edit"><i class="fas fa-edit"></i></button>
+              <button onclick="deleteFeeStructure('${f.class}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;margin-left:8px" title="Delete"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('') + `</tbody></table>`;
+    } catch(e) { el.innerHTML = `<p style="color:var(--danger)">❌ ${e.message}</p>`; }
+  };
+
+  window.prefillFeeStructure = function(cls, annual, tuition, exam, sports, annualCharge) {
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+    set('fs-class', cls);
+    set('fs-annual-fee', annual);
+    set('fs-tuition', tuition);
+    set('fs-exam-fee', exam);
+    set('fs-sports-fee', sports);
+    set('fs-annual-charge', annualCharge);
+  };
+
+  window.deleteFeeStructure = async function(cls) {
+    if (!confirm('Delete fee structure for ' + clsLabel(cls) + '?')) return;
+    try {
+      await deleteDoc(doc(db,'fee_structure', cls));
+      showToast('🗑️ Fee structure deleted.');
+      loadAdminFeeStructure();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  /* ============================================================
+     ADMIN — Load Fee Transactions
+  ============================================================ */
+  window.loadAdminFeeTransactions = async function() {
+    const tbody = document.getElementById('admin-fee-txn-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    const filter = document.getElementById('a-txn-filter')?.value || 'pending';
+    try {
+      const snap = filter === 'all'
+        ? await getDocs(query(collection(db,'fee_transactions'), orderBy('createdAt','desc'), limit(80)))
+        : await getDocs(query(collection(db,'fee_transactions'), where('status','==',filter), orderBy('createdAt','desc'), limit(80)));
+
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:18px;color:var(--text-light)">No records found.</td></tr>';
+        return;
+      }
+
+      const bc = s => s==='approved'?'badge-success':s==='rejected'?'badge-danger':'badge-warning';
+      tbody.innerHTML = snap.docs.map(d => {
+        const t   = d.data();
+        const acts = t.status === 'pending'
+          ? `<div style="display:flex;gap:4px">
+               <button class="btn btn-sm btn-success" style="font-size:11px;padding:3px 8px" onclick="approveFeeTransaction('${d.id}')"><i class="fas fa-check"></i> Approve</button>
+               <button class="btn btn-sm btn-danger"  style="font-size:11px;padding:3px 7px" onclick="rejectFeeTransaction('${d.id}')"><i class="fas fa-times"></i></button>
+             </div>`
+          : `<span style="font-size:11px;color:var(--text-light)">${t.status === 'approved' ? (t.approvedBy||'Admin') : 'Rejected'}</span>`;
+
+        return `<tr>
+          <td style="font-size:12px">${t.date||'—'}</td>
+          <td><strong>${t.studentName||'—'}</strong></td>
+          <td>${clsLabel(t.studentClass)}</td>
+          <td style="font-weight:700">${fmtINR(t.amount)}</td>
+          <td style="font-size:12px">${t.paymentMode||'—'}</td>
+          <td style="font-size:12px;font-family:monospace">${t.receiptNo||'—'}</td>
+          <td style="font-size:12px">${fmtINR(t.balanceBefore)}</td>
+          <td style="font-size:12px;font-weight:700;color:var(--accent-dark)">${fmtINR(t.balanceAfter)}</td>
+          <td style="font-size:12px">${t.staffName||'—'}</td>
+          <td><span class="badge ${bc(t.status)}">${t.status||'pending'}</span></td>
+          <td>${acts}</td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
+    }
+  };
+
+  /* ============================================================
+     ADMIN — APPROVE FEE TRANSACTION
+     1. Marks transaction approved
+     2. Updates student feeBalance in `students`
+     3. Writes notification to users/{uid}/notifications
+  ============================================================ */
+  window.approveFeeTransaction = async function(txnId) {
+    if (!confirm('Approve this payment? Student balance will be officially updated.')) return;
+
+    // Disable the button that was clicked
+    const clickedBtn = document.activeElement;
+    if (clickedBtn) { clickedBtn.disabled = true; clickedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    try {
+      const txnRef  = doc(db, 'fee_transactions', txnId);
+      const txnSnap = await getDoc(txnRef);
+      if (!txnSnap.exists())          { showToast('❌ Transaction not found.'); return; }
+      if (txnSnap.data().status !== 'pending') { showToast('⚠️ Already processed.'); return; }
+
+      const txn = txnSnap.data();
+
+      // 1. Mark approved
+      await updateDoc(txnRef, {
+        status:     'approved',
+        approvedBy: 'Admin',
+        approvedAt: new Date().toISOString()
+      });
+
+      // 2. Update student doc balance (find by studentId field)
+      const sSnap = await getDocs(query(
+        collection(db,'students'),
+        where('studentId','==', txn.studentId),
+        limit(1)
+      ));
+
+      let newBalance = txn.balanceAfter;  // computed at entry time
+      if (!sSnap.empty) {
+        const sRef   = doc(db, 'students', sSnap.docs[0].id);
+        const sData  = sSnap.docs[0].data();
+        const prevPaid    = parseFloat(sData.feePaid   || 0);
+        const feeTotal    = parseFloat(sData.feeTotal  || txn.feeTotal || 0);
+        const newFeePaid  = prevPaid + parseFloat(txn.amount);
+        newBalance        = Math.max(0, feeTotal - newFeePaid);
+
+        await updateDoc(sRef, {
+          feePaid:    newFeePaid,
+          feeBalance: newBalance,
+          feeTotal:   feeTotal,
+          updatedAt:  new Date().toISOString()
+        });
+      }
+
+      // 3. Send in-app notification to the student
+      await _triggerFeeNotification(txn.studentId, txn.amount, newBalance, txnId);
+
+      showToast('✅ Approved! Student balance updated and notification sent.');
+      loadAdminFeeTransactions();
+
+    } catch(e) {
+      showToast('❌ Approval failed: ' + e.message);
+      console.error('[ApproveTxn]', e);
+    } finally {
+      if (clickedBtn) { clickedBtn.disabled = false; clickedBtn.innerHTML = '<i class="fas fa-check"></i> Approve'; }
+    }
+  };
+
+  /* ============================================================
+     ADMIN — REJECT FEE TRANSACTION
+  ============================================================ */
+  window.rejectFeeTransaction = async function(txnId) {
+    if (!confirm('Reject this transaction? No balance change will occur.')) return;
+    try {
+      await updateDoc(doc(db,'fee_transactions', txnId), {
+        status:     'rejected',
+        rejectedBy: 'Admin',
+        rejectedAt: new Date().toISOString()
+      });
+      showToast('🗑️ Transaction rejected.');
+      loadAdminFeeTransactions();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  /* ============================================================
+     STUDENT NOTIFICATION — called after admin approval
+  ============================================================ */
+  async function _triggerFeeNotification(studentId, amountPaid, remainingBalance, txnId) {
+    try {
+      const uSnap = await getDocs(query(
+        collection(db,'users'),
+        where('studentId','==', studentId),
+        limit(1)
+      ));
+      if (uSnap.empty) { console.warn('[FeeNotif] No user for studentId:', studentId); return; }
+
+      const uid  = uSnap.docs[0].id;
+      const msg  = `Thank you, your payment of ${fmtINR(amountPaid)} is completed. This is for your acknowledgement. Remaining Balance: ${fmtINR(remainingBalance)}.`;
+
+      await addDoc(collection(db, 'users', uid, 'notifications'), {
+        message:          msg,
+        type:             'fee_payment',
+        icon:             'fas fa-check-circle',
+        amountPaid:       parseFloat(amountPaid),
+        remainingBalance: parseFloat(remainingBalance),
+        txnId,
+        read:             false,
+        createdAt:        new Date().toISOString()
+      });
+
+      console.log('[FeeNotif] Notification written for uid:', uid);
+    } catch(e) {
+      // Non-blocking — log but don't surface to admin
+      console.warn('[FeeNotif] Could not write notification:', e.message);
+    }
+  }
+
+  /* ============================================================
+     STUDENT — Read Fee Notifications (used by Notification Center)
+  ============================================================ */
+  window.loadStudentFeeNotifications = async function(uid) {
+    if (!uid) return [];
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'users', uid, 'notifications'),
+        where('type','==','fee_payment'),
+        orderBy('createdAt','desc'),
+        limit(5)
+      ));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e) {
+      console.warn('[FeeNotifications]', e.message);
+      return [];
+    }
+  };
+
+  window.markFeeNotifRead = async function(uid, notifId) {
+    try {
+      await updateDoc(doc(db,'users',uid,'notifications',notifId), { read: true });
+    } catch(e) { /* silent */ }
+  };
+
+  /* ============================================================
+     INTEGRATE — patch loadStudentNotificationCenter to surface
+     fee payment confirmations in the student's notice banner
+  ============================================================ */
+  const _origNC = window.loadStudentNotificationCenter;
+  window.loadStudentNotificationCenter = async function(user) {
+    // Run the original NC fetch
+    if (_origNC) await _origNC(user);
+
+    // Overlay latest unread fee notification as the top notice
+    if (!user?.uid) return;
+    try {
+      const notifs = await window.loadStudentFeeNotifications(user.uid);
+      const unread = notifs.find(n => !n.read);
+      if (!unread || !window.NotificationCenter) return;
+
+      // Re-render the notice banner with the fee payment confirmation
+      window.NotificationCenter.render(undefined, [{
+        message:  unread.message,
+        isUrgent: false,
+        tag:      'Payment Confirmed',
+        date:     (unread.createdAt || '').split('T')[0]
+      }]);
+
+      // Mark as read after display
+      setTimeout(() => window.markFeeNotifRead(user.uid, unread.id), 3000);
+    } catch(e) { /* silent */ }
+  };
+
+  /* ============================================================
+     AUTO-LOAD HOOKS — extend the showDash override
+  ============================================================ */
+  const _prevShowDash = window.showDash;
+  window.showDash = function(prefix, sectionId, btn) {
+    _prevShowDash(prefix, sectionId, btn);
+    if (sectionId === 'a-fee-structure')    loadAdminFeeStructure();
+    if (sectionId === 'a-fee-transactions') loadAdminFeeTransactions();
+    if (sectionId === 'o-dashboard')        loadOfficeDashboardStats();
+    if (sectionId === 'o-reports')          loadOfficeReports();
+    if (sectionId === 'o-fee-collection') {
+      const pd = document.getElementById('pay-date');
+      if (pd && !pd.value) pd.value = new Date().toISOString().split('T')[0];
+    }
+  };
+
+  /* ============================================================
+     EXTEND loginAs() to support 'office' role
+  ============================================================ */
+  const _prevLoginAs = window.loginAs;
+  window.loginAs = function(role) {
+    if (role === 'office') {
+      window.isLoggedIn      = true;
+      window.currentUserRole = 'office';
+      window.currentRole     = 'office';
+      const lp = document.getElementById('page-login');
+      if (lp) lp.classList.remove('active');
+      // showPage calls the router in script.js
+      if (window.showPage) window.showPage('office-dash');
+      const auth = window._firebaseAuth;
+      if (auth?.currentUser && window.loadOfficePortal)
+        window.loadOfficePortal(auth.currentUser).catch(console.error);
+      return;
+    }
+    _prevLoginAs(role);
+  };
+
+  console.log('[FeeModule] ✅ Loaded — Office Portal · Fee Structure · Approvals · Notifications');
+})();
+</script>

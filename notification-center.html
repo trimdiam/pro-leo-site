@@ -1,0 +1,58 @@
+<!--
+  ============================================================
+  NOTIFICATION CENTER — notification-center.html
+  Injectable fragment for the Student Dashboard.
+
+  HOW TO USE IN incomplete_fixed.html:
+  1. In <head>, after styles.css:
+       <link rel="stylesheet" href="notification-center.css">
+
+  2. Paste this entire block as the FIRST child of
+       <div id="s-dashboard" class="dash-section active">
+
+  3. Before </body>:
+       <script src="notification-center.js"></script>
+
+  The JS auto-renders with mock data on DOMContentLoaded.
+  To use live Firestore data, call:
+       NotificationCenter.render(studentData, notices);
+  inside your onSnapshot() callback.
+  ============================================================
+-->
+
+<div id="notification-center" class="nc-wrapper">
+
+  <!-- Header row -->
+  <div class="nc-header">
+    <h3 class="nc-title">
+      <i class="fas fa-bell"></i> Notification Center
+    </h3>
+    <span class="nc-date" id="nc-today-date">Loading…</span>
+  </div>
+
+  <!-- Bento Grid -->
+  <div class="nc-bento-grid">
+
+    <!-- Card 1: General Notice Banner (full-width) -->
+    <div class="nc-card nc-notice-banner" id="nc-notice-banner">
+      <!-- Populated by notification-center.js › _renderNoticeBanner() -->
+    </div>
+
+    <!-- Card 2: Attendance (spans 2 columns on desktop) -->
+    <div class="nc-card nc-attendance" id="nc-attendance-card">
+      <!-- Populated by notification-center.js › _renderAttendanceCard() -->
+    </div>
+
+    <!-- Card 3: Unit Test / Exam (1 column) -->
+    <div class="nc-card nc-exam" id="nc-exam-card">
+      <!-- Populated by notification-center.js › _renderExamCard() -->
+    </div>
+
+    <!-- Card 4: Fee Status (1 column) -->
+    <div class="nc-card nc-fee" id="nc-fee-card">
+      <!-- Populated by notification-center.js › _renderFeeCard() -->
+    </div>
+
+  </div><!-- /.nc-bento-grid -->
+
+</div><!-- /#notification-center -->

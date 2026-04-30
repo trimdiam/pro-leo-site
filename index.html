@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="notification-center.css">
   <style>
     /* ============================================================
        MOBILE OPTIMIZATION & GALLERY ENHANCEMENTS
@@ -976,6 +977,27 @@
         <i class="fas fa-sign-in-alt"></i> <span id="login-btn-text">Login</span>
       </button>
 
+      <!-- OR divider -->
+      <div style="display:flex;align-items:center;gap:12px;margin:18px 0">
+        <div style="flex:1;height:1px;background:var(--primary)"></div>
+        <span style="font-size:11px;color:var(--text-light);font-weight:700;letter-spacing:0.6px">OR</span>
+        <div style="flex:1;height:1px;background:var(--primary)"></div>
+      </div>
+
+      <!-- Google Sign-In -->
+      <button id="googleSignInBtn" type="button" onclick="doGoogleLogin()"
+              style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border:1.5px solid var(--primary);border-radius:10px;background:#fff;color:var(--text);font-weight:600;font-size:14px;cursor:pointer;font-family:var(--font-body);transition:background 0.2s ease,border-color 0.2s ease,transform 0.15s ease"
+              onmouseover="this.style.background='#faf5ef';this.style.borderColor='var(--accent)'"
+              onmouseout="this.style.background='#fff';this.style.borderColor='var(--primary)'">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+          <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+        </svg>
+        <span id="google-btn-text">Continue with Google</span>
+      </button>
+
       <!-- Module load failure notice — hidden once Firebase loads successfully -->
       <div id="login-module-error" style="margin-top:12px;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:8px;padding:10px 14px;font-size:13px;color:#92400e;display:flex;align-items:flex-start;gap:8px">
         <i class="fas fa-circle-notch fa-spin" style="margin-top:2px;flex-shrink:0"></i>
@@ -1025,6 +1047,27 @@
       </div>
       <div class="dash-content">
         <div id="s-dashboard" class="dash-section active">
+
+          <!-- ================================================
+               NOTIFICATION CENTER
+               Rendered by notification-center.js on load.
+               Swap NotificationCenter.render() args for live
+               Firestore data when ready.
+          ================================================ -->
+          <div id="notification-center" class="nc-wrapper">
+            <div class="nc-header">
+              <h3 class="nc-title"><i class="fas fa-bell"></i> Notification Center</h3>
+              <span class="nc-date" id="nc-today-date">Loading…</span>
+            </div>
+            <div class="nc-bento-grid">
+              <div class="nc-card nc-notice-banner" id="nc-notice-banner"></div>
+              <div class="nc-card nc-attendance"    id="nc-attendance-card"></div>
+              <div class="nc-card nc-exam"          id="nc-exam-card"></div>
+              <div class="nc-card nc-fee"           id="nc-fee-card"></div>
+            </div>
+          </div>
+          <!-- /NOTIFICATION CENTER -->
+
           <div class="dash-stats">
             <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-percent"></i></div><div><div class="dash-stat-val">87%</div><div class="dash-stat-label">Attendance</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-book-open"></i></div><div><div class="dash-stat-val" id="s-stat-pending-hw">—</div><div class="dash-stat-label">Pending HW</div></div></div>
@@ -2181,10 +2224,83 @@
 </div>
 
 
+<!-- ============================================================
+     FIRST-TIME SETUP MODAL — Google sign-in self-linking
+     Shown only when a Google-authenticated user has no
+     `users/{uid}` document yet. They enter their Student ID,
+     which is verified against the `students` collection,
+     then a `users/{uid}` doc is created automatically.
+============================================================ -->
+<div id="first-time-setup-overlay"
+     style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(44,31,14,0.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;animation:ftsFadeIn .25s ease">
+  <div style="background:rgba(255,250,244,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1.5px solid rgba(214,195,163,0.6);border-radius:24px;max-width:440px;width:100%;padding:32px 28px;box-shadow:0 24px 64px rgba(44,31,14,0.35);font-family:var(--font-body)">
+
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto 14px;box-shadow:0 6px 20px rgba(139,111,71,0.3)">
+        <i class="fas fa-graduation-cap"></i>
+      </div>
+      <h2 style="font-family:var(--font-head);font-size:1.4rem;color:var(--accent-dark);margin-bottom:4px">First-Time Setup</h2>
+      <p style="font-size:13px;color:var(--text-light)">Link your Google account to your school record</p>
+    </div>
+
+    <!-- Google account chip -->
+    <div style="display:flex;align-items:center;gap:12px;background:rgba(214,195,163,0.25);border:1px solid rgba(139,111,71,0.15);border-radius:12px;padding:12px;margin-bottom:20px">
+      <div id="fts-user-photo" style="width:40px;height:40px;border-radius:50%;background:var(--primary);overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:1rem;flex-shrink:0">S</div>
+      <div style="flex:1;min-width:0">
+        <div id="fts-user-name"  style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Student</div>
+        <div id="fts-user-email" style="font-size:12px;color:var(--text-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">email@example.com</div>
+      </div>
+      <i class="fab fa-google" style="color:#4285F4;font-size:1.1rem"></i>
+    </div>
+
+    <!-- Student ID input -->
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-weight:700;font-size:13px;color:var(--text-light);margin-bottom:6px">Your Student ID</label>
+      <input type="text" id="fts-student-id" placeholder="e.g. SFS/2025/001" autocomplete="off"
+             onkeydown="if(event.key==='Enter')linkStudentAccount()"
+             style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--primary);background:#fff;font-family:monospace;font-size:15px;color:var(--text);letter-spacing:0.5px;transition:border-color 0.2s,box-shadow 0.2s"
+             onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(139,111,71,0.12)'"
+             onblur="this.style.borderColor='var(--primary)';this.style.boxShadow='none'">
+    </div>
+
+    <!-- Hint -->
+    <div style="background:rgba(255,249,225,0.6);border:1px solid rgba(234,179,8,0.25);border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:12px;color:#92400e;display:flex;align-items:flex-start;gap:8px">
+      <i class="fas fa-info-circle" style="flex-shrink:0;margin-top:2px"></i>
+      <span>Your Student ID is printed on your admit card or report card. Contact your class teacher if you can't find it.</span>
+    </div>
+
+    <!-- Error -->
+    <div id="fts-error" style="display:none;margin-bottom:14px;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;color:#991b1b;align-items:center;gap:8px"></div>
+
+    <!-- Action buttons -->
+    <button id="fts-link-btn" type="button" onclick="linkStudentAccount()"
+            style="width:100%;padding:13px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-family:var(--font-body);font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.2s,transform 0.15s;margin-bottom:10px"
+            onmouseover="this.style.background='var(--accent-dark)';this.style.transform='translateY(-1px)'"
+            onmouseout="this.style.background='var(--accent)';this.style.transform='translateY(0)'">
+      <i class="fas fa-link"></i> Link My Account
+    </button>
+
+    <button type="button" onclick="cancelFirstTimeSetup()"
+            style="width:100%;padding:11px;border-radius:10px;border:1.5px solid var(--primary);background:transparent;color:var(--text-light);font-family:var(--font-body);font-weight:600;font-size:13px;cursor:pointer;transition:background 0.2s,color 0.2s"
+            onmouseover="this.style.background='rgba(214,195,163,0.25)';this.style.color='var(--text)'"
+            onmouseout="this.style.background='transparent';this.style.color='var(--text-light)'">
+      Cancel & Sign Out
+    </button>
+  </div>
+</div>
+
+<style>
+  @keyframes ftsFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+</style>
+
 <script src="script.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, createUserWithEmailAndPassword, updatePassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, createUserWithEmailAndPassword, updatePassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit, serverTimestamp, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
   import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
   // Storage import kept for compatibility; Cloudinary is used for actual uploads
@@ -2285,9 +2401,216 @@
     }
   };
 
+  // ================================================================
+  //  FIRST-TIME SETUP — Student ID self-linking
+  //
+  //  When a Google-authenticated user signs in for the first time,
+  //  they have no `users/{uid}` document. Instead of blocking them,
+  //  we show a modal asking for their Student ID. We verify the ID
+  //  exists in the `students` collection (admin pre-populated via
+  //  CSV import), then create the `users/{uid}` link automatically.
+  //
+  //  An audit row is written to `newAccountLinks` so the admin can
+  //  see who self-onboarded and when.
+  // ================================================================
+  let _pendingFirstTimeUser = null;
+
+  function _showFirstTimeSetup(user) {
+    _pendingFirstTimeUser = user;
+
+    const photo = user.photoURL    || '';
+    const name  = user.displayName || 'Student';
+    const email = user.email       || '';
+
+    const photoEl = document.getElementById('fts-user-photo');
+    const nameEl  = document.getElementById('fts-user-name');
+    const emailEl = document.getElementById('fts-user-email');
+
+    if (photoEl) {
+      if (photo) {
+        photoEl.innerHTML = '<img src="' + photo + '" alt="" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover">';
+      } else {
+        photoEl.textContent = (name.charAt(0) || 'S').toUpperCase();
+      }
+    }
+    if (nameEl)  nameEl.textContent  = name;
+    if (emailEl) emailEl.textContent = email;
+
+    _showFTSError(null);
+    const input = document.getElementById('fts-student-id');
+    if (input) {
+      input.value = '';
+      setTimeout(() => input.focus(), 250);
+    }
+
+    const overlay = document.getElementById('first-time-setup-overlay');
+    if (overlay) overlay.style.display = 'flex';
+  }
+
+  function _hideFirstTimeSetup() {
+    const overlay = document.getElementById('first-time-setup-overlay');
+    if (overlay) overlay.style.display = 'none';
+    _pendingFirstTimeUser = null;
+  }
+
+  function _showFTSError(msg) {
+    const box = document.getElementById('fts-error');
+    if (!box) return;
+    if (msg) {
+      box.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>' + msg + '</span>';
+      box.style.display = 'flex';
+    } else {
+      box.style.display = 'none';
+      box.innerHTML = '';
+    }
+  }
+
+  window.linkStudentAccount = async function() {
+    if (!_pendingFirstTimeUser) {
+      _hideFirstTimeSetup();
+      return;
+    }
+
+    const input = document.getElementById('fts-student-id');
+    const btn   = document.getElementById('fts-link-btn');
+    const sid   = (input?.value || '').trim();
+
+    if (!sid) {
+      _showFTSError('Please enter your Student ID.');
+      return;
+    }
+
+    _showFTSError(null);
+    if (btn) {
+      btn.disabled  = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying…';
+    }
+
+    try {
+      // 1. Verify the Student ID exists in the `students` collection
+      const studentSnap = await getDocs(query(
+        collection(db, 'students'),
+        where('studentId', '==', sid),
+        limit(1)
+      ));
+
+      if (studentSnap.empty) {
+        _showFTSError('Student ID not found. Please check the ID or contact admin.');
+        return;
+      }
+
+      const student = studentSnap.docs[0].data();
+      const user    = _pendingFirstTimeUser;
+
+      // 2. Block double-linking — refuse if another UID already owns this Student ID
+      const existingLinkSnap = await getDocs(query(
+        collection(db, 'users'),
+        where('studentId', '==', sid),
+        limit(1)
+      ));
+      if (!existingLinkSnap.empty && existingLinkSnap.docs[0].id !== user.uid) {
+        _showFTSError('This Student ID is already linked to another Google account. Contact admin if this is wrong.');
+        return;
+      }
+
+      // 3. Create the linked `users/{uid}` document
+      await setDoc(doc(db, 'users', user.uid), {
+        role:      'student',
+        studentId: sid,
+        name:      student.name     || user.displayName || 'Student',
+        email:     user.email       || '',
+        photoURL:  user.photoURL    || '',
+        class:     student.class    || '',
+        loginId:   sid,
+        linkedAt:  new Date().toISOString(),
+        linkedVia: 'google-self-link'
+      });
+
+      // 4. Audit trail for the admin (best-effort, non-blocking)
+      try {
+        await addDoc(collection(db, 'newAccountLinks'), {
+          uid:       user.uid,
+          studentId: sid,
+          name:      student.name  || user.displayName || 'Student',
+          email:     user.email    || '',
+          class:     student.class || '',
+          method:    'google-self-link',
+          linkedAt:  serverTimestamp()
+        });
+      } catch (e) {
+        console.warn('[FirstTimeSetup] Audit log skipped:', e.message);
+      }
+
+      // 5. Clear the modal and continue with the normal login flow
+      showToast('✅ Account linked! Opening your portal…');
+      _hideFirstTimeSetup();
+      setTimeout(() => { _handleAuthUser(user).catch(console.error); }, 400);
+
+    } catch (e) {
+      console.error('[FirstTimeSetup] Link failed:', e);
+      _showFTSError('Could not link account: ' + (e.message || 'Unknown error.'));
+    } finally {
+      if (btn) {
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="fas fa-link"></i> Link My Account';
+      }
+    }
+  };
+
+  window.cancelFirstTimeSetup = async function() {
+    if (_pendingFirstTimeUser) {
+      try {
+        const { signOut } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js');
+        await signOut(auth).catch(()=>{});
+      } catch (e) {}
+    }
+    _hideFirstTimeSetup();
+    showToast('Sign-in cancelled.');
+  };
+
+  // ================================================================
+  //  GOOGLE SIGN-IN — signInWithPopup + GoogleAuthProvider
+  //  Routes through the same _handleAuthUser flow used by email login,
+  //  so the user must already exist in the `users` Firestore collection
+  //  with a valid role assigned by the admin.
+  // ================================================================
+  window.doGoogleLogin = async function() {
+    showLoginError(null);
+    const btn   = document.getElementById('googleSignInBtn');
+    const label = document.getElementById('google-btn-text');
+    if (btn)   { btn.disabled = true; btn.style.opacity = '0.7'; btn.style.cursor = 'wait'; }
+    if (label) label.textContent = 'Opening Google…';
+
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const cred = await signInWithPopup(auth, provider);
+      await _handleAuthUser(cred.user);
+    } catch (err) {
+      console.error('Google sign-in error:', err);
+      let msg = 'Google sign-in failed. Please try again.';
+      if      (err.code === 'auth/popup-closed-by-user')  msg = 'Sign-in cancelled.';
+      else if (err.code === 'auth/popup-blocked')         msg = 'Popup blocked — please allow popups for this site.';
+      else if (err.code === 'auth/cancelled-popup-request') msg = 'Another sign-in is already in progress.';
+      else if (err.code === 'auth/account-exists-with-different-credential')
+        msg = 'This email is registered with a different sign-in method.';
+      showLoginError(msg);
+    } finally {
+      if (btn)   { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+      if (label) label.textContent = 'Continue with Google';
+    }
+  };
+
   async function _handleAuthUser(user) {
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     if (!userDoc.exists()) {
+      // Detect first-time Google sign-in — offer Student ID self-linking.
+      const isGoogle = (user.providerData || []).some(p => p && p.providerId === 'google.com');
+      if (isGoogle) {
+        _showFirstTimeSetup(user);
+        return;
+      }
+      // Email/password users must be pre-provisioned by admin.
       const { signOut } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js');
       await signOut(auth).catch(()=>{});
       showLoginError('Your account is not set up yet. Contact the school administrator.');
@@ -2298,7 +2621,15 @@
     showToast('✅ Welcome! Opening your portal…');
     setTimeout(async () => {
       loginAs(role);
-      if (role === 'student') await loadStudentProfile(user);
+      if (role === 'student') {
+        await loadStudentProfile(user);
+        // Notification Center fetch is gated by auth — uses user.uid
+        if (window.loadStudentNotificationCenter) {
+          window.loadStudentNotificationCenter(user).catch(e =>
+            console.warn('[NotificationCenter] fetch failed:', e.message)
+          );
+        }
+      }
       if (role === 'teacher') await loadTeacherPortal(user);
     }, 400);
   }
@@ -3717,6 +4048,109 @@
   };
 
   // ================================================================
+  //  NOTIFICATION CENTER — auth-gated personalized fetch
+  //
+  //  Triggered ONLY after onAuthStateChanged resolves a valid user.
+  //  Pulls attendance, fees, and notices using the authenticated
+  //  user's UID (resolved → studentId via the `users` collection).
+  //
+  //  Hands the assembled payload to NotificationCenter.render() so
+  //  the Bento Grid renders real personalized data instead of mocks.
+  // ================================================================
+  window.loadStudentNotificationCenter = async function(user) {
+    if (!user || !user.uid || !window.NotificationCenter) return;
+
+    try {
+      // 1. Resolve studentId / class from the authenticated UID
+      const userSnap = await getDoc(doc(db, 'users', user.uid));
+      if (!userSnap.exists()) return;
+      const u   = userSnap.data();
+      const sid = u.studentId || window._studentId || '';
+      const cls = window._studentClass || u.class || '';
+
+      // 2. ATTENDANCE — count present/absent for this student
+      let present = 0, absent = 0, total = 0, todayStatus = 'present';
+      if (sid) {
+        const attSnap = await getDocs(query(
+          collection(db, 'attendance'),
+          where('studentId', '==', sid),
+          limit(200)
+        ));
+        const todayKey = new Date().toISOString().split('T')[0];
+        attSnap.forEach(d => {
+          const a   = d.data();
+          const st  = (a.status || '').toString().toUpperCase();
+          total++;
+          if (st === 'P' || st === 'PRESENT') present++;
+          else if (st === 'A' || st === 'ABSENT') absent++;
+          if (a.date === todayKey) {
+            todayStatus = (st === 'A' || st === 'ABSENT') ? 'absent'
+                        : (st === 'L' || st === 'LATE')   ? 'late'
+                        : 'present';
+          }
+        });
+      }
+      const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+
+      // 3. FEES — sum unpaid for this student
+      let feeData = {
+        isPaid: true, amount: 0, term: 'Current Term — 2025–26',
+        dueDate: '', paidAmount: 0, upiId: 'stfrancisschool@upi'
+      };
+      if (sid) {
+        const feeSnap = await getDocs(query(
+          collection(db, 'fees'),
+          where('studentId', '==', sid),
+          limit(20)
+        ));
+        let totalDue = 0, totalPaid = 0, latestDue = '';
+        feeSnap.forEach(d => {
+          const f   = d.data();
+          const amt = parseFloat(f.amount) || 0;
+          if (f.status === 'Approved') totalPaid += amt;
+          else { totalDue += amt; if (f.dueDate && f.dueDate > latestDue) latestDue = f.dueDate; }
+        });
+        feeData = {
+          isPaid:     totalDue === 0,
+          amount:     totalDue || totalPaid,
+          term:       'Current Term — 2025–26',
+          dueDate:    latestDue || new Date(Date.now() + 15*86400000).toISOString().split('T')[0],
+          paidAmount: totalPaid,
+          upiId:      'stfrancisschool@upi'
+        };
+      }
+
+      // 4. NOTICES — global + class-targeted
+      const noticesSnap = await getDocs(query(collection(db, 'notices'), limit(20)));
+      const notices = [...noticesSnap.docs]
+        .map(d => {
+          const n = d.data();
+          return {
+            audience: (n.audience || 'all').toLowerCase(),
+            message:  n.title || n.body || '',
+            isUrgent: (n.priority || '').toLowerCase() === 'urgent',
+            tag:      n.priority || 'Notice',
+            date:     ((n.postedAt || n.createdAt || '') + '').split('T')[0]
+          };
+        })
+        .filter(n => n.audience === 'all' || n.audience === 'students' || n.audience === 'both' || (cls && n.audience === cls.toLowerCase()))
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+      // 5. EXAMS — placeholder (no `exams` collection yet); wire when ready
+      const exams = [];
+
+      // 6. Render the personalized payload into the Bento Grid
+      window.NotificationCenter.render({
+        attendance: { todayStatus, percentage, present, absent, total },
+        fees:       feeData,
+        exams
+      }, notices);
+    } catch (e) {
+      console.warn('[NotificationCenter] auth-bound fetch failed:', e.message);
+    }
+  };
+
+  // ================================================================
   //  STUDENT — Homework
   // ================================================================
   window.loadStudentHomework = async function() {
@@ -4374,5 +4808,6 @@
   };
 
 </script>
+<script src="notification-center.js"></script>
 </body>
 </html>

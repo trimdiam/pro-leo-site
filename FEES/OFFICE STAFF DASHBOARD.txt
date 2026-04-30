@@ -1,0 +1,216 @@
+<!-- ================================================================
+     OFFICE STAFF DASHBOARD
+================================================================ -->
+<div id="page-office-dash" class="page">
+  <div class="dash-shell">
+    <nav class="sidebar" id="officeSidebar">
+      <div class="sidebar-brand">
+        <div class="s-logo">OF</div>
+        <h4>St. Francis School</h4>
+        <p>Office Portal</p>
+      </div>
+      <div class="sidebar-nav">
+        <button class="active" onclick="showDash('o','o-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
+        <button onclick="showDash('o','o-fee-collection',this)"><i class="fas fa-money-bill-wave"></i> Fee Collection</button>
+        <button onclick="showDash('o','o-reports',this)"><i class="fas fa-chart-bar"></i> Reports</button>
+      </div>
+      <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
+    </nav>
+
+    <div class="dash-main">
+      <div class="dash-header">
+        <div style="display:flex;align-items:center">
+          <button class="sidebar-toggle" onclick="toggleSidebar('officeSidebar')"><i class="fas fa-bars"></i></button>
+          <div><h2 id="o-dash-title">Dashboard</h2><p>Office &amp; Fee Management</p></div>
+        </div>
+        <div class="dash-user">
+          <div><div class="dash-username" style="text-align:right" id="o-header-name">Office Staff</div><div class="dash-role">Fee Collection · Office</div></div>
+          <div class="dash-avatar" id="o-header-avatar">OF</div>
+        </div>
+      </div>
+
+      <div class="dash-content">
+
+        <!-- ── OFFICE DASHBOARD ── -->
+        <div id="o-dashboard" class="dash-section active">
+          <div class="dash-stats">
+            <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-clock"></i></div><div><div class="dash-stat-val" id="o-stat-pending">—</div><div class="dash-stat-label">Pending Approvals</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-check-circle"></i></div><div><div class="dash-stat-val" id="o-stat-today">—</div><div class="dash-stat-label">Today's Entries</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-rupee-sign"></i></div><div><div class="dash-stat-val" id="o-stat-total-today">—</div><div class="dash-stat-label">₹ Collected Today</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-check-double"></i></div><div><div class="dash-stat-val" id="o-stat-approved-today">—</div><div class="dash-stat-label">Approved Today</div></div></div>
+          </div>
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+              <h4 style="color:var(--accent-dark)"><i class="fas fa-history" style="margin-right:8px;color:var(--accent)"></i>Recent Transactions</h4>
+              <button class="btn btn-sm btn-outline" onclick="loadOfficeRecentTransactions()"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Date</th><th>Student</th><th>Class</th><th>Amount</th><th>Mode</th><th>Status</th></tr></thead>
+                <tbody id="o-recent-txn-tbody">
+                  <tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-light)">Click Refresh to load.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── FEE COLLECTION ── -->
+        <div id="o-fee-collection" class="dash-section">
+
+          <!-- Step 1 -->
+          <div class="card" style="padding:24px;margin-bottom:20px">
+            <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-search" style="margin-right:8px;color:var(--accent)"></i>Step 1 — Find Student</h4>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+              <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
+                <label>Name or Student ID</label>
+                <input type="text" id="fee-student-search" placeholder="e.g. Arjun Sharma or SFS/2025/001" oninput="searchStudentForFee(this.value)">
+              </div>
+              <div class="form-group" style="min-width:140px;margin-bottom:0">
+                <label>Filter by Class</label>
+                <select id="fee-class-filter" onchange="searchStudentForFee(document.getElementById('fee-student-search').value)">
+                  <option value="">All Classes</option>
+                  <option value="PLG">Play Group</option><option value="SKG">SKG</option><option value="LKG">LKG</option>
+                  <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option>
+                  <option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option>
+                  <option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option>
+                  <option value="10">Class 10</option>
+                </select>
+              </div>
+            </div>
+            <div id="fee-search-results" style="display:none;margin-top:14px">
+              <div id="fee-search-list" style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto"></div>
+            </div>
+          </div>
+
+          <!-- Step 2: Bento Fee Card -->
+          <div id="fee-student-panel" style="display:none">
+            <div class="fee-bento-grid">
+
+              <!-- Banner -->
+              <div class="fee-student-banner card">
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                  <div class="fee-student-avatar" id="fee-avatar">S</div>
+                  <div>
+                    <div style="font-family:var(--font-head);font-size:1.2rem;color:var(--accent-dark)" id="fee-sname">—</div>
+                    <div style="font-size:13px;color:var(--text-light)" id="fee-sinfo">—</div>
+                  </div>
+                  <button onclick="clearFeeStudent()" style="margin-left:auto;background:none;border:none;color:var(--text-light);cursor:pointer;font-size:13px">
+                    <i class="fas fa-times"></i> Change
+                  </button>
+                </div>
+              </div>
+
+              <!-- Totals -->
+              <div class="fee-totals-card card">
+                <div class="fee-bento-label"><i class="fas fa-file-invoice-dollar"></i> Fee Summary</div>
+                <div class="fee-amounts-row">
+                  <div class="fee-amount-block">
+                    <div class="fee-amount-val" id="fee-total-amt">₹—</div>
+                    <div class="fee-amount-lbl">Annual Total</div>
+                  </div>
+                  <div class="fee-amount-block paid">
+                    <div class="fee-amount-val" id="fee-paid-amt">₹0</div>
+                    <div class="fee-amount-lbl">Paid</div>
+                  </div>
+                  <div class="fee-amount-block balance" id="fee-balance-block">
+                    <div class="fee-amount-val" id="fee-balance-amt">₹—</div>
+                    <div class="fee-amount-lbl">Balance</div>
+                  </div>
+                </div>
+                <div style="margin-top:16px">
+                  <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-light);margin-bottom:6px">
+                    <span>Payment Progress</span>
+                    <span id="fee-progress-pct">0%</span>
+                  </div>
+                  <div style="height:8px;background:rgba(214,195,163,.4);border-radius:4px;overflow:hidden">
+                    <div id="fee-progress-bar" style="height:100%;background:linear-gradient(90deg,var(--success),#22c55e);border-radius:4px;width:0%;transition:width .5s ease"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- History Mini -->
+              <div class="fee-txn-history card">
+                <div class="fee-bento-label"><i class="fas fa-list"></i> Payment History</div>
+                <div id="fee-txn-mini-list" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto">
+                  <p style="font-size:12px;color:var(--text-light)">Loading…</p>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Step 3: Payment Form -->
+            <div class="card" style="padding:24px;max-width:560px">
+              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-plus-circle" style="margin-right:8px;color:var(--accent)"></i>Step 2 — Record Payment</h4>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Amount Paid (₹) *</label>
+                  <input type="number" id="pay-amount" placeholder="e.g. 5000" min="1">
+                </div>
+                <div class="form-group">
+                  <label>Payment Mode *</label>
+                  <select id="pay-mode">
+                    <option value="Cash">Cash</option>
+                    <option value="UPI / QR">UPI / QR</option>
+                    <option value="Bank Transfer / NEFT">Bank Transfer / NEFT</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Demand Draft">Demand Draft</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Receipt / Transaction No.</label>
+                  <input type="text" id="pay-receipt-no" placeholder="e.g. RCP-2025-001">
+                </div>
+                <div class="form-group">
+                  <label>Payment Date *</label>
+                  <input type="date" id="pay-date">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Remarks / Notes</label>
+                <input type="text" id="pay-notes" placeholder="e.g. Q2 Tuition Fee">
+              </div>
+              <button class="btn btn-primary" onclick="processPayment()">
+                <i class="fas fa-save"></i> Record Payment
+              </button>
+              <p style="font-size:12px;color:var(--text-light);margin-top:12px">
+                <i class="fas fa-info-circle" style="margin-right:4px"></i>
+                Saved as <strong>Pending</strong> — Admin must approve before balance is officially updated.
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── REPORTS ── -->
+        <div id="o-reports" class="dash-section">
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+              <h4 style="color:var(--accent-dark)"><i class="fas fa-chart-bar" style="margin-right:8px;color:var(--accent)"></i>All Transactions</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <select id="o-report-filter" onchange="loadOfficeReports()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="all">All</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <button class="btn btn-sm btn-outline" onclick="loadOfficeReports()"><i class="fas fa-sync-alt"></i> Refresh</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Date</th><th>Student</th><th>Class</th><th>Amount</th><th>Mode</th><th>Receipt No.</th><th>Staff</th><th>Status</th></tr></thead>
+                <tbody id="o-reports-tbody">
+                  <tr><td colspan="8" style="text-align:center;padding:16px;color:var(--text-light)">Click Refresh to load.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>

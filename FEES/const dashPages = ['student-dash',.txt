@@ -1,0 +1,10 @@
+const dashPages = ['student-dash', 'teacher-dash', 'admin-dash', 'office-dash'];
+
+if (!['student','teacher','admin','office'].includes(role)) { showLoginError('Invalid role. Contact admin.'); return; }
+
+if (role === 'office')  { if (window.loadOfficePortal) await window.loadOfficePortal(user); }
+if (sectionId === 'a-fee-structure')    { if(window.loadAdminFeeStructure)    window.loadAdminFeeStructure();    }
+if (sectionId === 'a-fee-transactions') { if(window.loadAdminFeeTransactions) window.loadAdminFeeTransactions(); }
+
+<button onclick="showDash('a','a-fee-structure',this)"><i class="fas fa-rupee-sign"></i> Fee Structure</button>
+<button onclick="showDash('a','a-fee-transactions',this)"><i class="fas fa-exchange-alt"></i> Fee Approvals</button>
