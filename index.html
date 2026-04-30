@@ -2368,6 +2368,8 @@
       <div class="sidebar-nav">
         <button class="active" onclick="showDash('o','o-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
         <button onclick="showDash('o','o-fee-collection',this)"><i class="fas fa-money-bill-wave"></i> Fee Collection</button>
+        <button onclick="showDash('o','o-fee-structure',this)"><i class="fas fa-rupee-sign"></i> Fee Structure</button>
+        <button onclick="showDash('o','o-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('o','o-reports',this)"><i class="fas fa-chart-bar"></i> Reports</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
@@ -2562,6 +2564,179 @@
                   <tr><td colspan="8" style="text-align:center;padding:16px;color:var(--text-light)">Click Refresh to load.</td></tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── FEE STRUCTURE (Office Staff) ── -->
+        <div id="o-fee-structure" class="dash-section">
+          <div class="grid-2">
+
+            <!-- Set Fee Form -->
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:20px">
+                <i class="fas fa-rupee-sign" style="margin-right:8px;color:var(--accent)"></i>Set Annual Fee per Class
+              </h4>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Class *</label>
+                  <select id="ofs-class">
+                    <option value="">— Select Class —</option>
+                    <option value="PLG">Play Group</option>
+                    <option value="SKG">SKG</option>
+                    <option value="LKG">LKG</option>
+                    <option value="1">Class 1</option><option value="2">Class 2</option>
+                    <option value="3">Class 3</option><option value="4">Class 4</option>
+                    <option value="5">Class 5</option><option value="6">Class 6</option>
+                    <option value="7">Class 7</option><option value="8">Class 8</option>
+                    <option value="9">Class 9</option><option value="10">Class 10</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Total Annual Fee (₹) *</label>
+                  <input type="number" id="ofs-annual-fee" placeholder="e.g. 20000" min="0">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Tuition (₹)</label>
+                  <input type="number" id="ofs-tuition" placeholder="e.g. 15000">
+                </div>
+                <div class="form-group">
+                  <label>Exam Fee (₹)</label>
+                  <input type="number" id="ofs-exam-fee" placeholder="e.g. 2000">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Sports Fee (₹)</label>
+                  <input type="number" id="ofs-sports-fee" placeholder="e.g. 1500">
+                </div>
+                <div class="form-group">
+                  <label>Annual Charge (₹)</label>
+                  <input type="number" id="ofs-annual-charge" placeholder="e.g. 1500">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Notes</label>
+                <input type="text" id="ofs-notes" placeholder="e.g. Applicable for AY 2025-26">
+              </div>
+              <button class="btn btn-primary" onclick="officeStaffSaveFeeStructure()">
+                <i class="fas fa-save"></i> Save Fee Structure
+              </button>
+            </div>
+
+            <!-- Current Fee Structure List -->
+            <div class="card" style="padding:24px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+                <h4 style="color:var(--accent-dark)">Current Fee Structure</h4>
+                <button class="btn btn-sm btn-outline" onclick="officeStaffLoadFeeStructure()">
+                  <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+              </div>
+              <div id="ofs-structure-list">
+                <p style="color:var(--text-light);font-size:13px">Click Refresh to load.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── ADMISSIONS REVIEW (Office Staff) — placeholder for Step 3 ── -->
+        <div id="o-admissions" class="dash-section">
+          <div class="card" style="padding:24px;margin-bottom:20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+              <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-file-alt" style="color:var(--primary);margin-right:8px"></i>Admissions Review</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <select id="adm-filter-status" onchange="loadAdmissions()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg)">
+                  <option value="pending">Pending</option>
+                  <option value="forwarded_to_admin">Forwarded to Admin</option>
+                  <option value="all">All</option>
+                </select>
+                <button onclick="loadAdmissions()" style="padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-sync-alt"></i> Refresh</button>
+              </div>
+            </div>
+            <div id="adm-list-wrap">
+              <div class="table-wrap">
+                <table id="adm-list-table" style="width:100%;border-collapse:collapse">
+                  <thead><tr style="background:rgba(99,102,241,0.08)">
+                    <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Name</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Class Applied</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Date</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Status</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Action</th>
+                  </tr></thead>
+                  <tbody id="adm-list-body">
+                    <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detail Panel (hidden until a row is selected) -->
+          <div id="adm-detail-panel" style="display:none">
+            <div class="card" style="padding:24px;margin-bottom:20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+                <h4 style="margin:0;color:var(--accent-dark)"><i class="fas fa-user-graduate" style="color:var(--primary);margin-right:8px"></i>Application Detail</h4>
+                <button onclick="closeAdmissionDetail()" style="padding:8px 14px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-times"></i> Close</button>
+              </div>
+
+              <!-- Bento info grid -->
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Full Name</div>
+                  <div id="adm-d-name" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Class Applied</div>
+                  <div id="adm-d-class" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Date of Birth</div>
+                  <div id="adm-d-dob" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Gender</div>
+                  <div id="adm-d-gender" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Parent / Guardian</div>
+                  <div id="adm-d-parent" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Contact</div>
+                  <div id="adm-d-contact" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Address</div>
+                  <div id="adm-d-address" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+                <div class="nc-card" style="padding:16px">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Previous School</div>
+                  <div id="adm-d-prevschool" style="font-weight:600;color:var(--accent-dark)">—</div>
+                </div>
+              </div>
+
+              <!-- Documents -->
+              <div style="margin-bottom:20px">
+                <div style="font-size:13px;font-weight:600;color:var(--accent-dark);margin-bottom:10px"><i class="fas fa-paperclip" style="color:var(--primary);margin-right:6px"></i>Submitted Documents</div>
+                <div id="adm-d-docs" style="display:flex;flex-wrap:wrap;gap:8px">
+                  <span style="color:var(--text-light);font-size:13px">No documents attached.</span>
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div style="margin-bottom:20px">
+                <label style="font-size:13px;font-weight:600;color:var(--accent-dark);display:block;margin-bottom:6px"><i class="fas fa-sticky-note" style="color:var(--primary);margin-right:6px"></i>Office Notes (optional)</label>
+                <textarea id="adm-d-notes" rows="3" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;resize:vertical;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box" placeholder="Add any review notes before forwarding…"></textarea>
+              </div>
+
+              <!-- Action Buttons -->
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <button onclick="printAdmissionForm()" style="padding:10px 20px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-print" style="color:var(--primary);margin-right:6px"></i>Print / Save PDF</button>
+                <button id="adm-forward-btn" onclick="forwardAdmissionToAdmin()" style="padding:10px 20px;background:linear-gradient(135deg,var(--primary),var(--accent-dark));color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-share" style="margin-right:6px"></i>Forward to Admin</button>
+              </div>
             </div>
           </div>
         </div>
@@ -5641,6 +5816,103 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, quer
 </script>
 <script type="module">
 /* ================================================================
+   OFFICE STAFF — Fee Structure Logic (Step 2)
+================================================================ */
+import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, setDoc, deleteDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+(async () => {
+  let app;
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length > 0) { app = getApp(); break; }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  if (!app) return;
+  const db = getFirestore(app);
+
+  const CLS   = { PLG:'Play Group', SKG:'SKG', LKG:'LKG' };
+  const clsLabel = c => CLS[c] || (c ? 'Class ' + c : '—');
+  const fmtINR   = n => '₹' + (parseFloat(n)||0).toLocaleString('en-IN');
+  const ORDER    = ['PLG','SKG','LKG','1','2','3','4','5','6','7','8','9','10'];
+
+  window.officeStaffSaveFeeStructure = async function() {
+    const cls       = (document.getElementById('ofs-class')?.value       || '').trim();
+    const annualFee = parseFloat(document.getElementById('ofs-annual-fee')?.value || 0);
+    if (!cls)       { showToast('⚠️ Please select a class.'); return; }
+    if (!annualFee) { showToast('⚠️ Annual fee is required.'); return; }
+
+    const data = {
+      class:        cls,
+      annualFee,
+      tuition:      parseFloat(document.getElementById('ofs-tuition')?.value      ||0)||0,
+      examFee:      parseFloat(document.getElementById('ofs-exam-fee')?.value     ||0)||0,
+      sportsFee:    parseFloat(document.getElementById('ofs-sports-fee')?.value   ||0)||0,
+      annualCharge: parseFloat(document.getElementById('ofs-annual-charge')?.value||0)||0,
+      notes:        (document.getElementById('ofs-notes')?.value||'').trim(),
+      updatedAt:    new Date().toISOString(),
+      updatedBy:    window._officeStaffName || 'Office Staff'
+    };
+
+    try {
+      await setDoc(doc(db, 'fee_structure', cls), data, { merge: true });
+      showToast('✅ Fee structure saved for ' + clsLabel(cls));
+      // Clear form
+      ['ofs-class','ofs-annual-fee','ofs-tuition','ofs-exam-fee','ofs-sports-fee','ofs-annual-charge','ofs-notes']
+        .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+      officeStaffLoadFeeStructure();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.officeStaffLoadFeeStructure = async function() {
+    const el = document.getElementById('ofs-structure-list');
+    if (!el) return;
+    el.innerHTML = '<p style="font-size:13px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      const snap = await getDocs(collection(db, 'fee_structure'));
+      if (snap.empty) {
+        el.innerHTML = '<p style="font-size:13px;color:var(--text-light)">No fee structure set yet.</p>';
+        return;
+      }
+      const sorted = [...snap.docs].sort((a,b) => ORDER.indexOf(a.data().class) - ORDER.indexOf(b.data().class));
+      el.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Class</th><th>Annual Fee</th><th>Updated By</th><th></th></tr></thead><tbody>' +
+        sorted.map(d => {
+          const f = d.data();
+          return `<tr>
+            <td><strong>${clsLabel(f.class)}</strong>${f.notes ? `<div style="font-size:11px;color:var(--text-light)">${f.notes}</div>` : ''}</td>
+            <td style="font-weight:700;color:var(--accent-dark)">${fmtINR(f.annualFee)}</td>
+            <td style="font-size:12px;color:var(--text-light)">${f.updatedBy||'—'}</td>
+            <td>
+              <button onclick="officeStaffPrefillFeeForm('${f.class}',${f.annualFee||0},${f.tuition||0},${f.examFee||0},${f.sportsFee||0},${f.annualCharge||0})"
+                style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px" title="Edit">
+                <i class="fas fa-edit"></i>
+              </button>
+            </td>
+          </tr>`;
+        }).join('') + '</tbody></table></div>';
+    } catch(e) {
+      el.innerHTML = `<p style="color:var(--danger);font-size:13px">❌ ${e.message}</p>`;
+    }
+  };
+
+  window.officeStaffPrefillFeeForm = function(cls, annual, tuition, exam, sports, annualCharge) {
+    const set = (id, v) => { const e=document.getElementById(id); if(e) e.value=v; };
+    set('ofs-class', cls);       set('ofs-annual-fee', annual);
+    set('ofs-tuition', tuition); set('ofs-exam-fee', exam);
+    set('ofs-sports-fee', sports); set('ofs-annual-charge', annualCharge);
+  };
+
+  /* Auto-load when the section is opened */
+  const _prevShowDash = window.showDash;
+  window.showDash = function(prefix, sectionId, btn) {
+    _prevShowDash(prefix, sectionId, btn);
+    if (sectionId === 'o-fee-structure') officeStaffLoadFeeStructure();
+  };
+
+  console.log('[OfficeFeeStructure] ✅ Loaded');
+})();
+</script>
+<script type="module">
+/* ================================================================
    OFFICE STAFF ACCOUNT MANAGEMENT
    Admin can create / list / delete Office Staff logins
 ================================================================ */
@@ -5896,6 +6168,182 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   };
 
   console.log('[FeeModule] ✅ Loaded — Office Portal · Fee Structure · Approvals · Notifications');
+})();
+</script>
+<!-- ================================================================
+     ADMISSIONS LOGIC — Office Staff Portal (Step 4)
+================================================================ -->
+<script type="module">
+(async () => {
+  let db, currentAdmissionId = null, currentAdmissionData = null;
+
+  // Wait for Firebase app
+  const { getApps, getApp } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js');
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length) break;
+    await new Promise(r => setTimeout(r, 150));
+  }
+  const app = getApp();
+  const { getFirestore, collection, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp }
+    = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js');
+  db = getFirestore(app);
+
+  // ── Load admissions list ──────────────────────────────────────
+  window.loadAdmissions = async function() {
+    const tbody = document.getElementById('adm-list-body');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
+    try {
+      const statusFilter = document.getElementById('adm-filter-status')?.value || 'pending';
+      let q;
+      if (statusFilter === 'all') {
+        q = query(collection(db, 'admissions'), orderBy('submittedAt', 'desc'));
+      } else {
+        q = query(collection(db, 'admissions'), where('status', '==', statusFilter), orderBy('submittedAt', 'desc'));
+      }
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light)">No applications found.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = '';
+      snap.forEach(d => {
+        const a = d.data();
+        const date = a.submittedAt?.toDate ? a.submittedAt.toDate().toLocaleDateString('en-IN') : '—';
+        const statusBadge = a.status === 'forwarded_to_admin'
+          ? '<span style="background:#d1fae5;color:#065f46;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600">Forwarded</span>'
+          : '<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600">Pending</span>';
+        const tr = document.createElement('tr');
+        tr.style.cssText = 'border-bottom:1px solid var(--border);cursor:pointer';
+        tr.innerHTML = `
+          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${a.fullName || '—'}</td>
+          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${a.classApplied || '—'}</td>
+          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${date}</td>
+          <td style="padding:10px 12px;font-size:13px">${statusBadge}</td>
+          <td style="padding:10px 12px">
+            <button onclick="viewAdmission('${d.id}')" style="padding:6px 12px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer"><i class="fas fa-eye"></i> View</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      window.__admissionsCache = {};
+      snap.forEach(d => { window.__admissionsCache[d.id] = d.data(); });
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:#ef4444">Error: ${e.message}</td></tr>`;
+    }
+  };
+
+  // ── View single application ───────────────────────────────────
+  window.viewAdmission = function(id) {
+    const a = (window.__admissionsCache || {})[id];
+    if (!a) { showToast('⚠️ Application data not loaded.'); return; }
+    currentAdmissionId   = id;
+    currentAdmissionData = a;
+
+    document.getElementById('adm-d-name').textContent       = a.fullName      || '—';
+    document.getElementById('adm-d-class').textContent      = a.classApplied  || '—';
+    document.getElementById('adm-d-dob').textContent        = a.dob           || '—';
+    document.getElementById('adm-d-gender').textContent     = a.gender        || '—';
+    document.getElementById('adm-d-parent').textContent     = a.parentName    || '—';
+    document.getElementById('adm-d-contact').textContent    = a.contact       || '—';
+    document.getElementById('adm-d-address').textContent    = a.address       || '—';
+    document.getElementById('adm-d-prevschool').textContent = a.previousSchool || '—';
+    document.getElementById('adm-d-notes').value            = '';
+
+    // Documents
+    const docsEl = document.getElementById('adm-d-docs');
+    const docs = a.documents || [];
+    if (docs.length) {
+      docsEl.innerHTML = docs.map(d =>
+        `<a href="${d.url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--primary);text-decoration:none"><i class="fas fa-file"></i>${d.name}</a>`
+      ).join('');
+    } else {
+      docsEl.innerHTML = '<span style="color:var(--text-light);font-size:13px">No documents attached.</span>';
+    }
+
+    // Forward button state
+    const fwdBtn = document.getElementById('adm-forward-btn');
+    if (fwdBtn) {
+      if (a.status === 'forwarded_to_admin') {
+        fwdBtn.disabled = true;
+        fwdBtn.textContent = '✓ Already Forwarded';
+        fwdBtn.style.opacity = '0.6';
+      } else {
+        fwdBtn.disabled = false;
+        fwdBtn.innerHTML = '<i class="fas fa-share" style="margin-right:6px"></i>Forward to Admin';
+        fwdBtn.style.opacity = '1';
+      }
+    }
+
+    document.getElementById('adm-detail-panel').style.display = 'block';
+    document.getElementById('adm-detail-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // ── Close detail panel ────────────────────────────────────────
+  window.closeAdmissionDetail = function() {
+    currentAdmissionId   = null;
+    currentAdmissionData = null;
+    document.getElementById('adm-detail-panel').style.display = 'none';
+  };
+
+  // ── Print / Save PDF ──────────────────────────────────────────
+  window.printAdmissionForm = function() {
+    if (!currentAdmissionData) { showToast('⚠️ No application selected.'); return; }
+    const a = currentAdmissionData;
+    const date = a.submittedAt?.toDate ? a.submittedAt.toDate().toLocaleDateString('en-IN') : 'N/A';
+    const docsHtml = (a.documents||[]).map(d => `<li>${d.name}</li>`).join('') || '<li>None</li>';
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>Admission Form — ${a.fullName||''}</title>
+<style>body{font-family:Arial,sans-serif;padding:40px;color:#1e293b}h2{text-align:center;color:#4f46e5}table{width:100%;border-collapse:collapse;margin-top:16px}td{padding:8px 12px;border:1px solid #e2e8f0;font-size:13px}.label{background:#f8fafc;font-weight:600;width:35%}@media print{body{padding:20px}}</style>
+</head><body>
+<h2>St. Francis De Sales Secondary School</h2>
+<h3 style="text-align:center;color:#64748b;margin-top:4px">Admission Application Form</h3>
+<table>
+<tr><td class="label">Full Name</td><td>${a.fullName||'—'}</td><td class="label">Class Applied</td><td>${a.classApplied||'—'}</td></tr>
+<tr><td class="label">Date of Birth</td><td>${a.dob||'—'}</td><td class="label">Gender</td><td>${a.gender||'—'}</td></tr>
+<tr><td class="label">Parent / Guardian</td><td>${a.parentName||'—'}</td><td class="label">Contact</td><td>${a.contact||'—'}</td></tr>
+<tr><td class="label">Address</td><td colspan="3">${a.address||'—'}</td></tr>
+<tr><td class="label">Previous School</td><td colspan="3">${a.previousSchool||'—'}</td></tr>
+<tr><td class="label">Date Submitted</td><td colspan="3">${date}</td></tr>
+<tr><td class="label">Documents</td><td colspan="3"><ul style="margin:0;padding-left:16px">${docsHtml}</ul></td></tr>
+</table>
+<p style="margin-top:40px;font-size:12px;color:#94a3b8">Reviewed by Office Staff — St. Francis De Sales Secondary School</p>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`);
+    win.document.close();
+  };
+
+  // ── Forward to Admin ──────────────────────────────────────────
+  window.forwardAdmissionToAdmin = async function() {
+    if (!currentAdmissionId) { showToast('⚠️ No application selected.'); return; }
+    const btn = document.getElementById('adm-forward-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Forwarding…'; }
+    try {
+      const notes = document.getElementById('adm-d-notes')?.value || '';
+      await updateDoc(doc(db, 'admissions', currentAdmissionId), {
+        status: 'forwarded_to_admin',
+        officeNotes: notes,
+        forwardedAt: serverTimestamp()
+      });
+      showToast('✅ Application forwarded to Admin.');
+      if (window.__admissionsCache?.[currentAdmissionId]) {
+        window.__admissionsCache[currentAdmissionId].status = 'forwarded_to_admin';
+      }
+      if (btn) { btn.disabled = true; btn.innerHTML = '✓ Already Forwarded'; btn.style.opacity = '0.6'; }
+      await window.loadAdmissions();
+    } catch(e) {
+      showToast('❌ Error: ' + e.message);
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-share" style="margin-right:6px"></i>Forward to Admin'; }
+    }
+  };
+
+  // Auto-load when navigating to admissions section
+  const _prevShowDash = window.showDash;
+  window.showDash = function(prefix, sectionId, btn) {
+    _prevShowDash(prefix, sectionId, btn);
+    if (sectionId === 'o-admissions') window.loadAdmissions();
+  };
+
+  console.log('[Admissions] ✅ Loaded — Office Staff admissions review module');
 })();
 </script>
 <script src="notification-center.js"></script>
