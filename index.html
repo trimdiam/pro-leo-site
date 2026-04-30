@@ -1404,6 +1404,7 @@
         <button class="active" onclick="showDash('a','a-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
         <button onclick="showDash('a','a-students',this)"><i class="fas fa-user-graduate"></i> Students</button>
         <button onclick="showDash('a','a-teachers',this)"><i class="fas fa-chalkboard-teacher"></i> Teachers</button>
+        <button onclick="showDash('a','a-office-staff',this)"><i class="fas fa-building"></i> Office Staff</button>
         <button onclick="showDash('a','a-fees',this)"><i class="fas fa-money-bill-wave"></i> Fees</button>
         <button onclick="showDash('a','a-fee-structure',this)"><i class="fas fa-rupee-sign"></i> Fee Structure</button>
         <button onclick="showDash('a','a-fee-transactions',this)"><i class="fas fa-exchange-alt"></i> Fee Approvals</button>
@@ -1763,6 +1764,41 @@
                 <button id="slm-create-btn" onclick="createStudentLogin()" style="flex:2;padding:11px;background:linear-gradient(135deg,#6B5030,#8B6F47);color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-weight:700;font-size:14px;cursor:pointer"><i class="fas fa-user-plus"></i> Create Login Account</button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- ── OFFICE STAFF MANAGEMENT ── -->
+        <div id="a-office-staff" class="dash-section">
+          <div class="grid-2">
+
+            <!-- Create Account Form -->
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-user-plus" style="margin-right:8px;color:var(--accent)"></i>Create Office Staff Account</h4>
+              <div class="form-group"><label>Full Name *</label><input type="text" id="os-name" placeholder="e.g. Mary Lyngdoh"></div>
+              <div class="form-group"><label>Staff Login ID *</label><input type="text" id="os-staffid" placeholder="e.g. SFSO001" style="text-transform:uppercase"></div>
+              <div class="form-group"><label>Password *</label><input type="password" id="os-password" placeholder="Min. 6 characters"></div>
+              <div id="os-create-error" style="display:none;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;color:#991b1b;margin-bottom:14px"></div>
+              <div id="os-create-success" style="display:none;background:#d4edda;border:1.5px solid #c3e6cb;border-radius:8px;padding:10px 14px;font-size:13px;color:#155724;margin-bottom:14px"></div>
+              <button class="btn btn-primary" id="os-create-btn" onclick="createOfficeStaffAccount()">
+                <i class="fas fa-user-plus"></i> Create Account
+              </button>
+              <p style="font-size:12px;color:var(--text-light);margin-top:12px">
+                <i class="fas fa-info-circle" style="margin-right:4px"></i>
+                Staff logs in using their Login ID and password via the <strong>Office</strong> tab on the login page.
+              </p>
+            </div>
+
+            <!-- Staff List -->
+            <div class="card" style="padding:24px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+                <h4 style="color:var(--accent-dark)"><i class="fas fa-users" style="margin-right:8px;color:var(--accent)"></i>Office Staff Accounts</h4>
+                <button class="btn btn-sm btn-outline" onclick="loadOfficeStaffList()"><i class="fas fa-sync-alt"></i> Refresh</button>
+              </div>
+              <div id="os-staff-list">
+                <p style="font-size:13px;color:var(--text-light)">Click Refresh to load.</p>
+              </div>
+            </div>
+
           </div>
         </div>
 
