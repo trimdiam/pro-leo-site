@@ -663,15 +663,28 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 /* Sidebar toggle mobile */
 .sidebar-toggle {
   display: none; background: none; border: none;
-  font-size: 1.2rem; color: var(--accent); cursor: pointer; margin-right: 12px;
+  font-size: 1.2rem; color: var(--accent); cursor: pointer;
+  margin-right: 12px;
+  padding: 12px; min-width: 44px; min-height: 44px;
+  align-items: center; justify-content: center;
+  touch-action: manipulation;
 }
 @media (max-width: 768px) {
   .dash-main { margin-left: 0; }
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
-  .sidebar-toggle { display: block; }
+  .sidebar-toggle { display: flex; }
   .dash-content { padding: 18px; }
   .dash-stats { grid-template-columns: 1fr 1fr; }
+  /* Header: prevent cramping */
+  .dash-header { padding: 10px 14px; gap: 8px; flex-wrap: nowrap; }
+  .dash-header h2 { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+  .dash-header p  { display: none; }
+  /* Hide username/role text on mobile — keep avatar only */
+  .dash-username { display: none; }
+  .dash-role     { display: none; }
+  .dash-user { gap: 6px; flex-shrink: 0; }
+}
 }
 
 /* Syllabus */
