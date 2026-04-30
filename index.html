@@ -5726,6 +5726,103 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, quer
 </script>
 <script type="module">
 /* ================================================================
+   OFFICE STAFF — Fee Structure Logic (Step 2)
+================================================================ */
+import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, setDoc, deleteDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+(async () => {
+  let app;
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length > 0) { app = getApp(); break; }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  if (!app) return;
+  const db = getFirestore(app);
+
+  const CLS   = { PLG:'Play Group', SKG:'SKG', LKG:'LKG' };
+  const clsLabel = c => CLS[c] || (c ? 'Class ' + c : '—');
+  const fmtINR   = n => '₹' + (parseFloat(n)||0).toLocaleString('en-IN');
+  const ORDER    = ['PLG','SKG','LKG','1','2','3','4','5','6','7','8','9','10'];
+
+  window.officeStaffSaveFeeStructure = async function() {
+    const cls       = (document.getElementById('ofs-class')?.value       || '').trim();
+    const annualFee = parseFloat(document.getElementById('ofs-annual-fee')?.value || 0);
+    if (!cls)       { showToast('⚠️ Please select a class.'); return; }
+    if (!annualFee) { showToast('⚠️ Annual fee is required.'); return; }
+
+    const data = {
+      class:        cls,
+      annualFee,
+      tuition:      parseFloat(document.getElementById('ofs-tuition')?.value      ||0)||0,
+      examFee:      parseFloat(document.getElementById('ofs-exam-fee')?.value     ||0)||0,
+      sportsFee:    parseFloat(document.getElementById('ofs-sports-fee')?.value   ||0)||0,
+      annualCharge: parseFloat(document.getElementById('ofs-annual-charge')?.value||0)||0,
+      notes:        (document.getElementById('ofs-notes')?.value||'').trim(),
+      updatedAt:    new Date().toISOString(),
+      updatedBy:    window._officeStaffName || 'Office Staff'
+    };
+
+    try {
+      await setDoc(doc(db, 'fee_structure', cls), data, { merge: true });
+      showToast('✅ Fee structure saved for ' + clsLabel(cls));
+      // Clear form
+      ['ofs-class','ofs-annual-fee','ofs-tuition','ofs-exam-fee','ofs-sports-fee','ofs-annual-charge','ofs-notes']
+        .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+      officeStaffLoadFeeStructure();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.officeStaffLoadFeeStructure = async function() {
+    const el = document.getElementById('ofs-structure-list');
+    if (!el) return;
+    el.innerHTML = '<p style="font-size:13px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      const snap = await getDocs(collection(db, 'fee_structure'));
+      if (snap.empty) {
+        el.innerHTML = '<p style="font-size:13px;color:var(--text-light)">No fee structure set yet.</p>';
+        return;
+      }
+      const sorted = [...snap.docs].sort((a,b) => ORDER.indexOf(a.data().class) - ORDER.indexOf(b.data().class));
+      el.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Class</th><th>Annual Fee</th><th>Updated By</th><th></th></tr></thead><tbody>' +
+        sorted.map(d => {
+          const f = d.data();
+          return `<tr>
+            <td><strong>${clsLabel(f.class)}</strong>${f.notes ? `<div style="font-size:11px;color:var(--text-light)">${f.notes}</div>` : ''}</td>
+            <td style="font-weight:700;color:var(--accent-dark)">${fmtINR(f.annualFee)}</td>
+            <td style="font-size:12px;color:var(--text-light)">${f.updatedBy||'—'}</td>
+            <td>
+              <button onclick="officeStaffPrefillFeeForm('${f.class}',${f.annualFee||0},${f.tuition||0},${f.examFee||0},${f.sportsFee||0},${f.annualCharge||0})"
+                style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px" title="Edit">
+                <i class="fas fa-edit"></i>
+              </button>
+            </td>
+          </tr>`;
+        }).join('') + '</tbody></table></div>';
+    } catch(e) {
+      el.innerHTML = `<p style="color:var(--danger);font-size:13px">❌ ${e.message}</p>`;
+    }
+  };
+
+  window.officeStaffPrefillFeeForm = function(cls, annual, tuition, exam, sports, annualCharge) {
+    const set = (id, v) => { const e=document.getElementById(id); if(e) e.value=v; };
+    set('ofs-class', cls);       set('ofs-annual-fee', annual);
+    set('ofs-tuition', tuition); set('ofs-exam-fee', exam);
+    set('ofs-sports-fee', sports); set('ofs-annual-charge', annualCharge);
+  };
+
+  /* Auto-load when the section is opened */
+  const _prevShowDash = window.showDash;
+  window.showDash = function(prefix, sectionId, btn) {
+    _prevShowDash(prefix, sectionId, btn);
+    if (sectionId === 'o-fee-structure') officeStaffLoadFeeStructure();
+  };
+
+  console.log('[OfficeFeeStructure] ✅ Loaded');
+})();
+</script>
+<script type="module">
+/* ================================================================
    OFFICE STAFF ACCOUNT MANAGEMENT
    Admin can create / list / delete Office Staff logins
 ================================================================ */
