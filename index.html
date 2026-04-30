@@ -5580,6 +5580,153 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, quer
   };
 })();
 </script>
+<script type="module">
+/* ================================================================
+   FEE MANAGEMENT MODULE — Part 5 (Final)
+   Approve/Reject · Student Notifications · showDash hooks · loginAs
+================================================================ */
+import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, orderBy, limit, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+(async () => {
+  let app;
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length > 0) { app = getApp(); break; }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  if (!app) return;
+  const db = getFirestore(app);
+  const fmtINR = n => '₹' + (parseFloat(n)||0).toLocaleString('en-IN');
+
+  window.approveFeeTransaction = async function(txnId) {
+    if (!confirm('Approve this payment? Student balance will be officially updated.')) return;
+    const clickedBtn = document.activeElement;
+    if (clickedBtn) { clickedBtn.disabled=true; clickedBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i>'; }
+    try {
+      const txnRef  = doc(db,'fee_transactions',txnId);
+      const txnSnap = await getDoc(txnRef);
+      if (!txnSnap.exists())                   { showToast('❌ Transaction not found.'); return; }
+      if (txnSnap.data().status !== 'pending') { showToast('⚠️ Already processed.');   return; }
+      const txn = txnSnap.data();
+
+      await updateDoc(txnRef, {
+        status: 'approved', approvedBy: 'Admin', approvedAt: new Date().toISOString()
+      });
+
+      const sSnap = await getDocs(query(collection(db,'students'), where('studentId','==',txn.studentId), limit(1)));
+      let newBalance = txn.balanceAfter;
+      if (!sSnap.empty) {
+        const sRef  = doc(db,'students',sSnap.docs[0].id);
+        const sData = sSnap.docs[0].data();
+        const prevPaid   = parseFloat(sData.feePaid  ||0);
+        const feeTotal   = parseFloat(sData.feeTotal ||txn.feeTotal||0);
+        const newFeePaid = prevPaid + parseFloat(txn.amount);
+        newBalance       = Math.max(0, feeTotal - newFeePaid);
+        await updateDoc(sRef, {
+          feePaid: newFeePaid, feeBalance: newBalance,
+          feeTotal, updatedAt: new Date().toISOString()
+        });
+      }
+
+      await _triggerFeeNotification(txn.studentId, txn.amount, newBalance, txnId);
+      showToast('✅ Approved! Balance updated and notification sent.');
+      if (window.loadAdminFeeTransactions) loadAdminFeeTransactions();
+    } catch(e) {
+      showToast('❌ Approval failed: '+e.message);
+    } finally {
+      if (clickedBtn) { clickedBtn.disabled=false; clickedBtn.innerHTML='<i class="fas fa-check"></i> Approve'; }
+    }
+  };
+
+  window.rejectFeeTransaction = async function(txnId) {
+    if (!confirm('Reject this transaction? No balance change will occur.')) return;
+    try {
+      await updateDoc(doc(db,'fee_transactions',txnId), {
+        status:'rejected', rejectedBy:'Admin', rejectedAt: new Date().toISOString()
+      });
+      showToast('🗑️ Transaction rejected.');
+      if (window.loadAdminFeeTransactions) loadAdminFeeTransactions();
+    } catch(e) { showToast('❌ '+e.message); }
+  };
+
+  async function _triggerFeeNotification(studentId, amountPaid, remainingBalance, txnId) {
+    try {
+      const uSnap = await getDocs(query(collection(db,'users'), where('studentId','==',studentId), limit(1)));
+      if (uSnap.empty) return;
+      const uid = uSnap.docs[0].id;
+      const msg = `Thank you, your payment of ${fmtINR(amountPaid)} is completed. This is for your acknowledgement. Remaining Balance: ${fmtINR(remainingBalance)}.`;
+      await addDoc(collection(db,'users',uid,'notifications'), {
+        message: msg, type: 'fee_payment', icon: 'fas fa-check-circle',
+        amountPaid: parseFloat(amountPaid), remainingBalance: parseFloat(remainingBalance),
+        txnId, read: false, createdAt: new Date().toISOString()
+      });
+    } catch(e) { console.warn('[FeeNotif]',e.message); }
+  }
+
+  window.loadStudentFeeNotifications = async function(uid) {
+    if (!uid) return [];
+    try {
+      const snap = await getDocs(query(
+        collection(db,'users',uid,'notifications'),
+        where('type','==','fee_payment'), orderBy('createdAt','desc'), limit(5)
+      ));
+      return snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    } catch(e) { return []; }
+  };
+
+  window.markFeeNotifRead = async function(uid, notifId) {
+    try { await updateDoc(doc(db,'users',uid,'notifications',notifId), { read:true }); } catch(e) {}
+  };
+
+  /* ── Patch NC to surface fee payment confirmations ── */
+  const _origNC = window.loadStudentNotificationCenter;
+  window.loadStudentNotificationCenter = async function(user) {
+    if (_origNC) await _origNC(user);
+    if (!user?.uid) return;
+    try {
+      const notifs = await window.loadStudentFeeNotifications(user.uid);
+      const unread = notifs.find(n => !n.read);
+      if (!unread || !window.NotificationCenter) return;
+      window.NotificationCenter.render(undefined, [{
+        message: unread.message, isUrgent: false,
+        tag: 'Payment Confirmed', date: (unread.createdAt||'').split('T')[0]
+      }]);
+      setTimeout(() => window.markFeeNotifRead(user.uid, unread.id), 3000);
+    } catch(e) {}
+  };
+
+  /* ── showDash auto-load hooks ── */
+  const _prevShowDash = window.showDash;
+  window.showDash = function(prefix, sectionId, btn) {
+    _prevShowDash(prefix, sectionId, btn);
+    if (sectionId==='a-fee-structure')    { if(window.loadAdminFeeStructure)    loadAdminFeeStructure();    }
+    if (sectionId==='a-fee-transactions') { if(window.loadAdminFeeTransactions) loadAdminFeeTransactions(); }
+    if (sectionId==='o-dashboard')        { if(window.loadOfficeDashboardStats) loadOfficeDashboardStats(); }
+    if (sectionId==='o-reports')          { if(window.loadOfficeReports)        loadOfficeReports();        }
+    if (sectionId==='o-fee-collection') {
+      const pd=document.getElementById('pay-date');
+      if (pd && !pd.value) pd.value=new Date().toISOString().split('T')[0];
+    }
+  };
+
+  /* ── Extend loginAs for 'office' role ── */
+  const _prevLoginAs = window.loginAs;
+  window.loginAs = function(role) {
+    if (role==='office') {
+      window.isLoggedIn=true; window.currentUserRole='office'; window.currentRole='office';
+      const lp=document.getElementById('page-login'); if(lp) lp.classList.remove('active');
+      if (window.showPage) window.showPage('office-dash');
+      const auth=window._firebaseAuth;
+      if (auth?.currentUser && window.loadOfficePortal)
+        window.loadOfficePortal(auth.currentUser).catch(console.error);
+      return;
+    }
+    _prevLoginAs(role);
+  };
+
+  console.log('[FeeModule] ✅ Loaded — Office Portal · Fee Structure · Approvals · Notifications');
+})();
+</script>
 <script src="notification-center.js"></script>
 
 <!-- ================================================================
