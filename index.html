@@ -2498,7 +2498,7 @@
             </div>
 
             <!-- ── FEE LEDGER ── -->
-            <div class="card" id="fee-ledger-card" style="padding:24px;margin-bottom:20px">
+            <div class="card" id="fee-ledger-container" style="padding:24px;margin-bottom:20px;display:none">
               <div class="fee-bento-label" style="margin-bottom:14px"><i class="fas fa-book-open"></i> Fee Ledger</div>
 
               <!-- Breakdown table -->
@@ -5540,10 +5540,10 @@ import {
         listEl.innerHTML = '<div style="font-size:13px;color:var(--text-light);padding:10px">No students found.</div>';
         return;
       }
-      listEl.innerHTML = students.slice(0,15).map(s => {
+      window.__feeSearchStudents = students.slice(0, 15);
+      listEl.innerHTML = window.__feeSearchStudents.map((s, i) => {
         const initials = (s.name||'S').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-        const safe = JSON.stringify(JSON.stringify(s)).slice(1,-1).replace(/'/g,"&#39;");
-        return `<div class="fee-search-item" onclick="selectStudentForFee('${safe}')">
+        return `<div class="fee-search-item" data-idx="${i}" style="cursor:pointer">
           <div style="display:flex;align-items:center;gap:10px">
             <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-dark));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;flex-shrink:0">${initials}</div>
             <div>
@@ -5560,23 +5560,27 @@ import {
   }
 
   window.selectStudentForFee = async function(sStr) {
-    let s; try { s = JSON.parse(sStr); } catch(e) { return; }
+    console.log('Student clicked:', sStr ? JSON.parse(sStr)?.name : 'unknown');
+    let s; try { s = JSON.parse(sStr); } catch(e) { console.error('[FeeSelect] parse error', e); return; }
     window._feeSelectedStudent = s;
-    document.getElementById('fee-search-results').style.display = 'none';
-    document.getElementById('fee-student-panel').style.display  = 'block';
+    document.getElementById('fee-search-results').style.display  = 'none';
+    document.getElementById('fee-student-panel').style.display   = 'block';
+    document.getElementById('fee-ledger-container').style.display = 'none'; // reset while loading
     const initials = (s.name||'S').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const set = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
     const avEl = document.getElementById('fee-avatar'); if (avEl) avEl.textContent = initials;
     set('fee-sname', s.name||'—');
     set('fee-sinfo', `${s.studentId||'—'} · ${clsLabel(s.class)} · Roll No. ${s.rollNo||'—'}`);
     await _loadFeeDataForStudent(s);
+    document.getElementById('fee-ledger-container').style.display = 'block';
     document.getElementById('fee-student-panel')?.scrollIntoView({ behavior:'smooth', block:'start' });
   };
 
   window.clearFeeStudent = function() {
     window._feeSelectedStudent = null;
     window._feeSelectedFeeData = null;
-    document.getElementById('fee-student-panel').style.display = 'none';
+    document.getElementById('fee-student-panel').style.display    = 'none';
+    document.getElementById('fee-ledger-container').style.display = 'none';
     const si = document.getElementById('fee-student-search'); if (si) si.value = '';
     document.getElementById('fee-search-results').style.display = 'none';
   };
@@ -5638,6 +5642,15 @@ import {
     } catch(e) { console.warn('[FeeData]',e.message); showToast('⚠️ Could not load fee data: '+e.message); }
   }
   window._loadFeeDataForStudent = _loadFeeDataForStudent;
+
+  // Event delegation — handles dynamically rendered student cards
+  document.addEventListener('click', function(e) {
+    const item = e.target.closest('.fee-search-item[data-idx]');
+    if (!item) return;
+    const idx = parseInt(item.dataset.idx, 10);
+    const students = window.__feeSearchStudents || [];
+    if (students[idx]) window.selectStudentForFee(JSON.stringify(students[idx]));
+  });
 
 })();
 </script>
