@@ -211,6 +211,27 @@
       line-height: 1.6;
       margin: 0;
     }
+
+    /* ── ADMISSION PRINT FRAME ───────────────────────────────────── */
+    @media screen { #adm-print-frame { display: none !important; } }
+    @media print {
+      /* Hide everything; show only the print frame */
+      body * { visibility: hidden; }
+      #adm-print-frame, #adm-print-frame * { visibility: visible; }
+      #adm-print-frame {
+        position: absolute; left: 0; top: 0;
+        width: 100%; padding: 32px; box-sizing: border-box;
+        background: #fff; font-family: Arial, sans-serif; color: #1e293b;
+      }
+      #adm-print-frame h2  { text-align:center; color:#4f46e5; margin:0 0 4px; font-size:18px; }
+      #adm-print-frame h3  { text-align:center; color:#64748b; margin:0 0 22px; font-size:13px; font-weight:500; }
+      #adm-print-frame h4  { color:#4f46e5; font-size:11px; text-transform:uppercase; letter-spacing:1px; margin:18px 0 5px; border-bottom:1.5px solid #e2e8f0; padding-bottom:3px; }
+      #adm-print-frame table { width:100%; border-collapse:collapse; margin-top:4px; }
+      #adm-print-frame td  { padding:6px 10px; border:1px solid #e2e8f0; font-size:11px; vertical-align:top; }
+      #adm-print-frame .pf-label{ background:#f8fafc; font-weight:600; width:28%; color:#475569; }
+      #adm-print-frame ul  { margin:5px 0 0; padding-left:16px; font-size:11px; line-height:1.7; }
+      #adm-print-frame .pf { margin-top:28px; font-size:9px; color:#94a3b8; text-align:center; border-top:1px solid #e2e8f0; padding-top:8px; }
+    }
   </style>
   <style>
     /* ── Skeleton animation ── */
@@ -4264,6 +4285,9 @@
           </td>
         </tr>`;
       }).join('');
+      // Cache all admission data so Print can fire synchronously (no popup blocking)
+      window.__adminAdmCache = {};
+      snap.docs.forEach(d => { window.__adminAdmCache[d.id] = d.data(); });
       const countEl = document.getElementById('a-admission-count');
       if (countEl) countEl.textContent = snap.docs.filter(d=>d.data().status==='Pending').length;
     } catch(e) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
@@ -4271,10 +4295,12 @@
 
   window.adminPrintAdmission = async function(docId) {
     if (!docId) { showToast('⚠️ Missing application id.'); return; }
+    if (!window._printAdmissionPDF) { showToast('❌ Print module not loaded.'); return; }
+    const cached = (window.__adminAdmCache || {})[docId];
+    if (cached) { window._printAdmissionPDF(cached); return; }
     try {
       const snap = await getDoc(doc(db, 'admissions', docId));
       if (!snap.exists()) { showToast('❌ Application not found.'); return; }
-      if (!window._printAdmissionPDF) { showToast('❌ Print module not loaded.'); return; }
       window._printAdmissionPDF(snap.data());
     } catch(e) { showToast('❌ ' + e.message); }
   };
@@ -6943,6 +6969,8 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   // ── Shared PDF print builder — reused by Office and Admin portals ──
   window._printAdmissionPDF = function(a) {
     if (!a) { showToast('⚠️ No application data.'); return; }
+    const frame = document.getElementById('adm-print-frame');
+    if (!frame) { showToast('⚠️ Print frame missing.'); return; }
     const esc = v => (v == null ? '—' : String(v).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])));
     const date = a.submittedAt?.toDate
       ? a.submittedAt.toDate().toLocaleDateString('en-IN')
@@ -6951,68 +6979,53 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
     const m = a.mother || {};
     const docs = a.documents || [];
     const docsHtml = docs.length
-      ? docs.map(d => `<li><strong>${esc(d.label || d.name)}</strong> — <a href="${esc(d.url)}" target="_blank">${esc(d.name)}</a></li>`).join('')
-      : '<li style="color:#94a3b8">No documents attached.</li>';
+      ? docs.map(d => `<li><strong>${esc(d.label || d.name)}</strong> — ${esc(d.name)}</li>`).join('')
+      : '<li>No documents attached.</li>';
     const name = esc(a.fullName || a.studentName || '—');
     const cls  = esc(a.classApplied || a.class || '—');
-    const win = window.open('', '_blank');
-    win.document.write(`<!DOCTYPE html><html><head><title>Admission Form — ${name}</title>
-<style>
-  body{font-family:Arial,sans-serif;padding:40px;color:#1e293b;max-width:780px;margin:0 auto}
-  h2{text-align:center;color:#4f46e5;margin:0 0 4px}
-  h3{text-align:center;color:#64748b;margin:0 0 24px;font-weight:500}
-  h4{color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px}
-  table{width:100%;border-collapse:collapse;margin-top:6px}
-  td{padding:8px 12px;border:1px solid #e2e8f0;font-size:13px;vertical-align:top}
-  .label{background:#f8fafc;font-weight:600;width:30%;color:#475569}
-  ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7}
-  a{color:#4f46e5;text-decoration:none}
-  .footer{margin-top:40px;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:12px}
-  @media print { body{padding:20px} a{color:#1e293b;text-decoration:none} }
-</style>
-</head><body>
-<h2>St. Francis De Sales Secondary School</h2>
-<h3>Admission Application Form</h3>
+    frame.innerHTML = `
+<h2 style="text-align:center;color:#4f46e5;margin:0 0 4px">St. Francis De Sales Secondary School</h2>
+<h3 style="text-align:center;color:#64748b;margin:0 0 24px;font-weight:500">Admission Application Form</h3>
 
-<h4>Student Information</h4>
-<table>
-  <tr><td class="label">Full Name</td><td>${name}</td><td class="label">Class Applied</td><td>${cls}</td></tr>
-  <tr><td class="label">Date of Birth</td><td>${esc(a.dob)}</td><td class="label">Gender</td><td>${esc(a.gender)}</td></tr>
-  <tr><td class="label">Academic Year</td><td>${esc(a.year)}</td><td class="label">Previous School</td><td>${esc(a.previousSchool)}</td></tr>
-  <tr><td class="label">Address</td><td colspan="3">${esc(a.address)}</td></tr>
-  <tr><td class="label">Medical / Special Needs</td><td colspan="3">${esc(a.medical) || '—'}</td></tr>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Student Information</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:6px">
+  <tr><td class="pf-label">Full Name</td><td>${name}</td><td class="pf-label">Class Applied</td><td>${cls}</td></tr>
+  <tr><td class="pf-label">Date of Birth</td><td>${esc(a.dob)}</td><td class="pf-label">Gender</td><td>${esc(a.gender)}</td></tr>
+  <tr><td class="pf-label">Academic Year</td><td>${esc(a.year)}</td><td class="pf-label">Previous School</td><td>${esc(a.previousSchool)}</td></tr>
+  <tr><td class="pf-label">Address</td><td colspan="3">${esc(a.address)}</td></tr>
+  <tr><td class="pf-label">Medical / Special Needs</td><td colspan="3">${esc(a.medical) || '—'}</td></tr>
 </table>
 
-<h4>Primary Contact</h4>
-<table>
-  <tr><td class="label">Name</td><td>${esc(a.parentName)}</td><td class="label">Relation</td><td>${esc(a.relation)}</td></tr>
-  <tr><td class="label">Contact No.</td><td>${esc(a.contact)}</td><td class="label">Email</td><td>${esc(a.email)}</td></tr>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Primary Contact</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:6px">
+  <tr><td class="pf-label">Name</td><td>${esc(a.parentName)}</td><td class="pf-label">Relation</td><td>${esc(a.relation)}</td></tr>
+  <tr><td class="pf-label">Contact No.</td><td>${esc(a.contact)}</td><td class="pf-label">Email</td><td>${esc(a.email)}</td></tr>
 </table>
 
-<h4>Father's Details</h4>
-<table>
-  <tr><td class="label">Name</td><td>${esc(f.name)}</td><td class="label">Occupation</td><td>${esc(f.occupation)}</td></tr>
-  <tr><td class="label">Contact No.</td><td colspan="3">${esc(f.contact)}</td></tr>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Father's Details</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:6px">
+  <tr><td class="pf-label">Name</td><td>${esc(f.name)}</td><td class="pf-label">Occupation</td><td>${esc(f.occupation)}</td></tr>
+  <tr><td class="pf-label">Contact No.</td><td colspan="3">${esc(f.contact)}</td></tr>
 </table>
 
-<h4>Mother's Details</h4>
-<table>
-  <tr><td class="label">Name</td><td>${esc(m.name)}</td><td class="label">Occupation</td><td>${esc(m.occupation)}</td></tr>
-  <tr><td class="label">Contact No.</td><td colspan="3">${esc(m.contact)}</td></tr>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Mother's Details</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:6px">
+  <tr><td class="pf-label">Name</td><td>${esc(m.name)}</td><td class="pf-label">Occupation</td><td>${esc(m.occupation)}</td></tr>
+  <tr><td class="pf-label">Contact No.</td><td colspan="3">${esc(m.contact)}</td></tr>
 </table>
 
-<h4>Submitted Documents</h4>
-<ul>${docsHtml}</ul>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Submitted Documents</h4>
+<ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7">${docsHtml}</ul>
 
-<h4>Application Meta</h4>
-<table>
-  <tr><td class="label">Status</td><td>${esc(a.status)}</td><td class="label">Submitted On</td><td>${esc(date)}</td></tr>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Application Meta</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:6px">
+  <tr><td class="pf-label">Status</td><td>${esc(a.status)}</td><td class="pf-label">Submitted On</td><td>${esc(date)}</td></tr>
 </table>
 
-<div class="footer">St. Francis De Sales Secondary School · Laitkor, Meghalaya · Generated ${new Date().toLocaleString('en-IN')}</div>
-<script>window.onload=function(){setTimeout(function(){window.print();},250);}<\/script>
-</body></html>`);
-    win.document.close();
+<div style="margin-top:40px;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:12px">
+  St. Francis De Sales Secondary School · Laitkor, Meghalaya · Generated ${new Date().toLocaleString('en-IN')}
+</div>`;
+    window.print();
   };
 
   // Office portal wrapper — uses currentAdmissionData
@@ -7391,5 +7404,8 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
 
   </div>
 </div>
+
+<!-- Admission print frame — populated by _printAdmissionPDF(), shown only @media print -->
+<div id="adm-print-frame" aria-hidden="true"></div>
 </body>
 </html>
