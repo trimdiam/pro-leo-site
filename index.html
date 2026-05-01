@@ -4282,6 +4282,152 @@
     }
   }
 
+  // ================================================================
+  //  ADMIN — Website Management (Hero, Stats, Announcement, Cards)
+  //  Single source of truth: Firestore public_settings/homepage
+  // ================================================================
+  const WM_MAX_CARDS = 8;
+
+  function _renderFeatureCardRow(card, idx) {
+    const safe = v => (v == null ? '' : String(v).replace(/"/g, '&quot;'));
+    return `<div class="card wm-card-row" style="padding:14px;background:var(--bg);border:1px solid var(--border)" data-idx="${idx}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px">
+        <strong style="font-size:13px;color:var(--accent-dark)"><i class="fas fa-grip-vertical" style="color:var(--text-light);margin-right:6px"></i>Card ${idx + 1}</strong>
+        <button class="btn btn-sm btn-danger" type="button" onclick="removeFeatureCardRow(${idx})" style="padding:4px 10px;font-size:11px"><i class="fas fa-trash"></i> Remove</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" class="wm-card-title" value="${safe(card.title)}" placeholder="e.g. Academic Excellence">
+        </div>
+        <div class="form-group">
+          <label>Icon (FontAwesome class, optional)</label>
+          <input type="text" class="wm-card-icon" value="${safe(card.icon)}" placeholder="e.g. fa-graduation-cap">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea class="wm-card-desc" rows="2" placeholder="Short description of this tradition..." style="resize:vertical">${safe(card.description)}</textarea>
+      </div>
+    </div>`;
+  }
+
+  function _refreshFeatureCardsUI(cards) {
+    const list  = document.getElementById('wm-feature-cards-list');
+    const empty = document.getElementById('wm-feature-empty');
+    if (!list) return;
+    if (!cards.length) {
+      list.innerHTML = `<div style="font-size:13px;color:var(--text-light);text-align:center;padding:18px;border:1px dashed var(--border);border-radius:10px" id="wm-feature-empty">No cards yet. Click <strong>+ Add Card</strong> to create one.</div>`;
+      return;
+    }
+    list.innerHTML = cards.map((c, i) => _renderFeatureCardRow(c, i)).join('');
+  }
+
+  // Cards live in window state; UI is always built from this array
+  window._wmFeatureCards = [];
+
+  function _captureFeatureCardsFromUI() {
+    const rows = document.querySelectorAll('#wm-feature-cards-list .wm-card-row');
+    const cards = [];
+    rows.forEach(row => {
+      const title = row.querySelector('.wm-card-title')?.value.trim() || '';
+      const icon  = row.querySelector('.wm-card-icon')?.value.trim()  || '';
+      const desc  = row.querySelector('.wm-card-desc')?.value.trim()  || '';
+      if (title || desc) cards.push({ title, icon, description: desc });
+    });
+    return cards;
+  }
+
+  window.addFeatureCardRow = function() {
+    window._wmFeatureCards = _captureFeatureCardsFromUI();
+    if (window._wmFeatureCards.length >= WM_MAX_CARDS) {
+      showToast(`⚠️ Maximum of ${WM_MAX_CARDS} cards.`);
+      return;
+    }
+    window._wmFeatureCards.push({ title: '', icon: '', description: '' });
+    _refreshFeatureCardsUI(window._wmFeatureCards);
+  };
+
+  window.removeFeatureCardRow = function(idx) {
+    window._wmFeatureCards = _captureFeatureCardsFromUI();
+    window._wmFeatureCards.splice(idx, 1);
+    _refreshFeatureCardsUI(window._wmFeatureCards);
+  };
+
+  window.loadWebsiteContent = async function() {
+    try {
+      const snap = await getDoc(doc(db, 'public_settings', 'homepage'));
+      const data = snap.exists() ? snap.data() : {};
+      const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = (v == null ? '' : v); };
+
+      // Hero
+      set('wm-hero-headline', data.hero?.headline);
+      set('wm-hero-sub',      data.hero?.subheadline);
+
+      // Stats (4 slots)
+      const stats = Array.isArray(data.stats) ? data.stats : [];
+      for (let i = 1; i <= 4; i++) {
+        const s = stats[i - 1] || {};
+        set(`wm-stat${i}-label`, s.label);
+        set(`wm-stat${i}-value`, s.value);
+      }
+
+      // Announcement
+      set('wm-ann-text', data.announcement?.text);
+      set('wm-ann-tag',  data.announcement?.tag);
+      set('wm-ann-date', data.announcement?.date);
+
+      // Feature cards
+      window._wmFeatureCards = Array.isArray(data.featureCards) ? data.featureCards : [];
+      _refreshFeatureCardsUI(window._wmFeatureCards);
+
+      if (snap.exists()) showToast('✅ Website content loaded.');
+    } catch(e) {
+      console.error('[WebsiteCMS] load failed', e);
+      showToast('❌ Load failed: ' + e.message);
+    }
+  };
+
+  window.saveWebsiteContent = async function() {
+    const get = id => (document.getElementById(id)?.value || '').trim();
+    const num = id => {
+      const n = parseInt(document.getElementById(id)?.value, 10);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const payload = {
+      hero: {
+        headline:    get('wm-hero-headline'),
+        subheadline: get('wm-hero-sub')
+      },
+      stats: [
+        { label: get('wm-stat1-label'), value: num('wm-stat1-value') },
+        { label: get('wm-stat2-label'), value: num('wm-stat2-value') },
+        { label: get('wm-stat3-label'), value: num('wm-stat3-value') },
+        { label: get('wm-stat4-label'), value: num('wm-stat4-value') }
+      ].filter(s => s.label || s.value),
+      announcement: {
+        text: get('wm-ann-text'),
+        tag:  get('wm-ann-tag').toUpperCase(),
+        date: get('wm-ann-date')
+      },
+      featureCards: _captureFeatureCardsFromUI(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const btn = document.getElementById('wm-save-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+    try {
+      await setDoc(doc(db, 'public_settings', 'homepage'), payload, { merge: true });
+      showToast('✅ Website content saved — homepage will refresh on next visit.');
+    } catch(e) {
+      console.error('[WebsiteCMS] save failed', e);
+      showToast('❌ Save failed: ' + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Save Website Changes'; }
+    }
+  };
+
   window.saveHomepageContent = async function() {
     const about      = (document.getElementById('hp-about')?.value      || '').trim();
     const mission    = (document.getElementById('hp-mission')?.value    || '').trim();
@@ -4387,6 +4533,7 @@
     if (sectionId === 'a-leaders')       loadAdminLeaders();
     if (sectionId === 'a-gallery')       loadAdminGallery();
     if (sectionId === 'a-homepage')      { loadHomepageContent(); }
+    if (sectionId === 'a-website-mgmt')  { loadWebsiteContent(); }
     if (sectionId === 'a-admissions')    { loadAdmissions(); loadAdmissionNotice(); }
     if (sectionId === 'a-contacts')      loadAdminContacts();
     if (sectionId === 'a-holidays')      loadHolidays();
