@@ -89,6 +89,128 @@
       .sidebar.open { transform: translateX(0); }
       .dash-main { margin-left: 0 !important; width: 100% !important; }
     }
+
+    /* ============================================================
+       FEATURED ANNOUNCEMENT — animated gradient border + glowing NEW tag
+       ============================================================ */
+    #home-featured-announcement {
+      position: relative;
+      max-width: 1100px;
+      margin: 36px auto 0;
+      padding: 28px 26px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 12px 40px rgba(139, 111, 71, 0.12);
+      overflow: hidden;
+      isolation: isolate;
+    }
+    #home-featured-announcement::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      z-index: -1;
+      border-radius: 20px;
+      background: conic-gradient(from 0deg, #6366f1, #ec4899, #f59e0b, #10b981, #6366f1);
+      animation: hf-border-spin 6s linear infinite;
+      filter: blur(0.5px);
+    }
+    #home-featured-announcement::after {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      z-index: -1;
+      border-radius: 16px;
+      background: rgba(255, 250, 244, 0.96);
+    }
+    @keyframes hf-border-spin {
+      to { transform: rotate(1turn); }
+    }
+    .hf-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .hf-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-family: var(--font-body, sans-serif);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #fff;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+      animation: hf-tag-pulse 1.8s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes hf-tag-pulse {
+      0%   { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0.65); transform: scale(1); }
+      70%  { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);   transform: scale(1.04); }
+      100% { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0);   transform: scale(1); }
+    }
+    .hf-text {
+      flex: 1;
+      min-width: 220px;
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--text, #1e293b);
+      font-weight: 500;
+    }
+    .hf-date {
+      font-size: 12px;
+      color: var(--text-light, #64748b);
+      white-space: nowrap;
+    }
+    @media (max-width: 600px) {
+      #home-featured-announcement { padding: 20px 18px; margin: 24px 16px 0; }
+      .hf-text { font-size: 14px; }
+    }
+
+    /* Stat counters — animated entrance */
+    .stat-num { transition: color .3s ease; }
+    .stat-num.counting { color: var(--accent-dark, #4f46e5); }
+
+    /* Feature cards (Tradition of Excellence) container */
+    #home-feature-cards .feature-card {
+      background: rgba(255,255,255,0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(139,111,71,0.18);
+      border-radius: 16px;
+      padding: 26px 22px;
+      transition: transform .3s ease, box-shadow .3s ease;
+    }
+    #home-feature-cards .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 40px rgba(139,111,71,0.14);
+    }
+    #home-feature-cards .feature-card-icon {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent, #8B6F47), var(--accent-dark, #6B5030));
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      margin-bottom: 14px;
+    }
+    #home-feature-cards .feature-card-title {
+      font-family: var(--font-head, serif);
+      font-size: 1.15rem;
+      color: var(--accent-dark, #4f46e5);
+      margin: 0 0 8px;
+    }
+    #home-feature-cards .feature-card-desc {
+      font-size: 14px;
+      color: var(--text-light, #64748b);
+      line-height: 1.6;
+      margin: 0;
+    }
   </style>
   <style>
     /* ── Skeleton animation ── */
@@ -181,8 +303,8 @@
   <section class="hero">
     <div class="hero-content">
       <div class="hero-badge"><i class="fas fa-cross"></i> Est. 1st March, 2005 &nbsp;|&nbsp; Excellence in Education</div>
-      <h1>St. Francis School<br><span class="text-accent">Laitkor</span></h1>
-      <p class="hero-motto">"Learning to know, to grow, to love, to care and to serve"</p>
+      <h1 id="home-hero-headline">St. Francis School<br><span class="text-accent">Laitkor</span></h1>
+      <p class="hero-motto" id="home-hero-sub">"Learning to know, to grow, to love, to care and to serve"</p>
       <div class="hero-buttons">
         <button class="btn btn-primary" onclick="handleApplyClick()"><i class="fas fa-file-alt"></i> Apply for Admission</button>
         <button class="btn btn-outline" onclick="showPage('about')"><i class="fas fa-info-circle"></i> About Our School</button>
@@ -191,6 +313,15 @@
     </div>
     <div class="hero-scroll"><i class="fas fa-chevron-down"></i></div>
   </section>
+
+  <!-- Featured Announcement (CMS-driven, hidden until populated) -->
+  <div id="home-featured-announcement" style="display:none">
+    <div class="hf-row">
+      <span class="hf-tag" id="home-ann-tag"><i class="fas fa-bolt"></i> <span>NEW</span></span>
+      <p class="hf-text" id="home-ann-text">Loading announcement…</p>
+      <span class="hf-date" id="home-ann-date"></span>
+    </div>
+  </div>
 
   <!-- Announcements Ticker — real-time from Firestore -->
   <div class="ticker">
@@ -221,13 +352,13 @@
   </div>
 
   <!-- Stats Bar -->
-  <div class="stats-bar">
+  <div class="stats-bar" id="home-stats-bar">
     <div class="stats-inner">
-      <div class="stat-item"><div class="stat-num" id="home-stat-students">1200+</div><div class="stat-label">Students Enrolled</div></div>
-      <div class="stat-item"><div class="stat-num" id="home-stat-teachers">65+</div><div class="stat-label">Qualified Teachers</div></div>
-      <div class="stat-item"><div class="stat-num">45+</div><div class="stat-label">Years of Excellence</div></div>
-      <div class="stat-item"><div class="stat-num">98%</div><div class="stat-label">Board Pass Rate</div></div>
-      <div class="stat-item"><div class="stat-num">20+</div><div class="stat-label">Clubs & Activities</div></div>
+      <div class="stat-item"><div class="stat-num" id="home-stat-1" data-default="1200">1200+</div><div class="stat-label" id="home-stat-1-label">Students Enrolled</div></div>
+      <div class="stat-item"><div class="stat-num" id="home-stat-2" data-default="65">65+</div><div class="stat-label" id="home-stat-2-label">Qualified Teachers</div></div>
+      <div class="stat-item"><div class="stat-num" id="home-stat-3" data-default="45">45+</div><div class="stat-label" id="home-stat-3-label">Years of Excellence</div></div>
+      <div class="stat-item"><div class="stat-num" id="home-stat-4" data-default="98">98%</div><div class="stat-label" id="home-stat-4-label">Board Pass Rate</div></div>
+      <div class="stat-item"><div class="stat-num">20+</div><div class="stat-label">Clubs &amp; Activities</div></div>
     </div>
   </div>
 
@@ -236,6 +367,9 @@
     <p class="section-sub">Why Choose Us</p>
     <h2 class="section-title">A Tradition of Excellence</h2>
     <div class="divider"></div>
+    <!-- CMS-driven feature cards (Step 4 populates from public_settings/homepage.featureCards) -->
+    <div class="grid-3" id="home-feature-cards" style="display:none"></div>
+    <!-- Fallback: legacy why-choose-us collection (used until CMS cards are saved) -->
     <div class="grid-3" id="why-choose-us-grid">
       <div style="background:rgba(139,111,71,.07);border-radius:16px;height:180px;animation:skeleton-pulse 1.2s ease-in-out infinite"></div>
       <div style="background:rgba(139,111,71,.07);border-radius:16px;height:180px;animation:skeleton-pulse 1.2s ease-in-out infinite;animation-delay:.15s"></div>
@@ -923,6 +1057,43 @@
       <div class="form-group"><label>Previous School (if applicable)</label><input type="text" id="adm-prev-school" placeholder="Name of previous school"></div>
       <div class="form-group"><label>Any Special Needs / Medical Conditions</label><textarea id="adm-medical" placeholder="Leave blank if none" style="min-height:70px"></textarea></div>
 
+      <!-- ── FATHER'S DETAILS ── -->
+      <h4 style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:20px 0 14px"><i class="fas fa-male"></i> Father's Details</h4>
+      <div class="form-row">
+        <div class="form-group"><label>Father's Name</label><input type="text" id="adm-father-name" placeholder="Full Name"></div>
+        <div class="form-group"><label>Occupation</label><input type="text" id="adm-father-occupation" placeholder="e.g. Teacher, Farmer"></div>
+      </div>
+      <div class="form-group"><label>Contact Number</label><input type="tel" id="adm-father-contact" placeholder="+91 XXXXX XXXXX"></div>
+
+      <!-- ── MOTHER'S DETAILS ── -->
+      <h4 style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:20px 0 14px"><i class="fas fa-female"></i> Mother's Details</h4>
+      <div class="form-row">
+        <div class="form-group"><label>Mother's Name</label><input type="text" id="adm-mother-name" placeholder="Full Name"></div>
+        <div class="form-group"><label>Occupation</label><input type="text" id="adm-mother-occupation" placeholder="e.g. Homemaker, Nurse"></div>
+      </div>
+      <div class="form-group"><label>Contact Number</label><input type="tel" id="adm-mother-contact" placeholder="+91 XXXXX XXXXX"></div>
+
+      <!-- ── DOCUMENT UPLOADS ── -->
+      <h4 style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:20px 0 14px"><i class="fas fa-paperclip"></i> Document Uploads</h4>
+      <p style="font-size:12px;color:var(--text-light);margin:-6px 0 14px">Accepted: JPG, PNG, PDF — max 5 MB each.</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Student Photo</label>
+          <input type="file" id="adm-doc-photo" accept="image/jpeg,image/png" style="padding:10px;border:1px dashed var(--border);border-radius:8px;background:var(--glass-bg);width:100%;box-sizing:border-box">
+          <small style="font-size:11px;color:var(--text-light)">Recent passport-size photo (JPG/PNG)</small>
+        </div>
+        <div class="form-group">
+          <label>Birth Certificate</label>
+          <input type="file" id="adm-doc-birth" accept="image/jpeg,image/png,application/pdf" style="padding:10px;border:1px dashed var(--border);border-radius:8px;background:var(--glass-bg);width:100%;box-sizing:border-box">
+          <small style="font-size:11px;color:var(--text-light)">Scanned copy (JPG/PNG/PDF)</small>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Previous Marksheet (if applicable)</label>
+        <input type="file" id="adm-doc-marksheet" accept="image/jpeg,image/png,application/pdf" style="padding:10px;border:1px dashed var(--border);border-radius:8px;background:var(--glass-bg);width:100%;box-sizing:border-box">
+        <small style="font-size:11px;color:var(--text-light)">Most recent academic marksheet (JPG/PNG/PDF)</small>
+      </div>
+
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px">
         <button class="btn btn-primary" onclick="submitAdmissionForm()"><i class="fas fa-paper-plane"></i> Submit Application</button>
         <button class="btn btn-outline" onclick="showPage('home')"><i class="fas fa-home"></i> Back to Home</button>
@@ -1417,6 +1588,7 @@
         <button onclick="showDash('a','a-leaders',this)"><i class="fas fa-user-tie"></i> School Leaders</button>
         <button onclick="showDash('a','a-gallery',this)"><i class="fas fa-images"></i> Gallery</button>
         <button onclick="showDash('a','a-homepage',this)"><i class="fas fa-globe"></i> Homepage Content</button>
+        <button onclick="showDash('a','a-website-mgmt',this)"><i class="fas fa-paint-brush"></i> Website Management</button>
         <button onclick="showDash('a','a-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('a','a-contacts',this)"><i class="fas fa-envelope"></i> Contacts</button>
         <button onclick="showDash('a','a-holidays',this)"><i class="fas fa-calendar-times"></i> Holidays</button>
@@ -2248,6 +2420,141 @@
           </div>
         </div>
 
+        <!-- ── WEBSITE MANAGEMENT (Dynamic Homepage CMS) ── -->
+        <div id="a-website-mgmt" class="dash-section">
+          <div class="card" style="padding:24px;margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:8px">
+              <div>
+                <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-paint-brush" style="margin-right:8px;color:var(--accent)"></i>Website Management</h4>
+                <p style="font-size:13px;color:var(--text-light);margin:6px 0 0">Edit the public homepage hero, stats, announcements, and feature cards. Saved instantly to the live site.</p>
+              </div>
+              <button class="btn btn-primary" onclick="saveWebsiteContent()" id="wm-save-btn">
+                <i class="fas fa-cloud-upload-alt"></i> Save Website Changes
+              </button>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:20px">
+
+            <!-- HERO SECTION -->
+            <div class="card" style="padding:22px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent-dark));display:flex;align-items:center;justify-content:center;color:#fff"><i class="fas fa-bullhorn"></i></div>
+                <h5 style="margin:0;color:var(--accent-dark);font-family:var(--font-head)">Hero Section</h5>
+              </div>
+              <div class="form-group">
+                <label>Main Headline</label>
+                <input type="text" id="wm-hero-headline" placeholder="e.g. Excellence in Education, Rooted in Tradition" maxlength="120">
+              </div>
+              <div class="form-group">
+                <label>Subheadline / Tagline</label>
+                <textarea id="wm-hero-sub" rows="3" placeholder="e.g. Nurturing minds since 1956 — St. Francis De Sales Secondary School" style="resize:vertical"></textarea>
+              </div>
+            </div>
+
+            <!-- STAT COUNTERS -->
+            <div class="card" style="padding:22px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;color:#fff"><i class="fas fa-chart-line"></i></div>
+                <h5 style="margin:0;color:var(--accent-dark);font-family:var(--font-head)">Stat Counters</h5>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Stat 1 — Label</label>
+                  <input type="text" id="wm-stat1-label" placeholder="e.g. Students Enrolled">
+                </div>
+                <div class="form-group">
+                  <label>Stat 1 — Value</label>
+                  <input type="number" id="wm-stat1-value" placeholder="e.g. 1200">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Stat 2 — Label</label>
+                  <input type="text" id="wm-stat2-label" placeholder="e.g. Qualified Teachers">
+                </div>
+                <div class="form-group">
+                  <label>Stat 2 — Value</label>
+                  <input type="number" id="wm-stat2-value" placeholder="e.g. 65">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Stat 3 — Label</label>
+                  <input type="text" id="wm-stat3-label" placeholder="e.g. Years of Excellence">
+                </div>
+                <div class="form-group">
+                  <label>Stat 3 — Value</label>
+                  <input type="number" id="wm-stat3-value" placeholder="e.g. 68">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Stat 4 — Label</label>
+                  <input type="text" id="wm-stat4-label" placeholder="e.g. Awards Won">
+                </div>
+                <div class="form-group">
+                  <label>Stat 4 — Value</label>
+                  <input type="number" id="wm-stat4-value" placeholder="e.g. 42">
+                </div>
+              </div>
+            </div>
+
+            <!-- ANNOUNCEMENT -->
+            <div class="card" style="padding:22px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#dc2626);display:flex;align-items:center;justify-content:center;color:#fff"><i class="fas fa-bell"></i></div>
+                <h5 style="margin:0;color:var(--accent-dark);font-family:var(--font-head)">Announcement</h5>
+              </div>
+              <div class="form-group">
+                <label>Announcement Text</label>
+                <textarea id="wm-ann-text" rows="3" placeholder="e.g. Admissions for 2026–27 are now open. Apply by 31 May." style="resize:vertical"></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Tag</label>
+                  <input type="text" id="wm-ann-tag" placeholder="e.g. NEW, URGENT" maxlength="20" style="text-transform:uppercase;font-weight:700">
+                </div>
+                <div class="form-group">
+                  <label>Date</label>
+                  <input type="date" id="wm-ann-date">
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:6px">
+                <i class="fas fa-info-circle" style="margin-right:4px"></i>Leave the announcement text blank to hide it from the homepage.
+              </div>
+            </div>
+
+            <!-- FEATURE CARDS -->
+            <div class="card" style="padding:22px;grid-column:1/-1">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;color:#fff"><i class="fas fa-star"></i></div>
+                  <div>
+                    <h5 style="margin:0;color:var(--accent-dark);font-family:var(--font-head)">Tradition of Excellence — Feature Cards</h5>
+                    <small style="color:var(--text-light);font-size:12px">Add up to 8 cards. They appear on the public homepage in this order.</small>
+                  </div>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="addFeatureCardRow()" id="wm-add-card-btn">
+                  <i class="fas fa-plus"></i> Add Card
+                </button>
+              </div>
+              <div id="wm-feature-cards-list" style="display:flex;flex-direction:column;gap:12px">
+                <!-- Rows injected by addFeatureCardRow() -->
+                <div style="font-size:13px;color:var(--text-light);text-align:center;padding:18px;border:1px dashed var(--border);border-radius:10px" id="wm-feature-empty">
+                  No cards yet. Click <strong>+ Add Card</strong> to create one.
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end">
+            <button class="btn btn-outline" onclick="loadWebsiteContent()"><i class="fas fa-sync-alt"></i> Reload from Server</button>
+            <button class="btn btn-primary" onclick="saveWebsiteContent()"><i class="fas fa-cloud-upload-alt"></i> Save Website Changes</button>
+          </div>
+        </div>
+
         <!-- ── ADMISSIONS MANAGEMENT ── -->
         <div id="a-admissions" class="dash-section">
           <div class="card" style="padding:24px;margin-bottom:24px">
@@ -2285,6 +2592,7 @@
                 <label>Assign Class / Section *</label>
                 <select id="approve-class-select" style="padding:10px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:14px;width:100%">
                   <option value="">-- Select Class --</option>
+                  <option value="PG">Play Group</option>
                   <option value="LKG">LKG</option>
                   <option value="KG">KG (Kindergarten)</option>
                   <option value="1">Grade 1</option>
@@ -2315,6 +2623,7 @@
             </div>
             <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
               <button class="btn btn-primary" onclick="confirmApproveAdmission()" style="flex:1"><i class="fas fa-check"></i> Confirm Approval</button>
+              <button class="btn btn-outline" onclick="printApproveModalAdmission()"><i class="fas fa-print"></i> Print Application (PDF)</button>
               <button class="btn btn-outline" onclick="closeApproveModal()"><i class="fas fa-times"></i> Cancel</button>
             </div>
           </div>
@@ -3203,7 +3512,8 @@
       showLoginError('Your account is not set up yet. Contact the school administrator.');
       return;
     }
-    const role = (userDoc.data().role || '').toString().trim().toLowerCase();
+    const rawRole = (userDoc.data().role || '').toString().trim().toLowerCase();
+    const role = rawRole === 'office_staff' ? 'office' : rawRole;
     if (!['student','teacher','admin','office'].includes(role)) { showLoginError('Invalid role. Contact admin.'); return; }
     showToast('✅ Welcome! Opening your portal…');
     setTimeout(async () => {
@@ -3465,38 +3775,105 @@
     } catch(e) { showToast('❌ Could not send: ' + e.message); }
   };
 
-  // Admission form submission to Firestore
+  // ── Helper: upload a single file to Firebase Storage and return its download URL ──
+  async function _uploadAdmissionDoc(file, folder, label) {
+    if (!file) return null;
+    const MAX_BYTES = 5 * 1024 * 1024;
+    if (file.size > MAX_BYTES) throw new Error(`${label} exceeds 5 MB limit.`);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `admissions/${folder}/${Date.now()}_${label}_${safeName}`;
+    const r = storageRef(storage, path);
+    const task = uploadBytesResumable(r, file);
+    await new Promise((resolve, reject) => task.on('state_changed', null, reject, resolve));
+    const url = await getDownloadURL(task.snapshot.ref);
+    return { name: file.name, label, url, path, size: file.size, type: file.type };
+  }
+
+  // Admission form submission to Firestore (with file uploads)
   window.submitAdmissionForm = async function() {
-    const studentName = (document.getElementById('adm-student-name')?.value || '').trim();
-    const dob         = document.getElementById('adm-dob')?.value || '';
-    const cls         = document.getElementById('adm-class')?.value || '';
-    const parentName  = (document.getElementById('adm-parent-name')?.value || '').trim();
-    const contact     = (document.getElementById('adm-contact')?.value || '').trim();
-    const address     = (document.getElementById('adm-address')?.value || '').trim();
+    const getVal = id => (document.getElementById(id)?.value || '').trim();
+    const getFile = id => document.getElementById(id)?.files?.[0] || null;
+
+    const studentName = getVal('adm-student-name');
+    const dob         = getVal('adm-dob');
+    const cls         = getVal('adm-class');
+    const parentName  = getVal('adm-parent-name');
+    const contact     = getVal('adm-contact');
+    const address     = getVal('adm-address');
     if (!studentName || !dob || !cls || !parentName || !contact || !address) {
       showToast('⚠️ Please fill in all required fields (*).');
       return;
     }
+
+    // Capture parent details
+    const father = {
+      name:       getVal('adm-father-name'),
+      occupation: getVal('adm-father-occupation'),
+      contact:    getVal('adm-father-contact')
+    };
+    const mother = {
+      name:       getVal('adm-mother-name'),
+      occupation: getVal('adm-mother-occupation'),
+      contact:    getVal('adm-mother-contact')
+    };
+
+    // Capture document files
+    const photoFile     = getFile('adm-doc-photo');
+    const birthFile     = getFile('adm-doc-birth');
+    const marksheetFile = getFile('adm-doc-marksheet');
+
     const btn = document.querySelector('#page-admission .btn-primary');
-    if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...'; btn.disabled = true; }
+    if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading…'; btn.disabled = true; }
+
     try {
+      // Use a deterministic folder per submission so files stay grouped
+      const folder = (studentName.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase() || 'app') + '_' + Date.now();
+
+      // Upload all three documents in parallel
+      const [photoDoc, birthDoc, marksheetDoc] = await Promise.all([
+        _uploadAdmissionDoc(photoFile,     folder, 'photo'),
+        _uploadAdmissionDoc(birthFile,     folder, 'birth_certificate'),
+        _uploadAdmissionDoc(marksheetFile, folder, 'marksheet')
+      ]);
+
+      const documents = [photoDoc, birthDoc, marksheetDoc].filter(Boolean);
+
+      if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
+
       await addDoc(collection(db,'admissions'), {
-        studentName, dob, class: cls, year: document.getElementById('adm-year')?.value || '2025–26',
-        gender: document.getElementById('adm-gender')?.value || '',
-        parentName, relation: document.getElementById('adm-relation')?.value || '',
-        contact, email: document.getElementById('adm-email')?.value || '',
-        address, previousSchool: document.getElementById('adm-prev-school')?.value || '',
-        medical: document.getElementById('adm-medical')?.value || '',
-        status: 'Pending',
+        studentName,
+        // Mirror as `fullName` for downstream readers (Office admissions UI uses fullName)
+        fullName: studentName,
+        dob, class: cls,
+        classApplied: cls,
+        year: getVal('adm-year') || '2025–26',
+        gender: getVal('adm-gender'),
+        parentName, relation: getVal('adm-relation'),
+        contact, email: getVal('adm-email'),
+        address, previousSchool: getVal('adm-prev-school'),
+        medical: getVal('adm-medical'),
+        father, mother,
+        documents,
+        status: 'pending',
         submittedAt: new Date().toISOString(),
         createdAt: new Date().toISOString()
       });
+
       // Clear form
-      ['adm-student-name','adm-dob','adm-parent-name','adm-contact','adm-email','adm-address','adm-prev-school','adm-medical'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+      ['adm-student-name','adm-dob','adm-parent-name','adm-contact','adm-email','adm-address','adm-prev-school','adm-medical',
+       'adm-father-name','adm-father-occupation','adm-father-contact',
+       'adm-mother-name','adm-mother-occupation','adm-mother-contact',
+       'adm-doc-photo','adm-doc-birth','adm-doc-marksheet'
+      ].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+
       showToast('✅ Application submitted! Our team will contact you within 3 working days.');
       showPage('home');
-    } catch(e) { showToast('❌ Submission failed: ' + e.message); }
-    finally { if (btn) { btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Application'; btn.disabled = false; } }
+    } catch(e) {
+      console.error('[Admission] submit failed:', e);
+      showToast('❌ Submission failed: ' + e.message);
+    } finally {
+      if (btn) { btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Application'; btn.disabled = false; }
+    }
   };
 
   // ================================================================
@@ -3869,6 +4246,7 @@
           <td><span class="badge ${bc}">${a.status}</span></td>
           <td>
             <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <button class="btn btn-sm" style="background:#475569;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="adminPrintAdmission('${d.id}')"><i class="fas fa-print"></i> Print</button>
               ${a.status!=='Admitted'?`<button class="btn btn-sm" style="background:#1a6b3c;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="openApproveModal('${d.id}','${(a.studentName||'').replace(/'/g,"\\'")}','${a.class||''}')"><i class="fas fa-check"></i> Approve</button>`:''}
               ${a.status!=='Shortlisted'?`<button class="btn btn-sm" style="background:#1a4a8a;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px" onclick="updateAdmStatus('${d.id}','Shortlisted')">Shortlist</button>`:''}
               ${a.status!=='Rejected'?`<button class="btn btn-sm btn-danger" style="font-size:11px;padding:4px 8px" onclick="rejectAdmission('${d.id}','${(a.studentName||'').replace(/'/g,"\\'")}')"><i class="fas fa-times"></i> Reject</button>`:''}
@@ -3881,15 +4259,35 @@
     } catch(e) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
   };
 
-  window.openApproveModal = function(docId, name, requestedClass) {
+  window.adminPrintAdmission = async function(docId) {
+    if (!docId) { showToast('⚠️ Missing application id.'); return; }
+    try {
+      const snap = await getDoc(doc(db, 'admissions', docId));
+      if (!snap.exists()) { showToast('❌ Application not found.'); return; }
+      if (!window._printAdmissionPDF) { showToast('❌ Print module not loaded.'); return; }
+      window._printAdmissionPDF(snap.data());
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.openApproveModal = async function(docId, name, requestedClass) {
     _pendingApproveId = docId;
     _pendingApproveData = { name, requestedClass };
+    // Cache full admission data so the modal's Print button can reuse it
+    try {
+      const snap = await getDoc(doc(db, 'admissions', docId));
+      if (snap.exists()) _pendingApproveData = { ...snap.data(), name, requestedClass };
+    } catch(e) { console.warn('[Approve] fetch admission failed:', e.message); }
     const overlay = document.getElementById('approve-modal-overlay');
     const nameEl  = document.getElementById('approve-modal-name');
     const classEl = document.getElementById('approve-class-select');
     if (nameEl)  nameEl.textContent = `Approving application for: ${name}`;
     if (classEl && requestedClass) classEl.value = requestedClass;
     if (overlay) { overlay.style.display = 'flex'; }
+  };
+
+  window.printApproveModalAdmission = function() {
+    if (!_pendingApproveData || !window._printAdmissionPDF) { showToast('⚠️ No application loaded.'); return; }
+    window._printAdmissionPDF(_pendingApproveData);
   };
 
   window.closeApproveModal = function() {
@@ -3922,33 +4320,47 @@
       const studentId = `${prefix}/${year}/${rollNo}`;
 
       // Create student record in 'students' collection
+      const father = adm.father || {};
+      const mother = adm.mother || {};
       await addDoc(collection(db,'students'), {
-        name:         adm.studentName,
-        dob:          adm.dob || '',
-        gender:       adm.gender || '',
-        class:        assignedClass,
-        section:      section,
-        rollNo:       rollNo,
-        studentId:    studentId,
-        parentName:   adm.parentName || '',
-        contact:      adm.contact || '',
-        email:        adm.email || '',
-        address:      adm.address || '',
+        name:           adm.studentName || adm.fullName || '',
+        dob:            adm.dob || '',
+        gender:         adm.gender || '',
+        class:          assignedClass,
+        classId:        assignedClass,
+        section:        section,
+        rollNo:         rollNo,
+        studentId:      studentId,
+        // Primary contact (kept for backward compatibility)
+        parentName:     adm.parentName || '',
+        contact:        adm.contact || '',
+        email:          adm.email || '',
+        // Father details
+        fatherName:        father.name || '',
+        fatherOccupation:  father.occupation || '',
+        fatherContact:     father.contact || '',
+        // Mother details
+        motherName:        mother.name || '',
+        motherOccupation:  mother.occupation || '',
+        motherContact:     mother.contact || '',
+        address:        adm.address || '',
         previousSchool: adm.previousSchool || '',
-        medical:      adm.medical || '',
-        admissionYear: year,
-        status:       'Active',
+        medical:        adm.medical || '',
+        documents:      adm.documents || [],
+        admissionYear:  year,
+        status:         'Active',
         admissionDocId: _pendingApproveId,
-        createdAt:    new Date().toISOString()
+        createdAt:      new Date().toISOString()
       });
 
       // Update admission status to Admitted
       await updateDoc(doc(db,'admissions',_pendingApproveId), {
-        status:       'Admitted',
-        assignedClass: assignedClass,
+        status:          'Admitted',
+        assignedClass:   assignedClass,
+        classId:         assignedClass,
         assignedSection: section,
         studentId,
-        updatedAt:    new Date().toISOString()
+        updatedAt:       new Date().toISOString()
       });
 
       showToast(`✅ Admitted! Student ID: ${studentId} — Class ${assignedClass}-${section}`);
@@ -4003,6 +4415,152 @@
       await addDoc(collection(db,'settings'), { key, value, updatedAt: new Date().toISOString() });
     }
   }
+
+  // ================================================================
+  //  ADMIN — Website Management (Hero, Stats, Announcement, Cards)
+  //  Single source of truth: Firestore public_settings/homepage
+  // ================================================================
+  const WM_MAX_CARDS = 8;
+
+  function _renderFeatureCardRow(card, idx) {
+    const safe = v => (v == null ? '' : String(v).replace(/"/g, '&quot;'));
+    return `<div class="card wm-card-row" style="padding:14px;background:var(--bg);border:1px solid var(--border)" data-idx="${idx}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px">
+        <strong style="font-size:13px;color:var(--accent-dark)"><i class="fas fa-grip-vertical" style="color:var(--text-light);margin-right:6px"></i>Card ${idx + 1}</strong>
+        <button class="btn btn-sm btn-danger" type="button" onclick="removeFeatureCardRow(${idx})" style="padding:4px 10px;font-size:11px"><i class="fas fa-trash"></i> Remove</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" class="wm-card-title" value="${safe(card.title)}" placeholder="e.g. Academic Excellence">
+        </div>
+        <div class="form-group">
+          <label>Icon (FontAwesome class, optional)</label>
+          <input type="text" class="wm-card-icon" value="${safe(card.icon)}" placeholder="e.g. fa-graduation-cap">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea class="wm-card-desc" rows="2" placeholder="Short description of this tradition..." style="resize:vertical">${safe(card.description)}</textarea>
+      </div>
+    </div>`;
+  }
+
+  function _refreshFeatureCardsUI(cards) {
+    const list  = document.getElementById('wm-feature-cards-list');
+    const empty = document.getElementById('wm-feature-empty');
+    if (!list) return;
+    if (!cards.length) {
+      list.innerHTML = `<div style="font-size:13px;color:var(--text-light);text-align:center;padding:18px;border:1px dashed var(--border);border-radius:10px" id="wm-feature-empty">No cards yet. Click <strong>+ Add Card</strong> to create one.</div>`;
+      return;
+    }
+    list.innerHTML = cards.map((c, i) => _renderFeatureCardRow(c, i)).join('');
+  }
+
+  // Cards live in window state; UI is always built from this array
+  window._wmFeatureCards = [];
+
+  function _captureFeatureCardsFromUI() {
+    const rows = document.querySelectorAll('#wm-feature-cards-list .wm-card-row');
+    const cards = [];
+    rows.forEach(row => {
+      const title = row.querySelector('.wm-card-title')?.value.trim() || '';
+      const icon  = row.querySelector('.wm-card-icon')?.value.trim()  || '';
+      const desc  = row.querySelector('.wm-card-desc')?.value.trim()  || '';
+      if (title || desc) cards.push({ title, icon, description: desc });
+    });
+    return cards;
+  }
+
+  window.addFeatureCardRow = function() {
+    window._wmFeatureCards = _captureFeatureCardsFromUI();
+    if (window._wmFeatureCards.length >= WM_MAX_CARDS) {
+      showToast(`⚠️ Maximum of ${WM_MAX_CARDS} cards.`);
+      return;
+    }
+    window._wmFeatureCards.push({ title: '', icon: '', description: '' });
+    _refreshFeatureCardsUI(window._wmFeatureCards);
+  };
+
+  window.removeFeatureCardRow = function(idx) {
+    window._wmFeatureCards = _captureFeatureCardsFromUI();
+    window._wmFeatureCards.splice(idx, 1);
+    _refreshFeatureCardsUI(window._wmFeatureCards);
+  };
+
+  window.loadWebsiteContent = async function() {
+    try {
+      const snap = await getDoc(doc(db, 'public_settings', 'homepage'));
+      const data = snap.exists() ? snap.data() : {};
+      const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = (v == null ? '' : v); };
+
+      // Hero
+      set('wm-hero-headline', data.hero?.headline);
+      set('wm-hero-sub',      data.hero?.subheadline);
+
+      // Stats (4 slots)
+      const stats = Array.isArray(data.stats) ? data.stats : [];
+      for (let i = 1; i <= 4; i++) {
+        const s = stats[i - 1] || {};
+        set(`wm-stat${i}-label`, s.label);
+        set(`wm-stat${i}-value`, s.value);
+      }
+
+      // Announcement
+      set('wm-ann-text', data.announcement?.text);
+      set('wm-ann-tag',  data.announcement?.tag);
+      set('wm-ann-date', data.announcement?.date);
+
+      // Feature cards
+      window._wmFeatureCards = Array.isArray(data.featureCards) ? data.featureCards : [];
+      _refreshFeatureCardsUI(window._wmFeatureCards);
+
+      if (snap.exists()) showToast('✅ Website content loaded.');
+    } catch(e) {
+      console.error('[WebsiteCMS] load failed', e);
+      showToast('❌ Load failed: ' + e.message);
+    }
+  };
+
+  window.saveWebsiteContent = async function() {
+    const get = id => (document.getElementById(id)?.value || '').trim();
+    const num = id => {
+      const n = parseInt(document.getElementById(id)?.value, 10);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const payload = {
+      hero: {
+        headline:    get('wm-hero-headline'),
+        subheadline: get('wm-hero-sub')
+      },
+      stats: [
+        { label: get('wm-stat1-label'), value: num('wm-stat1-value') },
+        { label: get('wm-stat2-label'), value: num('wm-stat2-value') },
+        { label: get('wm-stat3-label'), value: num('wm-stat3-value') },
+        { label: get('wm-stat4-label'), value: num('wm-stat4-value') }
+      ].filter(s => s.label || s.value),
+      announcement: {
+        text: get('wm-ann-text'),
+        tag:  get('wm-ann-tag').toUpperCase(),
+        date: get('wm-ann-date')
+      },
+      featureCards: _captureFeatureCardsFromUI(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const btn = document.getElementById('wm-save-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+    try {
+      await setDoc(doc(db, 'public_settings', 'homepage'), payload, { merge: true });
+      showToast('✅ Website content saved — homepage will refresh on next visit.');
+    } catch(e) {
+      console.error('[WebsiteCMS] save failed', e);
+      showToast('❌ Save failed: ' + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Save Website Changes'; }
+    }
+  };
 
   window.saveHomepageContent = async function() {
     const about      = (document.getElementById('hp-about')?.value      || '').trim();
@@ -4109,6 +4667,7 @@
     if (sectionId === 'a-leaders')       loadAdminLeaders();
     if (sectionId === 'a-gallery')       loadAdminGallery();
     if (sectionId === 'a-homepage')      { loadHomepageContent(); }
+    if (sectionId === 'a-website-mgmt')  { loadWebsiteContent(); }
     if (sectionId === 'a-admissions')    { loadAdmissions(); loadAdmissionNotice(); }
     if (sectionId === 'a-contacts')      loadAdminContacts();
     if (sectionId === 'a-holidays')      loadHolidays();
@@ -6242,16 +6801,14 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   /* ── Extend loginAs for 'office' role ── */
   const _prevLoginAs = window.loginAs;
   window.loginAs = function(role) {
-    if (role==='office') {
-      window.isLoggedIn=true; window.currentUserRole='office'; window.currentRole='office';
-      const lp=document.getElementById('page-login'); if(lp) lp.classList.remove('active');
-      if (window.showPage) window.showPage('office-dash');
-      const auth=window._firebaseAuth;
+    // Always call the original first — it sets the script.js closure `isLoggedIn = true`
+    // and calls showPage('office-dash'). We only add the portal-load side-effect.
+    _prevLoginAs(role);
+    if (role === 'office') {
+      const auth = window._firebaseAuth;
       if (auth?.currentUser && window.loadOfficePortal)
         window.loadOfficePortal(auth.currentUser).catch(console.error);
-      return;
     }
-    _prevLoginAs(role);
   };
 
   console.log('[FeeModule] ✅ Loaded — Office Portal · Fee Structure · Approvals · Notifications');
@@ -6373,30 +6930,85 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   };
 
   // ── Print / Save PDF ──────────────────────────────────────────
-  window.printAdmissionForm = function() {
-    if (!currentAdmissionData) { showToast('⚠️ No application selected.'); return; }
-    const a = currentAdmissionData;
-    const date = a.submittedAt?.toDate ? a.submittedAt.toDate().toLocaleDateString('en-IN') : 'N/A';
-    const docsHtml = (a.documents||[]).map(d => `<li>${d.name}</li>`).join('') || '<li>None</li>';
+  // ── Shared PDF print builder — reused by Office and Admin portals ──
+  window._printAdmissionPDF = function(a) {
+    if (!a) { showToast('⚠️ No application data.'); return; }
+    const esc = v => (v == null ? '—' : String(v).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])));
+    const date = a.submittedAt?.toDate
+      ? a.submittedAt.toDate().toLocaleDateString('en-IN')
+      : (a.submittedAt ? new Date(a.submittedAt).toLocaleDateString('en-IN') : 'N/A');
+    const f = a.father || {};
+    const m = a.mother || {};
+    const docs = a.documents || [];
+    const docsHtml = docs.length
+      ? docs.map(d => `<li><strong>${esc(d.label || d.name)}</strong> — <a href="${esc(d.url)}" target="_blank">${esc(d.name)}</a></li>`).join('')
+      : '<li style="color:#94a3b8">No documents attached.</li>';
+    const name = esc(a.fullName || a.studentName || '—');
+    const cls  = esc(a.classApplied || a.class || '—');
     const win = window.open('', '_blank');
-    win.document.write(`<!DOCTYPE html><html><head><title>Admission Form — ${a.fullName||''}</title>
-<style>body{font-family:Arial,sans-serif;padding:40px;color:#1e293b}h2{text-align:center;color:#4f46e5}table{width:100%;border-collapse:collapse;margin-top:16px}td{padding:8px 12px;border:1px solid #e2e8f0;font-size:13px}.label{background:#f8fafc;font-weight:600;width:35%}@media print{body{padding:20px}}</style>
+    win.document.write(`<!DOCTYPE html><html><head><title>Admission Form — ${name}</title>
+<style>
+  body{font-family:Arial,sans-serif;padding:40px;color:#1e293b;max-width:780px;margin:0 auto}
+  h2{text-align:center;color:#4f46e5;margin:0 0 4px}
+  h3{text-align:center;color:#64748b;margin:0 0 24px;font-weight:500}
+  h4{color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px}
+  table{width:100%;border-collapse:collapse;margin-top:6px}
+  td{padding:8px 12px;border:1px solid #e2e8f0;font-size:13px;vertical-align:top}
+  .label{background:#f8fafc;font-weight:600;width:30%;color:#475569}
+  ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7}
+  a{color:#4f46e5;text-decoration:none}
+  .footer{margin-top:40px;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:12px}
+  @media print { body{padding:20px} a{color:#1e293b;text-decoration:none} }
+</style>
 </head><body>
 <h2>St. Francis De Sales Secondary School</h2>
-<h3 style="text-align:center;color:#64748b;margin-top:4px">Admission Application Form</h3>
+<h3>Admission Application Form</h3>
+
+<h4>Student Information</h4>
 <table>
-<tr><td class="label">Full Name</td><td>${a.fullName||'—'}</td><td class="label">Class Applied</td><td>${a.classApplied||'—'}</td></tr>
-<tr><td class="label">Date of Birth</td><td>${a.dob||'—'}</td><td class="label">Gender</td><td>${a.gender||'—'}</td></tr>
-<tr><td class="label">Parent / Guardian</td><td>${a.parentName||'—'}</td><td class="label">Contact</td><td>${a.contact||'—'}</td></tr>
-<tr><td class="label">Address</td><td colspan="3">${a.address||'—'}</td></tr>
-<tr><td class="label">Previous School</td><td colspan="3">${a.previousSchool||'—'}</td></tr>
-<tr><td class="label">Date Submitted</td><td colspan="3">${date}</td></tr>
-<tr><td class="label">Documents</td><td colspan="3"><ul style="margin:0;padding-left:16px">${docsHtml}</ul></td></tr>
+  <tr><td class="label">Full Name</td><td>${name}</td><td class="label">Class Applied</td><td>${cls}</td></tr>
+  <tr><td class="label">Date of Birth</td><td>${esc(a.dob)}</td><td class="label">Gender</td><td>${esc(a.gender)}</td></tr>
+  <tr><td class="label">Academic Year</td><td>${esc(a.year)}</td><td class="label">Previous School</td><td>${esc(a.previousSchool)}</td></tr>
+  <tr><td class="label">Address</td><td colspan="3">${esc(a.address)}</td></tr>
+  <tr><td class="label">Medical / Special Needs</td><td colspan="3">${esc(a.medical) || '—'}</td></tr>
 </table>
-<p style="margin-top:40px;font-size:12px;color:#94a3b8">Reviewed by Office Staff — St. Francis De Sales Secondary School</p>
-<script>window.onload=function(){window.print();}<\/script>
+
+<h4>Primary Contact</h4>
+<table>
+  <tr><td class="label">Name</td><td>${esc(a.parentName)}</td><td class="label">Relation</td><td>${esc(a.relation)}</td></tr>
+  <tr><td class="label">Contact No.</td><td>${esc(a.contact)}</td><td class="label">Email</td><td>${esc(a.email)}</td></tr>
+</table>
+
+<h4>Father's Details</h4>
+<table>
+  <tr><td class="label">Name</td><td>${esc(f.name)}</td><td class="label">Occupation</td><td>${esc(f.occupation)}</td></tr>
+  <tr><td class="label">Contact No.</td><td colspan="3">${esc(f.contact)}</td></tr>
+</table>
+
+<h4>Mother's Details</h4>
+<table>
+  <tr><td class="label">Name</td><td>${esc(m.name)}</td><td class="label">Occupation</td><td>${esc(m.occupation)}</td></tr>
+  <tr><td class="label">Contact No.</td><td colspan="3">${esc(m.contact)}</td></tr>
+</table>
+
+<h4>Submitted Documents</h4>
+<ul>${docsHtml}</ul>
+
+<h4>Application Meta</h4>
+<table>
+  <tr><td class="label">Status</td><td>${esc(a.status)}</td><td class="label">Submitted On</td><td>${esc(date)}</td></tr>
+</table>
+
+<div class="footer">St. Francis De Sales Secondary School · Laitkor, Meghalaya · Generated ${new Date().toLocaleString('en-IN')}</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},250);}<\/script>
 </body></html>`);
     win.document.close();
+  };
+
+  // Office portal wrapper — uses currentAdmissionData
+  window.printAdmissionForm = function() {
+    if (!currentAdmissionData) { showToast('⚠️ No application selected.'); return; }
+    window._printAdmissionPDF(currentAdmissionData);
   };
 
   // ── Forward to Admin ──────────────────────────────────────────
@@ -6523,6 +7135,159 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   };
 
   console.log('[FeeledgerSubmit] ✅ Loaded');
+})();
+</script>
+
+<!-- ================================================================
+     HOMEPAGE DYNAMIC FETCH — public_settings/homepage
+================================================================ -->
+<script type="module">
+(async () => {
+  const { getApps, getApp } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js');
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length) break;
+    await new Promise(r => setTimeout(r, 150));
+  }
+  const app = getApp();
+  const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js');
+  const db = getFirestore(app);
+
+  const esc = v => (v == null ? '' : String(v).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])));
+
+  // ── Hero ──────────────────────────────────────────────────────
+  function applyHero(hero = {}) {
+    if (hero.headline) {
+      const h = document.getElementById('home-hero-headline');
+      if (h) h.textContent = hero.headline;
+    }
+    if (hero.subheadline) {
+      const s = document.getElementById('home-hero-sub');
+      if (s) s.textContent = hero.subheadline;
+    }
+  }
+
+  // ── Announcement ──────────────────────────────────────────────
+  function applyAnnouncement(ann = {}) {
+    const card = document.getElementById('home-featured-announcement');
+    if (!card) return;
+    const text = (ann.text || '').trim();
+    if (!text) { card.style.display = 'none'; return; }
+    const tagEl  = document.querySelector('#home-ann-tag span');
+    const txtEl  = document.getElementById('home-ann-text');
+    const dateEl = document.getElementById('home-ann-date');
+    if (tagEl)  tagEl.textContent  = (ann.tag || 'NEW').toUpperCase();
+    if (txtEl)  txtEl.textContent  = text;
+    if (dateEl && ann.date) {
+      try {
+        dateEl.textContent = new Date(ann.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      } catch(e) { dateEl.textContent = ann.date; }
+    } else if (dateEl) {
+      dateEl.textContent = '';
+    }
+    card.style.display = 'block';
+  }
+
+  // ── Stats (count-up on scroll into view) ──────────────────────
+  function animateCountTo(el, target, suffix = '') {
+    if (!el) return;
+    const n = Number(target) || 0;
+    if (n <= 0) { el.textContent = String(target); return; }
+    el.classList.add('counting');
+    const duration = 1400;
+    const start = performance.now();
+    const from = 0;
+    function tick(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      const current = Math.round(from + (n - from) * eased);
+      el.textContent = current + suffix;
+      if (t < 1) requestAnimationFrame(tick);
+      else el.classList.remove('counting');
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function applyStats(stats = []) {
+    for (let i = 0; i < 4; i++) {
+      const s = stats[i] || {};
+      const numEl = document.getElementById(`home-stat-${i + 1}`);
+      const lblEl = document.getElementById(`home-stat-${i + 1}-label`);
+      if (lblEl && s.label) lblEl.textContent = s.label;
+      if (numEl && Number.isFinite(Number(s.value)) && Number(s.value) > 0) {
+        numEl.dataset.target = String(s.value);
+        numEl.textContent = '0';
+      }
+    }
+    // Lazy count-up via IntersectionObserver
+    const bar = document.getElementById('home-stats-bar');
+    if (!bar) return;
+    if (!('IntersectionObserver' in window)) {
+      // Fallback: fire immediately
+      bar.querySelectorAll('.stat-num[data-target]').forEach(el => animateCountTo(el, el.dataset.target, '+'));
+      return;
+    }
+    const obs = new IntersectionObserver((entries, o) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          bar.querySelectorAll('.stat-num[data-target]').forEach(el => {
+            if (!el.dataset.animated) {
+              el.dataset.animated = '1';
+              animateCountTo(el, el.dataset.target, '+');
+            }
+          });
+          o.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.3 });
+    obs.observe(bar);
+  }
+
+  // ── Feature Cards ─────────────────────────────────────────────
+  function applyFeatureCards(cards = []) {
+    const container = document.getElementById('home-feature-cards');
+    const legacy    = document.getElementById('why-choose-us-grid');
+    if (!container) return;
+    if (!Array.isArray(cards) || !cards.length) {
+      container.style.display = 'none';
+      return;
+    }
+    container.innerHTML = cards.map(c => `
+      <div class="feature-card">
+        <div class="feature-card-icon"><i class="fas ${esc(c.icon || 'fa-star')}"></i></div>
+        <h3 class="feature-card-title">${esc(c.title || '')}</h3>
+        <p class="feature-card-desc">${esc(c.description || '')}</p>
+      </div>
+    `).join('');
+    container.style.display = 'grid';
+    // CMS cards take precedence over the legacy why-choose-us collection
+    if (legacy) legacy.style.display = 'none';
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────
+  async function loadHomepageDynamic() {
+    try {
+      const snap = await getDoc(doc(db, 'public_settings', 'homepage'));
+      const data = snap.exists() ? snap.data() : {};
+      applyHero(data.hero || {});
+      applyAnnouncement(data.announcement || {});
+      applyStats(Array.isArray(data.stats) ? data.stats : []);
+      applyFeatureCards(Array.isArray(data.featureCards) ? data.featureCards : []);
+      console.log('[HomepageCMS] ✅ Loaded');
+    } catch(e) {
+      console.warn('[HomepageCMS] load failed:', e.message);
+      // Even if Firestore fails, animate the static fallback stats so the page still feels alive
+      applyStats([]);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadHomepageDynamic);
+  } else {
+    loadHomepageDynamic();
+  }
+
+  // Expose for manual refresh after admin saves
+  window.refreshHomepageDynamic = loadHomepageDynamic;
 })();
 </script>
 <script src="notification-center.js"></script>
