@@ -7137,6 +7137,159 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   console.log('[FeeledgerSubmit] ✅ Loaded');
 })();
 </script>
+
+<!-- ================================================================
+     HOMEPAGE DYNAMIC FETCH — public_settings/homepage
+================================================================ -->
+<script type="module">
+(async () => {
+  const { getApps, getApp } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js');
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length) break;
+    await new Promise(r => setTimeout(r, 150));
+  }
+  const app = getApp();
+  const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js');
+  const db = getFirestore(app);
+
+  const esc = v => (v == null ? '' : String(v).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])));
+
+  // ── Hero ──────────────────────────────────────────────────────
+  function applyHero(hero = {}) {
+    if (hero.headline) {
+      const h = document.getElementById('home-hero-headline');
+      if (h) h.textContent = hero.headline;
+    }
+    if (hero.subheadline) {
+      const s = document.getElementById('home-hero-sub');
+      if (s) s.textContent = hero.subheadline;
+    }
+  }
+
+  // ── Announcement ──────────────────────────────────────────────
+  function applyAnnouncement(ann = {}) {
+    const card = document.getElementById('home-featured-announcement');
+    if (!card) return;
+    const text = (ann.text || '').trim();
+    if (!text) { card.style.display = 'none'; return; }
+    const tagEl  = document.querySelector('#home-ann-tag span');
+    const txtEl  = document.getElementById('home-ann-text');
+    const dateEl = document.getElementById('home-ann-date');
+    if (tagEl)  tagEl.textContent  = (ann.tag || 'NEW').toUpperCase();
+    if (txtEl)  txtEl.textContent  = text;
+    if (dateEl && ann.date) {
+      try {
+        dateEl.textContent = new Date(ann.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      } catch(e) { dateEl.textContent = ann.date; }
+    } else if (dateEl) {
+      dateEl.textContent = '';
+    }
+    card.style.display = 'block';
+  }
+
+  // ── Stats (count-up on scroll into view) ──────────────────────
+  function animateCountTo(el, target, suffix = '') {
+    if (!el) return;
+    const n = Number(target) || 0;
+    if (n <= 0) { el.textContent = String(target); return; }
+    el.classList.add('counting');
+    const duration = 1400;
+    const start = performance.now();
+    const from = 0;
+    function tick(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      const current = Math.round(from + (n - from) * eased);
+      el.textContent = current + suffix;
+      if (t < 1) requestAnimationFrame(tick);
+      else el.classList.remove('counting');
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function applyStats(stats = []) {
+    for (let i = 0; i < 4; i++) {
+      const s = stats[i] || {};
+      const numEl = document.getElementById(`home-stat-${i + 1}`);
+      const lblEl = document.getElementById(`home-stat-${i + 1}-label`);
+      if (lblEl && s.label) lblEl.textContent = s.label;
+      if (numEl && Number.isFinite(Number(s.value)) && Number(s.value) > 0) {
+        numEl.dataset.target = String(s.value);
+        numEl.textContent = '0';
+      }
+    }
+    // Lazy count-up via IntersectionObserver
+    const bar = document.getElementById('home-stats-bar');
+    if (!bar) return;
+    if (!('IntersectionObserver' in window)) {
+      // Fallback: fire immediately
+      bar.querySelectorAll('.stat-num[data-target]').forEach(el => animateCountTo(el, el.dataset.target, '+'));
+      return;
+    }
+    const obs = new IntersectionObserver((entries, o) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          bar.querySelectorAll('.stat-num[data-target]').forEach(el => {
+            if (!el.dataset.animated) {
+              el.dataset.animated = '1';
+              animateCountTo(el, el.dataset.target, '+');
+            }
+          });
+          o.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.3 });
+    obs.observe(bar);
+  }
+
+  // ── Feature Cards ─────────────────────────────────────────────
+  function applyFeatureCards(cards = []) {
+    const container = document.getElementById('home-feature-cards');
+    const legacy    = document.getElementById('why-choose-us-grid');
+    if (!container) return;
+    if (!Array.isArray(cards) || !cards.length) {
+      container.style.display = 'none';
+      return;
+    }
+    container.innerHTML = cards.map(c => `
+      <div class="feature-card">
+        <div class="feature-card-icon"><i class="fas ${esc(c.icon || 'fa-star')}"></i></div>
+        <h3 class="feature-card-title">${esc(c.title || '')}</h3>
+        <p class="feature-card-desc">${esc(c.description || '')}</p>
+      </div>
+    `).join('');
+    container.style.display = 'grid';
+    // CMS cards take precedence over the legacy why-choose-us collection
+    if (legacy) legacy.style.display = 'none';
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────
+  async function loadHomepageDynamic() {
+    try {
+      const snap = await getDoc(doc(db, 'public_settings', 'homepage'));
+      const data = snap.exists() ? snap.data() : {};
+      applyHero(data.hero || {});
+      applyAnnouncement(data.announcement || {});
+      applyStats(Array.isArray(data.stats) ? data.stats : []);
+      applyFeatureCards(Array.isArray(data.featureCards) ? data.featureCards : []);
+      console.log('[HomepageCMS] ✅ Loaded');
+    } catch(e) {
+      console.warn('[HomepageCMS] load failed:', e.message);
+      // Even if Firestore fails, animate the static fallback stats so the page still feels alive
+      applyStats([]);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadHomepageDynamic);
+  } else {
+    loadHomepageDynamic();
+  }
+
+  // Expose for manual refresh after admin saves
+  window.refreshHomepageDynamic = loadHomepageDynamic;
+})();
+</script>
 <script src="notification-center.js"></script>
 
 <!-- ================================================================
