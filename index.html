@@ -1454,6 +1454,7 @@
         <button onclick="showDash('a','a-leaders',this)"><i class="fas fa-user-tie"></i> School Leaders</button>
         <button onclick="showDash('a','a-gallery',this)"><i class="fas fa-images"></i> Gallery</button>
         <button onclick="showDash('a','a-homepage',this)"><i class="fas fa-globe"></i> Homepage Content</button>
+        <button onclick="showDash('a','a-website-mgmt',this)"><i class="fas fa-paint-brush"></i> Website Management</button>
         <button onclick="showDash('a','a-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('a','a-contacts',this)"><i class="fas fa-envelope"></i> Contacts</button>
         <button onclick="showDash('a','a-holidays',this)"><i class="fas fa-calendar-times"></i> Holidays</button>
@@ -2282,6 +2283,141 @@
               <button class="btn btn-primary" onclick="saveHomepageContent()"><i class="fas fa-save"></i> Save All Changes</button>
               <button class="btn btn-outline" onclick="loadHomepageContent()"><i class="fas fa-sync-alt"></i> Reload from Database</button>
             </div>
+          </div>
+        </div>
+
+        <!-- ── WEBSITE MANAGEMENT (Dynamic Homepage CMS) ── -->
+        <div id="a-website-mgmt" class="dash-section">
+          <div class="card" style="padding:24px;margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:8px">
+              <div>
+                <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-paint-brush" style="margin-right:8px;color:var(--accent)"></i>Website Management</h4>
+                <p style="font-size:13px;color:var(--text-light);margin:6px 0 0">Edit the public homepage hero, stats, announcements, and feature cards. Saved instantly to the live site.</p>
+              </div>
+              <button class="btn btn-primary" onclick="saveWebsiteContent()" id="wm-save-btn">
+                <i class="fas fa-cloud-upload-alt"></i> Save Website Changes
+              </button>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:20px">
+
+            <!-- HERO SECTION -->
+            <div class="card" style="padding:22px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent-dark));display:flex;align-items:center;justify-content:center;color:#fff"><i class="fas fa-bullhorn"></i></div>
+                <h5 style="margin:0;color:var(--accent-dark);font-family:var(--font-head)">Hero Section</h5>
+              </div>
+              <div class="form-group">
+                <label>Main Headline</label>
+                <input type="text" id="wm-hero-headline" placeholder="e.g. Excellence in Education, Rooted in Tradition" maxlength="120">
+              </div>
+              <div class="form-group">
+                <label>Subheadline / Tagline</label>
+                <textarea id="wm-hero-sub" rows="3" placeholder="e.g. Nurturing minds since 1956 — St. Francis De Sales Secondary School" style="resize:vertical"></textarea>
+              </div>
+            </div>
+
+            <!-- STAT COUNTERS -->
+            <div class="card" style="padding:22px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;color:#fff"><i class="fas fa-chart-line"></i></div>
+                <h5 style="margin:0;color:var(--accent-dark);font-family:var(--font-head)">Stat Counters</h5>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Stat 1 — Label</label>
+                  <input type="text" id="wm-stat1-label" placeholder="e.g. Students Enrolled">
+                </div>
+                <div class="form-group">
+                  <label>Stat 1 — Value</label>
+                  <input type="number" id="wm-stat1-value" placeholder="e.g. 1200">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Stat 2 — Label</label>
+                  <input type="text" id="wm-stat2-label" placeholder="e.g. Qualified Teachers">
+                </div>
+                <div class="form-group">
+                  <label>Stat 2 — Value</label>
+                  <input type="number" id="wm-stat2-value" placeholder="e.g. 65">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Stat 3 — Label</label>
+                  <input type="text" id="wm-stat3-label" placeholder="e.g. Years of Excellence">
+                </div>
+                <div class="form-group">
+                  <label>Stat 3 — Value</label>
+                  <input type="number" id="wm-stat3-value" placeholder="e.g. 68">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Stat 4 — Label</label>
+                  <input type="text" id="wm-stat4-label" placeholder="e.g. Awards Won">
+                </div>
+                <div class="form-group">
+                  <label>Stat 4 — Value</label>
+                  <input type="number" id="wm-stat4-value" placeholder="e.g. 42">
+                </div>
+              </div>
+            </div>
+
+            <!-- ANNOUNCEMENT -->
+            <div class="card" style="padding:22px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#dc2626);display:flex;align-items:center;justify-content:center;color:#fff"><i class="fas fa-bell"></i></div>
+                <h5 style="margin:0;color:var(--accent-dark);font-family:var(--font-head)">Announcement</h5>
+              </div>
+              <div class="form-group">
+                <label>Announcement Text</label>
+                <textarea id="wm-ann-text" rows="3" placeholder="e.g. Admissions for 2026–27 are now open. Apply by 31 May." style="resize:vertical"></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Tag</label>
+                  <input type="text" id="wm-ann-tag" placeholder="e.g. NEW, URGENT" maxlength="20" style="text-transform:uppercase;font-weight:700">
+                </div>
+                <div class="form-group">
+                  <label>Date</label>
+                  <input type="date" id="wm-ann-date">
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:6px">
+                <i class="fas fa-info-circle" style="margin-right:4px"></i>Leave the announcement text blank to hide it from the homepage.
+              </div>
+            </div>
+
+            <!-- FEATURE CARDS -->
+            <div class="card" style="padding:22px;grid-column:1/-1">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;color:#fff"><i class="fas fa-star"></i></div>
+                  <div>
+                    <h5 style="margin:0;color:var(--accent-dark);font-family:var(--font-head)">Tradition of Excellence — Feature Cards</h5>
+                    <small style="color:var(--text-light);font-size:12px">Add up to 8 cards. They appear on the public homepage in this order.</small>
+                  </div>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="addFeatureCardRow()" id="wm-add-card-btn">
+                  <i class="fas fa-plus"></i> Add Card
+                </button>
+              </div>
+              <div id="wm-feature-cards-list" style="display:flex;flex-direction:column;gap:12px">
+                <!-- Rows injected by addFeatureCardRow() -->
+                <div style="font-size:13px;color:var(--text-light);text-align:center;padding:18px;border:1px dashed var(--border);border-radius:10px" id="wm-feature-empty">
+                  No cards yet. Click <strong>+ Add Card</strong> to create one.
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end">
+            <button class="btn btn-outline" onclick="loadWebsiteContent()"><i class="fas fa-sync-alt"></i> Reload from Server</button>
+            <button class="btn btn-primary" onclick="saveWebsiteContent()"><i class="fas fa-cloud-upload-alt"></i> Save Website Changes</button>
           </div>
         </div>
 
