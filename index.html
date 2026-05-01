@@ -2352,6 +2352,7 @@
             </div>
             <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
               <button class="btn btn-primary" onclick="confirmApproveAdmission()" style="flex:1"><i class="fas fa-check"></i> Confirm Approval</button>
+              <button class="btn btn-outline" onclick="printApproveModalAdmission()"><i class="fas fa-print"></i> Print Application (PDF)</button>
               <button class="btn btn-outline" onclick="closeApproveModal()"><i class="fas fa-times"></i> Cancel</button>
             </div>
           </div>
@@ -3974,6 +3975,7 @@
           <td><span class="badge ${bc}">${a.status}</span></td>
           <td>
             <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <button class="btn btn-sm" style="background:#475569;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="adminPrintAdmission('${d.id}')"><i class="fas fa-print"></i> Print</button>
               ${a.status!=='Admitted'?`<button class="btn btn-sm" style="background:#1a6b3c;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="openApproveModal('${d.id}','${(a.studentName||'').replace(/'/g,"\\'")}','${a.class||''}')"><i class="fas fa-check"></i> Approve</button>`:''}
               ${a.status!=='Shortlisted'?`<button class="btn btn-sm" style="background:#1a4a8a;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px" onclick="updateAdmStatus('${d.id}','Shortlisted')">Shortlist</button>`:''}
               ${a.status!=='Rejected'?`<button class="btn btn-sm btn-danger" style="font-size:11px;padding:4px 8px" onclick="rejectAdmission('${d.id}','${(a.studentName||'').replace(/'/g,"\\'")}')"><i class="fas fa-times"></i> Reject</button>`:''}
@@ -3986,15 +3988,35 @@
     } catch(e) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
   };
 
-  window.openApproveModal = function(docId, name, requestedClass) {
+  window.adminPrintAdmission = async function(docId) {
+    if (!docId) { showToast('⚠️ Missing application id.'); return; }
+    try {
+      const snap = await getDoc(doc(db, 'admissions', docId));
+      if (!snap.exists()) { showToast('❌ Application not found.'); return; }
+      if (!window._printAdmissionPDF) { showToast('❌ Print module not loaded.'); return; }
+      window._printAdmissionPDF(snap.data());
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.openApproveModal = async function(docId, name, requestedClass) {
     _pendingApproveId = docId;
     _pendingApproveData = { name, requestedClass };
+    // Cache full admission data so the modal's Print button can reuse it
+    try {
+      const snap = await getDoc(doc(db, 'admissions', docId));
+      if (snap.exists()) _pendingApproveData = { ...snap.data(), name, requestedClass };
+    } catch(e) { console.warn('[Approve] fetch admission failed:', e.message); }
     const overlay = document.getElementById('approve-modal-overlay');
     const nameEl  = document.getElementById('approve-modal-name');
     const classEl = document.getElementById('approve-class-select');
     if (nameEl)  nameEl.textContent = `Approving application for: ${name}`;
     if (classEl && requestedClass) classEl.value = requestedClass;
     if (overlay) { overlay.style.display = 'flex'; }
+  };
+
+  window.printApproveModalAdmission = function() {
+    if (!_pendingApproveData || !window._printAdmissionPDF) { showToast('⚠️ No application loaded.'); return; }
+    window._printAdmissionPDF(_pendingApproveData);
   };
 
   window.closeApproveModal = function() {
@@ -6476,30 +6498,85 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   };
 
   // ── Print / Save PDF ──────────────────────────────────────────
-  window.printAdmissionForm = function() {
-    if (!currentAdmissionData) { showToast('⚠️ No application selected.'); return; }
-    const a = currentAdmissionData;
-    const date = a.submittedAt?.toDate ? a.submittedAt.toDate().toLocaleDateString('en-IN') : 'N/A';
-    const docsHtml = (a.documents||[]).map(d => `<li>${d.name}</li>`).join('') || '<li>None</li>';
+  // ── Shared PDF print builder — reused by Office and Admin portals ──
+  window._printAdmissionPDF = function(a) {
+    if (!a) { showToast('⚠️ No application data.'); return; }
+    const esc = v => (v == null ? '—' : String(v).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])));
+    const date = a.submittedAt?.toDate
+      ? a.submittedAt.toDate().toLocaleDateString('en-IN')
+      : (a.submittedAt ? new Date(a.submittedAt).toLocaleDateString('en-IN') : 'N/A');
+    const f = a.father || {};
+    const m = a.mother || {};
+    const docs = a.documents || [];
+    const docsHtml = docs.length
+      ? docs.map(d => `<li><strong>${esc(d.label || d.name)}</strong> — <a href="${esc(d.url)}" target="_blank">${esc(d.name)}</a></li>`).join('')
+      : '<li style="color:#94a3b8">No documents attached.</li>';
+    const name = esc(a.fullName || a.studentName || '—');
+    const cls  = esc(a.classApplied || a.class || '—');
     const win = window.open('', '_blank');
-    win.document.write(`<!DOCTYPE html><html><head><title>Admission Form — ${a.fullName||''}</title>
-<style>body{font-family:Arial,sans-serif;padding:40px;color:#1e293b}h2{text-align:center;color:#4f46e5}table{width:100%;border-collapse:collapse;margin-top:16px}td{padding:8px 12px;border:1px solid #e2e8f0;font-size:13px}.label{background:#f8fafc;font-weight:600;width:35%}@media print{body{padding:20px}}</style>
+    win.document.write(`<!DOCTYPE html><html><head><title>Admission Form — ${name}</title>
+<style>
+  body{font-family:Arial,sans-serif;padding:40px;color:#1e293b;max-width:780px;margin:0 auto}
+  h2{text-align:center;color:#4f46e5;margin:0 0 4px}
+  h3{text-align:center;color:#64748b;margin:0 0 24px;font-weight:500}
+  h4{color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px}
+  table{width:100%;border-collapse:collapse;margin-top:6px}
+  td{padding:8px 12px;border:1px solid #e2e8f0;font-size:13px;vertical-align:top}
+  .label{background:#f8fafc;font-weight:600;width:30%;color:#475569}
+  ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7}
+  a{color:#4f46e5;text-decoration:none}
+  .footer{margin-top:40px;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:12px}
+  @media print { body{padding:20px} a{color:#1e293b;text-decoration:none} }
+</style>
 </head><body>
 <h2>St. Francis De Sales Secondary School</h2>
-<h3 style="text-align:center;color:#64748b;margin-top:4px">Admission Application Form</h3>
+<h3>Admission Application Form</h3>
+
+<h4>Student Information</h4>
 <table>
-<tr><td class="label">Full Name</td><td>${a.fullName||'—'}</td><td class="label">Class Applied</td><td>${a.classApplied||'—'}</td></tr>
-<tr><td class="label">Date of Birth</td><td>${a.dob||'—'}</td><td class="label">Gender</td><td>${a.gender||'—'}</td></tr>
-<tr><td class="label">Parent / Guardian</td><td>${a.parentName||'—'}</td><td class="label">Contact</td><td>${a.contact||'—'}</td></tr>
-<tr><td class="label">Address</td><td colspan="3">${a.address||'—'}</td></tr>
-<tr><td class="label">Previous School</td><td colspan="3">${a.previousSchool||'—'}</td></tr>
-<tr><td class="label">Date Submitted</td><td colspan="3">${date}</td></tr>
-<tr><td class="label">Documents</td><td colspan="3"><ul style="margin:0;padding-left:16px">${docsHtml}</ul></td></tr>
+  <tr><td class="label">Full Name</td><td>${name}</td><td class="label">Class Applied</td><td>${cls}</td></tr>
+  <tr><td class="label">Date of Birth</td><td>${esc(a.dob)}</td><td class="label">Gender</td><td>${esc(a.gender)}</td></tr>
+  <tr><td class="label">Academic Year</td><td>${esc(a.year)}</td><td class="label">Previous School</td><td>${esc(a.previousSchool)}</td></tr>
+  <tr><td class="label">Address</td><td colspan="3">${esc(a.address)}</td></tr>
+  <tr><td class="label">Medical / Special Needs</td><td colspan="3">${esc(a.medical) || '—'}</td></tr>
 </table>
-<p style="margin-top:40px;font-size:12px;color:#94a3b8">Reviewed by Office Staff — St. Francis De Sales Secondary School</p>
-<script>window.onload=function(){window.print();}<\/script>
+
+<h4>Primary Contact</h4>
+<table>
+  <tr><td class="label">Name</td><td>${esc(a.parentName)}</td><td class="label">Relation</td><td>${esc(a.relation)}</td></tr>
+  <tr><td class="label">Contact No.</td><td>${esc(a.contact)}</td><td class="label">Email</td><td>${esc(a.email)}</td></tr>
+</table>
+
+<h4>Father's Details</h4>
+<table>
+  <tr><td class="label">Name</td><td>${esc(f.name)}</td><td class="label">Occupation</td><td>${esc(f.occupation)}</td></tr>
+  <tr><td class="label">Contact No.</td><td colspan="3">${esc(f.contact)}</td></tr>
+</table>
+
+<h4>Mother's Details</h4>
+<table>
+  <tr><td class="label">Name</td><td>${esc(m.name)}</td><td class="label">Occupation</td><td>${esc(m.occupation)}</td></tr>
+  <tr><td class="label">Contact No.</td><td colspan="3">${esc(m.contact)}</td></tr>
+</table>
+
+<h4>Submitted Documents</h4>
+<ul>${docsHtml}</ul>
+
+<h4>Application Meta</h4>
+<table>
+  <tr><td class="label">Status</td><td>${esc(a.status)}</td><td class="label">Submitted On</td><td>${esc(date)}</td></tr>
+</table>
+
+<div class="footer">St. Francis De Sales Secondary School · Laitkor, Meghalaya · Generated ${new Date().toLocaleString('en-IN')}</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},250);}<\/script>
 </body></html>`);
     win.document.close();
+  };
+
+  // Office portal wrapper — uses currentAdmissionData
+  window.printAdmissionForm = function() {
+    if (!currentAdmissionData) { showToast('⚠️ No application selected.'); return; }
+    window._printAdmissionPDF(currentAdmissionData);
   };
 
   // ── Forward to Admin ──────────────────────────────────────────
