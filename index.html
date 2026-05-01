@@ -3503,38 +3503,105 @@
     } catch(e) { showToast('❌ Could not send: ' + e.message); }
   };
 
-  // Admission form submission to Firestore
+  // ── Helper: upload a single file to Firebase Storage and return its download URL ──
+  async function _uploadAdmissionDoc(file, folder, label) {
+    if (!file) return null;
+    const MAX_BYTES = 5 * 1024 * 1024;
+    if (file.size > MAX_BYTES) throw new Error(`${label} exceeds 5 MB limit.`);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `admissions/${folder}/${Date.now()}_${label}_${safeName}`;
+    const r = storageRef(storage, path);
+    const task = uploadBytesResumable(r, file);
+    await new Promise((resolve, reject) => task.on('state_changed', null, reject, resolve));
+    const url = await getDownloadURL(task.snapshot.ref);
+    return { name: file.name, label, url, path, size: file.size, type: file.type };
+  }
+
+  // Admission form submission to Firestore (with file uploads)
   window.submitAdmissionForm = async function() {
-    const studentName = (document.getElementById('adm-student-name')?.value || '').trim();
-    const dob         = document.getElementById('adm-dob')?.value || '';
-    const cls         = document.getElementById('adm-class')?.value || '';
-    const parentName  = (document.getElementById('adm-parent-name')?.value || '').trim();
-    const contact     = (document.getElementById('adm-contact')?.value || '').trim();
-    const address     = (document.getElementById('adm-address')?.value || '').trim();
+    const getVal = id => (document.getElementById(id)?.value || '').trim();
+    const getFile = id => document.getElementById(id)?.files?.[0] || null;
+
+    const studentName = getVal('adm-student-name');
+    const dob         = getVal('adm-dob');
+    const cls         = getVal('adm-class');
+    const parentName  = getVal('adm-parent-name');
+    const contact     = getVal('adm-contact');
+    const address     = getVal('adm-address');
     if (!studentName || !dob || !cls || !parentName || !contact || !address) {
       showToast('⚠️ Please fill in all required fields (*).');
       return;
     }
+
+    // Capture parent details
+    const father = {
+      name:       getVal('adm-father-name'),
+      occupation: getVal('adm-father-occupation'),
+      contact:    getVal('adm-father-contact')
+    };
+    const mother = {
+      name:       getVal('adm-mother-name'),
+      occupation: getVal('adm-mother-occupation'),
+      contact:    getVal('adm-mother-contact')
+    };
+
+    // Capture document files
+    const photoFile     = getFile('adm-doc-photo');
+    const birthFile     = getFile('adm-doc-birth');
+    const marksheetFile = getFile('adm-doc-marksheet');
+
     const btn = document.querySelector('#page-admission .btn-primary');
-    if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...'; btn.disabled = true; }
+    if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading…'; btn.disabled = true; }
+
     try {
+      // Use a deterministic folder per submission so files stay grouped
+      const folder = (studentName.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase() || 'app') + '_' + Date.now();
+
+      // Upload all three documents in parallel
+      const [photoDoc, birthDoc, marksheetDoc] = await Promise.all([
+        _uploadAdmissionDoc(photoFile,     folder, 'photo'),
+        _uploadAdmissionDoc(birthFile,     folder, 'birth_certificate'),
+        _uploadAdmissionDoc(marksheetFile, folder, 'marksheet')
+      ]);
+
+      const documents = [photoDoc, birthDoc, marksheetDoc].filter(Boolean);
+
+      if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
+
       await addDoc(collection(db,'admissions'), {
-        studentName, dob, class: cls, year: document.getElementById('adm-year')?.value || '2025–26',
-        gender: document.getElementById('adm-gender')?.value || '',
-        parentName, relation: document.getElementById('adm-relation')?.value || '',
-        contact, email: document.getElementById('adm-email')?.value || '',
-        address, previousSchool: document.getElementById('adm-prev-school')?.value || '',
-        medical: document.getElementById('adm-medical')?.value || '',
-        status: 'Pending',
+        studentName,
+        // Mirror as `fullName` for downstream readers (Office admissions UI uses fullName)
+        fullName: studentName,
+        dob, class: cls,
+        classApplied: cls,
+        year: getVal('adm-year') || '2025–26',
+        gender: getVal('adm-gender'),
+        parentName, relation: getVal('adm-relation'),
+        contact, email: getVal('adm-email'),
+        address, previousSchool: getVal('adm-prev-school'),
+        medical: getVal('adm-medical'),
+        father, mother,
+        documents,
+        status: 'pending',
         submittedAt: new Date().toISOString(),
         createdAt: new Date().toISOString()
       });
+
       // Clear form
-      ['adm-student-name','adm-dob','adm-parent-name','adm-contact','adm-email','adm-address','adm-prev-school','adm-medical'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+      ['adm-student-name','adm-dob','adm-parent-name','adm-contact','adm-email','adm-address','adm-prev-school','adm-medical',
+       'adm-father-name','adm-father-occupation','adm-father-contact',
+       'adm-mother-name','adm-mother-occupation','adm-mother-contact',
+       'adm-doc-photo','adm-doc-birth','adm-doc-marksheet'
+      ].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+
       showToast('✅ Application submitted! Our team will contact you within 3 working days.');
       showPage('home');
-    } catch(e) { showToast('❌ Submission failed: ' + e.message); }
-    finally { if (btn) { btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Application'; btn.disabled = false; } }
+    } catch(e) {
+      console.error('[Admission] submit failed:', e);
+      showToast('❌ Submission failed: ' + e.message);
+    } finally {
+      if (btn) { btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Application'; btn.disabled = false; }
+    }
   };
 
   // ================================================================
