@@ -2322,6 +2322,7 @@
                 <label>Assign Class / Section *</label>
                 <select id="approve-class-select" style="padding:10px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:14px;width:100%">
                   <option value="">-- Select Class --</option>
+                  <option value="PG">Play Group</option>
                   <option value="LKG">LKG</option>
                   <option value="KG">KG (Kindergarten)</option>
                   <option value="1">Grade 1</option>
@@ -4049,33 +4050,47 @@
       const studentId = `${prefix}/${year}/${rollNo}`;
 
       // Create student record in 'students' collection
+      const father = adm.father || {};
+      const mother = adm.mother || {};
       await addDoc(collection(db,'students'), {
-        name:         adm.studentName,
-        dob:          adm.dob || '',
-        gender:       adm.gender || '',
-        class:        assignedClass,
-        section:      section,
-        rollNo:       rollNo,
-        studentId:    studentId,
-        parentName:   adm.parentName || '',
-        contact:      adm.contact || '',
-        email:        adm.email || '',
-        address:      adm.address || '',
+        name:           adm.studentName || adm.fullName || '',
+        dob:            adm.dob || '',
+        gender:         adm.gender || '',
+        class:          assignedClass,
+        classId:        assignedClass,
+        section:        section,
+        rollNo:         rollNo,
+        studentId:      studentId,
+        // Primary contact (kept for backward compatibility)
+        parentName:     adm.parentName || '',
+        contact:        adm.contact || '',
+        email:          adm.email || '',
+        // Father details
+        fatherName:        father.name || '',
+        fatherOccupation:  father.occupation || '',
+        fatherContact:     father.contact || '',
+        // Mother details
+        motherName:        mother.name || '',
+        motherOccupation:  mother.occupation || '',
+        motherContact:     mother.contact || '',
+        address:        adm.address || '',
         previousSchool: adm.previousSchool || '',
-        medical:      adm.medical || '',
-        admissionYear: year,
-        status:       'Active',
+        medical:        adm.medical || '',
+        documents:      adm.documents || [],
+        admissionYear:  year,
+        status:         'Active',
         admissionDocId: _pendingApproveId,
-        createdAt:    new Date().toISOString()
+        createdAt:      new Date().toISOString()
       });
 
       // Update admission status to Admitted
       await updateDoc(doc(db,'admissions',_pendingApproveId), {
-        status:       'Admitted',
-        assignedClass: assignedClass,
+        status:          'Admitted',
+        assignedClass:   assignedClass,
+        classId:         assignedClass,
         assignedSection: section,
         studentId,
-        updatedAt:    new Date().toISOString()
+        updatedAt:       new Date().toISOString()
       });
 
       showToast(`✅ Admitted! Student ID: ${studentId} — Class ${assignedClass}-${section}`);
