@@ -2707,6 +2707,7 @@
             <div style="display:flex;gap:12px;flex-wrap:wrap">
               <button onclick="adminSaveAdmissionChanges()" style="padding:10px 20px;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-save" style="margin-right:6px"></i>Save Changes</button>
               <button onclick="adminPrintAdmission(window._aaeCurrentId)" style="padding:10px 20px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-print" style="color:var(--primary);margin-right:6px"></i>Print / PDF</button>
+              <button id="aae-approve-btn" onclick="triggerAdminApproval()" style="display:none;padding:10px 20px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-check-circle" style="margin-right:6px"></i>Final Approval</button>
               <button onclick="closeAdminAdmEdit()" style="padding:10px 20px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-times"></i> Cancel</button>
             </div>
           </div>
@@ -3134,7 +3135,10 @@
           <div id="adm-detail-panel" style="display:none">
             <div class="card" style="padding:24px;margin-bottom:20px">
               <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
-                <h4 style="margin:0;color:var(--accent-dark)"><i class="fas fa-user-graduate" style="color:var(--primary);margin-right:8px"></i>Application Detail</h4>
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                  <h4 style="margin:0;color:var(--accent-dark)"><i class="fas fa-user-graduate" style="color:var(--primary);margin-right:8px"></i>Application Detail</h4>
+                  <span id="adm-d-status-badge" style="display:none;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px"></span>
+                </div>
                 <button onclick="closeAdmissionDetail()" style="padding:8px 14px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-times"></i> Close</button>
               </div>
 
@@ -4523,12 +4527,24 @@
     docsEl.innerHTML = docs.length
       ? docs.map(d=>`<a href="${d.url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--primary);text-decoration:none"><i class="fas fa-file"></i>${d.name}</a>`).join('')
       : '<span style="color:var(--text-light);font-size:13px">No documents attached.</span>';
-    document.getElementById('admin-adm-edit-overlay').style.display = 'block';
+    const approveBtn = document.getElementById('aae-approve-btn');
+    if (approveBtn) approveBtn.style.display = a.status === 'forwarded_to_admin' ? 'inline-flex' : 'none';
+    const overlay = document.getElementById('admin-adm-edit-overlay');
+    overlay.style.display = 'block';
+    overlay.scrollTop = 0;
   };
 
   window.closeAdminAdmEdit = function() {
     document.getElementById('admin-adm-edit-overlay').style.display = 'none';
     window._aaeCurrentId = null;
+  };
+
+  window.triggerAdminApproval = function() {
+    const docId = window._aaeCurrentId;
+    const a = (window.__adminAdmCache || {})[docId];
+    if (!docId || !a) return;
+    closeAdminAdmEdit();
+    window.openApproveModal(docId, a.fullName || a.studentName || '', a.classApplied || a.class || '');
   };
 
   window.adminSaveAdmissionChanges = async function() {
@@ -7079,19 +7095,36 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
       docsEl.innerHTML = '<span style="color:var(--text-light);font-size:13px">No documents attached.</span>';
     }
 
+    // Status badge
+    const badge = document.getElementById('adm-d-status-badge');
+    if (badge) {
+      const statusColors = {
+        pending: '#d97706,#fef3c7', forwarded_to_admin: '#2563eb,#dbeafe',
+        Shortlisted: '#7c3aed,#ede9fe', Admitted: '#059669,#d1fae5', Rejected: '#dc2626,#fee2e2'
+      };
+      const [fg, bg] = (statusColors[a.status] || '#475569,#f1f5f9').split(',');
+      badge.textContent = a.status || 'unknown';
+      badge.style.cssText += `;display:inline-block;color:${fg};background:${bg};`;
+    }
+
     // Forward button state
+    const isTerminal = ['Admitted','Rejected'].includes(a.status);
     const fwdBtn = document.getElementById('adm-forward-btn');
     if (fwdBtn) {
-      if (a.status === 'forwarded_to_admin') {
+      if (a.status === 'forwarded_to_admin' || isTerminal) {
         fwdBtn.disabled = true;
-        fwdBtn.textContent = '✓ Already Forwarded';
-        fwdBtn.style.opacity = '0.6';
+        fwdBtn.textContent = a.status === 'forwarded_to_admin' ? '✓ Already Forwarded' : '— ' + a.status;
+        fwdBtn.style.opacity = '0.5';
       } else {
         fwdBtn.disabled = false;
         fwdBtn.innerHTML = '<i class="fas fa-share" style="margin-right:6px"></i>Forward to Admin';
         fwdBtn.style.opacity = '1';
       }
     }
+
+    // Save button state — disable for terminal statuses
+    const saveBtn = document.querySelector('#adm-detail-panel button[onclick="saveAdmissionChanges()"]');
+    if (saveBtn) { saveBtn.disabled = isTerminal; saveBtn.style.opacity = isTerminal ? '0.5' : '1'; }
 
     document.getElementById('adm-detail-panel').style.display = 'block';
     document.getElementById('adm-detail-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
