@@ -2650,6 +2650,68 @@
           </div>
         </div>
 
+        <!-- ── ADMIN ADMISSION EDIT MODAL ── -->
+        <div id="admin-adm-edit-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;overflow-y:auto;padding:20px;box-sizing:border-box">
+          <div style="background:var(--glass-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:20px;max-width:760px;margin:0 auto;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,.25)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+              <h3 style="font-family:var(--font-head);color:var(--accent-dark);margin:0"><i class="fas fa-user-edit" style="color:var(--primary);margin-right:8px"></i>Edit Application</h3>
+              <button onclick="closeAdminAdmEdit()" style="padding:6px 14px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-times"></i> Close</button>
+            </div>
+
+            <div style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px"><i class="fas fa-user-graduate" style="margin-right:6px"></i>Student Information</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px">
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Full Name *</label><input id="aae-name" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Class Applied</label><select id="aae-class" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark)"><option value="">—</option><option value="PG">Play Group</option><option value="LKG">LKG</option><option value="KG">KG</option><option value="1">Grade 1</option><option value="2">Grade 2</option><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option></select></div>
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Date of Birth</label><input id="aae-dob" type="date" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Gender</label><select id="aae-gender" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark)"><option value="">—</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Academic Year</label><input id="aae-year" type="text" placeholder="e.g. 2025-26" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Previous School</label><input id="aae-prevschool" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Address</label><textarea id="aae-address" rows="2" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box;resize:vertical"></textarea></div>
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Medical / Special Needs</label><textarea id="aae-medical" rows="2" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box;resize:vertical"></textarea></div>
+            </div>
+
+            <div style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px"><i class="fas fa-phone" style="margin-right:6px"></i>Primary Contact</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px">
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Name</label><input id="aae-parent" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Relation</label><input id="aae-relation" type="text" placeholder="e.g. Father, Mother" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Contact No.</label><input id="aae-contact" type="tel" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+              <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Email</label><input id="aae-email" type="email" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px"><i class="fas fa-male" style="margin-right:6px"></i>Father</div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <input id="aae-father-name" type="text" placeholder="Father's Name" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                  <input id="aae-father-occ" type="text" placeholder="Occupation" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                  <input id="aae-father-tel" type="tel" placeholder="Contact No." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                </div>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px"><i class="fas fa-female" style="margin-right:6px"></i>Mother</div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <input id="aae-mother-name" type="text" placeholder="Mother's Name" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                  <input id="aae-mother-occ" type="text" placeholder="Occupation" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                  <input id="aae-mother-tel" type="tel" placeholder="Contact No." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-bottom:20px">
+              <div style="font-size:13px;font-weight:600;color:var(--accent-dark);margin-bottom:10px"><i class="fas fa-paperclip" style="color:var(--primary);margin-right:6px"></i>Submitted Documents</div>
+              <div id="aae-docs" style="display:flex;flex-wrap:wrap;gap:8px"><span style="color:var(--text-light);font-size:13px">No documents attached.</span></div>
+            </div>
+
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <button onclick="adminSaveAdmissionChanges()" style="padding:10px 20px;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-save" style="margin-right:6px"></i>Save Changes</button>
+              <button onclick="adminPrintAdmission(window._aaeCurrentId)" style="padding:10px 20px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-print" style="color:var(--primary);margin-right:6px"></i>Print / PDF</button>
+              <button onclick="closeAdminAdmEdit()" style="padding:10px 20px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-times"></i> Cancel</button>
+            </div>
+          </div>
+        </div>
+
         <!-- ── CONTACTS ── -->
         <div id="a-contacts" class="dash-section">
           <div class="card" style="padding:24px">
@@ -3076,48 +3138,54 @@
                 <button onclick="closeAdmissionDetail()" style="padding:8px 14px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-times"></i> Close</button>
               </div>
 
-              <!-- Bento info grid -->
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">
-                <div class="nc-card" style="padding:16px">
-                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Full Name</div>
-                  <div id="adm-d-name" style="font-weight:600;color:var(--accent-dark)">—</div>
+              <!-- Student Info -->
+              <div style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px"><i class="fas fa-user-graduate" style="margin-right:6px"></i>Student Information</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px">
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Full Name *</label><input id="adm-d-name" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Class Applied</label><select id="adm-d-class" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark)"><option value="">—</option><option value="PG">Play Group</option><option value="LKG">LKG</option><option value="KG">KG</option><option value="1">Grade 1</option><option value="2">Grade 2</option><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option></select></div>
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Date of Birth</label><input id="adm-d-dob" type="date" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Gender</label><select id="adm-d-gender" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark)"><option value="">—</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Academic Year</label><input id="adm-d-year" type="text" placeholder="e.g. 2025-26" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Previous School</label><input id="adm-d-prevschool" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Address</label><textarea id="adm-d-address" rows="2" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box;resize:vertical"></textarea></div>
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Medical / Special Needs</label><textarea id="adm-d-medical" rows="2" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box;resize:vertical" placeholder="Any medical conditions…"></textarea></div>
+              </div>
+
+              <!-- Primary Contact -->
+              <div style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px"><i class="fas fa-phone" style="margin-right:6px"></i>Primary Contact</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px">
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Name</label><input id="adm-d-parent" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Relation</label><input id="adm-d-relation" type="text" placeholder="e.g. Father, Mother" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Contact No.</label><input id="adm-d-contact" type="tel" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+                <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Email</label><input id="adm-d-email" type="email" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+              </div>
+
+              <!-- Father / Mother -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px"><i class="fas fa-male" style="margin-right:6px"></i>Father</div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <input id="adm-d-father-name" type="text" placeholder="Father's Name" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                    <input id="adm-d-father-occ" type="text" placeholder="Occupation" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                    <input id="adm-d-father-tel" type="tel" placeholder="Contact No." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                  </div>
                 </div>
-                <div class="nc-card" style="padding:16px">
-                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Class Applied</div>
-                  <div id="adm-d-class" style="font-weight:600;color:var(--accent-dark)">—</div>
-                </div>
-                <div class="nc-card" style="padding:16px">
-                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Date of Birth</div>
-                  <div id="adm-d-dob" style="font-weight:600;color:var(--accent-dark)">—</div>
-                </div>
-                <div class="nc-card" style="padding:16px">
-                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Gender</div>
-                  <div id="adm-d-gender" style="font-weight:600;color:var(--accent-dark)">—</div>
-                </div>
-                <div class="nc-card" style="padding:16px">
-                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Parent / Guardian</div>
-                  <div id="adm-d-parent" style="font-weight:600;color:var(--accent-dark)">—</div>
-                </div>
-                <div class="nc-card" style="padding:16px">
-                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Contact</div>
-                  <div id="adm-d-contact" style="font-weight:600;color:var(--accent-dark)">—</div>
-                </div>
-                <div class="nc-card" style="padding:16px">
-                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Address</div>
-                  <div id="adm-d-address" style="font-weight:600;color:var(--accent-dark)">—</div>
-                </div>
-                <div class="nc-card" style="padding:16px">
-                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Previous School</div>
-                  <div id="adm-d-prevschool" style="font-weight:600;color:var(--accent-dark)">—</div>
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px"><i class="fas fa-female" style="margin-right:6px"></i>Mother</div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <input id="adm-d-mother-name" type="text" placeholder="Mother's Name" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                    <input id="adm-d-mother-occ" type="text" placeholder="Occupation" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                    <input id="adm-d-mother-tel" type="tel" placeholder="Contact No." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                  </div>
                 </div>
               </div>
 
               <!-- Documents -->
-              <div style="margin-bottom:20px">
+              <div style="margin-bottom:16px">
                 <div style="font-size:13px;font-weight:600;color:var(--accent-dark);margin-bottom:10px"><i class="fas fa-paperclip" style="color:var(--primary);margin-right:6px"></i>Submitted Documents</div>
-                <div id="adm-d-docs" style="display:flex;flex-wrap:wrap;gap:8px">
-                  <span style="color:var(--text-light);font-size:13px">No documents attached.</span>
-                </div>
+                <div id="adm-d-docs" style="display:flex;flex-wrap:wrap;gap:8px"><span style="color:var(--text-light);font-size:13px">No documents attached.</span></div>
               </div>
 
               <!-- Notes -->
@@ -3128,6 +3196,7 @@
 
               <!-- Action Buttons -->
               <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <button onclick="saveAdmissionChanges()" style="padding:10px 20px;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-save" style="margin-right:6px"></i>Save Changes</button>
                 <button onclick="printAdmissionForm()" style="padding:10px 20px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-print" style="color:var(--primary);margin-right:6px"></i>Print / Save PDF</button>
                 <button id="adm-forward-btn" onclick="forwardAdmissionToAdmin()" style="padding:10px 20px;background:linear-gradient(135deg,var(--primary),var(--accent-dark));color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-share" style="margin-right:6px"></i>Forward to Admin</button>
               </div>
@@ -4277,6 +4346,7 @@
           <td><span class="badge ${bc}">${a.status}</span></td>
           <td>
             <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <button class="btn btn-sm" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="adminViewAdmission('${d.id}')"><i class="fas fa-edit"></i> View/Edit</button>
               <button class="btn btn-sm" style="background:#475569;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="adminPrintAdmission('${d.id}')"><i class="fas fa-print"></i> Print</button>
               ${a.status!=='Admitted'?`<button class="btn btn-sm" style="background:#1a6b3c;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="openApproveModal('${d.id}','${(a.studentName||'').replace(/'/g,"\\'")}','${a.class||''}')"><i class="fas fa-check"></i> Approve</button>`:''}
               ${a.status!=='Shortlisted'?`<button class="btn btn-sm" style="background:#1a4a8a;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px" onclick="updateAdmStatus('${d.id}','Shortlisted')">Shortlist</button>`:''}
@@ -4423,6 +4493,63 @@
       await updateDoc(doc(db,'admissions',docId), { status, updatedAt: new Date().toISOString() });
       showToast('✅ Status updated to ' + status);
       loadAdmissions();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window._aaeCurrentId = null;
+
+  window.adminViewAdmission = function(docId) {
+    const a = (window.__adminAdmCache || {})[docId];
+    if (!a) { showToast('⚠️ Application data not in cache. Reload the list first.'); return; }
+    window._aaeCurrentId = docId;
+    const sv = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    sv('aae-name',       a.fullName);
+    sv('aae-class',      a.classApplied);
+    sv('aae-dob',        a.dob);
+    sv('aae-gender',     a.gender);
+    sv('aae-year',       a.year);
+    sv('aae-prevschool', a.previousSchool);
+    sv('aae-address',    a.address);
+    sv('aae-medical',    a.medical);
+    sv('aae-parent',     a.parentName);
+    sv('aae-relation',   a.relation);
+    sv('aae-contact',    a.contact);
+    sv('aae-email',      a.email);
+    const f = a.father || {}, m = a.mother || {};
+    sv('aae-father-name', f.name); sv('aae-father-occ', f.occupation); sv('aae-father-tel', f.contact);
+    sv('aae-mother-name', m.name); sv('aae-mother-occ', m.occupation); sv('aae-mother-tel', m.contact);
+    const docsEl = document.getElementById('aae-docs');
+    const docs = a.documents || [];
+    docsEl.innerHTML = docs.length
+      ? docs.map(d=>`<a href="${d.url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--glass-bg);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--primary);text-decoration:none"><i class="fas fa-file"></i>${d.name}</a>`).join('')
+      : '<span style="color:var(--text-light);font-size:13px">No documents attached.</span>';
+    document.getElementById('admin-adm-edit-overlay').style.display = 'block';
+  };
+
+  window.closeAdminAdmEdit = function() {
+    document.getElementById('admin-adm-edit-overlay').style.display = 'none';
+    window._aaeCurrentId = null;
+  };
+
+  window.adminSaveAdmissionChanges = async function() {
+    const docId = window._aaeCurrentId;
+    if (!docId) { showToast('⚠️ No application selected.'); return; }
+    const gv = id => (document.getElementById(id) || {}).value?.trim() || '';
+    const payload = {
+      fullName: gv('aae-name'), classApplied: gv('aae-class'),
+      dob: gv('aae-dob'), gender: gv('aae-gender'),
+      year: gv('aae-year'), previousSchool: gv('aae-prevschool'),
+      address: gv('aae-address'), medical: gv('aae-medical'),
+      parentName: gv('aae-parent'), relation: gv('aae-relation'),
+      contact: gv('aae-contact'), email: gv('aae-email'),
+      father: { name: gv('aae-father-name'), occupation: gv('aae-father-occ'), contact: gv('aae-father-tel') },
+      mother: { name: gv('aae-mother-name'), occupation: gv('aae-mother-occ'), contact: gv('aae-mother-tel') },
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      await updateDoc(doc(db,'admissions',docId), payload);
+      if (window.__adminAdmCache) window.__adminAdmCache[docId] = { ...window.__adminAdmCache[docId], ...payload };
+      showToast('✅ Application updated.');
     } catch(e) { showToast('❌ ' + e.message); }
   };
 
@@ -6919,15 +7046,27 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
     currentAdmissionId   = id;
     currentAdmissionData = a;
 
-    document.getElementById('adm-d-name').textContent       = a.fullName      || '—';
-    document.getElementById('adm-d-class').textContent      = a.classApplied  || '—';
-    document.getElementById('adm-d-dob').textContent        = a.dob           || '—';
-    document.getElementById('adm-d-gender').textContent     = a.gender        || '—';
-    document.getElementById('adm-d-parent').textContent     = a.parentName    || '—';
-    document.getElementById('adm-d-contact').textContent    = a.contact       || '—';
-    document.getElementById('adm-d-address').textContent    = a.address       || '—';
-    document.getElementById('adm-d-prevschool').textContent = a.previousSchool || '—';
-    document.getElementById('adm-d-notes').value            = '';
+    const sv = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    sv('adm-d-name',       a.fullName);
+    sv('adm-d-class',      a.classApplied);
+    sv('adm-d-dob',        a.dob);
+    sv('adm-d-gender',     a.gender);
+    sv('adm-d-year',       a.year);
+    sv('adm-d-prevschool', a.previousSchool);
+    sv('adm-d-address',    a.address);
+    sv('adm-d-medical',    a.medical);
+    sv('adm-d-parent',     a.parentName);
+    sv('adm-d-relation',   a.relation);
+    sv('adm-d-contact',    a.contact);
+    sv('adm-d-email',      a.email);
+    const f = a.father || {}, m = a.mother || {};
+    sv('adm-d-father-name', f.name);
+    sv('adm-d-father-occ',  f.occupation);
+    sv('adm-d-father-tel',  f.contact);
+    sv('adm-d-mother-name', m.name);
+    sv('adm-d-mother-occ',  m.occupation);
+    sv('adm-d-mother-tel',  m.contact);
+    document.getElementById('adm-d-notes').value = '';
 
     // Documents
     const docsEl = document.getElementById('adm-d-docs');
@@ -6963,6 +7102,27 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
     currentAdmissionId   = null;
     currentAdmissionData = null;
     document.getElementById('adm-detail-panel').style.display = 'none';
+  };
+
+  window.saveAdmissionChanges = async function() {
+    if (!currentAdmissionId) { showToast('⚠️ No application selected.'); return; }
+    const gv = id => (document.getElementById(id) || {}).value?.trim() || '';
+    const payload = {
+      fullName: gv('adm-d-name'), classApplied: gv('adm-d-class'),
+      dob: gv('adm-d-dob'), gender: gv('adm-d-gender'),
+      year: gv('adm-d-year'), previousSchool: gv('adm-d-prevschool'),
+      address: gv('adm-d-address'), medical: gv('adm-d-medical'),
+      parentName: gv('adm-d-parent'), relation: gv('adm-d-relation'),
+      contact: gv('adm-d-contact'), email: gv('adm-d-email'),
+      father: { name: gv('adm-d-father-name'), occupation: gv('adm-d-father-occ'), contact: gv('adm-d-father-tel') },
+      mother: { name: gv('adm-d-mother-name'), occupation: gv('adm-d-mother-occ'), contact: gv('adm-d-mother-tel') },
+    };
+    try {
+      await updateDoc(doc(db, 'admissions', currentAdmissionId), payload);
+      currentAdmissionData = { ...currentAdmissionData, ...payload };
+      if (window.__admissionsCache) window.__admissionsCache[currentAdmissionId] = currentAdmissionData;
+      showToast('✅ Changes saved.');
+    } catch(e) { showToast('❌ ' + e.message); }
   };
 
   // ── Print / Save PDF ──────────────────────────────────────────
