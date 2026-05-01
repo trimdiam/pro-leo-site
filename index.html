@@ -3497,7 +3497,13 @@
     }
   };
 
+  // Guard prevents onAuthStateChanged + doGoogleLogin from running _handleAuthUser concurrently
+  let _authHandling = false;
+
   async function _handleAuthUser(user) {
+    if (_authHandling) return;
+    _authHandling = true;
+    try {
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     if (!userDoc.exists()) {
       // Detect first-time Google sign-in — offer Student ID self-linking.
@@ -3530,6 +3536,10 @@
       if (role === 'teacher') await loadTeacherPortal(user);
       if (role === 'office')  { if (window.loadOfficePortal) await window.loadOfficePortal(user); }
     }, 400);
+    } finally {
+      // Release guard after routing is complete so future sign-outs/re-logins work
+      setTimeout(() => { _authHandling = false; }, 3000);
+    }
   }
 
   window.firebaseLogin = window.doLogin;
