@@ -5540,10 +5540,10 @@ import {
         listEl.innerHTML = '<div style="font-size:13px;color:var(--text-light);padding:10px">No students found.</div>';
         return;
       }
-      listEl.innerHTML = students.slice(0,15).map(s => {
+      window.__feeSearchStudents = students.slice(0, 15);
+      listEl.innerHTML = window.__feeSearchStudents.map((s, i) => {
         const initials = (s.name||'S').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-        const safe = JSON.stringify(JSON.stringify(s)).slice(1,-1).replace(/'/g,"&#39;");
-        return `<div class="fee-search-item" onclick="selectStudentForFee('${safe}')">
+        return `<div class="fee-search-item" data-idx="${i}" style="cursor:pointer">
           <div style="display:flex;align-items:center;gap:10px">
             <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-dark));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;flex-shrink:0">${initials}</div>
             <div>
@@ -5638,6 +5638,15 @@ import {
     } catch(e) { console.warn('[FeeData]',e.message); showToast('⚠️ Could not load fee data: '+e.message); }
   }
   window._loadFeeDataForStudent = _loadFeeDataForStudent;
+
+  // Event delegation — handles dynamically rendered student cards
+  document.addEventListener('click', function(e) {
+    const item = e.target.closest('.fee-search-item[data-idx]');
+    if (!item) return;
+    const idx = parseInt(item.dataset.idx, 10);
+    const students = window.__feeSearchStudents || [];
+    if (students[idx]) window.selectStudentForFee(JSON.stringify(students[idx]));
+  });
 
 })();
 </script>
