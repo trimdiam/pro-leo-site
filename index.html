@@ -2497,6 +2497,70 @@
 
             </div>
 
+            <!-- ── FEE LEDGER ── -->
+            <div class="card" id="fee-ledger-card" style="padding:24px;margin-bottom:20px">
+              <div class="fee-bento-label" style="margin-bottom:14px"><i class="fas fa-book-open"></i> Fee Ledger</div>
+
+              <!-- Breakdown table -->
+              <div class="table-wrap" style="margin-bottom:20px">
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                  <thead>
+                    <tr style="background:rgba(99,102,241,0.08)">
+                      <th style="padding:8px 12px;text-align:left;white-space:nowrap">Fee Component</th>
+                      <th style="padding:8px 12px;text-align:right;white-space:nowrap">Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 12px">Tuition Fee</td><td style="padding:8px 12px;text-align:right" id="ldg-tuition">—</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 12px">Examination Fee</td><td style="padding:8px 12px;text-align:right" id="ldg-exam">—</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 12px">Sports Fee</td><td style="padding:8px 12px;text-align:right" id="ldg-sports">—</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 12px">Annual Charges</td><td style="padding:8px 12px;text-align:right" id="ldg-annual">—</td></tr>
+                    <tr style="background:rgba(99,102,241,0.06);font-weight:700">
+                      <td style="padding:10px 12px">Total Annual Fee</td>
+                      <td style="padding:10px 12px;text-align:right;color:var(--primary)" id="ldg-total">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Summary row -->
+              <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+                <div style="flex:1;min-width:120px;padding:14px;background:rgba(34,197,94,0.1);border-radius:10px;text-align:center">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Amount Paid</div>
+                  <div style="font-size:1.3rem;font-weight:700;color:#16a34a" id="ldg-paid">₹0</div>
+                </div>
+                <div style="flex:1;min-width:120px;padding:14px;background:rgba(239,68,68,0.1);border-radius:10px;text-align:center">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Remaining Balance</div>
+                  <div style="font-size:1.3rem;font-weight:700;color:#ef4444" id="ldg-balance">—</div>
+                </div>
+              </div>
+
+              <!-- New Payment Form -->
+              <div style="border-top:1px solid var(--border);padding-top:18px">
+                <div style="font-size:13px;font-weight:600;color:var(--accent-dark);margin-bottom:12px"><i class="fas fa-plus-circle" style="color:var(--primary);margin-right:6px"></i>Log New Payment</div>
+                <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+                  <div style="flex:1;min-width:140px">
+                    <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Payment Amount (₹) *</label>
+                    <input type="number" id="ldg-pay-amount" placeholder="e.g. 3000" min="1" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                  </div>
+                  <div style="flex:1;min-width:140px">
+                    <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Transaction / Receipt No.</label>
+                    <input type="text" id="ldg-pay-txn" placeholder="e.g. RCP-2025-042" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                  </div>
+                </div>
+                <div style="margin-bottom:12px">
+                  <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Remarks</label>
+                  <input type="text" id="ldg-pay-remarks" placeholder="e.g. Q1 Tuition" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                </div>
+                <button id="ldg-submit-btn" onclick="ledgerSubmitPayment()" style="padding:10px 24px;background:linear-gradient(135deg,var(--primary),var(--accent-dark));color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
+                  <i class="fas fa-save" style="margin-right:6px"></i>Submit Payment
+                </button>
+                <p style="font-size:12px;color:var(--text-light);margin-top:10px;margin-bottom:0">
+                  <i class="fas fa-info-circle" style="margin-right:4px"></i>Requires Admin approval before balance is officially confirmed.
+                </p>
+              </div>
+            </div>
+
             <!-- Step 3: Payment Form -->
             <div class="card" style="padding:24px;max-width:560px">
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-plus-circle" style="margin-right:8px;color:var(--accent)"></i>Step 2 — Record Payment</h4>
@@ -5540,6 +5604,16 @@ import {
       set('fee-paid-amt',    fmtINR(feePaid));
       set('fee-balance-amt', feeTotal>0 ? fmtINR(feeBalance) : '₹—');
       set('fee-progress-pct', pct+'%');
+      // ── Ledger breakdown ──
+      const fs = fsSnap.exists() ? fsSnap.data() : {};
+      const fmt = v => v ? fmtINR(parseFloat(v)) : '—';
+      set('ldg-tuition', fmt(fs.tuition));
+      set('ldg-exam',    fmt(fs.examFee));
+      set('ldg-sports',  fmt(fs.sportsFee));
+      set('ldg-annual',  fmt(fs.annualCharge));
+      set('ldg-total',   feeTotal>0 ? fmtINR(feeTotal) : '—');
+      set('ldg-paid',    fmtINR(feePaid));
+      set('ldg-balance', feeTotal>0 ? fmtINR(feeBalance) : '—');
       const bar = document.getElementById('fee-progress-bar');
       if (bar) bar.style.width = pct+'%';
       const bb = document.getElementById('fee-balance-block');
@@ -6344,6 +6418,98 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   };
 
   console.log('[Admissions] ✅ Loaded — Office Staff admissions review module');
+})();
+</script>
+
+<!-- ================================================================
+     FEE LEDGER — Submit Payment (Step 3)
+================================================================ -->
+<script type="module">
+(async () => {
+  const { getApps, getApp } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js');
+  for (let i = 0; i < 40; i++) {
+    if (getApps().length) break;
+    await new Promise(r => setTimeout(r, 150));
+  }
+  const app = getApp();
+  const { getFirestore, collection, addDoc, doc, updateDoc, serverTimestamp }
+    = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js');
+  const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js');
+  const db   = getFirestore(app);
+  const auth = getAuth(app);
+
+  window.ledgerSubmitPayment = async function() {
+    const s  = window._feeSelectedStudent;
+    const fd = window._feeSelectedFeeData || {};
+    if (!s) { showToast('⚠️ No student selected.'); return; }
+
+    const amtRaw = parseFloat(document.getElementById('ldg-pay-amount')?.value || 0);
+    if (!amtRaw || amtRaw <= 0) { showToast('⚠️ Enter a valid payment amount.'); return; }
+    if (fd.feeBalance !== undefined && amtRaw > fd.feeBalance + 0.01) {
+      showToast('⚠️ Amount exceeds remaining balance of ₹' + fd.feeBalance.toFixed(2)); return;
+    }
+
+    const txnNo   = document.getElementById('ldg-pay-txn')?.value.trim() || '';
+    const remarks = document.getElementById('ldg-pay-remarks')?.value.trim() || '';
+    const btn     = document.getElementById('ldg-submit-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+
+    try {
+      const staffEmail = auth.currentUser?.email || 'office';
+      const today = new Date().toISOString().split('T')[0];
+
+      // 1. Write transaction record (pending — Admin approves)
+      await addDoc(collection(db, 'fee_transactions'), {
+        studentId:   s.studentId || s._docId || '',
+        studentName: s.name  || '—',
+        class:       s.class || '—',
+        amount:      amtRaw,
+        txnNo:       txnNo,
+        remarks:     remarks,
+        paymentMode: 'Cash',
+        date:        today,
+        status:      'pending',
+        recordedBy:  staffEmail,
+        createdAt:   serverTimestamp()
+      });
+
+      // 2. Real-time update of HTML ledger numbers
+      const newPaid    = (fd.feePaid    || 0) + amtRaw;
+      const newBalance = Math.max(0, (fd.feeBalance || 0) - amtRaw);
+      const newPct     = fd.feeTotal > 0 ? Math.min(100, Math.round((newPaid / fd.feeTotal) * 100)) : 0;
+
+      const fmtINR = n => '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+
+      set('ldg-paid',    fmtINR(newPaid));
+      set('ldg-balance', fmtINR(newBalance));
+      set('fee-paid-amt',    fmtINR(newPaid));
+      set('fee-balance-amt', fmtINR(newBalance));
+      set('fee-progress-pct', newPct + '%');
+      const bar = document.getElementById('fee-progress-bar');
+      if (bar) bar.style.width = newPct + '%';
+      const bb = document.getElementById('fee-balance-block');
+      if (bb) bb.classList.toggle('cleared', newBalance === 0 && fd.feeTotal > 0);
+
+      // 3. Update cached fee data so subsequent submissions stay accurate
+      window._feeSelectedFeeData = { ...fd, feePaid: newPaid, feeBalance: newBalance, pct: newPct };
+
+      // 4. Clear form
+      const clear = id => { const e = document.getElementById(id); if (e) e.value = ''; };
+      clear('ldg-pay-amount'); clear('ldg-pay-txn'); clear('ldg-pay-remarks');
+
+      showToast('✅ Payment of ' + fmtINR(amtRaw) + ' recorded — pending Admin approval.');
+    } catch(e) {
+      showToast('❌ Error: ' + e.message);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save" style="margin-right:6px"></i>Submit Payment';
+      }
+    }
+  };
+
+  console.log('[FeeledgerSubmit] ✅ Loaded');
 })();
 </script>
 <script src="notification-center.js"></script>
