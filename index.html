@@ -2497,6 +2497,70 @@
 
             </div>
 
+            <!-- ── FEE LEDGER ── -->
+            <div class="card" id="fee-ledger-card" style="padding:24px;margin-bottom:20px">
+              <div class="fee-bento-label" style="margin-bottom:14px"><i class="fas fa-book-open"></i> Fee Ledger</div>
+
+              <!-- Breakdown table -->
+              <div class="table-wrap" style="margin-bottom:20px">
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                  <thead>
+                    <tr style="background:rgba(99,102,241,0.08)">
+                      <th style="padding:8px 12px;text-align:left;white-space:nowrap">Fee Component</th>
+                      <th style="padding:8px 12px;text-align:right;white-space:nowrap">Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 12px">Tuition Fee</td><td style="padding:8px 12px;text-align:right" id="ldg-tuition">—</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 12px">Examination Fee</td><td style="padding:8px 12px;text-align:right" id="ldg-exam">—</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 12px">Sports Fee</td><td style="padding:8px 12px;text-align:right" id="ldg-sports">—</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 12px">Annual Charges</td><td style="padding:8px 12px;text-align:right" id="ldg-annual">—</td></tr>
+                    <tr style="background:rgba(99,102,241,0.06);font-weight:700">
+                      <td style="padding:10px 12px">Total Annual Fee</td>
+                      <td style="padding:10px 12px;text-align:right;color:var(--primary)" id="ldg-total">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Summary row -->
+              <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+                <div style="flex:1;min-width:120px;padding:14px;background:rgba(34,197,94,0.1);border-radius:10px;text-align:center">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Amount Paid</div>
+                  <div style="font-size:1.3rem;font-weight:700;color:#16a34a" id="ldg-paid">₹0</div>
+                </div>
+                <div style="flex:1;min-width:120px;padding:14px;background:rgba(239,68,68,0.1);border-radius:10px;text-align:center">
+                  <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;margin-bottom:4px">Remaining Balance</div>
+                  <div style="font-size:1.3rem;font-weight:700;color:#ef4444" id="ldg-balance">—</div>
+                </div>
+              </div>
+
+              <!-- New Payment Form -->
+              <div style="border-top:1px solid var(--border);padding-top:18px">
+                <div style="font-size:13px;font-weight:600;color:var(--accent-dark);margin-bottom:12px"><i class="fas fa-plus-circle" style="color:var(--primary);margin-right:6px"></i>Log New Payment</div>
+                <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+                  <div style="flex:1;min-width:140px">
+                    <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Payment Amount (₹) *</label>
+                    <input type="number" id="ldg-pay-amount" placeholder="e.g. 3000" min="1" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                  </div>
+                  <div style="flex:1;min-width:140px">
+                    <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Transaction / Receipt No.</label>
+                    <input type="text" id="ldg-pay-txn" placeholder="e.g. RCP-2025-042" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                  </div>
+                </div>
+                <div style="margin-bottom:12px">
+                  <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Remarks</label>
+                  <input type="text" id="ldg-pay-remarks" placeholder="e.g. Q1 Tuition" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                </div>
+                <button id="ldg-submit-btn" onclick="ledgerSubmitPayment()" style="padding:10px 24px;background:linear-gradient(135deg,var(--primary),var(--accent-dark));color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
+                  <i class="fas fa-save" style="margin-right:6px"></i>Submit Payment
+                </button>
+                <p style="font-size:12px;color:var(--text-light);margin-top:10px;margin-bottom:0">
+                  <i class="fas fa-info-circle" style="margin-right:4px"></i>Requires Admin approval before balance is officially confirmed.
+                </p>
+              </div>
+            </div>
+
             <!-- Step 3: Payment Form -->
             <div class="card" style="padding:24px;max-width:560px">
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-plus-circle" style="margin-right:8px;color:var(--accent)"></i>Step 2 — Record Payment</h4>
