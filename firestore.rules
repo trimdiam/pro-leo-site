@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Public admission form ─────────────────────────────────────
+    // Anyone can CREATE (submit a new application).
+    // Only authenticated staff/admin can read or update existing ones.
+    match /admissions/{docId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+
+    // ── Homepage CMS ──────────────────────────────────────────────
+    // Public visitors need to READ public_settings/homepage to render
+    // the dynamic hero/stats/announcement/feature-cards.
+    // Only authenticated admins can WRITE.
+    match /public_settings/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ── Settings (about, mission, vision, etc.) ───────────────────
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ── Public-read collections ───────────────────────────────────
+    match /events/{docId}        { allow read: if true; allow write: if request.auth != null; }
+    match /announcements/{docId} { allow read: if true; allow write: if request.auth != null; }
+    match /why_choose_us/{docId} { allow read: if true; allow write: if request.auth != null; }
+    match /school_leaders/{docId}{ allow read: if true; allow write: if request.auth != null; }
+    match /gallery/{docId}       { allow read: if true; allow write: if request.auth != null; }
+    match /quotes/{docId}        { allow read: if true; allow write: if request.auth != null; }
+
+    // ── All other documents — require authentication ───────────────
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
