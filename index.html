@@ -5604,6 +5604,16 @@ import {
       set('fee-paid-amt',    fmtINR(feePaid));
       set('fee-balance-amt', feeTotal>0 ? fmtINR(feeBalance) : '₹—');
       set('fee-progress-pct', pct+'%');
+      // ── Ledger breakdown ──
+      const fs = fsSnap.exists() ? fsSnap.data() : {};
+      const fmt = v => v ? fmtINR(parseFloat(v)) : '—';
+      set('ldg-tuition', fmt(fs.tuition));
+      set('ldg-exam',    fmt(fs.examFee));
+      set('ldg-sports',  fmt(fs.sportsFee));
+      set('ldg-annual',  fmt(fs.annualCharge));
+      set('ldg-total',   feeTotal>0 ? fmtINR(feeTotal) : '—');
+      set('ldg-paid',    fmtINR(feePaid));
+      set('ldg-balance', feeTotal>0 ? fmtINR(feeBalance) : '—');
       const bar = document.getElementById('fee-progress-bar');
       if (bar) bar.style.width = pct+'%';
       const bb = document.getElementById('fee-balance-block');
