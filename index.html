@@ -5560,23 +5560,27 @@ import {
   }
 
   window.selectStudentForFee = async function(sStr) {
-    let s; try { s = JSON.parse(sStr); } catch(e) { return; }
+    console.log('Student clicked:', sStr ? JSON.parse(sStr)?.name : 'unknown');
+    let s; try { s = JSON.parse(sStr); } catch(e) { console.error('[FeeSelect] parse error', e); return; }
     window._feeSelectedStudent = s;
-    document.getElementById('fee-search-results').style.display = 'none';
-    document.getElementById('fee-student-panel').style.display  = 'block';
+    document.getElementById('fee-search-results').style.display  = 'none';
+    document.getElementById('fee-student-panel').style.display   = 'block';
+    document.getElementById('fee-ledger-container').style.display = 'none'; // reset while loading
     const initials = (s.name||'S').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const set = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
     const avEl = document.getElementById('fee-avatar'); if (avEl) avEl.textContent = initials;
     set('fee-sname', s.name||'—');
     set('fee-sinfo', `${s.studentId||'—'} · ${clsLabel(s.class)} · Roll No. ${s.rollNo||'—'}`);
     await _loadFeeDataForStudent(s);
+    document.getElementById('fee-ledger-container').style.display = 'block';
     document.getElementById('fee-student-panel')?.scrollIntoView({ behavior:'smooth', block:'start' });
   };
 
   window.clearFeeStudent = function() {
     window._feeSelectedStudent = null;
     window._feeSelectedFeeData = null;
-    document.getElementById('fee-student-panel').style.display = 'none';
+    document.getElementById('fee-student-panel').style.display    = 'none';
+    document.getElementById('fee-ledger-container').style.display = 'none';
     const si = document.getElementById('fee-student-search'); if (si) si.value = '';
     document.getElementById('fee-search-results').style.display = 'none';
   };
