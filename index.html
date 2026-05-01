@@ -3203,7 +3203,8 @@
       showLoginError('Your account is not set up yet. Contact the school administrator.');
       return;
     }
-    const role = (userDoc.data().role || '').toString().trim().toLowerCase();
+    const rawRole = (userDoc.data().role || '').toString().trim().toLowerCase();
+    const role = rawRole === 'office_staff' ? 'office' : rawRole;
     if (!['student','teacher','admin','office'].includes(role)) { showLoginError('Invalid role. Contact admin.'); return; }
     showToast('✅ Welcome! Opening your portal…');
     setTimeout(async () => {
@@ -6242,16 +6243,14 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   /* ── Extend loginAs for 'office' role ── */
   const _prevLoginAs = window.loginAs;
   window.loginAs = function(role) {
-    if (role==='office') {
-      window.isLoggedIn=true; window.currentUserRole='office'; window.currentRole='office';
-      const lp=document.getElementById('page-login'); if(lp) lp.classList.remove('active');
-      if (window.showPage) window.showPage('office-dash');
-      const auth=window._firebaseAuth;
+    // Always call the original first — it sets the script.js closure `isLoggedIn = true`
+    // and calls showPage('office-dash'). We only add the portal-load side-effect.
+    _prevLoginAs(role);
+    if (role === 'office') {
+      const auth = window._firebaseAuth;
       if (auth?.currentUser && window.loadOfficePortal)
         window.loadOfficePortal(auth.currentUser).catch(console.error);
-      return;
     }
-    _prevLoginAs(role);
   };
 
   console.log('[FeeModule] ✅ Loaded — Office Portal · Fee Structure · Approvals · Notifications');
