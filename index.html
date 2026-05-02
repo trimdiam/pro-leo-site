@@ -1566,18 +1566,15 @@
         <div id="t-leave" class="dash-section">
           <div class="card" style="padding:24px;max-width:560px;margin-bottom:24px">
             <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-calendar-times" style="margin-right:8px;color:var(--accent)"></i>Apply for Leave</h4>
-            <div class="form-row"><div class="form-group"><label>From Date</label><input type="date"></div><div class="form-group"><label>To Date</label><input type="date"></div></div>
-            <div class="form-group"><label>Leave Type</label><select><option>Casual Leave</option><option>Medical Leave</option><option>Earned Leave</option><option>Special Leave</option></select></div>
-            <div class="form-group"><label>Reason</label><textarea placeholder="Brief reason for leave..."></textarea></div>
-            <button class="btn btn-primary" onclick="showToast('✅ Leave application submitted for approval.')"><i class="fas fa-paper-plane"></i> Submit Application</button>
+            <div class="form-row"><div class="form-group"><label>From Date</label><input type="date" id="lv-from"></div><div class="form-group"><label>To Date</label><input type="date" id="lv-to"></div></div>
+            <div class="form-group"><label>Leave Type</label><select id="lv-type"><option>Casual Leave</option><option>Medical Leave</option><option>Earned Leave</option><option>Special Leave</option></select></div>
+            <div class="form-group"><label>Reason</label><textarea id="lv-reason" placeholder="Brief reason for leave..."></textarea></div>
+            <button class="btn btn-primary" onclick="submitLeaveApplication()"><i class="fas fa-paper-plane"></i> Submit Application</button>
           </div>
           <div class="card" style="padding:24px">
             <h4 style="color:var(--accent-dark);margin-bottom:16px">Leave History</h4>
-            <div class="table-wrap"><table><thead><tr><th>From</th><th>To</th><th>Type</th><th>Reason</th><th>Status</th></tr></thead><tbody>
-              <tr><td>05 Aug</td><td>06 Aug</td><td>Medical</td><td>Fever</td><td><span class="badge badge-success">Approved</span></td></tr>
-              <tr><td>12 Jul</td><td>12 Jul</td><td>Casual</td><td>Family function</td><td><span class="badge badge-success">Approved</span></td></tr>
-              <tr><td>15 Jun</td><td>17 Jun</td><td>Special</td><td>Training workshop</td><td><span class="badge badge-warning">Pending</span></td></tr>
-            </tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>From</th><th>To</th><th>Type</th><th>Reason</th><th>Status</th></tr></thead>
+            <tbody id="lv-history-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:14px"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody></table></div>
           </div>
         </div>
       </div>
@@ -1643,11 +1640,11 @@
               <div class="table-wrap"><table><thead><tr><th>Class</th><th>Boys</th><th>Girls</th><th>Total</th></tr></thead><tbody id="classwise-tbody"><tr><td colspan="4" style="text-align:center;padding:14px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr></tbody></table></div>
             </div>
             <div class="card" style="padding:24px">
-              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-tasks" style="margin-right:8px;color:var(--accent)"></i>Pending Actions</h4>
-              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--danger);font-size:8px;margin-right:8px"></i>Fee approvals pending</span><span class="badge badge-danger">42</span></div>
-              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>Leave applications</span><span class="badge badge-warning">5</span></div>
-              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>New admission enquiries</span><span class="badge badge-info" id="a-admission-count">—</span></div>
-              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-right:8px"></i>Contact messages</span><span class="badge badge-success">7</span></div>
+              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-inbox" style="margin-right:8px;color:var(--accent)"></i>Inbox</h4>
+              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--danger);font-size:8px;margin-right:8px"></i>Fee approvals pending</span><span class="badge badge-danger" id="a-inbox-fee"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
+              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>Leave applications</span><span class="badge badge-warning" id="a-inbox-leave"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
+              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>New admission enquiries</span><span class="badge badge-info" id="a-admission-count"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
+              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-right:8px"></i>Contact messages</span><span class="badge badge-success" id="a-inbox-contacts"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
             </div>
           </div>
           <!-- Portal Shortcuts -->
@@ -4866,6 +4863,7 @@
     if (sectionId === 's-notices')  { if(window.loadStudentNotices) loadStudentNotices(); }
     if (sectionId === 's-fees')     { if(window.loadStudentFees) loadStudentFees(); }
     if (sectionId === 't-notices')  { if(window.loadTeacherNotices) loadTeacherNotices(); }
+    if (sectionId === 't-leave')    { if(window.loadLeaveHistory) window.loadLeaveHistory(); }
     if (sectionId === 'a-notices')  { if(window.loadAdminNotices) loadAdminNotices(); }
     if (sectionId === 'a-fees')     { if(window.loadAdminFees) loadAdminFees(); }
   };
@@ -5599,7 +5597,51 @@
         initTeacherAttendance(t.classTeacher);
       }
       populateHwClassSelect(); loadTeacherHomework(); loadTeacherNotices();
+      loadLeaveHistory();
     } catch(e){ showToast('⚠️ Teacher portal: '+e.message); }
+  };
+
+  window.submitLeaveApplication = async function() {
+    const from   = (document.getElementById('lv-from')?.value   || '').trim();
+    const to     = (document.getElementById('lv-to')?.value     || '').trim();
+    const type   = (document.getElementById('lv-type')?.value   || '').trim();
+    const reason = (document.getElementById('lv-reason')?.value || '').trim();
+    if (!from || !to || !reason) { showToast('⚠️ From date, To date and Reason are required.'); return; }
+    if (from > to) { showToast('⚠️ "From" date cannot be after "To" date.'); return; }
+    const auth = window._firebaseAuth;
+    const user = auth?.currentUser;
+    if (!user) { showToast('⚠️ Not logged in.'); return; }
+    try {
+      await addDoc(collection(db, 'leave_applications'), {
+        uid: user.uid,
+        teacherName: window._teacherName || user.displayName || user.email,
+        teacherClass: window._currentTeacherClass || '—',
+        from, to, type, reason,
+        status: 'Pending',
+        createdAt: new Date().toISOString(),
+      });
+      ['lv-from','lv-to','lv-reason'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+      showToast('✅ Leave application submitted for approval.');
+      loadLeaveHistory();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.loadLeaveHistory = async function loadLeaveHistory() {
+    const tbody = document.getElementById('lv-history-tbody');
+    if (!tbody) return;
+    const auth = window._firebaseAuth;
+    const user = auth?.currentUser;
+    if (!user) return;
+    try {
+      const snap = await getDocs(query(collection(db,'leave_applications'), where('uid','==',user.uid), orderBy('createdAt','desc'), limit(20)));
+      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:14px">No leave applications yet.</td></tr>'; return; }
+      const bc = { Pending:'badge-warning', Approved:'badge-success', Rejected:'badge-danger' };
+      tbody.innerHTML = snap.docs.map(d => {
+        const l = d.data();
+        const fmt = s => s ? new Date(s+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '—';
+        return `<tr><td>${fmt(l.from)}</td><td>${fmt(l.to)}</td><td>${l.type||'—'}</td><td style="font-size:12px">${l.reason||'—'}</td><td><span class="badge ${bc[l.status]||'badge-info'}">${l.status||'—'}</span></td></tr>`;
+      }).join('');
+    } catch(e) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
   };
 
   function renderTeacherStudentList(docs) {
@@ -5856,12 +5898,14 @@
   // ================================================================
   window.loadAdminDashboardStats = async function(){
     try{
-      const [sSnap,tSnap,oSnap,fSnap,aSnap]=await Promise.all([
+      const [sSnap,tSnap,oSnap,fSnap,aSnap,cSnap,lSnap]=await Promise.all([
         getDocs(collection(db,'students')),
         getDocs(collection(db,'teachers')),
         getDocs(query(collection(db,'users'),where('role','==','office'))),
         getDocs(query(collection(db,'fee_transactions'),where('status','==','pending'),limit(500))),
         getDocs(collection(db,'admissions')),
+        getDocs(query(collection(db,'contacts'),where('status','==','Unread'),limit(200))),
+        getDocs(query(collection(db,'leave_applications'),where('status','==','Pending'),limit(200))),
       ]);
       const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
       set('a-stat-students',    sSnap.size);
@@ -5870,6 +5914,9 @@
       set('a-stat-fee-pending', fSnap.size);
       const activeAdm=aSnap.docs.filter(d=>!['Admitted','Rejected'].includes(d.data().status)).length;
       set('a-admission-count', activeAdm);
+      set('a-inbox-fee',      fSnap.size);
+      set('a-inbox-contacts', cSnap.size);
+      set('a-inbox-leave',    lSnap.size);
       const tbody=document.getElementById('classwise-tbody');
       if(tbody&&sSnap.size>0){
         const classMap={};
