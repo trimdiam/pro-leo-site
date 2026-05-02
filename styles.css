@@ -670,11 +670,11 @@ tr:hover td { background: rgba(214,195,163,0.15); }
   touch-action: manipulation;
 }
 @media (max-width: 768px) {
-  .dash-main { margin-left: 0; }
+  .dash-main { margin-left: 0; background: #fff; min-height: 100vh; }
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
   .sidebar-toggle { display: flex; }
-  .dash-content { padding: 18px; }
+  .dash-content { padding: 14px; }
   .dash-stats { grid-template-columns: 1fr 1fr; }
   /* Header: prevent cramping */
   .dash-header { padding: 10px 14px; gap: 8px; flex-wrap: nowrap; }

@@ -41,7 +41,7 @@
       /* Dashboard mobile */
       .dash-layout { flex-direction: column !important; }
       .sidebar { width: 100% !important; height: auto !important; position: fixed !important; }
-      .dash-main { margin-left: 0 !important; padding: 16px !important; }
+      .dash-main { margin-left: 0 !important; padding: 0 !important; }
       /* Sub-nav scroll */
       div[style*="display:flex;gap:0"] { overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
       .sub-nav-btn { min-width: max-content; }
@@ -87,7 +87,7 @@
     @media (max-width: 900px) {
       .sidebar { transform: translateX(-100%); transition: transform .3s; position: fixed !important; z-index: 200; height: 100vh !important; width: 260px !important; }
       .sidebar.open { transform: translateX(0); }
-      .dash-main { margin-left: 0 !important; width: 100% !important; }
+      .dash-main { margin-left: 0 !important; width: 100% !important; background: #fff !important; min-height: 100vh !important; }
     }
 
     /* ============================================================
