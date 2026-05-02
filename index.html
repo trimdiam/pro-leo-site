@@ -1859,6 +1859,43 @@
           </div>
         </div>
 
+        <!-- Teacher Leave Panel -->
+        <div id="teacher-leave-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(44,31,14,0.55);backdrop-filter:blur(3px);overflow-y:auto;padding:24px 16px">
+          <div style="max-width:720px;margin:0 auto;background:var(--white);border-radius:18px;box-shadow:0 24px 80px rgba(44,31,14,0.28);overflow:hidden">
+            <div style="background:linear-gradient(135deg,#4c1d95,#7c3aed);padding:22px 28px;display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <h3 style="color:#fff;font-family:var(--font-head);margin:0;font-size:1.3rem"><i class="fas fa-calendar-times" style="margin-right:8px"></i>Leave Applications</h3>
+                <p id="tlp-teacher-name" style="color:rgba(255,255,255,0.8);font-size:13px;margin:4px 0 0"></p>
+              </div>
+              <button onclick="closeTeacherLeavePanel()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">&#215;</button>
+            </div>
+            <!-- Summary strip -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)">
+              <div style="background:#fff;padding:16px;text-align:center">
+                <div id="tlp-count-pending" style="font-size:1.6rem;font-weight:800;color:#d97706">—</div>
+                <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px">Pending</div>
+              </div>
+              <div style="background:#fff;padding:16px;text-align:center">
+                <div id="tlp-count-approved" style="font-size:1.6rem;font-weight:800;color:#059669">—</div>
+                <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px">Approved</div>
+              </div>
+              <div style="background:#fff;padding:16px;text-align:center">
+                <div id="tlp-count-total" style="font-size:1.6rem;font-weight:800;color:var(--accent-dark)">—</div>
+                <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px">Total Applied</div>
+              </div>
+            </div>
+            <!-- Leave records table -->
+            <div style="padding:20px">
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>From</th><th>To</th><th>Type</th><th>Reason</th><th>Applied On</th><th>Status</th><th>Action</th></tr></thead>
+                  <tbody id="tlp-tbody"><tr><td colspan="7" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Teacher Login Modal + Student Login Modal + Delete Modals preserved fully -->
         <div id="teacher-login-modal" style="display:none;position:fixed;inset:0;z-index:10002;background:rgba(20,20,40,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
           <div style="background:#fff;border-radius:20px;max-width:480px;width:92%;box-shadow:0 32px 80px rgba(0,0,0,0.35);overflow:hidden">
@@ -5614,6 +5651,7 @@
     try {
       await addDoc(collection(db, 'leave_applications'), {
         uid: user.uid,
+        teacherId: window._teacherId || '',
         teacherName: window._teacherName || user.displayName || user.email,
         teacherClass: window._currentTeacherClass || '—',
         from, to, type, reason,
@@ -6018,10 +6056,83 @@
         <td><div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-sm btn-outline" onclick='editTeacher("${d.id}",${JSON.stringify(t).replace(/'/g,"\\'")})'><i class="fas fa-edit"></i></button>
           <button class="btn btn-sm" style="background:#1a3a6b;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px" onclick='openTeacherLoginModal("${(t.teacherId||'').replace(/"/g,'')}","${(t.name||'').replace(/"/g,'')}","${(t.email||'').replace(/"/g,'')}")' ><i class="fas fa-key"></i></button>
+          <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px" onclick='openTeacherLeavePanel("${(t.teacherId||'').replace(/"/g,'')}","${(t.name||'').replace(/"/g,'')}")'><i class="fas fa-calendar-times"></i> Leaves</button>
           <button class="btn btn-sm btn-danger" onclick='promptDeleteTeacher("${d.id}","${(t.name||'').replace(/"/g,'')}")'><i class="fas fa-trash"></i></button>
         </div></td></tr>`;
     }).join('');
   }
+
+  let _tlpCurrentTeacherId = null;
+
+  window.openTeacherLeavePanel = async function(teacherId, teacherName) {
+    _tlpCurrentTeacherId = teacherId;
+    document.getElementById('tlp-teacher-name').textContent = teacherName + ' · ' + teacherId;
+    ['tlp-count-pending','tlp-count-approved','tlp-count-total'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='—'; });
+    document.getElementById('tlp-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    document.getElementById('teacher-leave-overlay').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    await _loadTeacherLeaves(teacherId);
+  };
+
+  window.closeTeacherLeavePanel = function() {
+    document.getElementById('teacher-leave-overlay').style.display = 'none';
+    document.body.style.overflow = '';
+    _tlpCurrentTeacherId = null;
+  };
+
+  async function _loadTeacherLeaves(teacherId) {
+    const tbody = document.getElementById('tlp-tbody');
+    try {
+      const snap = await getDocs(query(collection(db,'leave_applications'), where('teacherId','==',teacherId)));
+      const docs = snap.docs.sort((a,b) => (b.data().createdAt||'').localeCompare(a.data().createdAt||''));
+      const pending  = docs.filter(d => d.data().status === 'Pending').length;
+      const approved = docs.filter(d => d.data().status === 'Approved').length;
+      const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+      set('tlp-count-pending',  pending);
+      set('tlp-count-approved', approved);
+      set('tlp-count-total',    docs.length);
+      if (!docs.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-light)">No leave applications yet.</td></tr>';
+        return;
+      }
+      const bc = { Pending:'badge-warning', Approved:'badge-success', Rejected:'badge-danger' };
+      const fmt = s => s ? new Date(s+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+      const fmtDate = s => s ? new Date(s).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+      tbody.innerHTML = docs.map(d => {
+        const l = d.data();
+        const actions = l.status === 'Pending'
+          ? `<div style="display:flex;gap:4px">
+               <button onclick="approveTeacherLeave('${d.id}','${teacherId}')" style="padding:4px 10px;background:#059669;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600"><i class="fas fa-check"></i> Approve</button>
+               <button onclick="rejectTeacherLeave('${d.id}','${teacherId}')"  style="padding:4px 10px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600"><i class="fas fa-times"></i> Reject</button>
+             </div>`
+          : '<span style="font-size:12px;color:var(--text-light)">—</span>';
+        return `<tr>
+          <td>${fmt(l.from)}</td><td>${fmt(l.to)}</td>
+          <td style="font-size:12px">${l.type||'—'}</td>
+          <td style="font-size:12px;max-width:160px;white-space:normal">${l.reason||'—'}</td>
+          <td style="font-size:11px;color:var(--text-light)">${fmtDate(l.createdAt)}</td>
+          <td><span class="badge ${bc[l.status]||'badge-info'}">${l.status||'—'}</span></td>
+          <td>${actions}</td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
+    }
+  }
+
+  window.approveTeacherLeave = async function(leaveDocId, teacherId) {
+    try {
+      await updateDoc(doc(db,'leave_applications',leaveDocId), { status:'Approved', decidedAt: new Date().toISOString() });
+      await _loadTeacherLeaves(teacherId);
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.rejectTeacherLeave = async function(leaveDocId, teacherId) {
+    try {
+      await updateDoc(doc(db,'leave_applications',leaveDocId), { status:'Rejected', decidedAt: new Date().toISOString() });
+      await _loadTeacherLeaves(teacherId);
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
 
   window.filterTeacherTable=function(){
     const q=(document.getElementById('teacher-search')?.value||'').toLowerCase();
