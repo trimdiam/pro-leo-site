@@ -228,13 +228,15 @@ img { max-width: 100%; }
 }
 .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
 .hero-scroll {
-  position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
-  animation: bounce 2s infinite;
+  position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%);
+  animation: hero-bounce 1.5s ease-in-out infinite;
+  will-change: transform;
+  cursor: pointer;
 }
-.hero-scroll i { color: rgba(255,255,255,0.7); font-size: 1.4rem; }
-@keyframes bounce {
-  0%,100% { transform: translateX(-50%) translateY(0); }
-  50%      { transform: translateX(-50%) translateY(8px); }
+.hero-scroll i { color: rgba(255,255,255,0.75); font-size: 1.5rem; }
+@keyframes hero-bounce {
+  0%,100% { transform: translateX(-50%) translateY(0);    opacity: 0.85; }
+  50%      { transform: translateX(-50%) translateY(12px); opacity: 0.4;  }
 }
 
 /* ============================================================
@@ -670,11 +672,11 @@ tr:hover td { background: rgba(214,195,163,0.15); }
   touch-action: manipulation;
 }
 @media (max-width: 768px) {
-  .dash-main { margin-left: 0; }
+  .dash-main { margin-left: 0; background: #fff; min-height: 100vh; }
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
   .sidebar-toggle { display: flex; }
-  .dash-content { padding: 18px; }
+  .dash-content { padding: 14px; }
   .dash-stats { grid-template-columns: 1fr 1fr; }
   /* Header: prevent cramping */
   .dash-header { padding: 10px 14px; gap: 8px; flex-wrap: nowrap; }
