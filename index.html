@@ -1634,7 +1634,7 @@
           <div class="dash-stats">
             <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-user-graduate"></i></div><div><div class="dash-stat-val" id="a-stat-students"><i class="fas fa-spinner fa-spin" style="font-size:14px"></i></div><div class="dash-stat-label">Total Students</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-chalkboard-teacher"></i></div><div><div class="dash-stat-val" id="a-stat-teachers"><i class="fas fa-spinner fa-spin" style="font-size:14px"></i></div><div class="dash-stat-label">Total Teachers</div></div></div>
-            <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-money-bill-wave"></i></div><div><div class="dash-stat-val">42</div><div class="dash-stat-label">Fee Pending</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-money-bill-wave"></i></div><div><div class="dash-stat-val" id="a-stat-fee-pending"><i class="fas fa-spinner fa-spin" style="font-size:14px"></i></div><div class="dash-stat-label">Fee Pending</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-building"></i></div><div><div class="dash-stat-val" id="a-stat-office-staff">—</div><div class="dash-stat-label">Office Staff</div></div></div>
           </div>
           <div class="grid-2">
@@ -3629,6 +3629,7 @@
       }
       if (role === 'teacher') await loadTeacherPortal(user);
       if (role === 'office')  { if (window.loadOfficePortal) await window.loadOfficePortal(user); }
+      if (role === 'admin')   { setTimeout(()=>{ if (window.loadAdminDashboardStats) window.loadAdminDashboardStats(); }, 800); }
     }, 400);
     } finally {
       // Release guard after routing is complete so future sign-outs/re-logins work
@@ -5855,9 +5856,20 @@
   // ================================================================
   window.loadAdminDashboardStats = async function(){
     try{
-      const [sSnap,tSnap]=await Promise.all([getDocs(collection(db,'students')),getDocs(collection(db,'teachers'))]);
-      const sEl=document.getElementById('a-stat-students'); const tEl=document.getElementById('a-stat-teachers');
-      if(sEl) sEl.textContent=sSnap.size; if(tEl) tEl.textContent=tSnap.size;
+      const [sSnap,tSnap,oSnap,fSnap,aSnap]=await Promise.all([
+        getDocs(collection(db,'students')),
+        getDocs(collection(db,'teachers')),
+        getDocs(query(collection(db,'users'),where('role','==','office'))),
+        getDocs(query(collection(db,'fee_transactions'),where('status','==','pending'),limit(500))),
+        getDocs(collection(db,'admissions')),
+      ]);
+      const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+      set('a-stat-students',    sSnap.size);
+      set('a-stat-teachers',    tSnap.size);
+      set('a-stat-office-staff',oSnap.size);
+      set('a-stat-fee-pending', fSnap.size);
+      const activeAdm=aSnap.docs.filter(d=>!['Admitted','Rejected'].includes(d.data().status)).length;
+      set('a-admission-count', activeAdm);
       const tbody=document.getElementById('classwise-tbody');
       if(tbody&&sSnap.size>0){
         const classMap={};
@@ -5870,7 +5882,7 @@
           return `<tr><td>${getL(c)}</td><td>${boys}</td><td>${girls}</td><td><strong>${boys+girls}</strong></td></tr>`;
         }).join('');
       }
-      const homeS=document.getElementById('home-stat-students'); const homeT=document.getElementById('home-stat-teachers');
+      const homeS=document.getElementById('home-stat-students');const homeT=document.getElementById('home-stat-teachers');
       if(homeS&&sSnap.size>0) homeS.textContent=sSnap.size.toLocaleString('en-IN')+'+';
       if(homeT&&tSnap.size>0) homeT.textContent=tSnap.size.toLocaleString('en-IN')+'+';
     }catch(e){console.warn('Dashboard stats:',e.message);}
