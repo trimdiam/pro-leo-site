@@ -120,7 +120,7 @@ function logout() {
   currentUserRole = null;
   currentRole     = 'student';
   if (window._firebaseAuth) {
-    import('https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js')
+    import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js')
       .then(({ signOut }) => signOut(window._firebaseAuth).catch(console.error));
   }
   showToast('🔓 Logged out successfully.');
