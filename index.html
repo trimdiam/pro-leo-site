@@ -2900,30 +2900,6 @@
                 </div>
               </div>
 
-              <!-- New Payment Form -->
-              <div style="border-top:1px solid var(--border);padding-top:18px">
-                <div style="font-size:13px;font-weight:600;color:var(--accent-dark);margin-bottom:12px"><i class="fas fa-plus-circle" style="color:var(--primary);margin-right:6px"></i>Log New Payment</div>
-                <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px">
-                  <div style="flex:1;min-width:140px">
-                    <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Payment Amount (₹) *</label>
-                    <input type="number" id="ldg-pay-amount" placeholder="e.g. 3000" min="1" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
-                  </div>
-                  <div style="flex:1;min-width:140px">
-                    <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Transaction / Receipt No.</label>
-                    <input type="text" id="ldg-pay-txn" placeholder="e.g. RCP-2025-042" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
-                  </div>
-                </div>
-                <div style="margin-bottom:12px">
-                  <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Remarks</label>
-                  <input type="text" id="ldg-pay-remarks" placeholder="e.g. Q1 Tuition" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
-                </div>
-                <button id="ldg-submit-btn" onclick="ledgerSubmitPayment()" style="padding:10px 24px;background:linear-gradient(135deg,var(--primary),var(--accent-dark));color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
-                  <i class="fas fa-save" style="margin-right:6px"></i>Submit Payment
-                </button>
-                <p style="font-size:12px;color:var(--text-light);margin-top:10px;margin-bottom:0">
-                  <i class="fas fa-info-circle" style="margin-right:4px"></i>Requires Admin approval before balance is officially confirmed.
-                </p>
-              </div>
             </div>
 
             <!-- Step 3: Payment Form -->
@@ -2964,7 +2940,7 @@
               </button>
               <p style="font-size:12px;color:var(--text-light);margin-top:12px">
                 <i class="fas fa-info-circle" style="margin-right:4px"></i>
-                Saved as <strong>Pending</strong> — Admin must approve before balance is officially updated.
+                Payment is <strong>instantly approved</strong> — student balance updates immediately.
               </p>
             </div>
           </div>
@@ -6722,21 +6698,24 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
       };
       const txnRef = await addDoc(collection(db, 'fee_transactions'), txnData);
 
-      // Immediately update student's feePaid and feeBalance
-      const sSnap = await getDocs(query(collection(db,'students'), where('studentId','==', s.studentId||''), limit(1)));
-      if (!sSnap.empty) {
-        const sRef     = doc(db, 'students', sSnap.docs[0].id);
-        const sData    = sSnap.docs[0].data();
-        const prevPaid = parseFloat(sData.feePaid  || 0);
-        const total    = parseFloat(sData.feeTotal || fd.feeTotal || 0);
-        const newPaid  = prevPaid + amount;
-        const newBal   = Math.max(0, total - newPaid);
-        await updateDoc(sRef, { feePaid: newPaid, feeBalance: newBal, feeTotal: total, updatedAt: now });
-        // Keep local fee data in sync so the UI reflects immediately
-        if (window._feeSelectedFeeData) {
-          window._feeSelectedFeeData.feePaid    = newPaid;
-          window._feeSelectedFeeData.feeBalance = newBal;
+      // Immediately update student's feePaid and feeBalance (non-blocking — receipt still prints if this fails)
+      try {
+        const sSnap = await getDocs(query(collection(db,'students'), where('studentId','==', s.studentId||''), limit(1)));
+        if (!sSnap.empty) {
+          const sRef     = doc(db, 'students', sSnap.docs[0].id);
+          const sData    = sSnap.docs[0].data();
+          const prevPaid = parseFloat(sData.feePaid  || 0);
+          const total    = parseFloat(sData.feeTotal || fd.feeTotal || 0);
+          const newPaid  = prevPaid + amount;
+          const newBal   = Math.max(0, total - newPaid);
+          await updateDoc(sRef, { feePaid: newPaid, feeBalance: newBal, feeTotal: total, updatedAt: now });
+          if (window._feeSelectedFeeData) {
+            window._feeSelectedFeeData.feePaid    = newPaid;
+            window._feeSelectedFeeData.feeBalance = newBal;
+          }
         }
+      } catch(updateErr) {
+        console.warn('[processPayment] student doc update failed:', updateErr.message);
       }
 
       // Notify the student
