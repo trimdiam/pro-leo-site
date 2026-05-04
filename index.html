@@ -1595,8 +1595,6 @@
         <button onclick="showDash('a','a-teachers',this)"><i class="fas fa-chalkboard-teacher"></i> Teachers</button>
         <button onclick="showDash('a','a-office-staff',this)"><i class="fas fa-building"></i> Office Staff</button>
         <button onclick="showDash('a','a-fees',this)"><i class="fas fa-money-bill-wave"></i> Fees</button>
-        <button onclick="showDash('a','a-fee-structure',this)"><i class="fas fa-rupee-sign"></i> Fee Structure</button>
-        <button onclick="showDash('a','a-fee-transactions',this)"><i class="fas fa-exchange-alt"></i> Fee Approvals</button>
         <button onclick="showDash('a','a-notices',this)"><i class="fas fa-bullhorn"></i> Notices</button>
         <button onclick="showDash('a','a-events',this)"><i class="fas fa-calendar-alt"></i> Events</button>
         <button onclick="showDash('a','a-announcements',this)"><i class="fas fa-volume-up"></i> Announcements</button>
@@ -2047,75 +2045,6 @@
             <div class="form-row"><div class="form-group"><label>Class</label><input type="text" id="af-class" placeholder="e.g. 9"></div><div class="form-group"><label>Fee Type</label><select id="af-type"><option>Tuition Fee – Q1</option><option>Tuition Fee – Q2</option><option>Tuition Fee – Q3</option><option>Tuition Fee – Q4</option><option>Exam Fee</option><option>Sports Fee</option><option>Library Fee</option><option>Annual Fee</option></select></div></div>
             <div class="form-row"><div class="form-group"><label>Amount (₹)</label><input type="number" id="af-amount" placeholder="e.g. 4500" min="0"></div><div class="form-group"><label>Status</label><select id="af-status"><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option></select></div></div>
             <button class="btn btn-primary" onclick="adminAddFeeRecord()"><i class="fas fa-save"></i> Save Fee Record</button>
-          </div>
-        </div>
-
-        <!-- ── FEE STRUCTURE MANAGEMENT ── -->
-        <div id="a-fee-structure" class="dash-section">
-          <div class="grid-2">
-            <div class="card" style="padding:24px">
-              <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-rupee-sign" style="margin-right:8px;color:var(--accent)"></i>Set Annual Fee per Class</h4>
-              <div class="form-row">
-                <div class="form-group"><label>Class *</label>
-                  <select id="fs-class">
-                    <option value="">— Select Class —</option>
-                    <option value="PLG">Play Group</option><option value="SKG">SKG</option><option value="LKG">LKG</option>
-                    <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option>
-                    <option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option>
-                    <option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option>
-                    <option value="10">Class 10</option>
-                  </select>
-                </div>
-                <div class="form-group"><label>Annual Fee (₹) *</label><input type="number" id="fs-annual-fee" placeholder="e.g. 20000" min="0"></div>
-              </div>
-              <div class="form-row">
-                <div class="form-group"><label>Tuition (₹)</label><input type="number" id="fs-tuition" placeholder="e.g. 15000"></div>
-                <div class="form-group"><label>Exam Fee (₹)</label><input type="number" id="fs-exam-fee" placeholder="e.g. 2000"></div>
-              </div>
-              <div class="form-row">
-                <div class="form-group"><label>Sports Fee (₹)</label><input type="number" id="fs-sports-fee" placeholder="e.g. 1500"></div>
-                <div class="form-group"><label>Annual Charge (₹)</label><input type="number" id="fs-annual-charge" placeholder="e.g. 1500"></div>
-              </div>
-              <div class="form-group"><label>Notes</label><input type="text" id="fs-notes" placeholder="e.g. Applicable for AY 2025-26"></div>
-              <button class="btn btn-primary" onclick="saveFeeStructure()"><i class="fas fa-save"></i> Save Fee Structure</button>
-            </div>
-            <div class="card" style="padding:24px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-                <h4 style="color:var(--accent-dark)">Current Fee Structure</h4>
-                <button class="btn btn-sm btn-outline" onclick="loadAdminFeeStructure()"><i class="fas fa-sync-alt"></i> Refresh</button>
-              </div>
-              <div id="admin-fee-structure-list"><p style="color:var(--text-light);font-size:13px">Click Refresh to load.</p></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── FEE TRANSACTION APPROVALS ── -->
-        <div id="a-fee-transactions" class="dash-section">
-          <div class="card" style="padding:24px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
-              <h4 style="color:var(--accent-dark)"><i class="fas fa-exchange-alt" style="margin-right:8px;color:var(--accent)"></i>Fee Transaction Approvals</h4>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <select id="a-txn-filter" onchange="loadAdminFeeTransactions()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
-                  <option value="pending">Pending Only</option>
-                  <option value="all">All Transactions</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-                <button class="btn btn-sm btn-outline" onclick="loadAdminFeeTransactions()"><i class="fas fa-sync-alt"></i> Refresh</button>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr>
-                  <th>Date</th><th>Student</th><th>Class</th><th>Amount</th><th>Mode</th>
-                  <th>Receipt No.</th><th>Bal. Before</th><th>Bal. After</th>
-                  <th>Logged By</th><th>Status</th><th>Actions</th>
-                </tr></thead>
-                <tbody id="admin-fee-txn-tbody">
-                  <tr><td colspan="11" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
 
@@ -2796,6 +2725,7 @@
         <button class="active" onclick="showDash('o','o-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
         <button onclick="showDash('o','o-fee-collection',this)"><i class="fas fa-money-bill-wave"></i> Fee Collection</button>
         <button onclick="showDash('o','o-fee-structure',this)"><i class="fas fa-rupee-sign"></i> Fee Structure</button>
+        <button onclick="showDash('o','o-fee-approvals',this)"><i class="fas fa-exchange-alt"></i> Fee Approvals</button>
         <button onclick="showDash('o','o-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('o','o-reports',this)"><i class="fas fa-chart-bar"></i> Reports</button>
       </div>
@@ -3130,6 +3060,36 @@
               </div>
             </div>
 
+          </div>
+        </div>
+
+        <!-- ── FEE TRANSACTION APPROVALS (Office Staff) ── -->
+        <div id="o-fee-approvals" class="dash-section">
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+              <h4 style="color:var(--accent-dark)"><i class="fas fa-exchange-alt" style="margin-right:8px;color:var(--accent)"></i>Fee Transaction Approvals</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <select id="a-txn-filter" onchange="loadAdminFeeTransactions()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="pending">Pending Only</option>
+                  <option value="all">All Transactions</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <button class="btn btn-sm btn-outline" onclick="loadAdminFeeTransactions()"><i class="fas fa-sync-alt"></i> Refresh</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Date</th><th>Student</th><th>Class</th><th>Amount</th><th>Mode</th>
+                  <th>Receipt No.</th><th>Bal. Before</th><th>Bal. After</th>
+                  <th>Logged By</th><th>Status</th><th>Actions</th>
+                </tr></thead>
+                <tbody id="admin-fee-txn-tbody">
+                  <tr><td colspan="11" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
