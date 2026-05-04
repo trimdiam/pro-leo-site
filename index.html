@@ -1383,6 +1383,10 @@
               <span id="s-fees-total-badge" class="badge badge-warning" style="font-size:13px;padding:6px 14px">Loading…</span>
             </div>
             <div id="s-fees-list"><div style="text-align:center;padding:24px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading fee records…</div></div>
+            <div id="s-fees-excess-msg" style="display:none;margin-top:12px;padding:10px 14px;background:#fef9c3;border:1px solid #fde047;border-radius:8px;font-size:13px;color:#854d0e">
+              <i class="fas fa-info-circle" style="margin-right:6px"></i>
+              <span id="s-fees-excess-text"></span>
+            </div>
             <div style="margin-top:16px;padding-top:16px;border-top:2px solid var(--bg);display:flex;justify-content:space-between;font-weight:700"><span>Total Outstanding:</span><span id="s-fees-total" style="color:var(--danger)">—</span></div>
           </div>
           <div class="card" style="padding:24px;max-width:600px">
@@ -2846,6 +2850,10 @@
                     <div class="fee-amount-val" id="fee-balance-amt">₹—</div>
                     <div class="fee-amount-lbl">Balance</div>
                   </div>
+                </div>
+                <div id="fee-excess-msg" style="display:none;margin-top:12px;padding:10px 14px;background:#fef9c3;border:1px solid #fde047;border-radius:8px;font-size:13px;color:#854d0e">
+                  <i class="fas fa-info-circle" style="margin-right:6px"></i>
+                  <span id="fee-excess-text"></span>
                 </div>
                 <div style="margin-top:16px">
                   <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-light);margin-bottom:6px">
@@ -5558,6 +5566,11 @@
         return tb - ta;
       });
 
+      // Calculate total paid to detect excess
+      let totalPaid = 0;
+      docs.forEach(d => { if ((d.data().status||'').toLowerCase()==='approved') totalPaid += parseFloat(d.data().amount)||0; });
+      const excess = feeTotal > 0 && totalPaid > feeTotal ? totalPaid - feeTotal : 0;
+
       const rows = docs.map(d => {
         const f  = d.data();
         const st = (f.status || 'pending').toLowerCase();
@@ -5565,17 +5578,30 @@
         const label = st === 'approved' ? 'Approved' : st === 'rejected' ? 'Rejected' : 'Pending';
         const source = f.source === 'student-portal' ? '<span style="font-size:10px;color:var(--text-light)"> · Online</span>' : '<span style="font-size:10px;color:var(--text-light)"> · Office</span>';
         const rcpt = f.receiptNo ? `<span style="font-size:11px;color:var(--text-light)"> · ${f.receiptNo}</span>` : '';
-        return `<div class="fee-row">
-          <div>
-            <div class="fee-name">${f.feeType || f.paymentMode || 'Payment'}${source}</div>
-            <div class="fee-amount">₹${(f.amount || 0).toLocaleString('en-IN')} · ${f.paymentMode || f.mode || '—'}${rcpt}</div>
-            <div style="font-size:11px;color:var(--text-light);margin-top:2px">${f.date || ''}</div>
+        const rcptBtn = st === 'approved'
+          ? `<button onclick="showStudentReceipt('${d.id}')" style="margin-top:6px;padding:3px 10px;font-size:11px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer"><i class="fas fa-receipt" style="margin-right:4px"></i>View Receipt</button>`
+          : '';
+        return `<div class="fee-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+          <div style="display:flex;justify-content:space-between;width:100%;align-items:flex-start">
+            <div>
+              <div class="fee-name">${f.feeType || f.paymentMode || 'Payment'}${source}</div>
+              <div class="fee-amount">₹${(f.amount || 0).toLocaleString('en-IN')} · ${f.paymentMode || f.mode || '—'}${rcpt}</div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:2px">${f.date || ''}</div>
+            </div>
+            <span class="badge ${bc}" style="align-self:flex-start">${label}</span>
           </div>
-          <span class="badge ${bc}" style="align-self:flex-start">${label}</span>
+          ${rcptBtn}
         </div>`;
       }).join('');
 
       listEl.innerHTML = rows;
+
+      // Excess refund message
+      const exBox = document.getElementById('s-fees-excess-msg');
+      const exTxt = document.getElementById('s-fees-excess-text');
+      if (exBox) exBox.style.display = excess > 0 ? 'block' : 'none';
+      if (exTxt && excess > 0) exTxt.textContent = `You have overpaid by ₹${excess.toLocaleString('en-IN')}. The excess amount will be refunded to you by the school office.`;
+
       if (totalEl) totalEl.textContent = currentBalance > 0 ? '₹' + currentBalance.toLocaleString('en-IN') : '₹0';
       if (badgeEl) {
         badgeEl.textContent   = currentBalance > 0 ? `₹${currentBalance.toLocaleString('en-IN')} Due` : 'All Paid';
@@ -6591,12 +6617,17 @@ import {
       let feePaid = 0;
       txnSnap.forEach(d => { if (d.data().status==='approved') feePaid += parseFloat(d.data().amount)||0; });
       const feeBalance = Math.max(0, feeTotal - feePaid);
+      const excess = feeTotal > 0 && feePaid > feeTotal ? feePaid - feeTotal : 0;
       const pct = feeTotal > 0 ? Math.min(100, Math.round((feePaid/feeTotal)*100)) : 0;
       window._feeSelectedFeeData = { feeTotal, feePaid, feeBalance, pct };
       const set = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
       set('fee-total-amt',   feeTotal>0 ? fmtINR(feeTotal)   : '₹—');
       set('fee-paid-amt',    fmtINR(feePaid));
       set('fee-balance-amt', feeTotal>0 ? fmtINR(feeBalance) : '₹—');
+      const exBox = document.getElementById('fee-excess-msg');
+      const exTxt = document.getElementById('fee-excess-text');
+      if (exBox) exBox.style.display = excess > 0 ? 'block' : 'none';
+      if (exTxt && excess > 0) exTxt.textContent = `Student has overpaid by ${fmtINR(excess)}. Excess amount will be refunded to the student.`;
       set('fee-progress-pct', pct+'%');
       // ── Ledger breakdown ──
       const fs = fsSnap.exists() ? fsSnap.data() : {};
@@ -6871,6 +6902,18 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
     const rcpEl = document.getElementById('printable-receipt');
     if (rcpEl) rcpEl.style.display='block';
   }
+
+  window._populateReceipt = _populateReceipt;
+
+  window.showStudentReceipt = async function(txnId) {
+    try {
+      const snap = await getDoc(doc(db, 'fee_transactions', txnId));
+      if (!snap.exists()) { showToast('⚠️ Receipt not found.'); return; }
+      _populateReceipt({ ...snap.data(), txnId });
+      const rcpEl = document.getElementById('printable-receipt');
+      if (rcpEl) rcpEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch(e) { showToast('⚠️ Could not load receipt: ' + e.message); }
+  };
 
   window.loadOfficeReports = async function() {
     const tbody = document.getElementById('o-reports-tbody');
@@ -7361,13 +7404,29 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
     if (!user?.uid) return;
     try {
       const notifs = await window.loadStudentFeeNotifications(user.uid);
+      const latest = notifs[0]; // most recent regardless of read state
       const unread = notifs.find(n => !n.read);
-      if (!unread || !window.NotificationCenter) return;
-      window.NotificationCenter.render(undefined, [{
-        message: unread.message, isUrgent: false,
-        tag: 'Payment Confirmed', date: (unread.createdAt||'').split('T')[0]
-      }]);
-      setTimeout(() => window.markFeeNotifRead(user.uid, unread.id), 3000);
+      if (unread && window.NotificationCenter) {
+        window.NotificationCenter.render(undefined, [{
+          message: unread.message, isUrgent: false,
+          tag: 'Payment Confirmed', date: (unread.createdAt||'').split('T')[0]
+        }]);
+        setTimeout(() => window.markFeeNotifRead(user.uid, unread.id), 3000);
+      }
+      // Inject "View Receipt" button into the fee card in notification center
+      if (latest?.txnId) {
+        setTimeout(() => {
+          const feeCard = document.getElementById('nc-fee-card');
+          if (feeCard && !feeCard.querySelector('.nc-receipt-btn')) {
+            const btn = document.createElement('button');
+            btn.className = 'nc-receipt-btn';
+            btn.innerHTML = '<i class="fas fa-receipt" style="margin-right:5px"></i>View Latest Receipt';
+            btn.style.cssText = 'margin-top:10px;width:100%;padding:7px 12px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer';
+            btn.onclick = () => { if(window.showStudentReceipt) window.showStudentReceipt(latest.txnId); showDash('s','s-fees',null); };
+            feeCard.appendChild(btn);
+          }
+        }, 800);
+      }
     } catch(e) {}
   };
 
