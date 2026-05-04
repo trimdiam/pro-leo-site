@@ -6465,7 +6465,9 @@ import {
         const sDocSnap = await getDoc(doc(db,'students',s._docId));
         if (sDocSnap.exists()) sDocFeeTotal = parseFloat(sDocSnap.data().feeTotal||0);
       }
-      const feeTotal = annualFee || sDocFeeTotal;
+      const _fs = fsSnap.exists() ? fsSnap.data() : {};
+      const compTotal = (parseFloat(_fs.tuition)||0) + (parseFloat(_fs.examFee)||0) + (parseFloat(_fs.sportsFee)||0) + (parseFloat(_fs.annualCharge)||0);
+      const feeTotal = compTotal > 0 ? compTotal : (annualFee || sDocFeeTotal);
       let feePaid = 0;
       txnSnap.forEach(d => { if (d.data().status==='approved') feePaid += parseFloat(d.data().amount)||0; });
       const feeBalance = Math.max(0, feeTotal - feePaid);
@@ -7099,6 +7101,7 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
     _prevShowDash(prefix, sectionId, btn);
     if (sectionId==='a-fee-structure')    { if(window.loadAdminFeeStructure)    loadAdminFeeStructure();    }
     if (sectionId==='a-fee-transactions') { if(window.loadAdminFeeTransactions) loadAdminFeeTransactions(); }
+    if (sectionId==='o-fee-approvals')    { if(window.loadAdminFeeTransactions) loadAdminFeeTransactions(); }
     if (sectionId==='o-dashboard')        { if(window.loadOfficeDashboardStats) loadOfficeDashboardStats(); }
     if (sectionId==='o-reports')          { if(window.loadOfficeReports)        loadOfficeReports();        }
     if (sectionId==='o-fee-collection') {
@@ -7150,17 +7153,23 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
       const statusFilter = document.getElementById('adm-filter-status')?.value || 'pending';
       let q;
       if (statusFilter === 'all') {
-        q = query(collection(db, 'admissions'), orderBy('submittedAt', 'desc'));
+        q = query(collection(db, 'admissions'));
       } else {
-        q = query(collection(db, 'admissions'), where('status', '==', statusFilter), orderBy('submittedAt', 'desc'));
+        q = query(collection(db, 'admissions'), where('status', '==', statusFilter));
       }
       const snap = await getDocs(q);
+      // Sort client-side to avoid requiring a composite Firestore index
+      const sortedDocs = snap.docs.slice().sort((a, b) => {
+        const ta = a.data().submittedAt?.toMillis ? a.data().submittedAt.toMillis() : 0;
+        const tb = b.data().submittedAt?.toMillis ? b.data().submittedAt.toMillis() : 0;
+        return tb - ta;
+      });
       if (snap.empty) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light)">No applications found.</td></tr>';
         return;
       }
       tbody.innerHTML = '';
-      snap.forEach(d => {
+      sortedDocs.forEach(d => {
         const a = d.data();
         const date = a.submittedAt?.toDate ? a.submittedAt.toDate().toLocaleDateString('en-IN') : '—';
         const statusBadge = a.status === 'forwarded_to_admin'
@@ -7179,7 +7188,7 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
         tbody.appendChild(tr);
       });
       window.__admissionsCache = {};
-      snap.forEach(d => { window.__admissionsCache[d.id] = d.data(); });
+      sortedDocs.forEach(d => { window.__admissionsCache[d.id] = d.data(); });
     } catch(e) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:#ef4444">Error: ${e.message}</td></tr>`;
     }
