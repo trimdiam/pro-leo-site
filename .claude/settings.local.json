@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh pr create --title 'Fix Firebase version mismatch breaking Google Auth login' --body ' *)"
+    ]
+  }
+}

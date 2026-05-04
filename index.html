@@ -1386,7 +1386,15 @@
             <div class="form-group"><label>Payment Mode</label><select id="s-fee-mode"><option>Bank Transfer / NEFT</option><option>Cash</option><option>UPI / QR</option><option>Cheque</option></select></div>
             <div class="form-group"><label>Transaction / Receipt No.</label><input type="text" id="s-fee-txn" placeholder="e.g. TXN123456 or Receipt No."></div>
             <div class="form-group"><label>Payment Date</label><input type="date" id="s-fee-date"></div>
-            <button class="btn btn-primary" onclick="submitFeeReceipt()"><i class="fas fa-paper-plane"></i> Submit for Approval</button>
+            <div class="form-group">
+              <label>Receipt Screenshot <span style="font-size:11px;color:var(--text-light)">(UPI/bank screenshot — recommended)</span></label>
+              <input type="file" id="s-fee-receipt-img" accept="image/*" style="padding:6px;border:1px solid var(--border);border-radius:8px;width:100%;font-size:13px;box-sizing:border-box">
+            </div>
+            <div id="s-fee-upload-progress" style="display:none;margin-bottom:12px">
+              <div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden"><div id="s-fee-progress-bar" style="height:100%;background:var(--primary);width:0%;transition:width .3s"></div></div>
+              <p id="s-fee-progress-text" style="font-size:12px;color:var(--text-light);margin-top:4px"></p>
+            </div>
+            <button class="btn btn-primary" id="s-fee-submit-btn" onclick="submitFeeReceipt()"><i class="fas fa-paper-plane"></i> Submit for Approval</button>
           </div>
         </div>
         <div id="s-contact" class="dash-section">
@@ -5526,38 +5534,168 @@
   //  STUDENT — Fees
   // ================================================================
   window.loadStudentFees = async function() {
-    const listEl=document.getElementById('s-fees-list'),totalEl=document.getElementById('s-fees-total'),badgeEl=document.getElementById('s-fees-total-badge');
-    if(!listEl) return;
-    listEl.innerHTML='<div style="text-align:center;padding:16px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i></div>';
+    const listEl  = document.getElementById('s-fees-list');
+    const totalEl = document.getElementById('s-fees-total');
+    const badgeEl = document.getElementById('s-fees-total-badge');
+    if (!listEl) return;
+    listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i></div>';
     try {
-      const sid=window._studentId||'';
-      if(!sid){listEl.innerHTML='<p style="color:var(--text-light);font-size:13px">Student ID not set.</p>';return;}
-      const snap=await getDocs(query(collection(db,'fees'),where('studentId','==',sid),limit(20)));
-      if(snap.empty){listEl.innerHTML='<p style="color:var(--text-light);font-size:13px;text-align:center;padding:16px">No fee records found.</p>';return;}
-      let total=0;
-      const rows=snap.docs.map(d=>{
-        const f=d.data(); const bc=f.status==='Approved'?'badge-success':f.status==='Rejected'?'badge-danger':'badge-warning';
-        if(f.status!=='Approved') total+=parseFloat(f.amount)||0;
-        return `<div class="fee-row"><div><div class="fee-name">${f.feeType||'Fee'}</div><div class="fee-amount">₹${(f.amount||0).toLocaleString('en-IN')} · ${f.mode||'—'}</div></div><span class="badge ${bc}">${f.status||'Pending'}</span></div>`;
+      const sid = window._studentId || '';
+      if (!sid) { listEl.innerHTML = '<p style="color:var(--text-light);font-size:13px">Student ID not set.</p>'; return; }
+
+      const snap = await getDocs(query(
+        collection(db, 'fee_transactions'),
+        where('studentId', '==', sid),
+        limit(30)
+      ));
+
+      // Also get the student's current balance from students collection
+      let currentBalance = 0, feeTotal = 0;
+      const sSnap = await getDocs(query(collection(db, 'students'), where('studentId', '==', sid), limit(1)));
+      if (!sSnap.empty) {
+        const sd = sSnap.docs[0].data();
+        feeTotal       = parseFloat(sd.feeTotal   || 0);
+        currentBalance = parseFloat(sd.feeBalance !== undefined ? sd.feeBalance : feeTotal);
+      }
+
+      if (snap.empty) {
+        listEl.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:16px">No payment records yet.</p>';
+        if (totalEl) totalEl.textContent = currentBalance > 0 ? '₹' + currentBalance.toLocaleString('en-IN') : '₹0';
+        if (badgeEl) {
+          badgeEl.textContent  = currentBalance > 0 ? `₹${currentBalance.toLocaleString('en-IN')} Due` : 'All Paid';
+          badgeEl.className    = 'badge ' + (currentBalance > 0 ? 'badge-danger' : 'badge-success');
+          badgeEl.style.cssText = 'font-size:13px;padding:6px 14px';
+        }
+        return;
+      }
+
+      // Sort newest first client-side
+      const docs = snap.docs.slice().sort((a, b) => {
+        const ta = a.data().createdAt?.toMillis ? a.data().createdAt.toMillis() : new Date(a.data().submittedAt || 0).getTime();
+        const tb = b.data().createdAt?.toMillis ? b.data().createdAt.toMillis() : new Date(b.data().submittedAt || 0).getTime();
+        return tb - ta;
+      });
+
+      const rows = docs.map(d => {
+        const f  = d.data();
+        const st = (f.status || 'pending').toLowerCase();
+        const bc = st === 'approved' ? 'badge-success' : st === 'rejected' ? 'badge-danger' : 'badge-warning';
+        const label = st === 'approved' ? 'Approved' : st === 'rejected' ? 'Rejected' : 'Pending';
+        const source = f.source === 'student-portal' ? '<span style="font-size:10px;color:var(--text-light)"> · Online</span>' : '<span style="font-size:10px;color:var(--text-light)"> · Office</span>';
+        const rcpt = f.receiptNo ? `<span style="font-size:11px;color:var(--text-light)"> · ${f.receiptNo}</span>` : '';
+        return `<div class="fee-row">
+          <div>
+            <div class="fee-name">${f.feeType || f.paymentMode || 'Payment'}${source}</div>
+            <div class="fee-amount">₹${(f.amount || 0).toLocaleString('en-IN')} · ${f.paymentMode || f.mode || '—'}${rcpt}</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">${f.date || ''}</div>
+          </div>
+          <span class="badge ${bc}" style="align-self:flex-start">${label}</span>
+        </div>`;
       }).join('');
-      listEl.innerHTML=rows;
-      if(totalEl) totalEl.textContent='₹'+total.toLocaleString('en-IN');
-      if(badgeEl){badgeEl.textContent=total>0?`₹${total.toLocaleString('en-IN')} Due`:'All Paid';badgeEl.className='badge '+(total>0?'badge-danger':'badge-success');badgeEl.style.cssText='font-size:13px;padding:6px 14px';}
-    } catch(e){listEl.innerHTML=`<p style="color:var(--danger)">❌ ${e.message}</p>`;}
+
+      listEl.innerHTML = rows;
+      if (totalEl) totalEl.textContent = currentBalance > 0 ? '₹' + currentBalance.toLocaleString('en-IN') : '₹0';
+      if (badgeEl) {
+        badgeEl.textContent   = currentBalance > 0 ? `₹${currentBalance.toLocaleString('en-IN')} Due` : 'All Paid';
+        badgeEl.className     = 'badge ' + (currentBalance > 0 ? 'badge-danger' : 'badge-success');
+        badgeEl.style.cssText = 'font-size:13px;padding:6px 14px';
+      }
+    } catch(e) { listEl.innerHTML = `<p style="color:var(--danger)">❌ ${e.message}</p>`; }
   };
 
   window.submitFeeReceipt = async function() {
-    const feeType=document.getElementById('s-fee-type-sel')?.value||'';
-    const amount=document.getElementById('s-fee-amount')?.value||'';
-    const mode=document.getElementById('s-fee-mode')?.value||'';
-    const txn=(document.getElementById('s-fee-txn')?.value||'').trim();
-    const date=document.getElementById('s-fee-date')?.value||'';
-    if(!feeType||!amount||!txn){showToast('⚠️ Fee type, amount and receipt/transaction number are required.');return;}
+    const feeType = document.getElementById('s-fee-type-sel')?.value || '';
+    const amount  = (document.getElementById('s-fee-amount')?.value || '').trim();
+    const mode    = document.getElementById('s-fee-mode')?.value || '';
+    const txn     = (document.getElementById('s-fee-txn')?.value || '').trim();
+    const date    = document.getElementById('s-fee-date')?.value || '';
+    const file    = document.getElementById('s-fee-receipt-img')?.files[0];
+    if (!feeType || !amount || !txn) { showToast('⚠️ Fee type, amount and transaction number are required.'); return; }
+
+    const btn      = document.getElementById('s-fee-submit-btn');
+    const progBox  = document.getElementById('s-fee-upload-progress');
+    const progBar  = document.getElementById('s-fee-progress-bar');
+    const progText = document.getElementById('s-fee-progress-text');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…'; }
+
     try {
-      await addDoc(collection(db,'fees'),{studentId:window._studentId||'',studentName:window._studentName||'',class:window._studentClass||'',feeType,amount:parseFloat(amount),mode,txnNo:txn,paymentDate:date,status:'Pending',submittedAt:new Date().toISOString(),createdAt:new Date().toISOString()});
-      ['s-fee-type-sel','s-fee-amount','s-fee-txn','s-fee-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-      showToast('✅ Fee receipt submitted for admin approval.'); loadStudentFees();
-    } catch(e){showToast('❌ '+e.message);}
+      // 1. Upload receipt screenshot to Cloudinary if provided
+      let receiptUrl = '';
+      if (file) {
+        const { cloudName, preset } = getCloudinaryConfig();
+        if (!cloudName || !preset) { showToast('⚠️ Cloudinary not configured. Ask admin to set it up.'); return; }
+        if (progBox) progBox.style.display = 'block';
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('upload_preset', preset);
+        fd.append('folder', 'fee_receipts');
+        receiptUrl = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
+          xhr.upload.onprogress = e => {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 90) + 5;
+              if (progBar)  progBar.style.width = pct + '%';
+              if (progText) progText.textContent = `Uploading receipt… ${pct}%`;
+            }
+          };
+          xhr.onload = () => {
+            if (xhr.status === 200) { resolve(JSON.parse(xhr.responseText).secure_url); }
+            else { try { reject(new Error(JSON.parse(xhr.responseText).error?.message || 'Upload failed')); } catch { reject(new Error('Upload failed')); } }
+          };
+          xhr.onerror = () => reject(new Error('Network error during upload'));
+          xhr.send(fd);
+        });
+        if (progBar)  progBar.style.width = '100%';
+        if (progText) progText.textContent = 'Upload complete!';
+      }
+
+      // 2. Get current student balance
+      const sid = window._studentId || '';
+      let balanceBefore = 0, feeTotal = 0;
+      if (sid) {
+        const sSnap = await getDocs(query(collection(db, 'students'), where('studentId', '==', sid), limit(1)));
+        if (!sSnap.empty) {
+          const sd = sSnap.docs[0].data();
+          feeTotal      = parseFloat(sd.feeTotal  || 0);
+          balanceBefore = parseFloat(sd.feeBalance !== undefined ? sd.feeBalance : feeTotal);
+        }
+      }
+      const amtNum      = parseFloat(amount);
+      const balanceAfter = Math.max(0, balanceBefore - amtNum);
+
+      // 3. Save to fee_transactions as pending
+      await addDoc(collection(db, 'fee_transactions'), {
+        studentId:    sid,
+        studentName:  window._studentName  || '',
+        studentClass: window._studentClass || '',
+        feeType,
+        amount:       amtNum,
+        paymentMode:  mode,
+        receiptNo:    txn,
+        date,
+        status:       'pending',
+        receiptUrl,
+        staffName:    (window._studentName || 'Student') + ' (self)',
+        balanceBefore,
+        balanceAfter,
+        feeTotal,
+        source:       'student-portal',
+        submittedAt:  new Date().toISOString(),
+        createdAt:    serverTimestamp()
+      });
+
+      // 4. Reset form
+      ['s-fee-type-sel','s-fee-amount','s-fee-txn','s-fee-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      const fi = document.getElementById('s-fee-receipt-img'); if (fi) fi.value = '';
+      showToast('✅ Payment submitted — awaiting office approval.');
+      loadStudentFees();
+    } catch(e) {
+      showToast('❌ ' + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit for Approval'; }
+      setTimeout(() => { if (progBox) progBox.style.display = 'none'; if (progBar) progBar.style.width = '0%'; }, 1500);
+    }
   };
 
   // ================================================================
@@ -6561,33 +6699,61 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
     const btn = document.querySelector('#o-fee-collection .btn-primary');
     if (btn) { btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Saving…'; btn.disabled=true; }
     try {
+      const staffName = window._officeStaffName || 'Office Staff';
+      const now       = new Date().toISOString();
       const txnData = {
-        studentId:     s.studentId||'',
-        studentName:   s.name||'',
-        studentClass:  String(s.class||''),
-        studentRollNo: String(s.rollNo||''),
+        studentId:     s.studentId || '',
+        studentName:   s.name      || '',
+        studentClass:  String(s.class  || ''),
+        studentRollNo: String(s.rollNo || ''),
         amount, paymentMode: mode,
-        receiptNo: receiptNo||('RCP-'+Date.now()),
+        receiptNo:    receiptNo || ('RCP-' + Date.now()),
         date, notes,
-        staffId:   window._officeStaffId||'',
-        staffName: window._officeStaffName||'Office Staff',
+        staffId:      window._officeStaffId || '',
+        staffName,
         balanceBefore: balBefore,
         balanceAfter:  balAfter,
-        feeTotal: fd.feeTotal||0,
-        status:   'pending',
-        createdAt: new Date().toISOString()
+        feeTotal:      fd.feeTotal || 0,
+        status:        'approved',
+        approvedBy:    staffName,
+        approvedAt:    now,
+        source:        'office',
+        createdAt:     now
       };
-      const txnRef = await addDoc(collection(db,'fee_transactions'), txnData);
-      showToast('✅ Payment recorded (Pending approval). Opening receipt…');
+      const txnRef = await addDoc(collection(db, 'fee_transactions'), txnData);
+
+      // Immediately update student's feePaid and feeBalance
+      const sSnap = await getDocs(query(collection(db,'students'), where('studentId','==', s.studentId||''), limit(1)));
+      if (!sSnap.empty) {
+        const sRef     = doc(db, 'students', sSnap.docs[0].id);
+        const sData    = sSnap.docs[0].data();
+        const prevPaid = parseFloat(sData.feePaid  || 0);
+        const total    = parseFloat(sData.feeTotal || fd.feeTotal || 0);
+        const newPaid  = prevPaid + amount;
+        const newBal   = Math.max(0, total - newPaid);
+        await updateDoc(sRef, { feePaid: newPaid, feeBalance: newBal, feeTotal: total, updatedAt: now });
+        // Keep local fee data in sync so the UI reflects immediately
+        if (window._feeSelectedFeeData) {
+          window._feeSelectedFeeData.feePaid    = newPaid;
+          window._feeSelectedFeeData.feeBalance = newBal;
+        }
+      }
+
+      // Notify the student
+      if (window._triggerFeeNotification) {
+        window._triggerFeeNotification(s.studentId || '', amount, balAfter, txnRef.id).catch(() => {});
+      }
+
+      showToast('✅ Payment recorded and approved. Opening receipt…');
       _populateReceipt({ ...txnData, txnId: txnRef.id });
       ['pay-amount','pay-receipt-no','pay-notes'].forEach(id => {
-        const el=document.getElementById(id); if(el) el.value='';
+        const el = document.getElementById(id); if (el) el.value = '';
       });
       if (window._loadFeeDataForStudent) await window._loadFeeDataForStudent(s);
     } catch(e) {
-      showToast('❌ Could not record payment: '+e.message);
+      showToast('❌ Could not record payment: ' + e.message);
     } finally {
-      if (btn) { btn.innerHTML='<i class="fas fa-save"></i> Record Payment'; btn.disabled=false; }
+      if (btn) { btn.innerHTML = '<i class="fas fa-save"></i> Record Payment'; btn.disabled = false; }
     }
   };
 
@@ -6736,28 +6902,44 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, quer
     const filter = document.getElementById('a-txn-filter')?.value||'pending';
     try {
       const snap = filter==='all'
-        ? await getDocs(query(collection(db,'fee_transactions'), orderBy('createdAt','desc'), limit(80)))
-        : await getDocs(query(collection(db,'fee_transactions'), where('status','==',filter), orderBy('createdAt','desc'), limit(80)));
+        ? await getDocs(query(collection(db,'fee_transactions'), limit(100)))
+        : await getDocs(query(collection(db,'fee_transactions'), where('status','==',filter), limit(100)));
       if (snap.empty) {
         tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:18px;color:var(--text-light)">No records found.</td></tr>';
         return;
       }
+      // Sort newest first client-side to avoid needing a composite Firestore index
+      const docs = snap.docs.slice().sort((a,b) => {
+        const ta = a.data().createdAt?.toMillis ? a.data().createdAt.toMillis() : new Date(a.data().createdAt||0).getTime();
+        const tb = b.data().createdAt?.toMillis ? b.data().createdAt.toMillis() : new Date(b.data().createdAt||0).getTime();
+        return tb - ta;
+      });
       const bc = s => s==='approved'?'badge-success':s==='rejected'?'badge-danger':'badge-warning';
-      tbody.innerHTML = snap.docs.map(d => {
+      tbody.innerHTML = docs.map(d => {
         const t=d.data();
+        const receiptCell = t.receiptUrl
+          ? `<div style="font-family:monospace;font-size:12px">${t.receiptNo||'—'}</div>
+             <a href="${t.receiptUrl}" target="_blank" rel="noopener"
+                style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:11px;color:var(--primary);text-decoration:none;background:rgba(99,102,241,.08);padding:3px 8px;border-radius:6px;border:1px solid var(--primary)">
+               <i class="fas fa-image"></i> View Receipt
+             </a>`
+          : `<span style="font-family:monospace;font-size:12px">${t.receiptNo||'—'}</span>`;
+        const sourceTag = t.source==='student-portal'
+          ? `<div style="font-size:10px;color:var(--primary);margin-top:2px"><i class="fas fa-mobile-alt"></i> Online</div>`
+          : '';
         const acts = t.status==='pending'
-          ? `<div style="display:flex;gap:4px">
+          ? `<div style="display:flex;gap:4px;flex-wrap:wrap">
                <button class="btn btn-sm btn-success" style="font-size:11px;padding:3px 8px" onclick="approveFeeTransaction('${d.id}')"><i class="fas fa-check"></i> Approve</button>
                <button class="btn btn-sm btn-danger"  style="font-size:11px;padding:3px 7px" onclick="rejectFeeTransaction('${d.id}')"><i class="fas fa-times"></i></button>
              </div>`
-          : `<span style="font-size:11px;color:var(--text-light)">${t.status==='approved'?(t.approvedBy||'Admin'):'Rejected'}</span>`;
+          : `<span style="font-size:11px;color:var(--text-light)">${t.status==='approved'?(t.approvedBy||'Staff'):'Rejected'}</span>`;
         return `<tr>
           <td style="font-size:12px">${t.date||'—'}</td>
-          <td><strong>${t.studentName||'—'}</strong></td>
+          <td><strong>${t.studentName||'—'}</strong>${sourceTag}</td>
           <td>${clsLabel(t.studentClass)}</td>
           <td style="font-weight:700">${fmtINR(t.amount)}</td>
           <td style="font-size:12px">${t.paymentMode||'—'}</td>
-          <td style="font-size:12px;font-family:monospace">${t.receiptNo||'—'}</td>
+          <td>${receiptCell}</td>
           <td style="font-size:12px">${fmtINR(t.balanceBefore)}</td>
           <td style="font-size:12px;font-weight:700;color:var(--accent-dark)">${fmtINR(t.balanceAfter)}</td>
           <td style="font-size:12px">${t.staffName||'—'}</td>
