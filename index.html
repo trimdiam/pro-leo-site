@@ -223,6 +223,12 @@
         width: 100%; padding: 32px; box-sizing: border-box;
         background: #fff; font-family: Arial, sans-serif; color: #1e293b;
       }
+      /* Fee receipt print — takes priority when overlay is visible */
+      body.receipt-printing * { visibility: hidden !important; }
+      body.receipt-printing #printable-receipt,
+      body.receipt-printing #printable-receipt * { visibility: visible !important; }
+      body.receipt-printing #printable-receipt { position: absolute !important; inset: 0 !important; overflow: visible !important; }
+      body.receipt-printing #receipt-actions   { display: none !important; }
       #adm-print-frame h2  { text-align:center; color:#4f46e5; margin:0 0 4px; font-size:18px; }
       #adm-print-frame h3  { text-align:center; color:#64748b; margin:0 0 22px; font-size:13px; font-weight:500; }
       #adm-print-frame h4  { color:#4f46e5; font-size:11px; text-transform:uppercase; letter-spacing:1px; margin:18px 0 5px; border-bottom:1.5px solid #e2e8f0; padding-bottom:3px; }
@@ -6615,10 +6621,16 @@ import {
           const col = st => st==='approved'?'#16a34a':st==='rejected'?'#dc2626':'#d97706';
           mini.innerHTML = allTxns.map(d => {
             const t = d.data();
-            return `<div class="txn-mini-item">
-              <div><div style="font-weight:700;color:var(--text)">${fmtINR(t.amount)}</div>
-              <div style="font-size:11px;color:var(--text-light)">${t.date||'—'} · ${t.paymentMode||'—'}</div></div>
-              <span style="color:${col(t.status)};font-weight:700;font-size:10px;white-space:nowrap;text-transform:uppercase">${t.status||'—'}</span>
+            return `<div class="txn-mini-item" style="flex-wrap:wrap;gap:6px">
+              <div style="flex:1;min-width:120px">
+                <div style="font-weight:700;color:var(--text)">${fmtINR(t.amount)}</div>
+                <div style="font-size:11px;color:var(--text-light)">${t.date||'—'} · ${t.paymentMode||'—'}</div>
+              </div>
+              <span style="color:${col(t.status)};font-weight:700;font-size:10px;white-space:nowrap;text-transform:uppercase;align-self:center">${t.status||'—'}</span>
+              <div style="display:flex;gap:4px;align-self:center">
+                <button onclick="editFeeTransaction('${d.id}')" style="padding:3px 8px;font-size:11px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer" title="Edit"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteFeeTransaction('${d.id}')" style="padding:3px 8px;font-size:11px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer" title="Delete"><i class="fas fa-trash"></i></button>
+              </div>
             </div>`;
           }).join('');
         }
@@ -6626,6 +6638,109 @@ import {
     } catch(e) { console.warn('[FeeData]',e.message); showToast('⚠️ Could not load fee data: '+e.message); }
   }
   window._loadFeeDataForStudent = _loadFeeDataForStudent;
+
+  // ── Edit fee transaction ──────────────────────────────────────────
+  window.editFeeTransaction = async function(txnId) {
+    try {
+      const snap = await getDoc(doc(db, 'fee_transactions', txnId));
+      if (!snap.exists()) { showToast('⚠️ Transaction not found.'); return; }
+      const t = snap.data();
+      document.getElementById('edit-txn-id').value           = txnId;
+      document.getElementById('edit-txn-prev-amount').value  = t.amount || 0;
+      document.getElementById('edit-txn-status').value       = t.status || 'pending';
+      document.getElementById('edit-txn-amount').value       = t.amount || '';
+      document.getElementById('edit-txn-mode').value         = t.paymentMode || 'Cash';
+      document.getElementById('edit-txn-receipt').value      = t.receiptNo || '';
+      document.getElementById('edit-txn-date').value         = t.date || '';
+      document.getElementById('edit-txn-notes').value        = t.notes || '';
+      const modal = document.getElementById('edit-txn-modal');
+      if (modal) modal.style.display = 'flex';
+    } catch(e) { showToast('❌ Could not load transaction: ' + e.message); }
+  };
+
+  window.saveEditFeeTransaction = async function() {
+    const txnId     = document.getElementById('edit-txn-id')?.value || '';
+    const prevAmt   = parseFloat(document.getElementById('edit-txn-prev-amount')?.value || 0);
+    const status    = document.getElementById('edit-txn-status')?.value || '';
+    const newAmt    = parseFloat(document.getElementById('edit-txn-amount')?.value || 0);
+    const mode      = document.getElementById('edit-txn-mode')?.value || '';
+    const receiptNo = (document.getElementById('edit-txn-receipt')?.value || '').trim();
+    const date      = document.getElementById('edit-txn-date')?.value || '';
+    const notes     = (document.getElementById('edit-txn-notes')?.value || '').trim();
+    if (!txnId || !newAmt) { showToast('⚠️ Amount is required.'); return; }
+
+    const btn = document.getElementById('edit-txn-save-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+    try {
+      const txnRef  = doc(db, 'fee_transactions', txnId);
+      const txnSnap = await getDoc(txnRef);
+      if (!txnSnap.exists()) { showToast('❌ Transaction no longer exists.'); return; }
+      const t = txnSnap.data();
+
+      // Recalculate balances if amount changed
+      const amtDiff = newAmt - prevAmt;
+      const newBalBefore = t.balanceBefore;
+      const newBalAfter  = Math.max(0, (t.balanceAfter || 0) - amtDiff);
+
+      await updateDoc(txnRef, {
+        amount: newAmt, paymentMode: mode, receiptNo, date, notes,
+        balanceAfter: newBalAfter, updatedAt: new Date().toISOString()
+      });
+
+      // If approved, adjust student balance for the amount difference
+      if (status === 'approved' && amtDiff !== 0) {
+        try {
+          const sSnap = await getDocs(query(collection(db,'students'), where('studentId','==', t.studentId||''), limit(1)));
+          if (!sSnap.empty) {
+            const sRef  = doc(db,'students', sSnap.docs[0].id);
+            const sData = sSnap.docs[0].data();
+            const newPaid = Math.max(0, parseFloat(sData.feePaid||0) + amtDiff);
+            const newBal  = Math.max(0, parseFloat(sData.feeTotal||0) - newPaid);
+            await updateDoc(sRef, { feePaid: newPaid, feeBalance: newBal, updatedAt: new Date().toISOString() });
+          }
+        } catch(e) { console.warn('[editTxn] student balance update:', e.message); }
+      }
+
+      document.getElementById('edit-txn-modal').style.display = 'none';
+      showToast('✅ Payment updated.');
+      if (window._feeSelectedStudent && window._loadFeeDataForStudent)
+        await window._loadFeeDataForStudent(window._feeSelectedStudent);
+    } catch(e) {
+      showToast('❌ Update failed: ' + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Changes'; }
+    }
+  };
+
+  // ── Delete fee transaction ────────────────────────────────────────
+  window.deleteFeeTransaction = async function(txnId) {
+    if (!confirm('Delete this payment record? This cannot be undone.')) return;
+    try {
+      const txnSnap = await getDoc(doc(db, 'fee_transactions', txnId));
+      if (!txnSnap.exists()) { showToast('⚠️ Transaction not found.'); return; }
+      const t = txnSnap.data();
+
+      // Reverse student balance if the payment was approved
+      if (t.status === 'approved') {
+        try {
+          const sSnap = await getDocs(query(collection(db,'students'), where('studentId','==', t.studentId||''), limit(1)));
+          if (!sSnap.empty) {
+            const sRef  = doc(db,'students', sSnap.docs[0].id);
+            const sData = sSnap.docs[0].data();
+            const newPaid = Math.max(0, parseFloat(sData.feePaid||0) - parseFloat(t.amount||0));
+            const newBal  = Math.max(0, parseFloat(sData.feeTotal||0) - newPaid);
+            await updateDoc(sRef, { feePaid: newPaid, feeBalance: newBal, updatedAt: new Date().toISOString() });
+          }
+        } catch(e) { console.warn('[deleteTxn] balance reversal:', e.message); }
+      }
+
+      await deleteDoc(doc(db, 'fee_transactions', txnId));
+      showToast('🗑️ Payment deleted.');
+      if (window._feeSelectedStudent && window._loadFeeDataForStudent)
+        await window._loadFeeDataForStudent(window._feeSelectedStudent);
+      if (window.loadAdminFeeTransactions) window.loadAdminFeeTransactions();
+    } catch(e) { showToast('❌ Delete failed: ' + e.message); }
+  };
 
   // Event delegation — handles dynamically rendered student cards
   document.addEventListener('click', function(e) {
@@ -7811,6 +7926,33 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
 <!-- ================================================================
      PRINTABLE FEE RECEIPT OVERLAY
 ================================================================ -->
+<!-- ── Edit Payment Modal ── -->
+<div id="edit-txn-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--glass-bg,#fff);border-radius:16px;padding:28px;max-width:460px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+    <h4 style="margin:0 0 20px;color:var(--accent-dark)"><i class="fas fa-edit" style="margin-right:8px;color:var(--primary)"></i>Edit Payment</h4>
+    <input type="hidden" id="edit-txn-id">
+    <input type="hidden" id="edit-txn-prev-amount">
+    <input type="hidden" id="edit-txn-status">
+    <div class="form-group"><label>Amount (₹) *</label><input type="number" id="edit-txn-amount" min="1" placeholder="e.g. 5000"></div>
+    <div class="form-group"><label>Payment Mode</label>
+      <select id="edit-txn-mode">
+        <option value="Cash">Cash</option>
+        <option value="UPI / QR">UPI / QR</option>
+        <option value="Bank Transfer / NEFT">Bank Transfer / NEFT</option>
+        <option value="Cheque">Cheque</option>
+        <option value="Demand Draft">Demand Draft</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Receipt / Transaction No.</label><input type="text" id="edit-txn-receipt" placeholder="e.g. RCP-2025-001"></div>
+    <div class="form-group"><label>Payment Date</label><input type="date" id="edit-txn-date"></div>
+    <div class="form-group"><label>Remarks / Notes</label><input type="text" id="edit-txn-notes" placeholder="e.g. Q2 Tuition Fee"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="edit-txn-save-btn" onclick="saveEditFeeTransaction()"><i class="fas fa-save"></i> Save Changes</button>
+      <button class="btn btn-outline" onclick="document.getElementById('edit-txn-modal').style.display='none'"><i class="fas fa-times"></i> Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="printable-receipt" style="display:none;position:fixed;inset:0;background:#fff;z-index:99999;overflow-y:auto;padding:0">
   <div style="max-width:620px;margin:0 auto;padding:40px 36px;font-family:var(--font-body)">
 
@@ -7867,9 +8009,9 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
     <div style="font-size:13px;margin-bottom:22px;display:flex;flex-direction:column;gap:6px">
       <div><strong>Payment Mode:</strong> <span id="rcp-mode">—</span></div>
       <div><strong>Notes:</strong> <span id="rcp-notes">—</span></div>
-      <div style="margin-top:6px;background:#fff3cd;border-radius:6px;padding:9px 13px;font-size:12px;color:#856404">
-        <i class="fas fa-info-circle" style="margin-right:5px"></i>
-        This is a <strong>provisional receipt</strong>. Official confirmation is issued upon admin approval.
+      <div style="margin-top:6px;background:#d4edda;border-radius:6px;padding:9px 13px;font-size:12px;color:#155724">
+        <i class="fas fa-check-circle" style="margin-right:5px"></i>
+        This is an <strong>official receipt</strong> issued by St. Francis De Sales Secondary School.
       </div>
     </div>
 
@@ -7891,7 +8033,7 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
 
     <!-- Buttons (hidden in print) -->
     <div id="receipt-actions" style="display:flex;gap:12px;justify-content:center;margin-top:28px">
-      <button class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i> Print Receipt</button>
+      <button class="btn btn-primary" onclick="document.body.classList.add('receipt-printing');window.print();setTimeout(()=>document.body.classList.remove('receipt-printing'),1000)"><i class="fas fa-print"></i> Print Receipt</button>
       <button class="btn btn-outline" onclick="document.getElementById('printable-receipt').style.display='none'"><i class="fas fa-times"></i> Close</button>
     </div>
 
