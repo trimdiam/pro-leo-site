@@ -4364,6 +4364,7 @@
               ${a.status!=='Admitted'?`<button class="btn btn-sm" style="background:#1a6b3c;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="openApproveModal('${d.id}','${(a.studentName||'').replace(/'/g,"\\'")}','${a.class||''}')"><i class="fas fa-check"></i> Approve</button>`:''}
               ${a.status!=='Shortlisted'?`<button class="btn btn-sm" style="background:#1a4a8a;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px" onclick="updateAdmStatus('${d.id}','Shortlisted')">Shortlist</button>`:''}
               ${a.status!=='Rejected'?`<button class="btn btn-sm btn-danger" style="font-size:11px;padding:4px 8px" onclick="rejectAdmission('${d.id}','${(a.studentName||'').replace(/'/g,"\\'")}')"><i class="fas fa-times"></i> Reject</button>`:''}
+              ${a.status==='Rejected'?`<button class="btn btn-sm" style="background:#7f1d1d;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="deleteAdmission('${d.id}','${(a.studentName||'').replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i> Delete</button>`:''}
             </div>
           </td>
         </tr>`;
@@ -4497,6 +4498,16 @@
     try {
       await updateDoc(doc(db,'admissions',docId), { status:'Rejected', updatedAt: new Date().toISOString() });
       showToast('🗑️ Application rejected.');
+      loadAdmissions();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.deleteAdmission = async function(docId, name) {
+    if (!confirm(`Permanently delete the application for "${name}"? This cannot be undone.`)) return;
+    try {
+      await deleteDoc(doc(db,'admissions',docId));
+      if (window.__adminAdmCache) delete window.__adminAdmCache[docId];
+      showToast('🗑️ Application deleted.');
       loadAdmissions();
     } catch(e) { showToast('❌ ' + e.message); }
   };
