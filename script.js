@@ -86,6 +86,17 @@ function showDash(prefix, sectionId, btn) {
   if (titleEl && btn) titleEl.textContent = btn.textContent.trim();
 }
 
+function adminInboxGo(sectionId, feeFilter) {
+  const btn = document.querySelector('#adminSidebar button[onclick*="' + sectionId + '"]');
+  showDash('a', sectionId, btn || null);
+  if (feeFilter) {
+    setTimeout(() => {
+      const f = document.getElementById('a-fee-filter');
+      if (f) { f.value = feeFilter; loadAdminFees(); }
+    }, 150);
+  }
+}
+
 // ================================================================
 //  Role tab
 // ================================================================
