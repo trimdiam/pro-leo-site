@@ -95,6 +95,9 @@ function adminInboxGo(sectionId, feeFilter) {
       if (f) { f.value = feeFilter; loadAdminFees(); }
     }, 150);
   }
+  if (sectionId === 'a-leave') {
+    setTimeout(() => loadAdminLeave(), 150);
+  }
 }
 
 // ================================================================
@@ -224,3 +227,6 @@ window.loadTeacherNotices      = window.loadTeacherNotices      || function() {}
 window.loadAdminNotices        = window.loadAdminNotices        || function() {};
 window.loadAdminFees           = window.loadAdminFees           || function() {};
 window.populateHwClassSelect   = window.populateHwClassSelect   || function() {};
+window.loadAdminLeave          = window.loadAdminLeave          || function() {};
+window.adminApproveLeave       = window.adminApproveLeave       || function() {};
+window.adminRejectLeave        = window.adminRejectLeave        || function() {};

@@ -1626,6 +1626,7 @@
         <button onclick="showDash('a','a-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('a','a-contacts',this)"><i class="fas fa-envelope"></i> Contacts</button>
         <button onclick="showDash('a','a-holidays',this)"><i class="fas fa-calendar-times"></i> Holidays</button>
+        <button onclick="showDash('a','a-leave',this);loadAdminLeave()"><i class="fas fa-calendar-check"></i> Leave Applications</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
     </nav>
@@ -1658,7 +1659,7 @@
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-inbox" style="margin-right:8px;color:var(--accent)"></i>Inbox</h4>
               <div class="chapter-item" style="display:flex;justify-content:space-between;cursor:pointer;border-radius:8px;padding:8px;margin:-8px;transition:background .15s" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background=''" onclick="adminInboxGo('a-fees','Pending')"><span><i class="fas fa-circle" style="color:var(--danger);font-size:8px;margin-right:8px"></i>Fee approvals pending</span><span class="badge badge-danger" id="a-inbox-fee"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
-              <div class="chapter-item" style="display:flex;justify-content:space-between;cursor:pointer;border-radius:8px;padding:8px;margin:-8px;transition:background .15s" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background=''" onclick="adminInboxGo('a-teachers')"><span><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>Leave applications</span><span class="badge badge-warning" id="a-inbox-leave"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
+              <div class="chapter-item" style="display:flex;justify-content:space-between;cursor:pointer;border-radius:8px;padding:8px;margin:-8px;transition:background .15s" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background=''" onclick="adminInboxGo('a-leave')"><span><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>Leave applications</span><span class="badge badge-warning" id="a-inbox-leave"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
               <div class="chapter-item" style="display:flex;justify-content:space-between;cursor:pointer;border-radius:8px;padding:8px;margin:-8px;transition:background .15s" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background=''" onclick="adminInboxGo('a-admissions')"><span><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>New admission enquiries</span><span class="badge badge-info" id="a-admission-count"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
               <div class="chapter-item" style="display:flex;justify-content:space-between;cursor:pointer;border-radius:8px;padding:8px;margin:-8px;transition:background .15s" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background=''" onclick="adminInboxGo('a-contacts')"><span><i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-right:8px"></i>Contact messages</span><span class="badge badge-success" id="a-inbox-contacts"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
             </div>
@@ -2720,6 +2721,25 @@
               </div>
               <div class="table-wrap"><table><thead><tr><th>Date</th><th>Day</th><th>Reason</th><th>Type</th><th>Action</th></tr></thead><tbody id="holidays-tbody"><tr><td colspan="5" style="text-align:center;padding:14px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr></tbody></table></div>
             </div>
+          </div>
+        </div>
+
+        <!-- ── LEAVE APPLICATIONS ── -->
+        <div id="a-leave" class="dash-section">
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+              <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Leave Applications</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <select id="a-leave-filter" onchange="loadAdminLeave()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="all">All</option>
+                  <option value="Pending" selected>Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+                <button class="btn btn-sm btn-outline" onclick="loadAdminLeave()"><i class="fas fa-sync-alt"></i> Refresh</button>
+              </div>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Teacher</th><th>Teacher ID</th><th>Class</th><th>Leave Type</th><th>From</th><th>To</th><th>Reason</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead><tbody id="a-leave-tbody"><tr><td colspan="10" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr></tbody></table></div>
           </div>
         </div>
 
@@ -6034,6 +6054,56 @@
       await addDoc(collection(db,'fees'),{studentId:sid,studentName:name,class:cls,feeType,amount,status,mode:'Manual',txnNo:'MANUAL',submittedAt:new Date().toISOString(),createdAt:new Date().toISOString()});
       ['af-sid','af-name','af-class','af-amount'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
       showToast('✅ Fee record added.'); loadAdminFees();
+    }catch(e){showToast('❌ '+e.message);}
+  };
+
+  // ================================================================
+  //  ADMIN — Leave Applications
+  // ================================================================
+  window.loadAdminLeave = async function(){
+    const tbody=document.getElementById('a-leave-tbody'); if(!tbody) return;
+    tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
+    try{
+      const filter=document.getElementById('a-leave-filter')?.value||'Pending';
+      let q=collection(db,'leave_applications');
+      if(filter!=='all') q=query(q,where('status','==',filter),orderBy('createdAt','desc'),limit(100));
+      else q=query(q,orderBy('createdAt','desc'),limit(100));
+      const snap=await getDocs(q);
+      if(snap.empty){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--text-light)">No leave applications found.</td></tr>';return;}
+      const bc={Pending:'badge-warning',Approved:'badge-success',Rejected:'badge-danger'};
+      tbody.innerHTML=snap.docs.map(d=>{
+        const l=d.data();
+        const dt=l.createdAt?new Date(l.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—';
+        const actions=l.status==='Pending'
+          ?`<button class="btn btn-sm" style="background:var(--success);color:#fff;margin-right:4px" onclick="adminApproveLeave('${d.id}')"><i class="fas fa-check"></i> Approve</button><button class="btn btn-sm" style="background:var(--danger);color:#fff" onclick="adminRejectLeave('${d.id}')"><i class="fas fa-times"></i> Reject</button>`
+          :'—';
+        return `<tr>
+          <td><strong>${l.teacherName||'—'}</strong></td>
+          <td style="color:var(--text-light);font-size:13px">${l.teacherId||'—'}</td>
+          <td style="font-size:13px">${l.teacherClass||'—'}</td>
+          <td>${l.type||'—'}</td>
+          <td style="font-size:13px">${l.from||'—'}</td>
+          <td style="font-size:13px">${l.to||'—'}</td>
+          <td style="font-size:13px;max-width:180px">${l.reason||'—'}</td>
+          <td style="font-size:12px;color:var(--text-light)">${dt}</td>
+          <td><span class="badge ${bc[l.status]||'badge-warning'}">${l.status||'Pending'}</span></td>
+          <td>${actions}</td>
+        </tr>`;
+      }).join('');
+    }catch(e){tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--danger)">${e.message}</td></tr>`;}
+  };
+
+  window.adminApproveLeave = async function(docId){
+    try{
+      await setDoc(doc(db,'leave_applications',docId),{status:'Approved',updatedAt:new Date().toISOString()},{merge:true});
+      showToast('✅ Leave approved.');loadAdminLeave();loadAdminDashboardStats();
+    }catch(e){showToast('❌ '+e.message);}
+  };
+
+  window.adminRejectLeave = async function(docId){
+    try{
+      await setDoc(doc(db,'leave_applications',docId),{status:'Rejected',updatedAt:new Date().toISOString()},{merge:true});
+      showToast('Leave rejected.');loadAdminLeave();loadAdminDashboardStats();
     }catch(e){showToast('❌ '+e.message);}
   };
 
