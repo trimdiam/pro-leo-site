@@ -4549,27 +4549,56 @@
   };
 
   window.adminPrintCurrentForm = function() {
-    if (!window._printAdmissionPDF) { showToast('❌ Print module not loaded.'); return; }
+    const frame = document.getElementById('adm-print-frame');
+    if (!frame) { showToast('⚠️ Print frame missing.'); return; }
     const gv = id => (document.getElementById(id) || {}).value?.trim() || '';
     const base = (window.__adminAdmCache || {})[window._aaeCurrentId] || {};
-    const data = {
-      ...base,
-      fullName:      gv('aae-name'),
-      classApplied:  gv('aae-class'),
-      dob:           gv('aae-dob'),
-      gender:        gv('aae-gender'),
-      year:          gv('aae-year'),
-      previousSchool:gv('aae-prevschool'),
-      address:       gv('aae-address'),
-      medical:       gv('aae-medical'),
-      parentName:    gv('aae-parent'),
-      relation:      gv('aae-relation'),
-      contact:       gv('aae-contact'),
-      email:         gv('aae-email'),
-      father: { name: gv('aae-father-name'), occupation: gv('aae-father-occ'), contact: gv('aae-father-tel') },
-      mother: { name: gv('aae-mother-name'), occupation: gv('aae-mother-occ'), contact: gv('aae-mother-tel') },
-    };
-    window._printAdmissionPDF(data);
+    const esc = v => (v == null || v === '' ? '—' : String(v).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])));
+    const name = esc(gv('aae-name') || base.fullName);
+    const cls  = esc(gv('aae-class') || base.classApplied);
+    const date = base.submittedAt?.toDate
+      ? base.submittedAt.toDate().toLocaleDateString('en-IN')
+      : (base.submittedAt ? new Date(base.submittedAt).toLocaleDateString('en-IN') : 'N/A');
+    const docs = base.documents || [];
+    const docsHtml = docs.length
+      ? docs.map(d => `<li><strong>${esc(d.label || d.name)}</strong> — ${esc(d.name)}</li>`).join('')
+      : '<li>No documents attached.</li>';
+    frame.innerHTML = `
+<h2 style="text-align:center;color:#4f46e5;margin:0 0 4px">St. Francis De Sales Sec. School, Laitkor, Shillong</h2>
+<h3 style="text-align:center;color:#64748b;margin:0 0 24px;font-weight:500">Admission Application Form</h3>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Student Information</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:6px">
+  <tr><td class="pf-label">Full Name</td><td>${name}</td><td class="pf-label">Class Applied</td><td>${cls}</td></tr>
+  <tr><td class="pf-label">Date of Birth</td><td>${esc(gv('aae-dob'))}</td><td class="pf-label">Gender</td><td>${esc(gv('aae-gender'))}</td></tr>
+  <tr><td class="pf-label">Academic Year</td><td>${esc(gv('aae-year'))}</td><td class="pf-label">Previous School</td><td>${esc(gv('aae-prevschool'))}</td></tr>
+  <tr><td class="pf-label">Address</td><td colspan="3">${esc(gv('aae-address'))}</td></tr>
+  <tr><td class="pf-label">Medical / Special Needs</td><td colspan="3">${esc(gv('aae-medical')) === '—' ? 'None' : esc(gv('aae-medical'))}</td></tr>
+</table>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Primary Contact</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:6px">
+  <tr><td class="pf-label">Name</td><td>${esc(gv('aae-parent'))}</td><td class="pf-label">Relation</td><td>${esc(gv('aae-relation'))}</td></tr>
+  <tr><td class="pf-label">Contact No.</td><td>${esc(gv('aae-contact'))}</td><td class="pf-label">Email</td><td>${esc(gv('aae-email'))}</td></tr>
+</table>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Father's Details</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:6px">
+  <tr><td class="pf-label">Name</td><td>${esc(gv('aae-father-name'))}</td><td class="pf-label">Occupation</td><td>${esc(gv('aae-father-occ'))}</td></tr>
+  <tr><td class="pf-label">Contact No.</td><td colspan="3">${esc(gv('aae-father-tel'))}</td></tr>
+</table>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Mother's Details</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:6px">
+  <tr><td class="pf-label">Name</td><td>${esc(gv('aae-mother-name'))}</td><td class="pf-label">Occupation</td><td>${esc(gv('aae-mother-occ'))}</td></tr>
+  <tr><td class="pf-label">Contact No.</td><td colspan="3">${esc(gv('aae-mother-tel'))}</td></tr>
+</table>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Submitted Documents</h4>
+<ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7">${docsHtml}</ul>
+<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Application Meta</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:6px">
+  <tr><td class="pf-label">Status</td><td>${esc(base.status)}</td><td class="pf-label">Submitted On</td><td>${esc(date)}</td></tr>
+</table>
+<div style="margin-top:40px;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:12px">
+  St. Francis De Sales Sec. School · Laitkor, Shillong · Generated ${new Date().toLocaleString('en-IN')}
+</div>`;
+    window.print();
   };
 
   window.triggerAdminApproval = function() {
