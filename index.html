@@ -783,15 +783,15 @@
         <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-running" style="color:var(--accent)"></i> Sports – Indoor &amp; Outdoor</div>
         <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-comments" style="color:var(--accent)"></i> Debate (English)</div>
         <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-microphone" style="color:var(--accent)"></i> Elocution &amp; Extempore</div>
-        <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-male" style="color:var(--accent)"></i> Solo Dance (Mandatory)</div>
-        <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-question-circle" style="color:var(--accent)"></i> Quiz (Mandatory)</div>
+        <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-male" style="color:var(--accent)"></i> Solo Dance</div>
+        <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-question-circle" style="color:var(--accent)"></i> Quiz</div>
         <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-theater-masks" style="color:var(--accent)"></i> Skit &amp; Mono Act</div>
-        <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-music" style="color:var(--accent)"></i> Solo Singing (Mandatory)</div>
-        <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-pen-nib" style="color:var(--accent)"></i> Calligraphy (Mandatory)</div>
+        <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-music" style="color:var(--accent)"></i> Solo Singing</div>
+        <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-pen-nib" style="color:var(--accent)"></i> Calligraphy</div>
         <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-newspaper" style="color:var(--accent)"></i> News Reading</div>
         <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-seedling" style="color:var(--accent)"></i> Flower Arrangement</div>
         <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-tshirt" style="color:var(--accent)"></i> Fancy Dress</div>
-        <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-chalkboard" style="color:var(--accent)"></i> Classroom Decoration (Must)</div>
+        <div class="card" style="padding:14px 16px;font-size:13px;color:var(--text-light);display:flex;gap:8px;align-items:center"><i class="fas fa-chalkboard" style="color:var(--accent)"></i> Classroom Decoration</div>
       </div>
       <p style="font-size:13px;color:var(--text-light);font-style:italic">Note: If your child cannot participate due to health reasons, a medical certificate with supporting documentation (X-ray, MRI, etc.) is required.</p>
     </div>
@@ -5039,8 +5039,7 @@
         {title:'Academic Excellence',description:"Consistent top results in board examinations with holistic curriculum designed to nurture each child's potential.",icon:'fas fa-graduation-cap'},
         {title:'Value-Based Education',description:'Rooted in Franciscan values of compassion, love, and service — we shape character alongside academics.',icon:'fas fa-heart'},
         {title:'Experienced Faculty',description:'Dedicated educators bringing passion and expertise to every classroom, ensuring quality learning for all students.',icon:'fas fa-users'},
-        {title:'Sports & Activities',description:'State-level athletes, cultural programs, and 20+ clubs ensure well-rounded development for every student.',icon:'fas fa-running'},
-        {title:'Modern Infrastructure',description:'Smart classrooms, a well-stocked library, computer labs, and science labs equipped with modern tools.',icon:'fas fa-laptop'},
+        {title:'Co-Curricular Activities',description:'Music, Taekwondo, Dance, Drama, Art, Sports and more — every child is encouraged to discover and grow their unique talent.',icon:'fas fa-star',link:true},
         {title:'Safe Environment',description:'CCTV-equipped campus, trained security personnel, and a strict anti-bullying policy ensuring student safety.',icon:'fas fa-shield-alt'},
       ];
       const items = snap.empty ? defaultItems : [...snap.docs].map(d=>d.data());
@@ -5049,6 +5048,7 @@
           <div class="feature-icon"><i class="${it.icon||'fas fa-star'}"></i></div>
           <h3>${it.title}</h3>
           <p>${it.description}</p>
+          ${it.link ? `<button onclick="showPage('about');showSubPage('parents')" style="margin-top:12px;background:none;border:1.5px solid var(--primary);color:var(--accent-dark);padding:6px 14px;border-radius:20px;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:600;transition:all .2s" onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='var(--accent-dark)'">View All Activities →</button>` : ''}
         </div>`
       ).join('');
     }, e => { console.warn('WhyChooseUs:', e.message); });
