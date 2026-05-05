@@ -1653,7 +1653,7 @@
           <div class="grid-2">
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-chart-bar" style="margin-right:8px;color:var(--accent)"></i>Class-wise Enrollment</h4>
-              <div class="table-wrap"><table><thead><tr><th>Class</th><th>Boys</th><th>Girls</th><th>Total</th></tr></thead><tbody id="classwise-tbody"><tr><td colspan="4" style="text-align:center;padding:14px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr></tbody></table></div>
+              <div class="table-wrap"><table><thead><tr><th>Class</th><th>Class Teacher</th><th>Boys</th><th>Girls</th><th>Total</th></tr></thead><tbody id="classwise-tbody"><tr><td colspan="5" style="text-align:center;padding:14px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr></tbody></table></div>
             </div>
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-inbox" style="margin-right:8px;color:var(--accent)"></i>Inbox</h4>
@@ -6065,13 +6065,18 @@
       if(tbody&&sSnap.size>0){
         const classMap={};
         sSnap.docs.forEach(d=>{const s=d.data();const c=s.class||'?';if(!classMap[c])classMap[c]={boys:0,girls:0};if(s.gender==='M')classMap[c].boys++;else classMap[c].girls++;});
+        const ctMap={};
+        tSnap.docs.forEach(d=>{const t=d.data();if(t.classTeacher){const n=(t.title&&t.title!=='Sir'?t.title+' ':(t.gender==='M'?'Mr. ':'Ms. '))+(t.name||'');ctMap[t.classTeacher]=n;}});
         const order=['PLG','SKG','LKG','1','2','3','4','5','6','7','8','9','10'];
         const classLabel={PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
         const getL=c=>classLabel[c]||(c?'Class '+c:c);
-        tbody.innerHTML=order.filter(c=>classMap[c]).map(c=>{
-          const {boys,girls}=classMap[c];
-          return `<tr><td>${getL(c)}</td><td>${boys}</td><td>${girls}</td><td><strong>${boys+girls}</strong></td></tr>`;
-        }).join('');
+        let totB=0,totG=0;
+        const rows=order.filter(c=>classMap[c]).map(c=>{
+          const {boys,girls}=classMap[c];totB+=boys;totG+=girls;
+          return `<tr><td>${getL(c)}</td><td style="color:var(--text-light);font-size:13px">${ctMap[c]||'—'}</td><td>${boys}</td><td>${girls}</td><td><strong>${boys+girls}</strong></td></tr>`;
+        });
+        rows.push(`<tr style="border-top:2px solid var(--accent);font-weight:700"><td>Total</td><td></td><td>${totB}</td><td>${totG}</td><td>${totB+totG}</td></tr>`);
+        tbody.innerHTML=rows.join('');
       }
       const homeS=document.getElementById('home-stat-students');const homeT=document.getElementById('home-stat-teachers');
       if(homeS&&sSnap.size>0) homeS.textContent=sSnap.size.toLocaleString('en-IN')+'+';
