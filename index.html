@@ -2205,9 +2205,8 @@
           <div class="grid-2">
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-trophy" style="margin-right:8px;color:var(--accent)"></i>Update House Points</h4>
-              <input type="hidden" id="house-edit-id">
               <div class="form-group"><label>House *</label>
-                <select id="house-name">
+                <select id="house-name" onchange="loadMonthlyEntry()">
                   <option value="Blue">🔵 Blue House</option>
                   <option value="Green">🟢 Green House</option>
                   <option value="Red">🔴 Red House</option>
@@ -2215,11 +2214,14 @@
                 </select>
               </div>
               <div class="form-row">
-                <div class="form-group"><label>Monthly Points</label><input type="number" id="house-monthly" placeholder="0" min="0"></div>
-                <div class="form-group"><label>Total Points</label><input type="number" id="house-total" placeholder="0" min="0"></div>
+                <div class="form-group"><label>Month *</label><select id="house-month" onchange="loadMonthlyEntry()"></select></div>
+                <div class="form-group"><label>Points for Month</label><input type="number" id="house-monthly-pts" placeholder="0" min="0"></div>
               </div>
-              <button class="btn btn-primary" onclick="saveHousePoints()"><i class="fas fa-save"></i> Save Points</button>
-              <p style="font-size:12px;color:var(--text-light);margin-top:10px">Saving will create or overwrite that house's entry.</p>
+              <div id="house-total-display" style="background:rgba(139,111,71,.08);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--accent-dark)">
+                <i class="fas fa-calculator" style="margin-right:6px"></i>Total is auto-calculated from all monthly entries.
+              </div>
+              <button class="btn btn-primary" onclick="saveHousePoints()"><i class="fas fa-save"></i> Save Monthly Points</button>
+              <p style="font-size:12px;color:var(--text-light);margin-top:10px">Points per month are summed automatically into the total.</p>
             </div>
             <div class="card" style="padding:24px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -5179,7 +5181,22 @@
   const HOUSE_COLORS = { Blue:'house-blue', Green:'house-green', Red:'house-red', Yellow:'house-yellow' };
   const HOUSE_EMOJI  = { Blue:'🔵', Green:'🟢', Red:'🔴', Yellow:'🟡' };
 
+  function buildHouseMonthOptions() {
+    const sel = document.getElementById('house-month');
+    if (!sel) return;
+    const now = new Date();
+    const opts = [];
+    for (let i = 0; i < 13; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const label = d.toLocaleString('default', {month:'long', year:'numeric'});
+      opts.push(`<option value="${key}"${i===0?' selected':''}>${label}</option>`);
+    }
+    sel.innerHTML = opts.join('');
+  }
+
   function initHousePointsRealtime() {
+    buildHouseMonthOptions();
     onSnapshot(collection(db,'house_points'), snap => {
       const grid = document.getElementById('house-points-grid');
       if (!grid) return;
@@ -5187,28 +5204,117 @@
         grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--text-light);font-size:14px">No house points data yet. Admin can add them in the portal.</p>';
         return;
       }
-      const houses = [...snap.docs]
-        .map(d => ({id:d.id,...d.data()}))
-        .sort((a,b) => (b.totalPoints||0) - (a.totalPoints||0));
+      // Deduplicate by houseName (keep highest totalPoints per house)
+      const houseMap = {};
+      snap.docs.forEach(d => {
+        const data = d.data();
+        const name = data.houseName;
+        if (!name) return;
+        if (!houseMap[name] || (data.totalPoints||0) > (houseMap[name].totalPoints||0)) {
+          houseMap[name] = {id:d.id,...data};
+        }
+      });
+      const houses = Object.values(houseMap).sort((a,b) => (b.totalPoints||0) - (a.totalPoints||0));
+      if (!houses.length) {
+        grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--text-light);font-size:14px">No house points data yet.</p>';
+        return;
+      }
       const ranks = ['🥇','🥈','🥉','4th'];
       grid.innerHTML = houses.map((h,i) => {
         const isLeader = i === 0;
         const cls = HOUSE_COLORS[h.houseName] || 'house-blue';
+        const thisMonth = h.currentMonthPoints || h.monthlyPoints || 0;
         return `<div class="house-card ${cls}${isLeader?' leader':''}">
           ${isLeader?'<div class="house-crown">👑</div>':''}
           <div class="house-rank">${ranks[i]||''} ${i===0?'Leading!':''}</div>
           <div class="house-name">${HOUSE_EMOJI[h.houseName]||''} ${h.houseName} House</div>
           <div class="house-pts">${(h.totalPoints||0).toLocaleString()}</div>
           <div class="house-label">Total Points</div>
-          ${h.monthlyPoints?`<div style="font-size:12px;opacity:.8;margin-top:6px">+${h.monthlyPoints} this month</div>`:''}
+          ${thisMonth?`<div style="font-size:12px;opacity:.8;margin-top:6px">+${thisMonth} this month</div>`:''}
         </div>`;
       }).join('');
     }, e => { console.warn('House points:', e.message); });
   }
 
-  window.saveHousePoints=async function(){const name=document.getElementById('house-name')?.value||'';const monthly=parseInt(document.getElementById('house-monthly')?.value||0)||0;const total=parseInt(document.getElementById('house-total')?.value||0)||0;if(!name){showToast('⚠️ Select a house.');return;}try{const snap=await getDocs(query(collection(db,'house_points'),where('houseName','==',name)));if(!snap.empty){await setDoc(doc(db,'house_points',snap.docs[0].id),{houseName:name,monthlyPoints:monthly,totalPoints:total,updatedAt:new Date().toISOString()},{merge:true});}else{await addDoc(collection(db,'house_points'),{houseName:name,monthlyPoints:monthly,totalPoints:total,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});}showToast('✅ House points saved!');loadAdminHousePoints();}catch(e){showToast('❌ '+e.message);}};
-  window.loadAdminHousePoints=async function(){const el=document.getElementById('admin-house-list');if(!el)return;el.innerHTML='<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i></p>';try{const snap=await getDocs(collection(db,'house_points'));if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No data yet.</p>';return;}const sorted=[...snap.docs].map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.totalPoints||0)-(a.totalPoints||0));el.innerHTML='<div class="table-wrap"><table style="width:100%;font-size:13px"><thead><tr><th style="text-align:left">House</th><th>Monthly</th><th>Total</th><th></th></tr></thead><tbody>'+sorted.map(h=>`<tr><td><strong>${HOUSE_EMOJI[h.houseName]||''} ${h.houseName}</strong></td><td style="text-align:center">${h.monthlyPoints||0}</td><td style="text-align:center;font-weight:700;color:var(--accent-dark)">${h.totalPoints||0}</td><td><button onclick="prefillHouseForm('${h.houseName}',${h.monthlyPoints||0},${h.totalPoints||0})" style="background:none;border:none;color:var(--accent);cursor:pointer"><i class="fas fa-edit"></i></button></td></tr>`).join('')+'</tbody></table></div>';}catch(e){el.innerHTML=`<p style="color:var(--danger)">❌ ${e.message}</p>`;}};
-  window.prefillHouseForm=function(name,monthly,total){document.getElementById('house-name').value=name;document.getElementById('house-monthly').value=monthly;document.getElementById('house-total').value=total;};
+  window.loadMonthlyEntry = async function() {
+    const name = document.getElementById('house-name')?.value || '';
+    const monthKey = document.getElementById('house-month')?.value || '';
+    const ptsEl = document.getElementById('house-monthly-pts');
+    if (!name || !monthKey || !ptsEl) return;
+    try {
+      const snap = await getDoc(doc(db,'house_points',name,'monthly_entries',monthKey));
+      ptsEl.value = snap.exists() ? (snap.data().points || 0) : 0;
+    } catch(e) { ptsEl.value = 0; }
+  };
+
+  window.saveHousePoints = async function() {
+    const name = document.getElementById('house-name')?.value || '';
+    const monthKey = document.getElementById('house-month')?.value || '';
+    const pts = parseInt(document.getElementById('house-monthly-pts')?.value || 0) || 0;
+    if (!name || !monthKey) { showToast('⚠️ Select a house and month.'); return; }
+    try {
+      const [yr, mo] = monthKey.split('-').map(Number);
+      const label = new Date(yr, mo-1, 1).toLocaleString('default', {month:'long', year:'numeric'});
+      // Save monthly entry in subcollection
+      await setDoc(doc(db,'house_points',name,'monthly_entries',monthKey),
+        {points:pts, label, year:yr, month:mo, monthKey, updatedAt:new Date().toISOString()},
+        {merge:true});
+      // Recalculate total from all monthly entries
+      const allEntries = await getDocs(collection(db,'house_points',name,'monthly_entries'));
+      const total = allEntries.docs.reduce((sum,d) => sum+(d.data().points||0), 0);
+      const nowKey = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+      const curDoc = allEntries.docs.find(d => d.id === nowKey);
+      const currentMonthPoints = curDoc ? (curDoc.data().points||0) : 0;
+      // Update main house document (use name as ID for stable subcollection access)
+      await setDoc(doc(db,'house_points',name),
+        {houseName:name, totalPoints:total, currentMonthPoints, updatedAt:new Date().toISOString()},
+        {merge:true});
+      // Update display
+      const dispEl = document.getElementById('house-total-display');
+      if (dispEl) dispEl.innerHTML = `<i class="fas fa-calculator" style="margin-right:6px"></i><strong>${name} House total: ${total} pts</strong> (auto-summed from all months)`;
+      showToast(`✅ Saved! ${name} House total: ${total} pts`);
+      loadAdminHousePoints();
+    } catch(e) { showToast('❌ '+e.message); }
+  };
+
+  window.loadAdminHousePoints = async function() {
+    const el = document.getElementById('admin-house-list');
+    if (!el) return;
+    el.innerHTML = '<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      const snap = await getDocs(collection(db,'house_points'));
+      if (snap.empty) { el.innerHTML = '<p style="color:var(--text-light);font-size:13px">No data yet.</p>'; return; }
+      // Deduplicate by houseName
+      const houseMap = {};
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (!data.houseName) return;
+        if (!houseMap[data.houseName] || (data.totalPoints||0) > (houseMap[data.houseName].totalPoints||0)) {
+          houseMap[data.houseName] = {id:d.id,...data};
+        }
+      });
+      const sorted = Object.values(houseMap).sort((a,b) => (b.totalPoints||0)-(a.totalPoints||0));
+      // Fetch monthly entries for each house
+      const withMonthly = await Promise.all(sorted.map(async h => {
+        try {
+          const entries = await getDocs(collection(db,'house_points',h.houseName,'monthly_entries'));
+          const monthly = [...entries.docs].map(d=>d.data())
+            .sort((a,b) => b.monthKey > a.monthKey ? 1 : -1).slice(0,6);
+          return {...h, monthly};
+        } catch { return {...h, monthly:[]}; }
+      }));
+      el.innerHTML = withMonthly.map((h,i) => {
+        const rank = ['🥇','🥈','🥉','4th'][i]||'';
+        return `<div style="border:1px solid rgba(139,111,71,.15);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+            <strong style="font-size:14px">${rank} ${HOUSE_EMOJI[h.houseName]||''} ${h.houseName} House</strong>
+            <span style="font-size:1.15rem;font-weight:800;color:var(--accent-dark)">${(h.totalPoints||0).toLocaleString()} pts</span>
+          </div>
+          ${h.monthly.length?`<div style="margin-top:8px;font-size:11px;color:var(--text-light);line-height:1.8">${h.monthly.map(m=>`<span style="display:inline-block;background:rgba(139,111,71,.1);border-radius:4px;padding:2px 7px;margin:2px;white-space:nowrap">${m.label}: <strong>${m.points}</strong></span>`).join('')}</div>`:'<p style="font-size:11px;color:var(--text-light);margin-top:6px">No monthly entries yet.</p>'}
+        </div>`;
+      }).join('');
+    } catch(e) { el.innerHTML=`<p style="color:var(--danger)">❌ ${e.message}</p>`; }
+  };
 
   // ================================================================
   //  SCHOOL LEADERS — real-time + admin CRUD + Cloudinary upload
