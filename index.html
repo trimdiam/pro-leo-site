@@ -8236,5 +8236,61 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
 
 <!-- Admission print frame — populated by _printAdmissionPDF(), shown only @media print -->
 <div id="adm-print-frame" aria-hidden="true"></div>
+
+<script>
+// Defined as a plain script (not a module) so it is available immediately on page load.
+window._printAdmissionPDF = function(a) {
+  if (!a) { if(window.showToast) showToast('⚠️ No application data.'); return; }
+  var frame = document.getElementById('adm-print-frame');
+  if (!frame) { if(window.showToast) showToast('⚠️ Print frame missing.'); return; }
+  var esc = function(v) { return (v == null || v === '') ? '—' : String(v).replace(/[<>&]/g, function(c){return({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]);}); };
+  var date = a.submittedAt && a.submittedAt.toDate
+    ? a.submittedAt.toDate().toLocaleDateString('en-IN')
+    : (a.submittedAt ? new Date(a.submittedAt).toLocaleDateString('en-IN') : 'N/A');
+  var f = a.father || {}, m = a.mother || {};
+  var docs = a.documents || [];
+  var docsHtml = docs.length
+    ? docs.map(function(d){return '<li><strong>'+esc(d.label||d.name)+'</strong> — '+esc(d.name)+'</li>';}).join('')
+    : '<li>No documents attached.</li>';
+  var name = esc(a.fullName || a.studentName || a.name || '—');
+  var cls  = esc(a.classApplied || a.class || '—');
+  frame.innerHTML =
+    '<h2 style="text-align:center;color:#4f46e5;margin:0 0 4px">St. Francis De Sales Sec. School, Laitkor, Shillong</h2>'+
+    '<h3 style="text-align:center;color:#64748b;margin:0 0 24px;font-weight:500">Admission Application Form</h3>'+
+    '<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Student Information</h4>'+
+    '<table style="width:100%;border-collapse:collapse;margin-top:6px">'+
+      '<tr><td class="pf-label">Full Name</td><td>'+name+'</td><td class="pf-label">Class Applied</td><td>'+cls+'</td></tr>'+
+      '<tr><td class="pf-label">Date of Birth</td><td>'+esc(a.dob)+'</td><td class="pf-label">Gender</td><td>'+esc(a.gender)+'</td></tr>'+
+      '<tr><td class="pf-label">Academic Year</td><td>'+esc(a.year)+'</td><td class="pf-label">Previous School</td><td>'+esc(a.previousSchool)+'</td></tr>'+
+      '<tr><td class="pf-label">Address</td><td colspan="3">'+esc(a.address)+'</td></tr>'+
+      '<tr><td class="pf-label">Medical / Special Needs</td><td colspan="3">'+(esc(a.medical)||'—')+'</td></tr>'+
+    '</table>'+
+    '<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Primary Contact</h4>'+
+    '<table style="width:100%;border-collapse:collapse;margin-top:6px">'+
+      '<tr><td class="pf-label">Name</td><td>'+esc(a.parentName)+'</td><td class="pf-label">Relation</td><td>'+esc(a.relation)+'</td></tr>'+
+      '<tr><td class="pf-label">Contact No.</td><td>'+esc(a.contact)+'</td><td class="pf-label">Email</td><td>'+esc(a.email)+'</td></tr>'+
+    '</table>'+
+    '<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Father\'s Details</h4>'+
+    '<table style="width:100%;border-collapse:collapse;margin-top:6px">'+
+      '<tr><td class="pf-label">Name</td><td>'+esc(f.name)+'</td><td class="pf-label">Occupation</td><td>'+esc(f.occupation)+'</td></tr>'+
+      '<tr><td class="pf-label">Contact No.</td><td colspan="3">'+esc(f.contact)+'</td></tr>'+
+    '</table>'+
+    '<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Mother\'s Details</h4>'+
+    '<table style="width:100%;border-collapse:collapse;margin-top:6px">'+
+      '<tr><td class="pf-label">Name</td><td>'+esc(m.name)+'</td><td class="pf-label">Occupation</td><td>'+esc(m.occupation)+'</td></tr>'+
+      '<tr><td class="pf-label">Contact No.</td><td colspan="3">'+esc(m.contact)+'</td></tr>'+
+    '</table>'+
+    '<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Submitted Documents</h4>'+
+    '<ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7">'+docsHtml+'</ul>'+
+    '<h4 style="color:#4f46e5;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #e2e8f0;padding-bottom:4px">Application Meta</h4>'+
+    '<table style="width:100%;border-collapse:collapse;margin-top:6px">'+
+      '<tr><td class="pf-label">Status</td><td>'+esc(a.status)+'</td><td class="pf-label">Submitted On</td><td>'+esc(date)+'</td></tr>'+
+    '</table>'+
+    '<div style="margin-top:40px;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:12px">'+
+      'St. Francis De Sales Sec. School · Laitkor, Shillong · Generated '+new Date().toLocaleString('en-IN')+
+    '</div>';
+  window.print();
+};
+</script>
 </body>
 </html>
