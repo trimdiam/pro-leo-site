@@ -168,7 +168,7 @@ function showToast(msg) {
 //  Close sidebar on outside click
 // ================================================================
 document.addEventListener('click', function(e) {
-  ['studentSidebar', 'teacherSidebar', 'adminSidebar'].forEach(id => {
+  ['studentSidebar', 'teacherSidebar', 'adminSidebar', 'officeSidebar'].forEach(id => {
     const sb = document.getElementById(id);
     if (sb && sb.classList.contains('open')) {
       if (!sb.contains(e.target) && !e.target.classList.contains('sidebar-toggle')) {
