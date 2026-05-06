@@ -2073,9 +2073,27 @@
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Post School Notice</h4>
               <div class="form-group"><label>Notice Title *</label><input type="text" id="an-title" placeholder="e.g., Exam Schedule Released"></div>
-              <div class="form-group"><label>Audience</label><select id="an-audience"><option value="all">All Students</option><option value="teachers">All Teachers</option><option value="both">Students + Teachers</option><option value="parents">Parents</option></select></div>
+              <div class="form-group"><label>Audience</label>
+                <select id="an-audience">
+                  <option value="all">All Students</option>
+                  <option value="teachers">All Teachers</option>
+                  <option value="both">Students + Teachers</option>
+                  <option value="parents">Parents</option>
+                </select>
+              </div>
               <div class="form-group"><label>Notice Content *</label><textarea id="an-body" placeholder="Full notice content..."></textarea></div>
-              <div class="form-group"><label>Priority</label><select id="an-priority"><option value="Normal">Normal</option><option value="Important">Important</option><option value="Urgent">Urgent</option></select></div>
+              <div class="form-group">
+                <label>Priority</label>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <select id="an-priority" onchange="updatePriorityPreview()" style="flex:1">
+                    <option value="Normal">Normal</option>
+                    <option value="Important">Important</option>
+                    <option value="Urgent">Urgent</option>
+                  </select>
+                  <div id="an-priority-dot" style="width:12px;height:12px;border-radius:50%;background:#3b82f6;flex-shrink:0;transition:background .2s"></div>
+                </div>
+                <p id="an-priority-hint" style="font-size:11px;margin-top:5px;color:#3b82f6">Standard notice — shown with blue indicator.</p>
+              </div>
               <button class="btn btn-primary" onclick="postAdminNotice()"><i class="fas fa-paper-plane"></i> Publish Notice</button>
             </div>
             <div class="card" style="padding:24px">
@@ -6164,18 +6182,63 @@
     }catch(e){showToast('❌ '+e.message);}
   };
 
-  window.loadAdminNotices = async function(){
-    const el=document.getElementById('a-notices-list'); if(!el) return;
-    el.innerHTML='<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i></p>';
-    try{
-      const snap=await getDocs(query(collection(db,'notices'),limit(30)));
-      if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No notices yet.</p>';return;}
-      const bc=p=>p==='Urgent'?'badge-danger':p==='Important'?'badge-warning':'badge-info';
-      el.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
-        const n=d.data();
-        return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700;color:var(--accent-dark)">${n.title}</div><div style="font-size:12px;color:var(--text-light);margin-top:2px">${(n.body||'').slice(0,80)}…</div><div style="margin-top:4px"><span class="badge ${bc(n.priority)}">${n.priority||'Normal'}</span> <span style="font-size:11px;color:var(--text-light)">Audience: ${n.audience||'all'}</span></div></div><button onclick="deleteNotice('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer"><i class="fas fa-trash"></i></button></div>`;
+  window.loadAdminNotices = async function() {
+    const el = document.getElementById('a-notices-list');
+    if (!el) return;
+    el.innerHTML = '<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      const snap = await getDocs(query(collection(db, 'notices'), limit(30)));
+      if (snap.empty) { el.innerHTML = '<p style="color:var(--text-light);font-size:13px">No notices yet.</p>'; return; }
+      const AUDIENCE_LABEL = { all:'All Students', teachers:'Teachers', both:'Students + Teachers', parents:'Parents' };
+      const sorted = [...snap.docs].sort((a, b) => (b.data().createdAt || '').localeCompare(a.data().createdAt || ''));
+      el.innerHTML = sorted.map(d => {
+        const n = d.data();
+        const priority = n.priority || 'Normal';
+        let cardClass, badgeClass, icon;
+        switch (priority) {
+          case 'Urgent':
+            cardClass = 'priority-urgent'; badgeClass = 'urgent'; icon = 'fa-circle-exclamation'; break;
+          case 'Important':
+            cardClass = 'priority-important'; badgeClass = 'important'; icon = 'fa-triangle-exclamation'; break;
+          default:
+            cardClass = 'priority-normal'; badgeClass = 'normal'; icon = 'fa-circle-info';
+        }
+        const date = n.createdAt
+          ? new Date(n.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })
+          : '—';
+        const audience = AUDIENCE_LABEL[n.audience] || n.audience || 'All';
+        return `<div class="an-notice-card ${cardClass}">
+          <div class="an-notice-header">
+            <div class="an-notice-title"><i class="fas ${icon}" style="margin-right:6px;opacity:.75"></i>${n.title}</div>
+            <span class="an-notice-badge ${badgeClass}">${priority}</span>
+          </div>
+          <div class="an-notice-meta">
+            <span><i class="fas fa-clock" style="margin-right:3px"></i>${date}</span>
+            <span><i class="fas fa-users" style="margin-right:3px"></i>${audience}</span>
+            <span><i class="fas fa-user-shield" style="margin-right:3px"></i>${n.postedBy || 'Admin'}</span>
+          </div>
+          ${n.body ? `<div class="an-notice-body">${(n.body).slice(0, 160)}${n.body.length > 160 ? '…' : ''}</div>` : ''}
+          <div class="an-notice-footer">
+            <span style="font-size:11px;color:var(--text-light);opacity:.6">ID: ${d.id.slice(0,8)}…</span>
+            <button class="an-delete-btn" onclick="deleteNotice('${d.id}')"><i class="fas fa-trash-alt" style="margin-right:4px"></i>Delete</button>
+          </div>
+        </div>`;
       }).join('');
-    }catch(e){el.innerHTML=`<p style="color:var(--danger)">❌ ${e.message}</p>`;}
+    } catch(e) { el.innerHTML = `<p style="color:var(--danger)">❌ ${e.message}</p>`; }
+  };
+
+  window.updatePriorityPreview = function() {
+    const val = document.getElementById('an-priority')?.value || 'Normal';
+    const dot = document.getElementById('an-priority-dot');
+    const hint = document.getElementById('an-priority-hint');
+    const map = {
+      Urgent:    { color:'#dc2626', text:'Urgent notice — shown with red card and prominent alert icon.' },
+      Important: { color:'#d97706', text:'Important notice — shown with amber card and warning icon.' },
+      Normal:    { color:'#3b82f6', text:'Standard notice — shown with blue indicator.' }
+    };
+    const cfg = map[val] || map.Normal;
+    if (dot)  dot.style.background = cfg.color;
+    if (hint) { hint.textContent = cfg.text; hint.style.color = cfg.color; }
   };
 
   window.deleteNotice = async function(docId){
