@@ -908,3 +908,18 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 .att-card .att-card-roll  { font-size: 11px; opacity: 0.72; margin-bottom: 4px; }
 .att-card .att-card-name  { font-size: 13px; font-weight: 700; margin-bottom: 6px; line-height: 1.25; }
 .att-card .att-card-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+
+/* ============================================================
+   MONTHLY ATTENDANCE & ADMIN LOCK
+============================================================ */
+.am-badge-draft  { display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#fff3cd;color:#856404;border:1px solid #ffc107; }
+.am-badge-locked { display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#d4edda;color:#155724;border:1px solid #28a745; }
+.am-lock-banner  { display:none;background:#f8d7da;border:1.5px solid #dc3545;border-radius:8px;padding:10px 16px;margin-bottom:12px;color:#721c24;font-weight:600;font-size:13px; }
+.am-summary-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px; }
+@media(max-width:600px){ .am-summary-grid { grid-template-columns:1fr; } }
+.am-summary-card { border-radius:12px;padding:16px;text-align:center;border:1.5px solid rgba(139,111,71,0.18); }
+.am-summary-card .am-sc-label { font-size:11px;color:var(--text-light);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px; }
+.am-summary-card .am-sc-pct   { font-size:28px;font-weight:800;color:var(--accent-dark); }
+.am-summary-card .am-sc-sub   { font-size:12px;color:var(--text-light);margin-top:4px; }
+.am-detail-wrap  { display:none; }
+.am-detail-wrap.open { display:block; }

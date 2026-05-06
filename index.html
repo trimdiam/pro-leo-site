@@ -1497,6 +1497,7 @@
                 <button class="btn btn-sm btn-outline" onclick="changeAttDate(1)"><i class="fas fa-chevron-right"></i></button>
               </div>
             </div>
+            <div id="t-att-lock-banner" class="am-lock-banner"><i class="fas fa-lock" style="margin-right:8px"></i>This month's records have been locked by Admin. No changes can be made.</div>
             <div id="t-att-holiday-banner" style="display:none;background:#fff3cd;border:1.5px solid #ffc107;border-radius:8px;padding:10px 16px;margin-bottom:12px;color:#856404;font-weight:600;font-size:13px"><i class="fas fa-calendar-times" style="margin-right:8px"></i><span id="t-att-holiday-msg">Holiday</span></div>
             <div id="t-att-already-marked" style="display:none;background:#d4edda;border:1.5px solid #28a745;border-radius:8px;padding:10px 16px;margin-bottom:12px;color:#155724;font-weight:600;font-size:13px"><i class="fas fa-check-circle" style="margin-right:8px"></i>Attendance already submitted for this date. <a href="#" onclick="window._attEditMode=true;document.getElementById('t-att-already-marked').style.display='none';return false" style="color:#155724;text-decoration:underline;cursor:pointer;margin-left:6px">Edit</a></div>
             <div style="margin-bottom:12px">
@@ -1630,6 +1631,7 @@
         <button onclick="showDash('a','a-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('a','a-contacts',this)"><i class="fas fa-envelope"></i> Contacts</button>
         <button onclick="showDash('a','a-holidays',this)"><i class="fas fa-calendar-times"></i> Holidays</button>
+        <button onclick="showDash('a','a-monthly-att',this)"><i class="fas fa-chart-bar"></i> Monthly Attendance</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
     </nav>
@@ -2723,6 +2725,65 @@
                 <button class="btn btn-sm btn-outline" onclick="loadHolidays()"><i class="fas fa-sync-alt"></i> Refresh</button>
               </div>
               <div class="table-wrap"><table><thead><tr><th>Date</th><th>Day</th><th>Reason</th><th>Type</th><th>Action</th></tr></thead><tbody id="holidays-tbody"><tr><td colspan="5" style="text-align:center;padding:14px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr></tbody></table></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly Attendance & Admin Lock -->
+        <div id="a-monthly-att" class="dash-section">
+          <div class="card" style="padding:24px;margin-bottom:24px">
+            <h4 style="color:var(--accent-dark);margin-bottom:18px"><i class="fas fa-chart-bar" style="margin-right:8px;color:var(--accent)"></i>Generate Monthly Attendance Snapshot</h4>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+              <div class="form-group" style="margin:0;flex:1;min-width:140px">
+                <label>Class</label>
+                <select id="am-class-sel" style="width:100%">
+                  <option value="">— Select Class —</option>
+                  <option value="PLG">Play Group</option><option value="SKG">SKG</option><option value="LKG">LKG</option>
+                  <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option>
+                  <option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option>
+                  <option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option>
+                  <option value="10">Class 10</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;flex:1;min-width:120px">
+                <label>Month</label>
+                <select id="am-month-sel" style="width:100%">
+                  <option value="01">January</option><option value="02">February</option><option value="03">March</option>
+                  <option value="04">April</option><option value="05">May</option><option value="06">June</option>
+                  <option value="07">July</option><option value="08">August</option><option value="09">September</option>
+                  <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;flex:1;min-width:100px">
+                <label>Year</label>
+                <input type="number" id="am-year-inp" value="2026" min="2020" max="2099" style="width:100%;padding:8px 10px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px;outline:none">
+              </div>
+              <button class="btn btn-primary" onclick="generateMonthlySnapshot()" style="white-space:nowrap"><i class="fas fa-cogs"></i> Generate Snapshot</button>
+              <button class="btn btn-outline btn-sm" onclick="loadAdminMonthlyAtt()" style="white-space:nowrap"><i class="fas fa-sync-alt"></i> Refresh List</button>
+            </div>
+          </div>
+
+          <div class="card" style="padding:24px;margin-bottom:24px">
+            <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-list" style="margin-right:8px;color:var(--accent)"></i>Generated Monthly Records</h4>
+            <div class="table-wrap">
+              <table><thead><tr><th>Class</th><th>Month</th><th>Working Days</th><th>Status</th><th>Generated</th><th>Action</th></tr></thead>
+              <tbody id="am-list-tbody"><tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-light)">Select a class and click Refresh List.</td></tr></tbody></table>
+            </div>
+          </div>
+
+          <div id="am-detail-wrap" class="card am-detail-wrap" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+              <h4 style="color:var(--accent-dark)" id="am-detail-title"><i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Monthly Detail</h4>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <span id="am-detail-status-badge"></span>
+                <button id="am-lock-btn" class="btn btn-success btn-sm" onclick="lockMonthlyRecord()" style="display:none"><i class="fas fa-lock"></i> Approve &amp; Lock Records</button>
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('am-detail-wrap').classList.remove('open')"><i class="fas fa-times"></i> Close</button>
+              </div>
+            </div>
+            <div id="am-summary-grid" class="am-summary-grid"></div>
+            <div class="table-wrap">
+              <table><thead><tr><th>Roll</th><th>Name</th><th>Gender</th><th>Present</th><th>Late</th><th>Absent</th><th>Working Days</th><th>%</th></tr></thead>
+              <tbody id="am-detail-tbody"><tr><td colspan="8" style="text-align:center;padding:14px;color:var(--text-light)">Loading...</td></tr></tbody></table>
             </div>
           </div>
         </div>
@@ -4863,8 +4924,9 @@
     if (sectionId === 's-fees')     { if(window.loadStudentFees) loadStudentFees(); }
     if (sectionId === 't-notices')  { if(window.loadTeacherNotices) loadTeacherNotices(); }
     if (sectionId === 't-leave')    { if(window.loadLeaveHistory) window.loadLeaveHistory(); }
-    if (sectionId === 'a-notices')  { if(window.loadAdminNotices) loadAdminNotices(); }
-    if (sectionId === 'a-fees')     { if(window.loadAdminFees) loadAdminFees(); }
+    if (sectionId === 'a-notices')     { if(window.loadAdminNotices) loadAdminNotices(); }
+    if (sectionId === 'a-fees')        { if(window.loadAdminFees) loadAdminFees(); }
+    if (sectionId === 'a-monthly-att') { if(window.loadAdminMonthlyAtt) loadAdminMonthlyAtt(); }
   };
 
   // ================================================================
@@ -5820,16 +5882,34 @@
     loadAttendanceForDate();
   };
 
+  async function isMonthLocked(classNum, date) {
+    const monthYear = date.substring(0,4) + '_' + date.substring(5,7);
+    try {
+      const mDoc = await getDoc(doc(db,'attendance_monthly',`${classNum}_${monthYear}`));
+      return mDoc.exists() && mDoc.data().status === 'locked';
+    } catch(e) { return false; }
+  }
+
   window.loadAttendanceForDate = async function() {
     const date = document.getElementById('t-att-date')?.value; if (!date) return;
     const classNum = window._attClass || window._currentTeacherClass; if (!classNum) return;
+    const lockBanner  = document.getElementById('t-att-lock-banner');
     const holidayBanner = document.getElementById('t-att-holiday-banner');
     const alreadyMarked = document.getElementById('t-att-already-marked');
     const saveBtn = document.getElementById('t-save-att-btn');
+    if (lockBanner)    lockBanner.style.display = 'none';
     if (holidayBanner) holidayBanner.style.display = 'none';
     if (alreadyMarked) alreadyMarked.style.display = 'none';
     window._attEditMode = false;
     try {
+      const locked = await isMonthLocked(classNum, date);
+      if (locked) {
+        if (lockBanner) lockBanner.style.display = 'block';
+        if (saveBtn) saveBtn.style.display = 'none';
+        const attDoc = await getDoc(doc(db,'attendance_daily',`${classNum}_${date}`));
+        renderAttendanceCards(window._teacherStudentDocs || [], attDoc.exists()?attDoc.data():null, false, true);
+        return;
+      }
       const hSnap = await getDocs(query(collection(db,'holidays'), where('date','==',date)));
       if (!hSnap.empty) {
         const h = hSnap.docs[0].data();
@@ -5846,7 +5926,7 @@
     } catch(e) { showToast('⚠️ ' + e.message); }
   };
 
-  function renderAttendanceCards(students, existingData, isHoliday=false) {
+  function renderAttendanceCards(students, existingData, isHoliday=false, readOnly=false) {
     const grid = document.getElementById('att-card-grid'); if (!grid) return;
     const saveBtn = document.getElementById('t-save-att-btn');
     if (isHoliday || !students.length) {
@@ -5863,7 +5943,9 @@
       const state = absentSet.has(sid) ? 1 : lateSet.has(sid) ? 2 : 0;
       const cls   = state===1 ? 'absent' : state===2 ? 'late' : 'present';
       const badge = state===1 ? 'Absent'  : state===2 ? 'Late'  : 'Present';
-      return `<div class="att-card ${cls}" data-sid="${sid}" data-roll="${s.rollNo}" data-name="${s.name}" data-state="${state}" onclick="toggleAttCard(this)">
+      const clickAttr = readOnly ? '' : 'onclick="toggleAttCard(this)"';
+      const cursor = readOnly ? 'cursor:default;opacity:0.8;' : '';
+      return `<div class="att-card ${cls}" data-sid="${sid}" data-roll="${s.rollNo}" data-name="${s.name}" data-state="${state}" ${clickAttr} style="${cursor}">
         <div class="att-card-roll">${s.rollNo}</div>
         <div class="att-card-name">${s.name}</div>
         <div class="att-card-badge">${badge}</div>
@@ -5914,6 +5996,7 @@
     const date = document.getElementById('t-att-date')?.value;
     const classNum = window._attClass || window._currentTeacherClass;
     if (!date || !classNum) { showToast('⚠️ Date or class missing.'); return; }
+    if (await isMonthLocked(classNum, date)) { showToast('🔒 This month\'s records have been locked by Admin.'); return; }
     const cards = document.querySelectorAll('#att-card-grid .att-card');
     if (!cards.length) { showToast('⚠️ No students loaded.'); return; }
     const absent=[], late=[];
@@ -5949,6 +6032,178 @@
         return `<tr><td>${a.date||'—'}</td><td>${day}</td><td style="color:var(--success);font-weight:700">${a.present||0}</td><td style="color:var(--danger);font-weight:700">${(a.absent||[]).length}</td><td style="color:#856404;font-weight:700">${(a.late||[]).length}</td><td>${a.total||0}</td><td><span class="badge ${bc}">${pct}%</span></td></tr>`;
       }).join('');
     } catch(e) { tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
+  };
+
+  // ================================================================
+  //  ADMIN — Monthly Attendance Aggregation & Lock
+  // ================================================================
+
+  window.loadAdminMonthlyAtt = async function() {
+    const classNum = document.getElementById('am-class-sel')?.value;
+    const tbody = document.getElementById('am-list-tbody'); if (!tbody) return;
+    if (!classNum) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:14px;color:var(--text-light)">Please select a class first.</td></tr>'; return; }
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:14px"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+    try {
+      const snap = await getDocs(query(collection(db,'attendance_monthly'), where('class_id','==',String(classNum)), orderBy('month','desc'), limit(24)));
+      if (snap.empty) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:14px;color:var(--text-light)">No snapshots found. Generate one above.</td></tr>'; return; }
+      tbody.innerHTML = snap.docs.map(d => {
+        const r = d.data();
+        const badge = r.status==='locked' ? '<span class="am-badge-locked"><i class="fas fa-lock" style="margin-right:4px"></i>Locked</span>' : '<span class="am-badge-draft"><i class="fas fa-clock" style="margin-right:4px"></i>Draft</span>';
+        const genAt = r.generated_at?.toDate ? r.generated_at.toDate().toLocaleDateString('en-GB') : '—';
+        const wdays = r.working_days || '—';
+        const [yr, mo] = (r.month||'').split('_');
+        const mLabel = yr && mo ? new Date(yr,parseInt(mo)-1,1).toLocaleDateString('en',{month:'long',year:'numeric'}) : r.month;
+        return `<tr>
+          <td><strong>${r.class_id}</strong></td>
+          <td>${mLabel}</td>
+          <td>${wdays}</td>
+          <td>${badge}</td>
+          <td>${genAt}</td>
+          <td><button class="btn btn-sm btn-outline" onclick="openMonthlyDetail('${r.class_id}','${r.month}')"><i class="fas fa-eye"></i> Open</button></td>
+        </tr>`;
+      }).join('');
+    } catch(e) { tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
+  };
+
+  async function runMonthlyAggregation(classNum, yyyy, mm) {
+    const dateFrom = `${yyyy}-${mm}-01`;
+    const dateTo   = `${yyyy}-${mm}-31`;
+    const [studSnap, dailySnap] = await Promise.all([
+      getDocs(query(collection(db,'students'), where('class','==',String(classNum)), orderBy('rollNo'))),
+      getDocs(query(collection(db,'attendance_daily'), where('class','==',String(classNum)), where('date','>=',dateFrom), where('date','<=',dateTo)))
+    ]);
+    const students = studSnap.docs.map(d => d.data());
+    const dailyDocs = dailySnap.docs.map(d => d.data());
+    const workingDays = dailyDocs.length;
+    const totals = {};
+    students.forEach(s => {
+      const sid = s.studentId || String(s.rollNo);
+      totals[sid] = { name: s.name, gender: s.gender||'', rollNo: s.rollNo, present:0, late:0, absent:0 };
+    });
+    dailyDocs.forEach(day => {
+      const absentSet = new Set(day.absent||[]);
+      const lateSet   = new Set(day.late||[]);
+      students.forEach(s => {
+        const sid = s.studentId || String(s.rollNo);
+        if (!totals[sid]) return;
+        if (absentSet.has(sid))    totals[sid].absent++;
+        else if (lateSet.has(sid)) totals[sid].late++;
+        else                       totals[sid].present++;
+      });
+    });
+    const mkSummary = gender => {
+      const subset = Object.values(totals).filter(t => gender==='M' ? t.gender==='M' : t.gender!=='M');
+      const p = subset.reduce((a,t)=>a+t.present,0), l = subset.reduce((a,t)=>a+t.late,0), ab = subset.reduce((a,t)=>a+t.absent,0);
+      const total = p+l+ab;
+      return { present:p, late:l, absent:ab, percentage: total>0 ? +((( p+l)/total)*100).toFixed(2) : 0 };
+    };
+    const studentsOut = {};
+    Object.entries(totals).forEach(([sid,t]) => {
+      const total = t.present+t.late+t.absent;
+      studentsOut[sid] = { name:t.name, gender:t.gender, rollNo:t.rollNo, present:t.present, late:t.late, absent:t.absent,
+        percentage: total>0 ? +((( t.present+t.late)/total)*100).toFixed(2) : 0 };
+    });
+    return { boys_summary: mkSummary('M'), girls_summary: mkSummary('F'), students: studentsOut, working_days: workingDays };
+  }
+
+  window.generateMonthlySnapshot = async function() {
+    const classNum = document.getElementById('am-class-sel')?.value;
+    const mm = document.getElementById('am-month-sel')?.value;
+    const yyyy = document.getElementById('am-year-inp')?.value;
+    if (!classNum||!mm||!yyyy) { showToast('⚠️ Please fill in class, month, and year.'); return; }
+    const monthYear = `${yyyy}_${mm}`;
+    const docId = `${classNum}_${monthYear}`;
+    const existing = await getDoc(doc(db,'attendance_monthly',docId));
+    if (existing.exists() && existing.data().status==='locked') { showToast('🔒 This month is locked. Cannot regenerate.'); return; }
+    if (existing.exists()) {
+      if (!confirm('A snapshot for this month already exists. Overwrite it?')) return;
+    }
+    showToast('⏳ Aggregating attendance data...');
+    try {
+      const result = await runMonthlyAggregation(classNum, yyyy, mm);
+      await setDoc(doc(db,'attendance_monthly',docId), {
+        month: monthYear, class_id: String(classNum), status: 'draft',
+        generated_at: serverTimestamp(), working_days: result.working_days,
+        boys_summary: result.boys_summary, girls_summary: result.girls_summary, students: result.students
+      });
+      showToast('✅ Monthly snapshot generated!');
+      loadAdminMonthlyAtt();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.openMonthlyDetail = async function(classNum, monthYear) {
+    const wrap = document.getElementById('am-detail-wrap');
+    const title = document.getElementById('am-detail-title');
+    const statusBadge = document.getElementById('am-detail-status-badge');
+    const lockBtn = document.getElementById('am-lock-btn');
+    const summaryGrid = document.getElementById('am-summary-grid');
+    const tbody = document.getElementById('am-detail-tbody');
+    wrap.classList.add('open');
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:14px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    summaryGrid.innerHTML = '';
+    wrap.scrollIntoView({ behavior:'smooth', block:'start' });
+    try {
+      const snap = await getDoc(doc(db,'attendance_monthly',`${classNum}_${monthYear}`));
+      if (!snap.exists()) { tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--danger)">Record not found.</td></tr>'; return; }
+      const r = snap.data();
+      window._amCurrentDoc = { classNum, monthYear, status: r.status };
+      const [yr,mo] = monthYear.split('_');
+      const mLabel = new Date(yr, parseInt(mo)-1, 1).toLocaleDateString('en',{month:'long',year:'numeric'});
+      title.innerHTML = `<i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Class ${classNum} — ${mLabel}`;
+      statusBadge.innerHTML = r.status==='locked'
+        ? '<span class="am-badge-locked"><i class="fas fa-lock" style="margin-right:4px"></i>Locked</span>'
+        : '<span class="am-badge-draft"><i class="fas fa-clock" style="margin-right:4px"></i>Draft</span>';
+      lockBtn.style.display = r.status==='locked' ? 'none' : '';
+      const bs = r.boys_summary||{}, gs = r.girls_summary||{};
+      const totalP=(bs.present||0)+(gs.present||0), totalL=(bs.late||0)+(gs.late||0), totalA=(bs.absent||0)+(gs.absent||0);
+      const totalAll=totalP+totalL+totalA;
+      const overallPct = totalAll>0 ? (((totalP+totalL)/totalAll)*100).toFixed(1) : '0.0';
+      const mkCard = (label,data,bg) => `<div class="am-summary-card" style="background:${bg}">
+        <div class="am-sc-label">${label}</div>
+        <div class="am-sc-pct">${data.percentage??0}%</div>
+        <div class="am-sc-sub">P:${data.present||0} · L:${data.late||0} · A:${data.absent||0}</div>
+      </div>`;
+      summaryGrid.innerHTML =
+        mkCard('Boys',bs,'rgba(173,216,230,0.35)') +
+        mkCard('Girls',gs,'rgba(255,182,193,0.35)') +
+        `<div class="am-summary-card" style="background:rgba(214,195,163,0.3)">
+          <div class="am-sc-label">Overall</div>
+          <div class="am-sc-pct">${overallPct}%</div>
+          <div class="am-sc-sub">P:${totalP} · L:${totalL} · A:${totalA}</div>
+        </div>`;
+      const studs = Object.entries(r.students||{}).sort((a,b)=>(a[1].rollNo||0)-(b[1].rollNo||0));
+      if (!studs.length) { tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:14px;color:var(--text-light)">No student data.</td></tr>'; return; }
+      tbody.innerHTML = studs.map(([,s]) => {
+        const pct = s.percentage??0;
+        const bc = pct>=90?'badge-success':pct>=75?'badge-warning':'badge-danger';
+        const gLabel = s.gender==='M'?'Male':s.gender==='F'?'Female':'—';
+        return `<tr>
+          <td>${s.rollNo||'—'}</td>
+          <td><strong>${s.name}</strong></td>
+          <td>${gLabel}</td>
+          <td style="color:var(--success);font-weight:700">${s.present}</td>
+          <td style="color:#856404;font-weight:700">${s.late}</td>
+          <td style="color:var(--danger);font-weight:700">${s.absent}</td>
+          <td>${r.working_days||'—'}</td>
+          <td><span class="badge ${bc}">${pct}%</span></td>
+        </tr>`;
+      }).join('');
+    } catch(e) { tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
+  };
+
+  window.lockMonthlyRecord = async function() {
+    const cur = window._amCurrentDoc;
+    if (!cur) return;
+    if (!confirm(`Lock attendance for Class ${cur.classNum} — ${cur.monthYear}?\n\nThis cannot be undone. Teachers will no longer be able to edit daily records for this month.`)) return;
+    try {
+      await updateDoc(doc(db,'attendance_monthly',`${cur.classNum}_${cur.monthYear}`), {
+        status: 'locked', locked_at: serverTimestamp(), locked_by: auth.currentUser?.uid||'admin'
+      });
+      showToast('🔒 Records locked successfully!');
+      window._amCurrentDoc.status = 'locked';
+      openMonthlyDetail(cur.classNum, cur.monthYear);
+      loadAdminMonthlyAtt();
+    } catch(e) { showToast('❌ ' + e.message); }
   };
 
   // ================================================================
