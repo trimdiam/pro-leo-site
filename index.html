@@ -1582,6 +1582,30 @@
           </div>
         </div>
         <div id="t-leave" class="dash-section">
+          <!-- ── Leave Balance Summary ── -->
+          <div class="card" style="padding:20px;margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
+              <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-chart-pie" style="margin-right:8px;color:var(--accent)"></i>Leave Balance</h4>
+              <span style="font-size:12px;color:var(--text-light)" id="lv-year-label"></span>
+            </div>
+            <div class="lv-summary-grid">
+              <div class="lv-stat lv-stat-quota">
+                <div class="lv-stat-value" id="lv-quota-val">—</div>
+                <div class="lv-stat-label"><i class="fas fa-calendar-alt" style="margin-right:3px"></i>Annual Quota</div>
+              </div>
+              <div class="lv-stat lv-stat-taken">
+                <div class="lv-stat-value" id="lv-taken-val">—</div>
+                <div class="lv-stat-label"><i class="fas fa-calendar-times" style="margin-right:3px"></i>Days Taken</div>
+              </div>
+              <div class="lv-stat lv-stat-balance" id="lv-balance-stat">
+                <div class="lv-stat-value" id="lv-balance-val">—</div>
+                <div class="lv-stat-label"><i class="fas fa-check-circle" style="margin-right:3px"></i>Balance</div>
+              </div>
+            </div>
+            <div class="lv-quota-bar"><div class="lv-quota-bar-fill" id="lv-quota-bar-fill" style="width:0%"></div></div>
+            <p id="lv-quota-bar-caption" style="font-size:11px;color:var(--text-light);margin-top:5px;text-align:right">Loading…</p>
+          </div>
+          <!-- ── Apply Form ── -->
           <div class="card" style="padding:24px;max-width:560px;margin-bottom:24px">
             <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-calendar-times" style="margin-right:8px;color:var(--accent)"></i>Apply for Leave</h4>
             <div class="form-row"><div class="form-group"><label>From Date</label><input type="date" id="lv-from"></div><div class="form-group"><label>To Date</label><input type="date" id="lv-to"></div></div>
@@ -1589,10 +1613,13 @@
             <div class="form-group"><label>Reason</label><textarea id="lv-reason" placeholder="Brief reason for leave..."></textarea></div>
             <button class="btn btn-primary" onclick="submitLeaveApplication()"><i class="fas fa-paper-plane"></i> Submit Application</button>
           </div>
+          <!-- ── Leave Ledger ── -->
           <div class="card" style="padding:24px">
-            <h4 style="color:var(--accent-dark);margin-bottom:16px">Leave History</h4>
-            <div class="table-wrap"><table><thead><tr><th>From</th><th>To</th><th>Type</th><th>Reason</th><th>Status</th></tr></thead>
-            <tbody id="lv-history-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:14px"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody></table></div>
+            <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-book-open" style="margin-right:8px;color:var(--accent)"></i>Leave Ledger</h4>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Date Range</th><th>Days</th><th>Type</th><th>Reason</th><th>Status</th></tr></thead>
+              <tbody id="lv-history-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:14px"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody>
+            </table></div>
           </div>
         </div>
       </div>
@@ -2746,6 +2773,20 @@
 
         <!-- ── LEAVE APPLICATIONS ── -->
         <div id="a-leave" class="dash-section">
+          <!-- ── Annual Leave Quota Config ── -->
+          <div class="admin-quota-card">
+            <i class="fas fa-sliders-h" style="color:#16a34a;font-size:1.2rem"></i>
+            <div style="flex:1">
+              <label>Annual Leave Quota (days, applies to all teachers)</label>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
+                <input type="number" id="a-leave-quota-input" min="1" max="60" placeholder="e.g. 15"
+                  style="width:90px;padding:6px 10px;border:1.5px solid #86efac;border-radius:8px;font-size:14px;font-weight:700;font-family:var(--font-body)">
+                <button class="btn btn-sm" onclick="saveLeaveQuota()"
+                  style="background:#16a34a;color:#fff;border:none"><i class="fas fa-save"></i> Save Quota</button>
+                <span style="font-size:13px;color:#166534">Current: <strong id="a-leave-quota-display">Loading…</strong></span>
+              </div>
+            </div>
+          </div>
           <div class="card" style="padding:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
               <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Leave Applications</h4>
@@ -4959,6 +5000,7 @@
     if (sectionId === 's-fees')     { if(window.loadStudentFees) loadStudentFees(); }
     if (sectionId === 't-notices')  { if(window.loadTeacherNotices) loadTeacherNotices(); }
     if (sectionId === 't-leave')    { if(window.loadLeaveHistory) window.loadLeaveHistory(); }
+    if (sectionId === 'a-leave')    { if(window.loadLeaveQuota) loadLeaveQuota(); }
     if (sectionId === 'a-notices')  { if(window.loadAdminNotices) loadAdminNotices(); }
     if (sectionId === 'a-fees')     { if(window.loadAdminFees) loadAdminFees(); }
   };
@@ -5974,22 +6016,92 @@
     } catch(e) { showToast('❌ ' + e.message); }
   };
 
+  // ── Leave Ledger helpers ──────────────────────────────────────────
+  function _calcDays(from, to) {
+    if (!from || !to) return 1;
+    const ms = new Date(to+'T00:00:00') - new Date(from+'T00:00:00');
+    return Math.max(1, Math.round(ms / 86400000) + 1);
+  }
+
+  async function loadLeaveSummary(uid) {
+    try {
+      const [settingsSnap, leaveSnap] = await Promise.all([
+        getDoc(doc(db, 'settings', 'leave_config')),
+        getDocs(query(collection(db,'leave_applications'), where('uid','==',uid)))
+      ]);
+      const quota = settingsSnap.exists() ? (settingsSnap.data().annualQuota || 15) : 15;
+      const approvedDocs = leaveSnap.docs.filter(d => d.data().status === 'Approved');
+      const daysTaken = approvedDocs.reduce((sum, d) => sum + _calcDays(d.data().from, d.data().to), 0);
+      const balance   = quota - daysTaken;
+      const pct       = Math.min(100, Math.round((daysTaken / quota) * 100));
+
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      set('lv-quota-val',   quota);
+      set('lv-taken-val',   daysTaken);
+      set('lv-balance-val', Math.max(0, balance));
+      set('lv-year-label',  'Academic year ' + new Date().getFullYear());
+
+      const fill = document.getElementById('lv-quota-bar-fill');
+      if (fill) { fill.style.width = pct + '%'; fill.style.background = pct >= 100 ? '#dc2626' : pct >= 70 ? '#d97706' : '#16a34a'; }
+      const cap = document.getElementById('lv-quota-bar-caption');
+      if (cap) cap.textContent = `${daysTaken} of ${quota} days used (${pct}%)`;
+
+      const stat = document.getElementById('lv-balance-stat');
+      if (stat) stat.className = 'lv-stat lv-stat-balance' + (balance <= 0 ? ' over' : balance <= 3 ? ' warn' : '');
+    } catch(e) { console.warn('Leave summary:', e.message); }
+  }
+
   window.loadLeaveHistory = async function loadLeaveHistory() {
     const tbody = document.getElementById('lv-history-tbody');
     if (!tbody) return;
-    const auth = window._firebaseAuth;
-    const user = auth?.currentUser;
+    const user = window._firebaseAuth?.currentUser;
     if (!user) return;
     try {
-      const snap = await getDocs(query(collection(db,'leave_applications'), where('uid','==',user.uid), orderBy('createdAt','desc'), limit(20)));
-      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:14px">No leave applications yet.</td></tr>'; return; }
-      const bc = { Pending:'badge-warning', Approved:'badge-success', Rejected:'badge-danger' };
+      const snap = await getDocs(query(collection(db,'leave_applications'), where('uid','==',user.uid), orderBy('createdAt','desc'), limit(30)));
+      // Update summary card
+      await loadLeaveSummary(user.uid);
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px">No leave applications yet.</td></tr>';
+        return;
+      }
+      const fmt = s => s ? new Date(s+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+      const bc  = { Pending:'badge-warning', Approved:'badge-success', Rejected:'badge-danger' };
       tbody.innerHTML = snap.docs.map(d => {
-        const l = d.data();
-        const fmt = s => s ? new Date(s+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '—';
-        return `<tr><td>${fmt(l.from)}</td><td>${fmt(l.to)}</td><td>${l.type||'—'}</td><td style="font-size:12px">${l.reason||'—'}</td><td><span class="badge ${bc[l.status]||'badge-info'}">${l.status||'—'}</span></td></tr>`;
+        const l    = d.data();
+        const days = _calcDays(l.from, l.to);
+        const cls  = (l.status||'pending').toLowerCase();
+        return `<tr class="lv-ledger-row ${cls}">
+          <td>${fmt(l.from)} → ${fmt(l.to)}</td>
+          <td><span class="lv-days-chip">${days}d</span></td>
+          <td style="font-size:12px">${l.type||'—'}</td>
+          <td style="font-size:12px;max-width:180px;white-space:normal">${l.reason||'—'}</td>
+          <td><span class="badge ${bc[l.status]||'badge-info'}">${l.status||'—'}</span></td>
+        </tr>`;
       }).join('');
     } catch(e) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
+  };
+
+  // ── Admin: save / load annual leave quota ─────────────────────────
+  window.saveLeaveQuota = async function() {
+    const quota = parseInt(document.getElementById('a-leave-quota-input')?.value || 0);
+    if (!quota || quota < 1) { showToast('⚠️ Enter a valid quota (minimum 1 day).'); return; }
+    try {
+      await setDoc(doc(db,'settings','leave_config'), { annualQuota: quota, updatedAt: new Date().toISOString() }, { merge: true });
+      showToast('✅ Quota set to ' + quota + ' days for all teachers.');
+      const disp = document.getElementById('a-leave-quota-display');
+      if (disp) disp.textContent = quota + ' days';
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.loadLeaveQuota = async function() {
+    try {
+      const d = await getDoc(doc(db,'settings','leave_config'));
+      const quota = d.exists() ? (d.data().annualQuota || 15) : 15;
+      const inp  = document.getElementById('a-leave-quota-input');
+      const disp = document.getElementById('a-leave-quota-display');
+      if (inp)  inp.value       = quota;
+      if (disp) disp.textContent = quota + ' days';
+    } catch(e) { console.warn('loadLeaveQuota:', e.message); }
   };
 
   function renderTeacherStudentList(docs) {
