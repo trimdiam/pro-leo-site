@@ -326,9 +326,25 @@ img { max-width: 100%; }
 .notice-date  { font-size: 12px; color: var(--text-light); }
 .notice-body  { font-size: 13px; color: var(--text-light); margin-top: 4px; }
 
-/* ============================================================
-   PAGE HEADER
-============================================================ */
+/* ── Admin Notice Cards — priority colour-coding ─────────────────── */
+.an-notice-card { border-radius:12px; padding:16px 18px; margin-bottom:12px; border-left:5px solid; display:flex; flex-direction:column; gap:6px; transition:box-shadow .2s,transform .2s; }
+.an-notice-card:hover { box-shadow:0 4px 18px rgba(0,0,0,.1); transform:translateX(2px); }
+.an-notice-card.priority-urgent   { background:#fff5f5; border-color:#dc2626; }
+.an-notice-card.priority-important { background:#fffbeb; border-color:#d97706; }
+.an-notice-card.priority-normal   { background:#eff6ff; border-color:#3b82f6; }
+.an-notice-header { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+.an-notice-title  { font-weight:700; font-size:14px; color:var(--accent-dark); line-height:1.4; }
+.an-notice-badge  { font-size:10px; font-weight:800; padding:3px 9px; border-radius:20px; white-space:nowrap; text-transform:uppercase; letter-spacing:.4px; }
+.an-notice-badge.urgent   { background:#fee2e2; color:#991b1b; }
+.an-notice-badge.important { background:#fef3c7; color:#92400e; }
+.an-notice-badge.normal   { background:#dbeafe; color:#1e40af; }
+.an-notice-meta   { font-size:11px; color:var(--text-light); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.an-notice-body   { font-size:12px; color:var(--text-light); line-height:1.6; padding-top:6px; border-top:1px solid rgba(0,0,0,.06); }
+.an-notice-footer { display:flex; justify-content:space-between; align-items:center; margin-top:2px; }
+.an-delete-btn    { background:none; border:none; color:#dc2626; cursor:pointer; font-size:12px; opacity:.65; transition:opacity .15s,background .15s; padding:3px 8px; border-radius:5px; }
+.an-delete-btn:hover { opacity:1; background:#fee2e2; }
+
+
 .page-header {
   background: linear-gradient(135deg, var(--accent-dark) 0%, var(--accent) 100%);
   padding: 64px 24px; text-align: center; color: var(--white);
