@@ -1,0 +1,159 @@
+SESSION SUMMARY — 2026-05-06
+St. Francis De Sales Sec. School — Student Management Application
+Branch: claude/fix-house-points-xPUm5
+================================================================
+
+
+1. FIX — House Points Visible on Homepage (Firestore Rules)
+------------------------------------------------------------
+Problem: The homepage house-points leaderboard showed empty skeleton boxes
+for unauthenticated visitors because the `house_points` Firestore collection
+was missing from the public-read rules and fell through to the auth-required
+catch-all.
+
+Fix: Added explicit public-read rules for:
+  - /house_points/{docId}
+  - /house_points/{houseId}/monthly_entries/{entryId}
+
+File changed: firestore.rules
+
+
+2. FEAT — Auto Monthly Summation for House Points (Admin Portal)
+----------------------------------------------------------------
+Added a month/year selector to the House Points admin section. When an admin
+enters points for a selected house and month, the system:
+  - Saves to subcollection: house_points/{name}/monthly_entries/{YYYY-MM}
+  - Recalculates total from ALL monthly entries automatically
+  - Updates house_points/{name} with totalPoints + currentMonthPoints
+
+Admin panel also shows a monthly breakdown (last 6 months) per house.
+
+Files changed: index.html (HTML selectors + JS functions:
+  buildHouseMonthOptions, loadMonthlyEntry, saveHousePoints, loadAdminHousePoints)
+
+
+3. FEAT — Priority Colour-Coded Notice Cards (Admin Portal)
+-----------------------------------------------------------
+Redesigned the School Notices admin section with modern card UI:
+  - Urgent  → red card (#fff5f5, border #dc2626) with exclamation icon
+  - Important → amber card (#fffbeb, border #d97706) with triangle-warning icon
+  - Normal  → blue card (#eff6ff, border #3b82f6) with circle-info icon
+
+Admin form includes a live preview dot and hint text that updates when priority
+is changed. Each card has a delete button.
+
+Files changed: index.html (HTML preview dot + JS loadAdminNotices,
+  updatePriorityPreview), styles.css (notice card and badge CSS)
+
+
+4. FEAT — Teacher Leave Ledger with Admin Quota Config
+------------------------------------------------------
+Teacher portal Leave section now shows a full ledger:
+  - Summary card: Quota / Days Taken / Balance with progress bar
+  - Balance turns amber when ≤ 3 days remain, red when 0 or overdrawn
+  - History table: Date Range, Days, Type, Reason, Status (colour-coded rows)
+
+Admin portal Leave section (new):
+  - Quota configuration card: set annual leave days saved to
+    settings/leave_config in Firestore
+  - Applications table with Pending / Approved / Rejected / All filter
+  - Approve and Reject action buttons for pending applications
+
+Day calculation: Math.max(1, round((dateTo - dateFrom) / 86400000) + 1)
+
+Files changed: index.html (HTML leave summary cards + admin a-leave section +
+  JS functions: loadLeaveHistory, loadLeaveSummary, loadLeaveQuota,
+  saveLeaveQuota, loadAdminLeave, adminApproveLeave, adminRejectLeave,
+  _calcDays), styles.css (leave ledger CSS)
+
+
+5. FIX — Restore Features Lost After Branch Merge Conflict
+----------------------------------------------------------
+All four features above were lost when a concurrent branch with a stale base
+was merged, overwriting the changes. Root cause: two open PRs from branch
+`claude/compassionate-allen-621017` had overlapping edits and the merge
+conflict resolver kept the old content.
+
+Fix: Re-applied all feature code directly on top of the restored main branch.
+Confirmed no existing features were overwritten (verified via git diff).
+
+
+6. FIX — School Name Corrected Across Entire Site (23 occurrences)
+-------------------------------------------------------------------
+All instances of "St. Francis School" replaced with the correct full name:
+"St. Francis De Sales Sec. School"
+
+Locations fixed:
+  - <title> tag
+  - Navbar brand
+  - Hero headline (homepage)
+  - Homepage footer + copyright
+  - About page header and Principal's message/signature
+  - Events, Gallery, Who-is-Who, Contact pages (footers + headings)
+  - Login page heading
+  - Student, Teacher, Admin, Office portal sidebars
+
+File changed: index.html (replace_all)
+
+
+7. FIX — Logo Image Replaces Text Placeholders (6 locations)
+-------------------------------------------------------------
+All text-only abbreviation placeholders replaced with the actual school logo
+image (assets/images/logo.jpg):
+
+  - Login page:          <div class="logo-circle">SF</div>  → <img>
+  - Student sidebar:     <div class="s-logo">SF</div>       → <img>
+  - Teacher sidebar:     <div class="s-logo">SF</div>       → <img>
+  - Admin sidebar:       <div class="s-logo">SF</div>       → <img>
+  - Office sidebar:      <div class="s-logo">OF</div>       → <img>
+  - Office header avatar:<div class="dash-avatar">OF</div>  → <img>
+
+File changed: index.html
+
+
+8. FIX — Location Subtitle "Laitkor, Meghalaya" → "Laitkor, Shillong"
+----------------------------------------------------------------------
+Corrected in all occurrences:
+  - Navbar subtitle
+  - Login page subtitle
+  - All repeated page footer brand lines (5 pages)
+
+File changed: index.html (replace_all)
+
+
+9. FEAT — Class Teacher Column in Admin Enrollment Table
+---------------------------------------------------------
+The Class-wise Enrollment table on the admin dashboard now has a 5th column
+"Class Teacher" showing the name of the teacher assigned to each class. The
+teacher name is pulled from the teachers Firestore collection, matched by the
+classTeacher field, at the same time as student enrollment data is loaded.
+
+File changed: index.html (HTML table header + JS loadAdminDashboardStats)
+
+
+10. FEAT — Leave Applications Inbox Link (Admin Dashboard)
+----------------------------------------------------------
+The "Leave applications" row in the admin dashboard Inbox is now a clickable
+link. Clicking it navigates directly to the new a-leave admin section.
+
+File changed: index.html
+
+
+================================================================
+COMMITS (branch: claude/fix-house-points-xPUm5)
+================================================================
+a4dd3cf  feat: add admin leave management section and class teacher column in enrollment
+7aa0453  fix: update school name, logo, and location across entire site
+855eeff  feat: teacher leave ledger with admin quota config and balance calc
+9b51cd8  feat: priority colour-coded notice cards in admin portal
+0622816  feat: auto-sum monthly house points in admin portal
+7b1351a  fix: allow public read on house_points collection in Firestore rules
+
+================================================================
+FILES MODIFIED
+================================================================
+  index.html      — main application (HTML + JavaScript)
+  styles.css      — notice card CSS + leave ledger CSS
+  firestore.rules — public-read rules for house_points
+
+================================================================

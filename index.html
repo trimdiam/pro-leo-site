@@ -1687,12 +1687,12 @@
           <div class="grid-2">
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-chart-bar" style="margin-right:8px;color:var(--accent)"></i>Class-wise Enrollment</h4>
-              <div class="table-wrap"><table><thead><tr><th>Class</th><th>Boys</th><th>Girls</th><th>Total</th></tr></thead><tbody id="classwise-tbody"><tr><td colspan="4" style="text-align:center;padding:14px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr></tbody></table></div>
+              <div class="table-wrap"><table><thead><tr><th>Class</th><th>Boys</th><th>Girls</th><th>Total</th><th>Class Teacher</th></tr></thead><tbody id="classwise-tbody"><tr><td colspan="5" style="text-align:center;padding:14px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr></tbody></table></div>
             </div>
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-inbox" style="margin-right:8px;color:var(--accent)"></i>Inbox</h4>
               <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--danger);font-size:8px;margin-right:8px"></i>Fee approvals pending</span><span class="badge badge-danger" id="a-inbox-fee"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
-              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>Leave applications</span><span class="badge badge-warning" id="a-inbox-leave"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
+              <div class="chapter-item" style="display:flex;justify-content:space-between;cursor:pointer" onclick="showDash('a','a-leave',document.querySelector('#adminSidebar button[onclick*=a-leave]'))"><span><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>Leave applications</span><span class="badge badge-warning" id="a-inbox-leave"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
               <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>New admission enquiries</span><span class="badge badge-info" id="a-admission-count"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
               <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-right:8px"></i>Contact messages</span><span class="badge badge-success" id="a-inbox-contacts"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
             </div>
@@ -4983,6 +4983,7 @@
     if (sectionId === 'a-admissions')    { loadAdmissions(); loadAdmissionNotice(); }
     if (sectionId === 'a-contacts')      loadAdminContacts();
     if (sectionId === 'a-holidays')      loadHolidays();
+    if (sectionId === 'a-leave')         { if(window.loadLeaveQuota) loadLeaveQuota(); if(window.loadAdminLeave) loadAdminLeave(); }
     if (sectionId === 'a-teachers')      { if(window.seedTeachersIfNeeded) window.seedTeachersIfNeeded().then(()=>{ if(window.loadTeachers) window.loadTeachers(); }); }
     if (sectionId === 'a-dashboard')     { if(window.loadAdminDashboardStats) window.loadAdminDashboardStats(); }
     if (sectionId === 't-attendance')    {
@@ -6652,12 +6653,15 @@
       if(tbody&&sSnap.size>0){
         const classMap={};
         sSnap.docs.forEach(d=>{const s=d.data();const c=s.class||'?';if(!classMap[c])classMap[c]={boys:0,girls:0};if(s.gender==='M')classMap[c].boys++;else classMap[c].girls++;});
+        const teacherMap={};
+        tSnap.docs.forEach(d=>{const t=d.data();if(t.classTeacher)teacherMap[t.classTeacher]=t.name||'—';});
         const order=['PLG','SKG','LKG','1','2','3','4','5','6','7','8','9','10'];
         const classLabel={PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
         const getL=c=>classLabel[c]||(c?'Class '+c:c);
         tbody.innerHTML=order.filter(c=>classMap[c]).map(c=>{
           const {boys,girls}=classMap[c];
-          return `<tr><td>${getL(c)}</td><td>${boys}</td><td>${girls}</td><td><strong>${boys+girls}</strong></td></tr>`;
+          const ct=teacherMap[c]||'<span style="color:var(--text-light);font-style:italic">—</span>';
+          return `<tr><td>${getL(c)}</td><td>${boys}</td><td>${girls}</td><td><strong>${boys+girls}</strong></td><td style="font-size:13px">${ct}</td></tr>`;
         }).join('');
       }
       const homeS=document.getElementById('home-stat-students');const homeT=document.getElementById('home-stat-teachers');
