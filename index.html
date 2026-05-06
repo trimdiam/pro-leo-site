@@ -1587,6 +1587,30 @@
           </div>
         </div>
         <div id="t-leave" class="dash-section">
+          <!-- Leave Balance Summary -->
+          <div class="card" style="padding:20px;margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
+              <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-chart-pie" style="margin-right:8px;color:var(--accent)"></i>Leave Balance</h4>
+              <span style="font-size:12px;color:var(--text-light)" id="lv-year-label"></span>
+            </div>
+            <div class="lv-summary-grid">
+              <div class="lv-stat lv-stat-quota">
+                <div class="lv-stat-value" id="lv-quota-val">—</div>
+                <div class="lv-stat-label"><i class="fas fa-calendar-alt" style="margin-right:3px"></i>Annual Quota</div>
+              </div>
+              <div class="lv-stat lv-stat-taken">
+                <div class="lv-stat-value" id="lv-taken-val">—</div>
+                <div class="lv-stat-label"><i class="fas fa-calendar-times" style="margin-right:3px"></i>Days Taken</div>
+              </div>
+              <div class="lv-stat lv-stat-balance" id="lv-balance-stat">
+                <div class="lv-stat-value" id="lv-balance-val">—</div>
+                <div class="lv-stat-label"><i class="fas fa-check-circle" style="margin-right:3px"></i>Balance</div>
+              </div>
+            </div>
+            <div class="lv-quota-bar"><div class="lv-quota-bar-fill" id="lv-quota-bar-fill" style="width:0%"></div></div>
+            <p id="lv-quota-bar-caption" style="font-size:11px;color:var(--text-light);margin-top:5px;text-align:right">Loading…</p>
+          </div>
+          <!-- Apply Form -->
           <div class="card" style="padding:24px;max-width:560px;margin-bottom:24px">
             <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-calendar-times" style="margin-right:8px;color:var(--accent)"></i>Apply for Leave</h4>
             <div class="form-row"><div class="form-group"><label>From Date</label><input type="date" id="lv-from"></div><div class="form-group"><label>To Date</label><input type="date" id="lv-to"></div></div>
@@ -1594,10 +1618,13 @@
             <div class="form-group"><label>Reason</label><textarea id="lv-reason" placeholder="Brief reason for leave..."></textarea></div>
             <button class="btn btn-primary" onclick="submitLeaveApplication()"><i class="fas fa-paper-plane"></i> Submit Application</button>
           </div>
+          <!-- Leave Ledger -->
           <div class="card" style="padding:24px">
-            <h4 style="color:var(--accent-dark);margin-bottom:16px">Leave History</h4>
-            <div class="table-wrap"><table><thead><tr><th>From</th><th>To</th><th>Type</th><th>Reason</th><th>Status</th></tr></thead>
-            <tbody id="lv-history-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:14px"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody></table></div>
+            <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-book-open" style="margin-right:8px;color:var(--accent)"></i>Leave Ledger</h4>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Date Range</th><th>Days</th><th>Type</th><th>Reason</th><th>Status</th></tr></thead>
+              <tbody id="lv-history-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:14px"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody>
+            </table></div>
           </div>
         </div>
       </div>
@@ -1631,6 +1658,7 @@
         <button onclick="showDash('a','a-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('a','a-contacts',this)"><i class="fas fa-envelope"></i> Contacts</button>
         <button onclick="showDash('a','a-holidays',this)"><i class="fas fa-calendar-times"></i> Holidays</button>
+        <button onclick="showDash('a','a-leave',this);loadLeaveQuota();loadAdminLeave()"><i class="fas fa-calendar-check"></i> Leave Applications</button>
         <button onclick="showDash('a','a-monthly-att',this)"><i class="fas fa-chart-bar"></i> Monthly Attendance</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
@@ -2078,9 +2106,23 @@
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Post School Notice</h4>
               <div class="form-group"><label>Notice Title *</label><input type="text" id="an-title" placeholder="e.g., Exam Schedule Released"></div>
-              <div class="form-group"><label>Audience</label><select id="an-audience"><option value="all">All Students</option><option value="teachers">All Teachers</option><option value="both">Students + Teachers</option><option value="parents">Parents</option></select></div>
+              <div class="form-group"><label>Audience</label>
+                <select id="an-audience">
+                  <option value="all">All Students</option><option value="teachers">All Teachers</option>
+                  <option value="both">Students + Teachers</option><option value="parents">Parents</option>
+                </select>
+              </div>
               <div class="form-group"><label>Notice Content *</label><textarea id="an-body" placeholder="Full notice content..."></textarea></div>
-              <div class="form-group"><label>Priority</label><select id="an-priority"><option value="Normal">Normal</option><option value="Important">Important</option><option value="Urgent">Urgent</option></select></div>
+              <div class="form-group">
+                <label>Priority</label>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <select id="an-priority" onchange="updatePriorityPreview()" style="flex:1">
+                    <option value="Normal">Normal</option><option value="Important">Important</option><option value="Urgent">Urgent</option>
+                  </select>
+                  <div id="an-priority-dot" style="width:12px;height:12px;border-radius:50%;background:#3b82f6;flex-shrink:0;transition:background .2s"></div>
+                </div>
+                <p id="an-priority-hint" style="font-size:11px;margin-top:5px;color:#3b82f6">Standard notice — shown with blue indicator.</p>
+              </div>
               <button class="btn btn-primary" onclick="postAdminNotice()"><i class="fas fa-paper-plane"></i> Publish Notice</button>
             </div>
             <div class="card" style="padding:24px">
@@ -2210,9 +2252,8 @@
           <div class="grid-2">
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-trophy" style="margin-right:8px;color:var(--accent)"></i>Update House Points</h4>
-              <input type="hidden" id="house-edit-id">
               <div class="form-group"><label>House *</label>
-                <select id="house-name">
+                <select id="house-name" onchange="loadMonthlyEntry()">
                   <option value="Blue">🔵 Blue House</option>
                   <option value="Green">🟢 Green House</option>
                   <option value="Red">🔴 Red House</option>
@@ -2220,11 +2261,14 @@
                 </select>
               </div>
               <div class="form-row">
-                <div class="form-group"><label>Monthly Points</label><input type="number" id="house-monthly" placeholder="0" min="0"></div>
-                <div class="form-group"><label>Total Points</label><input type="number" id="house-total" placeholder="0" min="0"></div>
+                <div class="form-group"><label>Month *</label><select id="house-month" onchange="loadMonthlyEntry()"></select></div>
+                <div class="form-group"><label>Points for Month</label><input type="number" id="house-monthly-pts" placeholder="0" min="0"></div>
               </div>
-              <button class="btn btn-primary" onclick="saveHousePoints()"><i class="fas fa-save"></i> Save Points</button>
-              <p style="font-size:12px;color:var(--text-light);margin-top:10px">Saving will create or overwrite that house's entry.</p>
+              <div id="house-total-display" style="background:rgba(139,111,71,.08);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--accent-dark)">
+                <i class="fas fa-calculator" style="margin-right:6px"></i>Total is auto-calculated from all monthly entries.
+              </div>
+              <button class="btn btn-primary" onclick="saveHousePoints()"><i class="fas fa-save"></i> Save Monthly Points</button>
+              <p style="font-size:12px;color:var(--text-light);margin-top:10px">Points per month are summed automatically into the total.</p>
             </div>
             <div class="card" style="padding:24px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -2726,6 +2770,37 @@
               </div>
               <div class="table-wrap"><table><thead><tr><th>Date</th><th>Day</th><th>Reason</th><th>Type</th><th>Action</th></tr></thead><tbody id="holidays-tbody"><tr><td colspan="5" style="text-align:center;padding:14px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr></tbody></table></div>
             </div>
+          </div>
+        </div>
+
+        <!-- ── LEAVE APPLICATIONS ── -->
+        <div id="a-leave" class="dash-section">
+          <div class="admin-quota-card">
+            <i class="fas fa-sliders-h" style="color:#16a34a;font-size:1.2rem"></i>
+            <div style="flex:1">
+              <label>Annual Leave Quota (days, applies to all teachers)</label>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
+                <input type="number" id="a-leave-quota-input" min="1" max="60" placeholder="e.g. 15"
+                  style="width:90px;padding:6px 10px;border:1.5px solid #86efac;border-radius:8px;font-size:14px;font-weight:700;font-family:var(--font-body)">
+                <button class="btn btn-sm" onclick="saveLeaveQuota()" style="background:#16a34a;color:#fff;border:none"><i class="fas fa-save"></i> Save Quota</button>
+                <span style="font-size:13px;color:#166534">Current: <strong id="a-leave-quota-display">Loading…</strong></span>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+              <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Leave Applications</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <select id="a-leave-filter" onchange="loadAdminLeave()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="all">All</option>
+                  <option value="Pending" selected>Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+                <button class="btn btn-sm btn-outline" onclick="loadAdminLeave()"><i class="fas fa-sync-alt"></i> Refresh</button>
+              </div>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Teacher</th><th>Teacher ID</th><th>Class</th><th>Leave Type</th><th>From</th><th>To</th><th>Reason</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead><tbody id="a-leave-tbody"><tr><td colspan="10" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr></tbody></table></div>
           </div>
         </div>
 
@@ -4924,6 +4999,7 @@
     if (sectionId === 's-fees')     { if(window.loadStudentFees) loadStudentFees(); }
     if (sectionId === 't-notices')  { if(window.loadTeacherNotices) loadTeacherNotices(); }
     if (sectionId === 't-leave')    { if(window.loadLeaveHistory) window.loadLeaveHistory(); }
+    if (sectionId === 'a-leave')    { if(window.loadLeaveQuota) loadLeaveQuota(); if(window.loadAdminLeave) loadAdminLeave(); }
     if (sectionId === 'a-notices')     { if(window.loadAdminNotices) loadAdminNotices(); }
     if (sectionId === 'a-fees')        { if(window.loadAdminFees) loadAdminFees(); }
     if (sectionId === 'a-monthly-att') { if(window.loadAdminMonthlyAtt) loadAdminMonthlyAtt(); }
@@ -5165,7 +5241,22 @@
   const HOUSE_COLORS = { Blue:'house-blue', Green:'house-green', Red:'house-red', Yellow:'house-yellow' };
   const HOUSE_EMOJI  = { Blue:'🔵', Green:'🟢', Red:'🔴', Yellow:'🟡' };
 
+  function buildHouseMonthOptions() {
+    const sel = document.getElementById('house-month');
+    if (!sel) return;
+    const now = new Date();
+    const opts = [];
+    for (let i = 0; i < 13; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const label = d.toLocaleString('default', {month:'long', year:'numeric'});
+      opts.push(`<option value="${key}"${i===0?' selected':''}>${label}</option>`);
+    }
+    sel.innerHTML = opts.join('');
+  }
+
   function initHousePointsRealtime() {
+    buildHouseMonthOptions();
     onSnapshot(collection(db,'house_points'), snap => {
       const grid = document.getElementById('house-points-grid');
       if (!grid) return;
@@ -5173,28 +5264,93 @@
         grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--text-light);font-size:14px">No house points data yet. Admin can add them in the portal.</p>';
         return;
       }
-      const houses = [...snap.docs]
-        .map(d => ({id:d.id,...d.data()}))
-        .sort((a,b) => (b.totalPoints||0) - (a.totalPoints||0));
+      const houseMap = {};
+      snap.docs.forEach(d => {
+        const data = d.data(); const name = data.houseName; if (!name) return;
+        if (!houseMap[name] || (data.totalPoints||0) > (houseMap[name].totalPoints||0)) houseMap[name] = {id:d.id,...data};
+      });
+      const houses = Object.values(houseMap).sort((a,b) => (b.totalPoints||0) - (a.totalPoints||0));
+      if (!houses.length) { grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--text-light);font-size:14px">No house points data yet.</p>'; return; }
       const ranks = ['🥇','🥈','🥉','4th'];
       grid.innerHTML = houses.map((h,i) => {
         const isLeader = i === 0;
         const cls = HOUSE_COLORS[h.houseName] || 'house-blue';
+        const thisMonth = h.currentMonthPoints || h.monthlyPoints || 0;
         return `<div class="house-card ${cls}${isLeader?' leader':''}">
           ${isLeader?'<div class="house-crown">👑</div>':''}
           <div class="house-rank">${ranks[i]||''} ${i===0?'Leading!':''}</div>
           <div class="house-name">${HOUSE_EMOJI[h.houseName]||''} ${h.houseName} House</div>
           <div class="house-pts">${(h.totalPoints||0).toLocaleString()}</div>
           <div class="house-label">Total Points</div>
-          ${h.monthlyPoints?`<div style="font-size:12px;opacity:.8;margin-top:6px">+${h.monthlyPoints} this month</div>`:''}
+          ${thisMonth?`<div style="font-size:12px;opacity:.8;margin-top:6px">+${thisMonth} this month</div>`:''}
         </div>`;
       }).join('');
     }, e => { console.warn('House points:', e.message); });
   }
 
-  window.saveHousePoints=async function(){const name=document.getElementById('house-name')?.value||'';const monthly=parseInt(document.getElementById('house-monthly')?.value||0)||0;const total=parseInt(document.getElementById('house-total')?.value||0)||0;if(!name){showToast('⚠️ Select a house.');return;}try{const snap=await getDocs(query(collection(db,'house_points'),where('houseName','==',name)));if(!snap.empty){await setDoc(doc(db,'house_points',snap.docs[0].id),{houseName:name,monthlyPoints:monthly,totalPoints:total,updatedAt:new Date().toISOString()},{merge:true});}else{await addDoc(collection(db,'house_points'),{houseName:name,monthlyPoints:monthly,totalPoints:total,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});}showToast('✅ House points saved!');loadAdminHousePoints();}catch(e){showToast('❌ '+e.message);}};
-  window.loadAdminHousePoints=async function(){const el=document.getElementById('admin-house-list');if(!el)return;el.innerHTML='<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i></p>';try{const snap=await getDocs(collection(db,'house_points'));if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No data yet.</p>';return;}const sorted=[...snap.docs].map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.totalPoints||0)-(a.totalPoints||0));el.innerHTML='<div class="table-wrap"><table style="width:100%;font-size:13px"><thead><tr><th style="text-align:left">House</th><th>Monthly</th><th>Total</th><th></th></tr></thead><tbody>'+sorted.map(h=>`<tr><td><strong>${HOUSE_EMOJI[h.houseName]||''} ${h.houseName}</strong></td><td style="text-align:center">${h.monthlyPoints||0}</td><td style="text-align:center;font-weight:700;color:var(--accent-dark)">${h.totalPoints||0}</td><td><button onclick="prefillHouseForm('${h.houseName}',${h.monthlyPoints||0},${h.totalPoints||0})" style="background:none;border:none;color:var(--accent);cursor:pointer"><i class="fas fa-edit"></i></button></td></tr>`).join('')+'</tbody></table></div>';}catch(e){el.innerHTML=`<p style="color:var(--danger)">❌ ${e.message}</p>`;}};
-  window.prefillHouseForm=function(name,monthly,total){document.getElementById('house-name').value=name;document.getElementById('house-monthly').value=monthly;document.getElementById('house-total').value=total;};
+  window.loadMonthlyEntry = async function() {
+    const name = document.getElementById('house-name')?.value || '';
+    const monthKey = document.getElementById('house-month')?.value || '';
+    const ptsEl = document.getElementById('house-monthly-pts');
+    if (!name || !monthKey || !ptsEl) return;
+    try {
+      const snap = await getDoc(doc(db,'house_points',name,'monthly_entries',monthKey));
+      ptsEl.value = snap.exists() ? (snap.data().points || 0) : 0;
+    } catch(e) { ptsEl.value = 0; }
+  };
+
+  window.saveHousePoints = async function() {
+    const name = document.getElementById('house-name')?.value || '';
+    const monthKey = document.getElementById('house-month')?.value || '';
+    const pts = parseInt(document.getElementById('house-monthly-pts')?.value || 0) || 0;
+    if (!name || !monthKey) { showToast('⚠️ Select a house and month.'); return; }
+    try {
+      const [yr, mo] = monthKey.split('-').map(Number);
+      const label = new Date(yr, mo-1, 1).toLocaleString('default', {month:'long', year:'numeric'});
+      await setDoc(doc(db,'house_points',name,'monthly_entries',monthKey),
+        {points:pts, label, year:yr, month:mo, monthKey, updatedAt:new Date().toISOString()}, {merge:true});
+      const allEntries = await getDocs(collection(db,'house_points',name,'monthly_entries'));
+      const total = allEntries.docs.reduce((sum,d) => sum+(d.data().points||0), 0);
+      const nowKey = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+      const curDoc = allEntries.docs.find(d => d.id === nowKey);
+      const currentMonthPoints = curDoc ? (curDoc.data().points||0) : 0;
+      await setDoc(doc(db,'house_points',name),
+        {houseName:name, totalPoints:total, currentMonthPoints, updatedAt:new Date().toISOString()}, {merge:true});
+      const dispEl = document.getElementById('house-total-display');
+      if (dispEl) dispEl.innerHTML = `<i class="fas fa-calculator" style="margin-right:6px"></i><strong>${name} House total: ${total} pts</strong> (auto-summed)`;
+      showToast(`✅ Saved! ${name} House total: ${total} pts`);
+      loadAdminHousePoints();
+    } catch(e) { showToast('❌ '+e.message); }
+  };
+
+  window.loadAdminHousePoints = async function() {
+    const el = document.getElementById('admin-house-list'); if (!el) return;
+    el.innerHTML = '<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      const snap = await getDocs(collection(db,'house_points'));
+      if (snap.empty) { el.innerHTML = '<p style="color:var(--text-light);font-size:13px">No data yet.</p>'; return; }
+      const houseMap = {};
+      snap.docs.forEach(d => { const data=d.data(); if(!data.houseName) return; if(!houseMap[data.houseName]||(data.totalPoints||0)>(houseMap[data.houseName].totalPoints||0)) houseMap[data.houseName]={id:d.id,...data}; });
+      const sorted = Object.values(houseMap).sort((a,b) => (b.totalPoints||0)-(a.totalPoints||0));
+      const withMonthly = await Promise.all(sorted.map(async h => {
+        try {
+          const entries = await getDocs(collection(db,'house_points',h.houseName,'monthly_entries'));
+          const monthly = [...entries.docs].map(d=>d.data()).sort((a,b)=>b.monthKey>a.monthKey?1:-1).slice(0,6);
+          return {...h, monthly};
+        } catch { return {...h, monthly:[]}; }
+      }));
+      el.innerHTML = withMonthly.map((h,i) => {
+        const rank = ['🥇','🥈','🥉','4th'][i]||'';
+        return `<div style="border:1px solid rgba(139,111,71,.15);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+            <strong style="font-size:14px">${rank} ${HOUSE_EMOJI[h.houseName]||''} ${h.houseName} House</strong>
+            <span style="font-size:1.15rem;font-weight:800;color:var(--accent-dark)">${(h.totalPoints||0).toLocaleString()} pts</span>
+          </div>
+          ${h.monthly.length?`<div style="margin-top:8px;font-size:11px;color:var(--text-light);line-height:1.8">${h.monthly.map(m=>`<span style="display:inline-block;background:rgba(139,111,71,.1);border-radius:4px;padding:2px 7px;margin:2px;white-space:nowrap">${m.label}: <strong>${m.points}</strong></span>`).join('')}</div>`:'<p style="font-size:11px;color:var(--text-light);margin-top:6px">No monthly entries yet.</p>'}
+        </div>`;
+      }).join('');
+    } catch(e) { el.innerHTML=`<p style="color:var(--danger)">❌ ${e.message}</p>`; }
+  };
 
   // ================================================================
   //  SCHOOL LEADERS — real-time + admin CRUD + Cloudinary upload
@@ -5836,22 +5992,103 @@
     } catch(e) { showToast('❌ ' + e.message); }
   };
 
+  function _calcDays(from, to) {
+    if (!from || !to) return 1;
+    return Math.max(1, Math.round((new Date(to+'T00:00:00') - new Date(from+'T00:00:00')) / 86400000) + 1);
+  }
+
+  async function loadLeaveSummary(uid) {
+    try {
+      const [settingsSnap, leaveSnap] = await Promise.all([
+        getDoc(doc(db,'settings','leave_config')),
+        getDocs(query(collection(db,'leave_applications'), where('uid','==',uid)))
+      ]);
+      const quota = settingsSnap.exists() ? (settingsSnap.data().annualQuota || 15) : 15;
+      const daysTaken = leaveSnap.docs.filter(d=>d.data().status==='Approved').reduce((sum,d)=>sum+_calcDays(d.data().from,d.data().to),0);
+      const balance = quota - daysTaken;
+      const pct = Math.min(100, Math.round((daysTaken/quota)*100));
+      const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+      set('lv-quota-val', quota); set('lv-taken-val', daysTaken); set('lv-balance-val', Math.max(0,balance));
+      set('lv-year-label', 'Academic year '+new Date().getFullYear());
+      const fill = document.getElementById('lv-quota-bar-fill');
+      if (fill) { fill.style.width=pct+'%'; fill.style.background=pct>=100?'#dc2626':pct>=70?'#d97706':'#16a34a'; }
+      const cap = document.getElementById('lv-quota-bar-caption');
+      if (cap) cap.textContent=`${daysTaken} of ${quota} days used (${pct}%)`;
+      const stat = document.getElementById('lv-balance-stat');
+      if (stat) stat.className='lv-stat lv-stat-balance'+(balance<=0?' over':balance<=3?' warn':'');
+    } catch(e) { console.warn('Leave summary:',e.message); }
+  }
+
   window.loadLeaveHistory = async function loadLeaveHistory() {
     const tbody = document.getElementById('lv-history-tbody');
     if (!tbody) return;
-    const auth = window._firebaseAuth;
-    const user = auth?.currentUser;
+    const user = window._firebaseAuth?.currentUser;
     if (!user) return;
     try {
-      const snap = await getDocs(query(collection(db,'leave_applications'), where('uid','==',user.uid), orderBy('createdAt','desc'), limit(20)));
-      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:14px">No leave applications yet.</td></tr>'; return; }
-      const bc = { Pending:'badge-warning', Approved:'badge-success', Rejected:'badge-danger' };
+      const snap = await getDocs(query(collection(db,'leave_applications'), where('uid','==',user.uid), orderBy('createdAt','desc'), limit(30)));
+      await loadLeaveSummary(user.uid);
+      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px">No leave applications yet.</td></tr>'; return; }
+      const fmt = s => s ? new Date(s+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+      const bc  = { Pending:'badge-warning', Approved:'badge-success', Rejected:'badge-danger' };
       tbody.innerHTML = snap.docs.map(d => {
-        const l = d.data();
-        const fmt = s => s ? new Date(s+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '—';
-        return `<tr><td>${fmt(l.from)}</td><td>${fmt(l.to)}</td><td>${l.type||'—'}</td><td style="font-size:12px">${l.reason||'—'}</td><td><span class="badge ${bc[l.status]||'badge-info'}">${l.status||'—'}</span></td></tr>`;
+        const l = d.data(); const days = _calcDays(l.from, l.to); const cls = (l.status||'pending').toLowerCase();
+        return `<tr class="lv-ledger-row ${cls}">
+          <td>${fmt(l.from)} → ${fmt(l.to)}</td>
+          <td><span class="lv-days-chip">${days}d</span></td>
+          <td style="font-size:12px">${l.type||'—'}</td>
+          <td style="font-size:12px;max-width:180px;white-space:normal">${l.reason||'—'}</td>
+          <td><span class="badge ${bc[l.status]||'badge-info'}">${l.status||'—'}</span></td>
+        </tr>`;
       }).join('');
     } catch(e) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
+  };
+
+  window.saveLeaveQuota = async function() {
+    const quota = parseInt(document.getElementById('a-leave-quota-input')?.value || 0);
+    if (!quota || quota < 1) { showToast('⚠️ Enter a valid quota (minimum 1 day).'); return; }
+    try {
+      await setDoc(doc(db,'settings','leave_config'), {annualQuota:quota, updatedAt:new Date().toISOString()}, {merge:true});
+      showToast('✅ Quota set to '+quota+' days for all teachers.');
+      const disp = document.getElementById('a-leave-quota-display'); if (disp) disp.textContent = quota+' days';
+    } catch(e) { showToast('❌ '+e.message); }
+  };
+
+  window.loadLeaveQuota = async function() {
+    try {
+      const d = await getDoc(doc(db,'settings','leave_config'));
+      const quota = d.exists() ? (d.data().annualQuota||15) : 15;
+      const inp = document.getElementById('a-leave-quota-input'); if(inp) inp.value=quota;
+      const disp = document.getElementById('a-leave-quota-display'); if(disp) disp.textContent=quota+' days';
+    } catch(e) { console.warn('loadLeaveQuota:',e.message); }
+  };
+
+  window.loadAdminLeave = async function() {
+    const tbody = document.getElementById('a-leave-tbody'); if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
+    const filter = document.getElementById('a-leave-filter')?.value || 'Pending';
+    try {
+      let q = collection(db,'leave_applications');
+      const snap = await getDocs(filter === 'all' ? q : query(q, where('status','==',filter)));
+      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--text-light)">No leave applications found.</td></tr>'; return; }
+      const fmt = s => s ? new Date(s+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+      const fmtTs = s => s ? new Date(s).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+      const bc = { Pending:'badge-warning', Approved:'badge-success', Rejected:'badge-danger' };
+      const sorted = [...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||''));
+      tbody.innerHTML = sorted.map(d => {
+        const l = d.data();
+        const actions = l.status==='Pending'
+          ? `<div style="display:flex;gap:4px"><button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="adminApproveLeave('${d.id}')"><i class="fas fa-check"></i> Approve</button><button class="btn btn-sm" style="background:var(--danger);color:#fff" onclick="adminRejectLeave('${d.id}')"><i class="fas fa-times"></i> Reject</button></div>`
+          : `<span class="badge ${bc[l.status]||'badge-info'}">${l.status}</span>`;
+        return `<tr><td>${l.teacherName||'—'}</td><td style="font-size:12px">${l.teacherId||'—'}</td><td>${l.teacherClass||'—'}</td><td style="font-size:12px">${l.type||'—'}</td><td>${fmt(l.from)}</td><td>${fmt(l.to)}</td><td style="font-size:12px;max-width:120px;white-space:normal">${l.reason||'—'}</td><td style="font-size:11px;color:var(--text-light)">${fmtTs(l.createdAt)}</td><td><span class="badge ${bc[l.status]||'badge-info'}">${l.status||'—'}</span></td><td>${actions}</td></tr>`;
+      }).join('');
+    } catch(e) { tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
+  };
+
+  window.adminApproveLeave = async function(docId) {
+    try { await setDoc(doc(db,'leave_applications',docId),{status:'Approved',updatedAt:new Date().toISOString()},{merge:true}); showToast('✅ Leave approved.'); loadAdminLeave(); } catch(e){showToast('❌ '+e.message);}
+  };
+  window.adminRejectLeave = async function(docId) {
+    try { await setDoc(doc(db,'leave_applications',docId),{status:'Rejected',updatedAt:new Date().toISOString()},{merge:true}); showToast('Leave rejected.'); loadAdminLeave(); } catch(e){showToast('❌ '+e.message);}
   };
 
   function renderTeacherStudentList(docs) {
@@ -6296,18 +6533,50 @@
     }catch(e){showToast('❌ '+e.message);}
   };
 
-  window.loadAdminNotices = async function(){
-    const el=document.getElementById('a-notices-list'); if(!el) return;
-    el.innerHTML='<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i></p>';
-    try{
-      const snap=await getDocs(query(collection(db,'notices'),limit(30)));
-      if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No notices yet.</p>';return;}
-      const bc=p=>p==='Urgent'?'badge-danger':p==='Important'?'badge-warning':'badge-info';
-      el.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
-        const n=d.data();
-        return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700;color:var(--accent-dark)">${n.title}</div><div style="font-size:12px;color:var(--text-light);margin-top:2px">${(n.body||'').slice(0,80)}…</div><div style="margin-top:4px"><span class="badge ${bc(n.priority)}">${n.priority||'Normal'}</span> <span style="font-size:11px;color:var(--text-light)">Audience: ${n.audience||'all'}</span></div></div><button onclick="deleteNotice('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer"><i class="fas fa-trash"></i></button></div>`;
+  window.loadAdminNotices = async function() {
+    const el = document.getElementById('a-notices-list'); if (!el) return;
+    el.innerHTML = '<p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      const snap = await getDocs(query(collection(db,'notices'), limit(30)));
+      if (snap.empty) { el.innerHTML = '<p style="color:var(--text-light);font-size:13px">No notices yet.</p>'; return; }
+      const AUDIENCE_LABEL = { all:'All Students', teachers:'Teachers', both:'Students + Teachers', parents:'Parents' };
+      const sorted = [...snap.docs].sort((a,b) => (b.data().createdAt||'').localeCompare(a.data().createdAt||''));
+      el.innerHTML = sorted.map(d => {
+        const n = d.data(); const priority = n.priority || 'Normal';
+        let cardClass, badgeClass, icon;
+        switch (priority) {
+          case 'Urgent':    cardClass='priority-urgent';    badgeClass='urgent';    icon='fa-circle-exclamation'; break;
+          case 'Important': cardClass='priority-important'; badgeClass='important'; icon='fa-triangle-exclamation'; break;
+          default:          cardClass='priority-normal';    badgeClass='normal';    icon='fa-circle-info';
+        }
+        const date = n.createdAt ? new Date(n.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+        const audience = AUDIENCE_LABEL[n.audience] || n.audience || 'All';
+        return `<div class="an-notice-card ${cardClass}">
+          <div class="an-notice-header">
+            <div class="an-notice-title"><i class="fas ${icon}" style="margin-right:6px;opacity:.75"></i>${n.title}</div>
+            <span class="an-notice-badge ${badgeClass}">${priority}</span>
+          </div>
+          <div class="an-notice-meta">
+            <span><i class="fas fa-clock" style="margin-right:3px"></i>${date}</span>
+            <span><i class="fas fa-users" style="margin-right:3px"></i>${audience}</span>
+            <span><i class="fas fa-user-shield" style="margin-right:3px"></i>${n.postedBy||'Admin'}</span>
+          </div>
+          ${n.body?`<div class="an-notice-body">${(n.body).slice(0,160)}${n.body.length>160?'…':''}</div>`:''}
+          <div class="an-notice-footer">
+            <span style="font-size:11px;color:var(--text-light);opacity:.6">ID: ${d.id.slice(0,8)}…</span>
+            <button class="an-delete-btn" onclick="deleteNotice('${d.id}')"><i class="fas fa-trash-alt" style="margin-right:4px"></i>Delete</button>
+          </div>
+        </div>`;
       }).join('');
-    }catch(e){el.innerHTML=`<p style="color:var(--danger)">❌ ${e.message}</p>`;}
+    } catch(e) { el.innerHTML = `<p style="color:var(--danger)">❌ ${e.message}</p>`; }
+  };
+
+  window.updatePriorityPreview = function() {
+    const val = document.getElementById('an-priority')?.value || 'Normal';
+    const dot = document.getElementById('an-priority-dot'); const hint = document.getElementById('an-priority-hint');
+    const map = { Urgent:{color:'#dc2626',text:'Urgent — red card with alert icon.'}, Important:{color:'#d97706',text:'Important — amber card with warning icon.'}, Normal:{color:'#3b82f6',text:'Standard — blue indicator.'} };
+    const cfg = map[val]||map.Normal;
+    if (dot) dot.style.background=cfg.color; if (hint) { hint.textContent=cfg.text; hint.style.color=cfg.color; }
   };
 
   window.deleteNotice = async function(docId){
