@@ -6066,14 +6066,15 @@
   };
 
   async function runMonthlyAggregation(classNum, yyyy, mm) {
-    const dateFrom = `${yyyy}-${mm}-01`;
-    const dateTo   = `${yyyy}-${mm}-31`;
+    const monthPrefix = `${yyyy}-${mm}-`; // e.g. "2026-05-"
+    // Query only by class (single-field, no composite index needed),
+    // then filter to the target month client-side.
     const [studSnap, dailySnap] = await Promise.all([
       getDocs(query(collection(db,'students'), where('class','==',String(classNum)), orderBy('rollNo'))),
-      getDocs(query(collection(db,'attendance_daily'), where('class','==',String(classNum)), where('date','>=',dateFrom), where('date','<=',dateTo)))
+      getDocs(query(collection(db,'attendance_daily'), where('class','==',String(classNum))))
     ]);
     const students = studSnap.docs.map(d => d.data());
-    const dailyDocs = dailySnap.docs.map(d => d.data());
+    const dailyDocs = dailySnap.docs.map(d => d.data()).filter(d => (d.date||'').startsWith(monthPrefix));
     const workingDays = dailyDocs.length;
     const totals = {};
     students.forEach(s => {
