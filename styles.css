@@ -962,3 +962,9 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 .am-summary-card .am-sc-sub   { font-size:12px;color:var(--text-light);margin-top:4px; }
 .am-detail-wrap  { display:none; }
 .am-detail-wrap.open { display:block; }
+
+/* ============================================================
+   DUES & REMINDERS
+============================================================ */
+#dues-table-body td { vertical-align: middle; }
+#dues-summary-chips { min-height: 32px; }

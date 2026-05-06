@@ -2884,6 +2884,7 @@
         <button onclick="showDash('o','o-fee-collection',this)"><i class="fas fa-money-bill-wave"></i> Fee Collection</button>
         <button onclick="showDash('o','o-fee-structure',this)"><i class="fas fa-rupee-sign"></i> Fee Structure</button>
         <button onclick="showDash('o','o-fee-approvals',this)"><i class="fas fa-exchange-alt"></i> Fee Approvals</button>
+        <button onclick="showDash('o','o-dues',this)"><i class="fas fa-bell"></i> Dues &amp; Reminders</button>
         <button onclick="showDash('o','o-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('o','o-reports',this)"><i class="fas fa-chart-bar"></i> Reports</button>
       </div>
@@ -3230,6 +3231,60 @@
             </div>
           </div>
         </div>
+
+        <!-- ===== DUES & REMINDERS ===== -->
+        <div id="o-dues" class="dash-section">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+            <div>
+              <h3 style="font-family:var(--font-head);color:var(--accent-dark);margin-bottom:4px;">Dues &amp; Reminders</h3>
+              <p style="font-size:13px;color:var(--text-light);">Students with unpaid or pending fees. Approved payments disappear automatically.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="loadDuesList()"><i class="fas fa-sync-alt"></i> Refresh</button>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;background:var(--white);padding:16px 20px;border-radius:12px;box-shadow:var(--card-shadow);">
+            <div style="flex:1;min-width:140px;">
+              <label style="font-size:12px;font-weight:700;color:var(--text-light);display:block;margin-bottom:6px;">FILTER BY CLASS</label>
+              <select id="dues-filter-class" onchange="loadDuesList()" style="width:100%;padding:8px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px;">
+                <option value="">All Classes</option>
+                <option>Play Group</option><option>SKG</option><option>LKG</option>
+                <option>Class 1</option><option>Class 2</option><option>Class 3</option>
+                <option>Class 4</option><option>Class 5</option><option>Class 6</option>
+                <option>Class 7</option><option>Class 8</option><option>Class 9</option><option>Class 10</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:140px;">
+              <label style="font-size:12px;font-weight:700;color:var(--text-light);display:block;margin-bottom:6px;">FEE TYPE</label>
+              <select id="dues-filter-type" onchange="loadDuesList()" style="width:100%;padding:8px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px;">
+                <option value="">All Types</option>
+                <option>Tuition Fee – Q1</option><option>Tuition Fee – Q2</option>
+                <option>Tuition Fee – Q3</option><option>Tuition Fee – Q4</option>
+                <option>Exam Fee</option><option>Sports Fee</option>
+                <option>Library Fee</option><option>Annual Fee</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:140px;">
+              <label style="font-size:12px;font-weight:700;color:var(--text-light);display:block;margin-bottom:6px;">STATUS</label>
+              <select id="dues-filter-status" onchange="loadDuesList()" style="width:100%;padding:8px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px;">
+                <option value="">Pending + Rejected</option>
+                <option value="pending">Pending Only</option>
+                <option value="rejected">Rejected Only</option>
+              </select>
+            </div>
+          </div>
+          <div id="dues-summary-chips" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;min-height:32px;"></div>
+          <div style="background:var(--white);border-radius:12px;box-shadow:var(--card-shadow);overflow:hidden;">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Student</th><th>Class</th><th>Fee Type</th><th>Due Amount</th><th>Status</th><th>Last Reminded</th><th>Action</th></tr></thead>
+                <tbody id="dues-table-body">
+                  <tr><td colspan="7" style="text-align:center;color:var(--text-light);padding:32px;">Click Refresh to load dues list.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p id="dues-count-label" style="font-size:13px;color:var(--text-light);margin-top:12px;text-align:right;"></p>
+        </div>
+        <!-- ===== END DUES & REMINDERS ===== -->
 
         <!-- ── ADMISSIONS REVIEW (Office Staff) — placeholder for Step 3 ── -->
         <div id="o-admissions" class="dash-section">
@@ -8028,6 +8083,7 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
     if (sectionId==='a-fee-structure')    { if(window.loadAdminFeeStructure)    loadAdminFeeStructure();    }
     if (sectionId==='a-fee-transactions') { if(window.loadAdminFeeTransactions) loadAdminFeeTransactions(); }
     if (sectionId==='o-fee-approvals')    { if(window.loadAdminFeeTransactions) loadAdminFeeTransactions(); }
+    if (sectionId==='o-dues')             { if(window.loadDuesList)             loadDuesList();             }
     if (sectionId==='o-dashboard')        { if(window.loadOfficeDashboardStats) loadOfficeDashboardStats(); }
     if (sectionId==='o-reports')          { if(window.loadOfficeReports)        loadOfficeReports();        }
     if (sectionId==='o-fee-collection') {
@@ -8570,6 +8626,98 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
   // Expose for manual refresh after admin saves
   window.refreshHomepageDynamic = loadHomepageDynamic;
 })();
+
+// ============================================================
+// DUES & REMINDERS — Office Portal
+// ============================================================
+window.loadDuesList = async function() {
+  const tbody     = document.getElementById('dues-table-body');
+  const chipsEl   = document.getElementById('dues-summary-chips');
+  const countLabel= document.getElementById('dues-count-label');
+  if (!tbody) return;
+
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--text-light);"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>`;
+  if (chipsEl)    chipsEl.innerHTML   = '';
+  if (countLabel) countLabel.textContent = '';
+
+  try {
+    const { getFirestore, collection, getDocs, query, where } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+    const db2 = getFirestore();
+
+    const filterClass  = document.getElementById('dues-filter-class')?.value  || '';
+    const filterType   = document.getElementById('dues-filter-type')?.value   || '';
+    const filterStatus = document.getElementById('dues-filter-status')?.value || '';
+
+    const snap = await getDocs(query(collection(db2, 'fees'), where('status', '!=', 'approved')));
+
+    let records = [];
+    snap.forEach(doc => {
+      const d = { id: doc.id, ...doc.data() };
+      if (filterClass  && d.class   !== filterClass)  return;
+      if (filterType   && d.feeType !== filterType)   return;
+      if (filterStatus && d.status  !== filterStatus) return;
+      records.push(d);
+    });
+
+    const totalDue = records.reduce((s, r) => s + ((r.amount || 0) - (r.paidAmount || 0)), 0);
+    if (chipsEl) chipsEl.innerHTML = `
+      <span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">
+        <i class="fas fa-users"></i> ${records.length} Students in Dues
+      </span>
+      <span style="background:#f8d7da;color:#721c24;border:1px solid #dc3545;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">
+        <i class="fas fa-rupee-sign"></i> ₹${totalDue.toLocaleString('en-IN')} Total Outstanding
+      </span>`;
+
+    if (records.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#28a745;font-weight:600;"><i class="fas fa-check-circle"></i> No dues found — all clear!</td></tr>`;
+      return;
+    }
+
+    records.sort((a, b) => ({ rejected:0, pending:1 }[a.status] ?? 2) - ({ rejected:0, pending:1 }[b.status] ?? 2));
+
+    tbody.innerHTML = records.map(r => {
+      const balance  = (r.amount || 0) - (r.paidAmount || 0);
+      const reminded = r.lastRemindedDate ? new Date(r.lastRemindedDate).toLocaleDateString('en-IN') : '—';
+      const badge    = r.status === 'pending'
+        ? `<span class="badge badge-warning">Pending</span>`
+        : `<span class="badge badge-danger">Rejected</span>`;
+      const waMsg = encodeURIComponent(
+        `Dear Parent of ${r.studentName || r.studentId},\nThis is a reminder from St. Francis De Sales Sec. School, Laitkor.\nYour fee of ₹${balance.toLocaleString('en-IN')} (${r.feeType}) is unpaid.\nKindly pay at the earliest to avoid inconvenience.\nThank you.`
+      );
+      const waNum = (r.whatsapp || '').replace(/\D/g, '');
+      const waBtn = waNum
+        ? `<a href="https://wa.me/91${waNum}?text=${waMsg}" target="_blank" class="btn btn-success btn-sm" onclick="window.markReminded('${r.id}')"><i class="fab fa-whatsapp"></i> Remind</a>`
+        : `<span style="font-size:12px;color:var(--text-light);">No WhatsApp</span>`;
+      return `<tr>
+        <td><strong>${r.studentName || r.studentId || '—'}</strong><br><span style="font-size:11px;color:var(--text-light);">${r.studentId || ''}</span></td>
+        <td>${r.class || '—'}</td>
+        <td>${r.feeType || '—'}</td>
+        <td style="font-weight:700;color:#dc3545;">₹${balance.toLocaleString('en-IN')}</td>
+        <td>${badge}</td>
+        <td style="font-size:12px;">${reminded}</td>
+        <td>${waBtn}</td>
+      </tr>`;
+    }).join('');
+
+    if (countLabel) countLabel.textContent = `Showing ${records.length} record(s)`;
+
+  } catch(err) {
+    console.error('Dues load error:', err);
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:28px;color:#dc3545;">Error loading dues: ${err.message}</td></tr>`;
+  }
+};
+
+window.markReminded = async function(docId) {
+  try {
+    const { getFirestore, doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+    await updateDoc(doc(getFirestore(), 'fees', docId), {
+      lastRemindedDate: new Date().toISOString().split('T')[0]
+    });
+  } catch(e) { console.warn('markReminded:', e.message); }
+};
+// ============================================================
+// END DUES & REMINDERS
+// ============================================================
 </script>
 <script src="notification-center.js"></script>
 
