@@ -933,10 +933,10 @@
         <span id="google-btn-text">Continue with Google</span>
       </button>
 
-      <!-- Module load failure notice — hidden once Firebase loads successfully -->
-      <div id="login-module-error" style="margin-top:12px;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:8px;padding:10px 14px;font-size:13px;color:#92400e;display:flex;align-items:flex-start;gap:8px">
-        <i class="fas fa-circle-notch fa-spin" style="margin-top:2px;flex-shrink:0"></i>
-        <span>Loading Firebase… If this stays, check your internet connection and refresh the page.</span>
+      <!-- Firebase status — hidden until a slow/failed load is detected -->
+      <div id="login-module-error" style="display:none;margin-top:12px;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:8px;padding:10px 14px;font-size:13px;color:#92400e;align-items:flex-start;gap:8px">
+        <i class="fas fa-circle-notch fa-spin" id="firebase-status-icon" style="margin-top:2px;flex-shrink:0"></i>
+        <span id="firebase-status-text">Connecting to Firebase… please wait.</span>
       </div>
 
       <!-- Error message area -->
@@ -3215,18 +3215,39 @@
 
 
 <script src="script.js"></script>
-<script type="module" src="app-logic.js?v=4"></script>
+<script type="module" src="app-logic.js?v=5"></script>
 <script>
-  // If the module fails to load (network/CDN issue), surface a clearer message
-  // instead of leaving the user with a spinner forever.
-  setTimeout(() => {
-    if (!window._firebaseAuth) {
-      const el = document.getElementById('login-module-error');
-      if (el) {
-        el.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-top:2px;flex-shrink:0;color:#92400e"></i><span>Could not connect to Firebase. Check your internet connection and refresh the page.</span>';
+  (function () {
+    var el = document.getElementById('login-module-error');
+    var icon = document.getElementById('firebase-status-icon');
+    var text = document.getElementById('firebase-status-text');
+
+    // After 4 s with no Firebase, show a "still connecting" warning
+    var t1 = setTimeout(function () {
+      if (!window._firebaseAuth && el) {
+        el.style.display = 'flex';
       }
-    }
-  }, 8000);
+    }, 4000);
+
+    // After 12 s still nothing — surface a hard error
+    var t2 = setTimeout(function () {
+      if (!window._firebaseAuth && el) {
+        if (icon) { icon.className = 'fas fa-exclamation-triangle'; }
+        if (text) { text.textContent = 'Could not connect to Firebase. Check your connection and refresh.'; }
+      }
+    }, 12000);
+
+    // If module loads successfully it sets window._firebaseAuth synchronously.
+    // Poll every 500 ms and clear timers once ready.
+    var poll = setInterval(function () {
+      if (window._firebaseAuth) {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearInterval(poll);
+        if (el) el.style.display = 'none';
+      }
+    }, 500);
+  })();
 </script>
 <script src="notification-center.js"></script>
 
