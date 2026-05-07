@@ -1,4 +1,4 @@
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, createUserWithEmailAndPassword, updatePassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit, serverTimestamp, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
   import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
@@ -3812,12 +3812,6 @@
    FEE MANAGEMENT MODULE  (Part 1 of 5)
    Office Portal Bootstrap · Stats · Recent Transactions
 ================================================================ */
-import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import {
-  getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc,
-  collection, getDocs, query, where, orderBy, limit, updateDoc
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
 (async () => {
   let app;
   for (let i = 0; i < 60; i++) {
@@ -4184,9 +4178,6 @@ import {
    FEE MANAGEMENT MODULE — Part 3
    processPayment · _populateReceipt · loadOfficeReports
 ================================================================ */
-import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
 (async () => {
   let app;
   for (let i = 0; i < 40; i++) {
@@ -4350,9 +4341,6 @@ import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, o
    FEE MANAGEMENT MODULE — Part 4
    Admin Fee Structure CRUD · loadAdminFeeTransactions
 ================================================================ */
-import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
 (async () => {
   let app;
   for (let i = 0; i < 40; i++) {
@@ -4493,9 +4481,6 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, quer
 /* ================================================================
    OFFICE STAFF — Fee Structure Logic (Step 2)
 ================================================================ */
-import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getFirestore, doc, setDoc, deleteDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
 (async () => {
   let app;
   for (let i = 0; i < 40; i++) {
@@ -4593,11 +4578,6 @@ import { getFirestore, doc, setDoc, deleteDoc, getDocs, collection } from "https
    OFFICE STAFF ACCOUNT MANAGEMENT
    Admin can create / list / delete Office Staff logins
 ================================================================ */
-import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDocs, deleteDoc, collection, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
-(async () => {
   let app;
   for (let i = 0; i < 40; i++) {
     if (getApps().length > 0) { app = getApp(); break; }
@@ -4707,9 +4687,6 @@ import { getFirestore, doc, setDoc, getDocs, deleteDoc, collection, query, where
    FEE MANAGEMENT MODULE — Part 5 (Final)
    Approve/Reject · Student Notifications · showDash hooks · loginAs
 ================================================================ */
-import { getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getFirestore, doc, getDoc, addDoc, collection, getDocs, query, where, orderBy, limit, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
 (async () => {
   let app;
   for (let i = 0; i < 40; i++) {
