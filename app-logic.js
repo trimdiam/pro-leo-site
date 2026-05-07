@@ -4846,18 +4846,8 @@
 // BLOCK 8 — ADMISSIONS LOGIC (OFFICE STAFF PORTAL)
 // ================================================================
 (async () => {
-  let db, currentAdmissionId = null, currentAdmissionData = null;
-
-  // Wait for Firebase app
-  const { getApps, getApp } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js');
-  for (let i = 0; i < 40; i++) {
-    if (getApps().length) break;
-    await new Promise(r => setTimeout(r, 150));
-  }
-  const app = getApp();
-  const { getFirestore, collection, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp }
-    = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js');
-  db = getFirestore(app);
+  let currentAdmissionId = null, currentAdmissionData = null;
+  // db and Firestore functions are available from module-level imports
 
   // ── Load admissions list ──────────────────────────────────────
   window.loadAdmissions = async function() {
@@ -5119,17 +5109,7 @@
 // BLOCK 9 — FEE LEDGER SUBMIT PAYMENT
 // ================================================================
 (async () => {
-  const { getApps, getApp } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js');
-  for (let i = 0; i < 40; i++) {
-    if (getApps().length) break;
-    await new Promise(r => setTimeout(r, 150));
-  }
-  const app = getApp();
-  const { getFirestore, collection, addDoc, doc, updateDoc, serverTimestamp }
-    = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js');
-  const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js');
-  const db   = getFirestore(app);
-  const auth = getAuth(app);
+  // db, auth, and Firestore functions are available from module-level imports
 
   window.ledgerSubmitPayment = async function() {
     const s  = window._feeSelectedStudent;
@@ -5209,14 +5189,7 @@
 // BLOCK 10 — HOMEPAGE DYNAMIC FETCH + DUES & REMINDERS
 // ================================================================
 (async () => {
-  const { getApps, getApp } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js');
-  for (let i = 0; i < 40; i++) {
-    if (getApps().length) break;
-    await new Promise(r => setTimeout(r, 150));
-  }
-  const app = getApp();
-  const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js');
-  const db = getFirestore(app);
+  // db, doc, getDoc are available from module-level imports
 
   const esc = v => (v == null ? '' : String(v).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])));
 
