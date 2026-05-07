@@ -34,26 +34,38 @@ service cloud.firestore {
     match /quotes/{docId}        { allow read: if true; allow write: if request.auth != null; }
 
     // ── Monthly attendance snapshots ──────────────────────────────
-    // Any authenticated user can read.
-    // Only admins can lock (set status = "locked").
-    // Anyone authenticated can create/update a draft snapshot,
-    // but nobody can overwrite or unlock a locked document.
+    // READ  : any authenticated user.
+    // CREATE: any authenticated user (teachers generating snapshots).
+    // UPDATE: three-tier rule —
+    //   • Draft docs  → any authenticated user can update (regenerate).
+    //   • Locked docs → only admin/super_admin can update (approve, correct).
+    //   • Unlocking   → only super_admin can set status back to 'draft'.
+    // DELETE: never allowed.
     match /attendance_monthly/{docId} {
-      allow read: if request.auth != null;
+      allow read:   if request.auth != null;
       allow create: if request.auth != null;
-      allow update: if request.auth != null
-        && !(resource.data.status == 'locked'
-             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role != 'admin');
+      allow update: if request.auth != null && isMonthlyUpdateAllowed(database);
       allow delete: if false;
     }
 
     // ── Daily attendance records ───────────────────────────────────
-    // Teachers can read always, but can only write when the month is
-    // not locked. Derive the monthly doc ID from the daily doc ID
-    // format: "{classNum}_{YYYY-MM-DD}" → monthly key "{classNum}_{YYYY_MM}".
+    // Teachers: read always; write only when the month is not locked.
+    // Admins  : can still write (corrections) when month is locked.
+    // Derive monthly doc ID from daily doc ID:
+    //   "{classNum}_{YYYY-MM-DD}" → "{classNum}_{YYYY_MM}"
     match /attendance_daily/{docId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && isDailyWriteAllowed(database, docId);
+      allow write: if request.auth != null
+        && (isDailyWriteAllowed(database, docId)
+            || isAdminOrSuper(database));
+    }
+
+    // ── Academic Sessions ─────────────────────────────────────────
+    // Public read so the session selector works without auth.
+    // Only authenticated users (admins) can write.
+    match /academicSessions/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
     // ── All other documents — require authentication ───────────────
@@ -72,5 +84,26 @@ service cloud.firestore {
     let monthKey = classNum + '_' + yyyy + '_' + mm;
     let monthDoc = get(/databases/$(database)/documents/attendance_monthly/$(monthKey));
     return !monthDoc.exists() || monthDoc.data().status != 'locked';
+  }
+
+  // Returns true if the authenticated user has role 'admin' or 'super_admin'.
+  function isAdminOrSuper(database) {
+    let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+    let role    = userDoc.data().role;
+    return role == 'admin' || role == 'super_admin';
+  }
+
+  // Monthly snapshot update rules:
+  //   • Draft  → any authenticated user.
+  //   • Locked → admin or super_admin only (can lock / correct).
+  //   • Unlock (locked → draft) → super_admin only.
+  function isMonthlyUpdateAllowed(database) {
+    let currentlyLocked = resource.data.status == 'locked';
+    let tryingToUnlock  = request.resource.data.status == 'draft';
+    let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+    let role    = userDoc.data().role;
+    if (!currentlyLocked) { return true; }
+    if (tryingToUnlock)   { return role == 'super_admin'; }
+    return role == 'admin' || role == 'super_admin';
   }
 }

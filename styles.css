@@ -967,4 +967,136 @@ tr:hover td { background: rgba(214,195,163,0.15); }
    DUES & REMINDERS
 ============================================================ */
 #dues-table-body td { vertical-align: middle; }
+
+/* ============================================================
+   PRINT — Attendance Report  (@media print)
+============================================================ */
+@media print {
+  /* Hide everything except the detail panel */
+  body.att-printing .sidebar,
+  body.att-printing nav,
+  body.att-printing .dash-shell > .dash-main > *:not(#a-monthly-att),
+  body.att-printing #a-monthly-att > *:not(#am-detail-wrap),
+  body.att-printing .att-export-btn,
+  body.att-printing #am-lock-btn,
+  body.att-printing button { display: none !important; }
+
+  body.att-printing #am-detail-wrap {
+    display: block !important;
+    box-shadow: none;
+    border: none;
+    padding: 0;
+  }
+
+  /* A4 page setup */
+  @page {
+    size: A4 portrait;
+    margin: 18mm 14mm 18mm 14mm;
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 8pt; }
+  }
+
+  body.att-printing {
+    background: #fff;
+    font-family: 'Nunito', sans-serif;
+    color: #000;
+  }
+
+  /* Print header branding */
+  body.att-printing #am-detail-wrap::before {
+    content: "St. Francis De Sales Sec. School — Monthly Attendance Report";
+    display: block;
+    font-size: 14pt;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 4pt;
+    border-bottom: 1.5pt solid #8B6F47;
+    padding-bottom: 6pt;
+  }
+
+  /* Table fits page */
+  body.att-printing table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+    page-break-inside: auto;
+  }
+  body.att-printing th,
+  body.att-printing td {
+    border: 0.5pt solid #ccc;
+    padding: 4pt 5pt;
+    text-align: left;
+  }
+  body.att-printing thead { display: table-header-group; }
+  body.att-printing tr    { page-break-inside: avoid; }
+
+  /* Analytics summary cards */
+  body.att-printing .am-summary-grid {
+    display: flex;
+    gap: 12pt;
+    margin-bottom: 10pt;
+  }
+  body.att-printing .am-summary-card {
+    flex: 1;
+    border: 0.5pt solid #8B6F47;
+    border-radius: 4pt;
+    padding: 6pt;
+    text-align: center;
+  }
+
+  /* Signature footer */
+  body.att-printing #am-detail-wrap::after {
+    content: "Admin Signature: ___________________          Principal Signature: ___________________";
+    display: block;
+    font-size: 9pt;
+    margin-top: 20pt;
+    border-top: 0.5pt solid #ccc;
+    padding-top: 8pt;
+  }
+}
+/* ============================================================
+   ATTENDANCE RANKING
+============================================================ */
+.att-ranking-card {
+  background: linear-gradient(135deg, rgba(214,195,163,0.25), rgba(139,111,71,0.08));
+  border: 1.5px solid rgba(139,111,71,0.2);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.att-ranking-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  margin-bottom: 14px;
+}
+.att-ranking-card table { width: 100%; border-collapse: collapse; }
+.att-ranking-card th {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-light);
+  padding: 8px 10px;
+  border-bottom: 1.5px solid rgba(139,111,71,0.2);
+  text-align: left;
+}
+.att-ranking-card td { padding: 9px 10px; font-size: 13px; border-bottom: 1px solid rgba(139,111,71,0.08); }
+.att-rank-num { font-weight: 800; color: var(--accent-dark); width: 48px; }
+
+/* Top 3 row highlights */
+.att-rank-top.att-rank-1 { border-left: 4px solid #D4AF37; background: rgba(212,175,55,0.08); }
+.att-rank-top.att-rank-2 { border-left: 4px solid #A8A9AD; background: rgba(168,169,173,0.08); }
+.att-rank-top.att-rank-3 { border-left: 4px solid #CD7F32; background: rgba(205,127,50,0.08); }
+
+/* Badges */
+.att-rank-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.att-rank-badge.perfect  { background: #fef9c3; color: #854d0e; border: 1px solid #D4AF37; }
+.att-rank-badge.excellent{ background: #f1f5f9; color: #334155; border: 1px solid #A8A9AD; }
+.att-rank-badge.warning  { background: #fff1f2; color: #be123c; border: 1px solid #fda4af; }
+
 #dues-summary-chips { min-height: 32px; }

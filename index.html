@@ -8,6 +8,10 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="notification-center.css">
+  <!-- PDF / Excel export libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     /* ============================================================
        MOBILE OPTIMIZATION & GALLERY ENHANCEMENTS
@@ -2833,6 +2837,12 @@
                 <label>Year</label>
                 <input type="number" id="am-year-inp" value="2026" min="2020" max="2099" style="width:100%;padding:8px 10px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px;outline:none">
               </div>
+              <div class="form-group" style="margin:0;flex:1;min-width:130px">
+                <label>Academic Session</label>
+                <select id="am-session-sel" style="width:100%">
+                  <option value="">— Select Session —</option>
+                </select>
+              </div>
               <button class="btn btn-primary" onclick="generateMonthlySnapshot()" style="white-space:nowrap"><i class="fas fa-cogs"></i> Generate Snapshot</button>
               <button class="btn btn-outline btn-sm" onclick="loadAdminMonthlyAtt()" style="white-space:nowrap"><i class="fas fa-sync-alt"></i> Refresh List</button>
             </div>
@@ -2852,10 +2862,14 @@
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                 <span id="am-detail-status-badge"></span>
                 <button id="am-lock-btn" class="btn btn-success btn-sm" onclick="lockMonthlyRecord()" style="display:none"><i class="fas fa-lock"></i> Approve &amp; Lock Records</button>
+                <button class="btn btn-sm btn-outline att-export-btn" onclick="pdfExportAttendance()"><i class="fas fa-file-pdf"></i> PDF</button>
+                <button class="btn btn-sm btn-outline att-export-btn" onclick="excelExportAttendance()"><i class="fas fa-file-excel"></i> Excel</button>
+                <button class="btn btn-sm btn-outline att-export-btn" onclick="printAttendance()"><i class="fas fa-print"></i> Print</button>
                 <button class="btn btn-sm btn-outline" onclick="document.getElementById('am-detail-wrap').classList.remove('open')"><i class="fas fa-times"></i> Close</button>
               </div>
             </div>
             <div id="am-summary-grid" class="am-summary-grid"></div>
+            <div id="am-ranking-wrap" style="display:none;margin-bottom:20px"></div>
             <div class="table-wrap">
               <table><thead><tr><th>Roll</th><th>Name</th><th>Gender</th><th>Present</th><th>Late</th><th>Absent</th><th>Working Days</th><th>%</th></tr></thead>
               <tbody id="am-detail-tbody"><tr><td colspan="8" style="text-align:center;padding:14px;color:var(--text-light)">Loading...</td></tr></tbody></table>
@@ -5058,7 +5072,7 @@
     if (sectionId === 'a-leave')    { if(window.loadLeaveQuota) loadLeaveQuota(); if(window.loadAdminLeave) loadAdminLeave(); }
     if (sectionId === 'a-notices')     { if(window.loadAdminNotices) loadAdminNotices(); }
     if (sectionId === 'a-fees')        { if(window.loadAdminFees) loadAdminFees(); }
-    if (sectionId === 'a-monthly-att') { if(window.loadAdminMonthlyAtt) loadAdminMonthlyAtt(); }
+    if (sectionId === 'a-monthly-att') { if(window.loadAdminMonthlyAtt) loadAdminMonthlyAtt(); if(window.loadAcademicSessions) loadAcademicSessions(); }
   };
 
   // ================================================================
@@ -6400,10 +6414,33 @@
     return { boys_summary: mkSummary('M'), girls_summary: mkSummary('F'), students: studentsOut, working_days: workingDays };
   }
 
+  window.loadAcademicSessions = async function() {
+    const sel = document.getElementById('am-session-sel');
+    if (!sel) return;
+    try {
+      const snap = await getDocs(collection(db, 'academicSessions'));
+      const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a,b) => (b.startDate||'').localeCompare(a.startDate||''));
+      const active = sessions.find(s => s.active);
+      sel.innerHTML = '<option value="">— Select Session —</option>' +
+        sessions.map(s => {
+          const label = s.label || `${s.startDate?.slice(0,4) || ''}–${s.endDate?.slice(0,4) || ''}`;
+          return `<option value="${label}"${s.active?' selected':''}>${label}${s.active?' (Active)':''}</option>`;
+        }).join('');
+    } catch(e) {
+      // Fallback: auto-generate current and next session labels
+      const yr = new Date().getFullYear();
+      const opts = [`${yr-1}–${yr}`,`${yr}–${yr+1}`,`${yr+1}–${yr+2}`];
+      sel.innerHTML = '<option value="">— Select Session —</option>' +
+        opts.map((o,i) => `<option value="${o}"${i===1?' selected':''}>${o}</option>`).join('');
+    }
+  };
+
   window.generateMonthlySnapshot = async function() {
     const classNum = document.getElementById('am-class-sel')?.value;
     const mm = document.getElementById('am-month-sel')?.value;
     const yyyy = document.getElementById('am-year-inp')?.value;
+    const session = document.getElementById('am-session-sel')?.value || '';
     if (!classNum||!mm||!yyyy) { showToast('⚠️ Please fill in class, month, and year.'); return; }
     const monthYear = `${yyyy}_${mm}`;
     const docId = `${classNum}_${monthYear}`;
@@ -6417,6 +6454,7 @@
       const result = await runMonthlyAggregation(classNum, yyyy, mm);
       await setDoc(doc(db,'attendance_monthly',docId), {
         month: monthYear, class_id: String(classNum), status: 'draft',
+        session: session,
         generated_at: serverTimestamp(), working_days: result.working_days,
         boys_summary: result.boys_summary, girls_summary: result.girls_summary, students: result.students
       });
@@ -6443,7 +6481,8 @@
       window._amCurrentDoc = { classNum, monthYear, status: r.status };
       const [yr,mo] = monthYear.split('_');
       const mLabel = new Date(yr, parseInt(mo)-1, 1).toLocaleDateString('en',{month:'long',year:'numeric'});
-      title.innerHTML = `<i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Class ${classNum} — ${mLabel}`;
+      const sessionTag = r.session ? `<span style="font-size:11px;font-weight:600;color:var(--text-light);margin-left:10px;background:rgba(139,111,71,0.1);padding:2px 8px;border-radius:10px">Academic Session: ${r.session}</span>` : '';
+      title.innerHTML = `<i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Class ${classNum} — ${mLabel}${sessionTag}`;
       statusBadge.innerHTML = r.status==='locked'
         ? '<span class="am-badge-locked"><i class="fas fa-lock" style="margin-right:4px"></i>Locked</span>'
         : '<span class="am-badge-draft"><i class="fas fa-clock" style="margin-right:4px"></i>Draft</span>';
@@ -6466,6 +6505,7 @@
           <div class="am-sc-sub">P:${totalP} · L:${totalL} · A:${totalA}</div>
         </div>`;
       const studs = Object.entries(r.students||{}).sort((a,b)=>(a[1].rollNo||0)-(b[1].rollNo||0));
+      window._amSnapshotData = { r, studs, mLabel, classNum, monthYear, overallPct, bs, gs };
       if (!studs.length) { tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:14px;color:var(--text-light)">No student data.</td></tr>'; return; }
       tbody.innerHTML = studs.map(([,s]) => {
         const pct = s.percentage??0;
@@ -6482,6 +6522,7 @@
           <td><span class="badge ${bc}">${pct}%</span></td>
         </tr>`;
       }).join('');
+      renderAttendanceRanking(studs);
     } catch(e) { tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
   };
 
@@ -6498,6 +6539,198 @@
       openMonthlyDetail(cur.classNum, cur.monthYear);
       loadAdminMonthlyAtt();
     } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  // ================================================================
+  //  ATTENDANCE — PDF Export
+  // ================================================================
+  window.pdfExportAttendance = function() {
+    const d = window._amSnapshotData;
+    if (!d) { showToast('⚠️ Open a monthly record first.'); return; }
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pw = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 14;
+
+    // Header block
+    pdf.setFontSize(14); pdf.setFont('helvetica','bold');
+    pdf.text('St. Francis De Sales Sec. School', pw/2, 18, {align:'center'});
+    pdf.setFontSize(9); pdf.setFont('helvetica','normal');
+    pdf.text('Laitkor, Shillong, Meghalaya', pw/2, 23, {align:'center'});
+    pdf.setFontSize(12); pdf.setFont('helvetica','bold');
+    pdf.text('Monthly Attendance Report', pw/2, 31, {align:'center'});
+    pdf.setFontSize(9); pdf.setFont('helvetica','normal');
+    const [yr,mo] = d.monthYear.split('_');
+    pdf.text(`Class: ${d.classNum}   |   Month: ${d.mLabel}   |   Generated: ${new Date().toLocaleString()}`, pw/2, 37, {align:'center'});
+    pdf.setDrawColor(139,111,71); pdf.setLineWidth(0.5);
+    pdf.line(margin, 40, pw-margin, 40);
+
+    // Analytics summary row
+    pdf.setFontSize(9); pdf.setFont('helvetica','bold');
+    pdf.text(`Boys: ${d.bs.percentage??0}%`, margin, 47);
+    pdf.text(`Girls: ${d.gs.percentage??0}%`, pw/2-10, 47);
+    pdf.text(`Overall: ${d.overallPct}%`, pw-margin-22, 47);
+    pdf.line(margin, 50, pw-margin, 50);
+
+    // Student table
+    const rows = d.studs.map(([,s]) => [
+      s.rollNo||'—', s.name, s.gender==='M'?'M':s.gender==='F'?'F':'—',
+      s.present, s.late, s.absent, d.r.working_days||'—',
+      (s.percentage??0)+'%'
+    ]);
+    pdf.autoTable({
+      startY: 53,
+      head: [['Roll','Name','Gen','Present','Late','Absent','Work Days','%']],
+      body: rows,
+      margin: { left: margin, right: margin },
+      headStyles: { fillColor:[139,111,71], textColor:255, fontStyle:'bold', fontSize:8 },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 1:{cellWidth:42} },
+      didParseCell(data) {
+        if (data.section==='body' && data.column.index===7) {
+          const pct = parseFloat(data.cell.raw);
+          if (pct>=95) data.cell.styles.fillColor=[209,236,214];
+          else if (pct>=75) data.cell.styles.fillColor=[255,243,205];
+          else data.cell.styles.fillColor=[248,215,218];
+        }
+      },
+      didDrawPage(data) {
+        const pg = pdf.internal.getCurrentPageInfo().pageNumber;
+        pdf.setFontSize(8); pdf.setFont('helvetica','normal');
+        pdf.text('Generated by School Management System', margin, pageH-8);
+        pdf.text(`Page ${pg}`, pw-margin, pageH-8, {align:'right'});
+      }
+    });
+
+    // Signature lines on last page
+    const finalY = pdf.lastAutoTable.finalY + 14;
+    pdf.setFontSize(9);
+    pdf.text('Admin Signature: ___________________', margin, finalY);
+    pdf.text('Principal Signature: ___________________', pw-margin-52, finalY);
+
+    const monLabel = new Date(+yr, parseInt(mo)-1, 1).toLocaleString('en',{month:'long'});
+    pdf.save(`Class_${d.classNum}_${monLabel}_${yr}_Attendance_Report.pdf`);
+  };
+
+  // ================================================================
+  //  ATTENDANCE — Excel Export
+  // ================================================================
+  window.excelExportAttendance = function() {
+    const d = window._amSnapshotData;
+    if (!d) { showToast('⚠️ Open a monthly record first.'); return; }
+    const [yr, mo] = d.monthYear.split('_');
+    const monLabel = new Date(+yr, parseInt(mo)-1, 1).toLocaleString('en',{month:'long'});
+    const wb = window.XLSX.utils.book_new();
+    const rows = [];
+
+    // Info header rows
+    rows.push(['St. Francis De Sales Sec. School']);
+    rows.push(['Laitkor, Shillong, Meghalaya']);
+    rows.push([`Monthly Attendance Report — Class ${d.classNum}`]);
+    rows.push([`Month: ${d.mLabel}   |   Generated: ${new Date().toLocaleString()}`]);
+    rows.push([]);
+    rows.push(['Analytics Summary']);
+    rows.push(['Boys %', `${d.bs.percentage??0}%`, 'Girls %', `${d.gs.percentage??0}%`, 'Overall %', `${d.overallPct}%`]);
+    rows.push([]);
+
+    // Column headers
+    rows.push(['Roll No','Name','Gender','Present','Late','Absent','Working Days','Attendance %']);
+
+    // Data rows
+    d.studs.forEach(([,s]) => {
+      rows.push([
+        s.rollNo||'',
+        s.name,
+        s.gender==='M'?'Male':s.gender==='F'?'Female':'—',
+        s.present,
+        s.late,
+        s.absent,
+        d.r.working_days||'',
+        (s.percentage??0)/100
+      ]);
+    });
+
+    const ws = window.XLSX.utils.aoa_to_sheet(rows);
+
+    // Bold header rows (rows 0–2 are school info, row 8 is column header)
+    const headerRowIdx = 8;
+    ['A','B','C','D','E','F','G','H'].forEach(col => {
+      const cell = ws[`${col}${headerRowIdx+1}`];
+      if (cell) cell.s = { font:{ bold:true }, fill:{ fgColor:{ rgb:'8B6F47' } } };
+    });
+
+    // Format Attendance % column as percentage
+    const dataStart = headerRowIdx + 2;
+    d.studs.forEach((_, i) => {
+      const cell = ws[`H${dataStart + i}`];
+      if (cell) { cell.t='n'; cell.z='0.0%'; }
+    });
+
+    // Auto column widths
+    ws['!cols'] = [
+      {wch:8},{wch:28},{wch:10},{wch:10},{wch:8},{wch:10},{wch:14},{wch:14}
+    ];
+    // Freeze top header row
+    ws['!freeze'] = { xSplit:0, ySplit:headerRowIdx+1 };
+
+    window.XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+    window.XLSX.writeFile(wb, `Class_${d.classNum}_${monLabel}_${yr}_Attendance.xlsx`);
+  };
+
+  // ================================================================
+  //  ATTENDANCE — Print
+  // ================================================================
+  window.printAttendance = function() {
+    const d = window._amSnapshotData;
+    if (!d) { showToast('⚠️ Open a monthly record first.'); return; }
+    document.body.classList.add('att-printing');
+    window.print();
+    document.body.classList.remove('att-printing');
+  };
+
+  // ================================================================
+  //  ATTENDANCE — Ranking
+  // ================================================================
+  window.renderAttendanceRanking = function(studs) {
+    const wrap = document.getElementById('am-ranking-wrap');
+    if (!wrap) return;
+    if (!studs || !studs.length) { wrap.style.display='none'; return; }
+
+    const sorted = [...studs]
+      .map(([,s]) => s)
+      .sort((a,b) => (b.percentage??0) - (a.percentage??0));
+
+    const badge = (pct, rank) => {
+      if (pct === 100) return '<span class="att-rank-badge perfect">🏆 Perfect Attendance</span>';
+      if (pct >= 95)  return '<span class="att-rank-badge excellent">🥈 Excellent Attendance</span>';
+      if (pct < 75)   return '<span class="att-rank-badge warning">⚠ Attendance Warning</span>';
+      return '';
+    };
+
+    const rows = sorted.map((s, i) => {
+      const rank = i + 1;
+      const pct  = s.percentage ?? 0;
+      const top  = rank <= 3 ? `att-rank-top att-rank-${rank}` : '';
+      return `<tr class="${top}">
+        <td class="att-rank-num">${rank}</td>
+        <td><strong>${s.name}</strong></td>
+        <td>${pct}%</td>
+        <td>${badge(pct, rank)}</td>
+      </tr>`;
+    }).join('');
+
+    wrap.style.display = 'block';
+    wrap.innerHTML = `
+      <div class="att-ranking-card">
+        <div class="att-ranking-title"><i class="fas fa-trophy" style="color:#D4AF37;margin-right:8px"></i>Top Attendance Students</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Rank</th><th>Name</th><th>Attendance %</th><th>Badge</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
   };
 
   // ================================================================
