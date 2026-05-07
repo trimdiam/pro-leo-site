@@ -1,12 +1,11 @@
   import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, createUserWithEmailAndPassword, updatePassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit, serverTimestamp, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-  import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
 
 // ================================================================
 // BLOCK 1 — MAIN APP LOGIC
 // ================================================================
-  // Storage import kept for compatibility; Cloudinary is used for actual uploads
+  // Cloudinary handles uploads — Firebase Storage is not used
 
   const firebaseConfig = {
     apiKey: "AIzaSyBXq3fe0uY8UB7-uLGzGIIvZOQf8YjNqaM",
@@ -17,16 +16,15 @@
     appId: "1:180123372524:web:caed0f2a44d35f19d90ec9"
   };
 
-  const app  = initializeApp(firebaseConfig);
+  const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db   = getFirestore(app);
-  const storage = getStorage(app);
 
+  window._firebaseApp     = app;
   window._firebaseAuth    = auth;
   window.firebaseConfig   = firebaseConfig;
   window.initializeApp    = initializeApp;
   window._firestoreDb     = db;
-  window._firebaseStorage = storage;
 
   // Hide the "loading Firebase" notice now that the module loaded successfully
   const moduleErrEl = document.getElementById('login-module-error');
@@ -593,18 +591,10 @@
     } catch(e) { showToast('❌ Could not send: ' + e.message); }
   };
 
-  // ── Helper: upload a single file to Firebase Storage and return its download URL ──
+  // ── Helper: admission doc upload (disabled — Spark plan has no Storage) ──
   async function _uploadAdmissionDoc(file, folder, label) {
     if (!file) return null;
-    const MAX_BYTES = 5 * 1024 * 1024;
-    if (file.size > MAX_BYTES) throw new Error(`${label} exceeds 5 MB limit.`);
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = `admissions/${folder}/${Date.now()}_${label}_${safeName}`;
-    const r = storageRef(storage, path);
-    const task = uploadBytesResumable(r, file);
-    await new Promise((resolve, reject) => task.on('state_changed', null, reject, resolve));
-    const url = await getDownloadURL(task.snapshot.ref);
-    return { name: file.name, label, url, path, size: file.size, type: file.type };
+    throw new Error('File uploads not supported. Submit hard copies of documents at the school office.');
   }
 
   // Admission form submission to Firestore (with file uploads)

@@ -3215,7 +3215,19 @@
 
 
 <script src="script.js"></script>
-<script type="module" src="app-logic.js"></script>
+<script type="module" src="app-logic.js?v=4"></script>
+<script>
+  // If the module fails to load (network/CDN issue), surface a clearer message
+  // instead of leaving the user with a spinner forever.
+  setTimeout(() => {
+    if (!window._firebaseAuth) {
+      const el = document.getElementById('login-module-error');
+      if (el) {
+        el.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-top:2px;flex-shrink:0;color:#92400e"></i><span>Could not connect to Firebase. Check your internet connection and refresh the page.</span>';
+      }
+    }
+  }, 8000);
+</script>
 <script src="notification-center.js"></script>
 
 <!-- ================================================================
