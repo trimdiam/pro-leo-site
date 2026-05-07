@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(gh pr create --title 'Fix Firebase version mismatch breaking Google Auth login' --body ' *)"
+      "Bash(gh pr create --title 'Fix Firebase version mismatch breaking Google Auth login' --body ' *)",
+      "Bash(Get-ChildItem -Path . -Recurse -Include \"styles.css\", \"firestore.rules\")",
+      "Bash(Select-Object FullName)",
+      "Bash(powershell -Command \"Get-ChildItem -Path . -Recurse -Include 'styles.css', 'firestore.rules' | Select-Object FullName\")"
     ]
   }
 }
