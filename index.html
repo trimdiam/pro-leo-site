@@ -1396,6 +1396,7 @@
         <button onclick="showDash('a','a-holidays',this)"><i class="fas fa-calendar-times"></i> Holidays</button>
         <button onclick="showDash('a','a-leave',this);loadLeaveQuota();loadAdminLeave()"><i class="fas fa-calendar-check"></i> Leave Applications</button>
         <button onclick="showDash('a','a-monthly-att',this)"><i class="fas fa-chart-bar"></i> Monthly Attendance</button>
+        <button onclick="showDash('a','a-student-records',this)"><i class="fas fa-database"></i> Student Records</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
     </nav>
@@ -1568,6 +1569,63 @@
               <button class="btn btn-danger" id="confirm-delete-btn" onclick="confirmDeleteStudent()"><i class="fas fa-trash-alt"></i> Yes, Delete</button>
             </div>
           </div>
+        </div>
+
+        <!-- ── STUDENT RECORDS ── -->
+        <div id="a-student-records" class="dash-section">
+          <div class="section-header">
+            <h2><i class="fas fa-database"></i> Student Records</h2>
+            <p class="section-subtitle">Live view of all student data from Firestore</p>
+          </div>
+          <div class="sr-summary-cards">
+            <div class="sr-card"><span id="sr-total">—</span><label>Total Students</label></div>
+            <div class="sr-card boys"><span id="sr-boys">—</span><label>Boys</label></div>
+            <div class="sr-card girls"><span id="sr-girls">—</span><label>Girls</label></div>
+            <div class="sr-card classes"><span id="sr-classes">—</span><label>Classes</label></div>
+          </div>
+          <div class="sr-controls">
+            <input type="text" id="sr-search" placeholder="🔍 Search by name or ID..." oninput="window.srFilter()">
+            <select id="sr-filter-class" onchange="window.srFilter()">
+              <option value="">All Classes</option>
+            </select>
+            <select id="sr-filter-gender" onchange="window.srFilter()">
+              <option value="">All Genders</option>
+              <option value="M">Boys</option>
+              <option value="F">Girls</option>
+            </select>
+            <div class="sr-export-btns">
+              <button onclick="window.srExport('xlsx')" title="Export Excel"><i class="fas fa-file-excel"></i> Excel</button>
+              <button onclick="window.srExport('csv')"  title="Export CSV"><i class="fas fa-file-csv"></i> CSV</button>
+              <button onclick="window.srExport('pdf')"  title="Export PDF"><i class="fas fa-file-pdf"></i> PDF</button>
+              <button onclick="window.srExport('json')" title="Export JSON"><i class="fas fa-code"></i> JSON</button>
+            </div>
+            <button class="sr-sync-btn" onclick="window.loadStudentRecords(true)" id="sr-sync-btn">
+              <i class="fas fa-sync-alt"></i> Sync Now
+            </button>
+          </div>
+          <div class="sr-meta">
+            <span id="sr-count-label">Loading...</span>
+            <span id="sr-last-synced"></span>
+          </div>
+          <div class="sr-table-wrap">
+            <table class="sr-table" id="sr-table">
+              <thead>
+                <tr>
+                  <th onclick="window.srSort('studentId')">Student ID <i class="fas fa-sort"></i></th>
+                  <th onclick="window.srSort('name')">Full Name <i class="fas fa-sort"></i></th>
+                  <th onclick="window.srSort('class')">Class <i class="fas fa-sort"></i></th>
+                  <th>Section</th>
+                  <th onclick="window.srSort('rollNo')">Roll No <i class="fas fa-sort"></i></th>
+                  <th>Gender</th>
+                  <th>DOB</th>
+                  <th>Age</th>
+                </tr>
+              </thead>
+              <tbody id="sr-tbody"></tbody>
+            </table>
+          </div>
+          <div id="sr-cards" class="sr-cards-wrap"></div>
+          <div class="sr-pagination" id="sr-pagination"></div>
         </div>
 
         <!-- ── TEACHERS ── -->
@@ -3215,7 +3273,7 @@
 
 
 <script src="script.js"></script>
-<script type="module" src="app-logic.js?v=6"></script>
+<script type="module" src="app-logic.js?v=7"></script>
 <script>
   (function () {
     var el = document.getElementById('login-module-error');
