@@ -5409,4 +5409,267 @@ window.markReminded = async function(docId) {
 };
 // ============================================================
 // END DUES & REMINDERS
+
+// ============================================================
+// STUDENT RECORDS MODULE
+// ============================================================
+(async () => {
+
+  let _srAllRecords   = [];
+  let _srFiltered     = [];
+  let _srPage         = 1;
+  const _srPageSize   = 25;
+  let _srSortKey      = 'class';
+  let _srSortDir      = 1;
+
+  const CLASS_ORDER = ['PLG','SKG','LKG','1','2','3','4','5','6','7','8','9','10'];
+  const CLASS_LABEL = { PLG: 'Play Group', SKG: 'SKG', LKG: 'LKG' };
+  const getLabel    = c => CLASS_LABEL[c] || (c ? 'Class ' + c : '—');
+
+  function calcAge(dob) {
+    if (!dob) return '—';
+    const d = new Date(dob);
+    if (isNaN(d)) return '—';
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    if (today < new Date(today.getFullYear(), d.getMonth(), d.getDate())) age--;
+    return age;
+  }
+
+  window.loadStudentRecords = async function(showSyncMsg = false) {
+    const db = window._firestoreDb;
+    if (!db) return;
+
+    const tbody = document.getElementById('sr-tbody');
+    const cards = document.getElementById('sr-cards');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading records…</td></tr>`;
+    if (cards) cards.innerHTML = `<div style="text-align:center;padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading…</div>`;
+
+    const syncBtn = document.getElementById('sr-sync-btn');
+    if (syncBtn) { syncBtn.disabled = true; syncBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing…'; }
+
+    try {
+      const { getDocs, collection, orderBy, query } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+      const snap = await getDocs(query(collection(db, 'students'), orderBy('class')));
+
+      _srAllRecords = snap.docs.map(d => {
+        const s = d.data();
+        return {
+          _docId:    d.id,
+          studentId: s.studentId || '—',
+          name:      s.name || s.fullName || '—',
+          class:     s.class || '?',
+          section:   s.section || '—',
+          rollNo:    s.rollNo || '—',
+          gender:    s.gender || '—',
+          dob:       s.dob || '',
+          age:       calcAge(s.dob),
+        };
+      });
+
+      const classSelect = document.getElementById('sr-filter-class');
+      if (classSelect) {
+        const presentClasses = [...new Set(_srAllRecords.map(r => r.class))];
+        const sorted = CLASS_ORDER.filter(c => presentClasses.includes(c));
+        classSelect.innerHTML = `<option value="">All Classes</option>` +
+          sorted.map(c => `<option value="${c}">${getLabel(c)}</option>`).join('');
+      }
+
+      const total    = _srAllRecords.length;
+      const boys     = _srAllRecords.filter(r => r.gender === 'M').length;
+      const girls    = _srAllRecords.filter(r => r.gender === 'F').length;
+      const clsCount = new Set(_srAllRecords.map(r => r.class)).size;
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set('sr-total',   total);
+      set('sr-boys',    boys);
+      set('sr-girls',   girls);
+      set('sr-classes', clsCount);
+
+      const now = new Date().toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      const syncEl = document.getElementById('sr-last-synced');
+      if (syncEl) syncEl.textContent = `Last synced: ${now}`;
+
+      if (showSyncMsg) window.showToast?.('✅ Student records synced!');
+
+      _srPage = 1;
+      window.srFilter();
+
+    } catch (err) {
+      console.error('Student Records load error:', err);
+      if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger);padding:24px">❌ Failed to load: ${err.message}</td></tr>`;
+      if (cards) cards.innerHTML = `<div style="color:var(--danger);text-align:center;padding:24px">❌ ${err.message}</div>`;
+    } finally {
+      if (syncBtn) { syncBtn.disabled = false; syncBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Sync Now'; }
+    }
+  };
+
+  window.srFilter = function() {
+    const q      = (document.getElementById('sr-search')?.value || '').toLowerCase();
+    const cls    = document.getElementById('sr-filter-class')?.value || '';
+    const gender = document.getElementById('sr-filter-gender')?.value || '';
+
+    _srFiltered = _srAllRecords.filter(r => {
+      const matchQ = !q || r.name.toLowerCase().includes(q) || r.studentId.toLowerCase().includes(q);
+      const matchC = !cls    || r.class  === cls;
+      const matchG = !gender || r.gender === gender;
+      return matchQ && matchC && matchG;
+    });
+
+    _srFiltered.sort((a, b) => {
+      let av = a[_srSortKey] || '', bv = b[_srSortKey] || '';
+      if (_srSortKey === 'class') {
+        av = CLASS_ORDER.indexOf(av); bv = CLASS_ORDER.indexOf(bv);
+      } else if (_srSortKey === 'rollNo') {
+        av = parseInt(av) || 0; bv = parseInt(bv) || 0;
+      } else {
+        av = av.toString().toLowerCase(); bv = bv.toString().toLowerCase();
+      }
+      return av < bv ? -_srSortDir : av > bv ? _srSortDir : 0;
+    });
+
+    _srPage = 1;
+    srRender();
+  };
+
+  window.srSort = function(key) {
+    _srSortDir = _srSortKey === key ? -_srSortDir : 1;
+    _srSortKey = key;
+    window.srFilter();
+  };
+
+  function srRender() {
+    const total    = _srFiltered.length;
+    const pages    = Math.max(1, Math.ceil(total / _srPageSize));
+    if (_srPage > pages) _srPage = pages;
+    const start    = (_srPage - 1) * _srPageSize;
+    const pageData = _srFiltered.slice(start, start + _srPageSize);
+
+    const countEl = document.getElementById('sr-count-label');
+    if (countEl) countEl.textContent = `Showing ${pageData.length} of ${total} student${total !== 1 ? 's' : ''}`;
+
+    const tbody = document.getElementById('sr-tbody');
+    if (tbody) {
+      if (pageData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-light)"><i class="fas fa-inbox" style="font-size:28px;display:block;margin-bottom:8px"></i>No students found.</td></tr>`;
+      } else {
+        tbody.innerHTML = pageData.map(r => `
+          <tr>
+            <td><code style="font-size:12px">${r.studentId}</code></td>
+            <td><strong>${r.name}</strong></td>
+            <td>${getLabel(r.class)}</td>
+            <td>${r.section}</td>
+            <td>${r.rollNo}</td>
+            <td><span class="badge ${r.gender === 'M' ? 'badge-info' : 'badge-success'}">${r.gender === 'M' ? 'Boy' : r.gender === 'F' ? 'Girl' : '—'}</span></td>
+            <td style="font-size:12px">${r.dob || '—'}</td>
+            <td>${r.age}</td>
+          </tr>`).join('');
+      }
+    }
+
+    const cards = document.getElementById('sr-cards');
+    if (cards) {
+      if (pageData.length === 0) {
+        cards.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-light)">No students found.</div>`;
+      } else {
+        cards.innerHTML = pageData.map(r => `
+          <div class="sr-student-card">
+            <div class="sr-card-top">
+              <strong>${r.name}</strong>
+              <span class="badge ${r.gender === 'M' ? 'badge-info' : 'badge-success'}">${r.gender === 'M' ? 'Boy' : 'Girl'}</span>
+            </div>
+            <div class="sr-card-row"><label>ID</label><span><code>${r.studentId}</code></span></div>
+            <div class="sr-card-row"><label>Class</label><span>${getLabel(r.class)} — ${r.section}</span></div>
+            <div class="sr-card-row"><label>Roll No</label><span>${r.rollNo}</span></div>
+            <div class="sr-card-row"><label>DOB</label><span>${r.dob || '—'}</span></div>
+            <div class="sr-card-row"><label>Age</label><span>${r.age}</span></div>
+          </div>`).join('');
+      }
+    }
+
+    const pg = document.getElementById('sr-pagination');
+    if (pg) {
+      if (pages <= 1) { pg.innerHTML = ''; return; }
+      let btns = '';
+      btns += `<button ${_srPage===1?'disabled':''} onclick="window._srGoPage(${_srPage-1})"><i class="fas fa-chevron-left"></i></button>`;
+      for (let i = 1; i <= pages; i++) {
+        if (i === 1 || i === pages || Math.abs(i - _srPage) <= 1) {
+          btns += `<button class="${i===_srPage?'active':''}" onclick="window._srGoPage(${i})">${i}</button>`;
+        } else if (Math.abs(i - _srPage) === 2) {
+          btns += `<span>…</span>`;
+        }
+      }
+      btns += `<button ${_srPage===pages?'disabled':''} onclick="window._srGoPage(${_srPage+1})"><i class="fas fa-chevron-right"></i></button>`;
+      pg.innerHTML = btns;
+    }
+  }
+
+  window._srGoPage = function(p) { _srPage = p; srRender(); };
+
+  window.srExport = function(format) {
+    const data = _srFiltered.length ? _srFiltered : _srAllRecords;
+    if (!data.length) { window.showToast?.('⚠️ No data to export.'); return; }
+
+    const rows = data.map(r => ({
+      'Student ID':  r.studentId,
+      'Full Name':   r.name,
+      'Class':       getLabel(r.class),
+      'Section':     r.section,
+      'Roll No':     r.rollNo,
+      'Gender':      r.gender === 'M' ? 'Male' : r.gender === 'F' ? 'Female' : r.gender,
+      'DOB':         r.dob || '—',
+      'Age':         r.age,
+    }));
+
+    if (format === 'csv') {
+      const headers = Object.keys(rows[0]);
+      const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${r[h]}"`).join(','))].join('\n');
+      srDownload('student-records.csv', 'text/csv', csv);
+    } else if (format === 'json') {
+      srDownload('student-records.json', 'application/json', JSON.stringify(data, null, 2));
+    } else if (format === 'xlsx') {
+      if (!window.XLSX) { window.showToast?.('❌ Excel library not loaded.'); return; }
+      const ws = window.XLSX.utils.json_to_sheet(rows);
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Students');
+      window.XLSX.writeFile(wb, 'student-records.xlsx');
+    } else if (format === 'pdf') {
+      if (!window.jspdf?.jsPDF) { window.showToast?.('❌ PDF library not loaded.'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      doc.setFontSize(14);
+      doc.text('St. Francis De Sales Sec. School — Student Records', 14, 15);
+      doc.setFontSize(9);
+      doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}  |  Total: ${data.length}`, 14, 22);
+      doc.autoTable({
+        startY: 28,
+        head: [Object.keys(rows[0])],
+        body: rows.map(r => Object.values(r)),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [44, 62, 80] },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+      });
+      doc.save('student-records.pdf');
+    }
+  };
+
+  function srDownload(filename, type, content) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type }));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  const _prevShowDash = window.showDash;
+  window.showDash = function(prefix, sectionId, btn) {
+    if (_prevShowDash) _prevShowDash(prefix, sectionId, btn);
+    if (sectionId === 'a-student-records' && !_srAllRecords.length) {
+      window.loadStudentRecords();
+    }
+  };
+
+})();
+// ============================================================
+// END STUDENT RECORDS MODULE
+// ============================================================
 // ============================================================
