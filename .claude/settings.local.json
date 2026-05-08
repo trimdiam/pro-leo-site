@@ -4,7 +4,11 @@
       "Bash(gh pr create --title 'Fix Firebase version mismatch breaking Google Auth login' --body ' *)",
       "Bash(Get-ChildItem -Path . -Recurse -Include \"styles.css\", \"firestore.rules\")",
       "Bash(Select-Object FullName)",
-      "Bash(powershell -Command \"Get-ChildItem -Path . -Recurse -Include 'styles.css', 'firestore.rules' | Select-Object FullName\")"
+      "Bash(powershell -Command \"Get-ChildItem -Path . -Recurse -Include 'styles.css', 'firestore.rules' | Select-Object FullName\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(node --input-type=module)"
     ]
   }
 }
