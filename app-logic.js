@@ -4567,6 +4567,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
    OFFICE STAFF ACCOUNT MANAGEMENT
    Admin can create / list / delete Office Staff logins
 ================================================================ */
+(async () => {
   let app;
   for (let i = 0; i < 40; i++) {
     if (getApps().length > 0) { app = getApp(); break; }
