@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fix Hero Content — Admin Tool</title>
+  <style>
+    body { font-family: sans-serif; max-width: 480px; margin: 60px auto; padding: 24px; background: #f5f5f5; }
+    h2 { margin-bottom: 4px; }
+    p  { color: #555; font-size: 14px; margin-bottom: 24px; }
+    input { display: block; width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; background: #2c3e50; color: #fff; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status { margin-top: 16px; padding: 12px; border-radius: 6px; font-size: 14px; display: none; }
+    .ok  { background: #d4edda; color: #155724; }
+    .err { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <h2>Fix Hero Content</h2>
+  <p>Sign in as admin to clear the wrong homepage headline from Firestore. The page will revert to the correct school name.</p>
+
+  <input type="email"    id="email"    placeholder="Admin email">
+  <input type="password" id="password" placeholder="Password">
+  <button id="fix-btn" onclick="runFix()">Sign In & Fix</button>
+  <div id="status"></div>
+
+  <script type="module">
+    import { initializeApp }        from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
+    import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
+    import { getFirestore, doc, updateDoc, deleteField } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyBXq3fe0uY8UB7-uLGzGIIvZOQf8YjNqaM",
+      authDomain:        "st-francis-school-a3e7e.firebaseapp.com",
+      projectId:         "st-francis-school-a3e7e",
+      storageBucket:     "st-francis-school-a3e7e.firebasestorage.app",
+      messagingSenderId: "180123372524",
+      appId:             "1:180123372524:web:caed0f2a44d35f19d90ec9"
+    };
+
+    const app  = initializeApp(firebaseConfig, 'fix-tool');
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    const show = (msg, type) => {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = type;
+      el.style.display = 'block';
+    };
+
+    window.runFix = async function() {
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const btn      = document.getElementById('fix-btn');
+      if (!email || !password) { show('Enter email and password.', 'err'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Working…';
+      show('Signing in…', 'ok');
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        show('Signed in. Clearing hero headline…', 'ok');
+
+        await updateDoc(doc(db, 'public_settings', 'homepage'), {
+          'hero.headline':    deleteField(),
+          'hero.subheadline': deleteField(),
+        });
+
+        show('✅ Done! Hero headline cleared. Visit the live site — it now shows "St. Francis De Sales Sec. School, Laitkor" correctly. You can close this page.', 'ok');
+        btn.textContent = 'Fixed ✓';
+      } catch (err) {
+        show('❌ ' + err.message, 'err');
+        btn.disabled = false;
+        btn.textContent = 'Sign In & Fix';
+      }
+    };
+  </script>
+</body>
+</html>
