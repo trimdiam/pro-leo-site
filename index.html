@@ -1263,13 +1263,16 @@
         <div id="t-homework" class="dash-section">
           <div class="grid-2">
             <div class="card" style="padding:24px;max-width:600px">
-              <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-book-open" style="margin-right:8px;color:var(--accent)"></i>Post New Homework</h4>
+              <h4 id="hw-form-title" style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-book-open" style="margin-right:8px;color:var(--accent)"></i>Post New Homework</h4>
               <div class="form-group"><label>Class *</label><select id="hw-class-select"><option value="">— Select Class —</option></select></div>
               <div class="form-group"><label>Subject *</label><input type="text" id="hw-subject" placeholder="e.g., English, Maths"></div>
               <div class="form-group"><label>Assignment Title *</label><input type="text" id="hw-title" placeholder="e.g., Letter Writing Exercise"></div>
               <div class="form-group"><label>Description</label><textarea id="hw-desc" placeholder="Detailed instructions for students..."></textarea></div>
               <div class="form-group"><label>Due Date *</label><input type="date" id="hw-due"></div>
-              <button class="btn btn-primary" onclick="postHomework()"><i class="fas fa-plus"></i> Post Homework</button>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button id="hw-submit-btn" class="btn btn-primary" onclick="postHomework()"><i class="fas fa-plus"></i> Post Homework</button>
+                <button id="hw-cancel-btn" class="btn btn-outline" onclick="cancelHwEdit()" style="display:none"><i class="fas fa-times"></i> Cancel Edit</button>
+              </div>
             </div>
             <div class="card" style="padding:24px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -1283,12 +1286,15 @@
         <div id="t-notices" class="dash-section">
           <div class="grid-2">
             <div class="card" style="padding:24px">
-              <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Post a Notice</h4>
+              <h4 id="tn-form-title" style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Post a Notice</h4>
               <div class="form-group"><label>Notice Title *</label><input type="text" id="tn-title" placeholder="e.g., Important Exam Reminder"></div>
               <div class="form-group"><label>Audience</label><select id="tn-audience"><option value="class">My Class Only</option><option value="all">All Students</option><option value="teachers">All Teachers</option></select></div>
               <div class="form-group"><label>Notice Content *</label><textarea id="tn-body" placeholder="Write the full notice here..."></textarea></div>
               <div class="form-group"><label>Priority</label><select id="tn-priority"><option value="Normal">Normal</option><option value="Important">Important</option><option value="Urgent">Urgent</option></select></div>
-              <button class="btn btn-primary" onclick="postTeacherNotice()"><i class="fas fa-paper-plane"></i> Publish Notice</button>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button id="tn-submit-btn" class="btn btn-primary" onclick="postTeacherNotice()"><i class="fas fa-paper-plane"></i> Publish Notice</button>
+                <button id="tn-cancel-btn" class="btn btn-outline" onclick="cancelNoticeEdit()" style="display:none"><i class="fas fa-times"></i> Cancel Edit</button>
+              </div>
             </div>
             <div class="card" style="padding:24px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -1879,7 +1885,7 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
               <h4 style="color:var(--accent-dark)"><i class="fas fa-money-bill-wave" style="margin-right:8px;color:var(--accent)"></i>Fee Records &amp; Approval</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <select id="a-fee-filter" onchange="loadAdminFees()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px"><option value="all">All Records</option><option value="Pending">Pending Only</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option></select>
+                <select id="a-fee-filter" onchange="loadAdminFees()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px"><option value="all">All Records</option><option value="pending">Pending Only</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
                 <button class="btn btn-sm btn-outline" onclick="loadAdminFees()"><i class="fas fa-sync-alt"></i> Refresh</button>
               </div>
             </div>

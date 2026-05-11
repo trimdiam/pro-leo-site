@@ -352,6 +352,8 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       try { await _handleAuthUser(user); } catch(e) { console.warn('Session restore:', e.message); }
+    } else {
+      window._officePortalLoaded = false;
     }
   });
 
@@ -1566,6 +1568,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     }
     if (sectionId === 't-homework') { if(window.populateHwClassSelect) populateHwClassSelect(); if(window.loadTeacherHomework) loadTeacherHomework(); }
     if (sectionId === 's-homework') { if(window.loadStudentHomework) loadStudentHomework(); }
+    else if(window._hwUnsubscribe){window._hwUnsubscribe();window._hwUnsubscribe=null;}
     if (sectionId === 's-notices')  { if(window.loadStudentNotices) loadStudentNotices(); }
     if (sectionId === 's-fees')     { if(window.loadStudentFees) loadStudentFees(); }
     if (sectionId === 't-notices')  { if(window.loadTeacherNotices) loadTeacherNotices(); }
@@ -2270,24 +2273,31 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   // ================================================================
   //  STUDENT — Homework
   // ================================================================
-  window.loadStudentHomework = async function() {
+  window._hwUnsubscribe = null;
+
+  window.loadStudentHomework = function() {
     const tbody=document.getElementById('s-homework-tbody');
     if(!tbody) return;
-    try {
-      const cls=window._studentClass||'';
-      if(!cls){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-light)">Class not assigned.</td></tr>';return;}
-      const snap=await getDocs(query(collection(db,'homework'),where('class','==',cls),limit(20)));
-      if(snap.empty){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-light)">No homework assigned yet.</td></tr>';return;}
-      const today=new Date().toISOString().split('T')[0]; let pending=0;
-      const sorted=[...snap.docs].sort((a,b)=>(b.data().dueDate||'').localeCompare(a.data().dueDate||''));
-      tbody.innerHTML=sorted.map(d=>{
-        const hw=d.data(); const isPast=hw.dueDate&&hw.dueDate<today;
-        const status=isPast?'<span class="badge badge-danger">Overdue</span>':'<span class="badge badge-warning">Pending</span>';
-        if(!isPast) pending++;
-        return `<tr><td>${hw.subject||'—'}</td><td><strong>${hw.title||'—'}</strong><br><span style="font-size:11px;color:var(--text-light)">${hw.description||''}</span></td><td>${hw.postedBy||'—'}</td><td style="font-size:13px">${hw.dueDate||'—'}</td><td>${status}</td></tr>`;
-      }).join('');
-      const pendEl=document.getElementById('s-stat-pending-hw'); if(pendEl) pendEl.textContent=pending;
-    } catch(e){tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
+    if(window._hwUnsubscribe){window._hwUnsubscribe();window._hwUnsubscribe=null;}
+    const cls=window._studentClass||'';
+    if(!cls){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-light)">Class not assigned.</td></tr>';return;}
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading homework...</td></tr>';
+    window._hwUnsubscribe=onSnapshot(
+      query(collection(db,'homework'),where('class','==',cls),limit(20)),
+      snap=>{
+        if(snap.empty){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-light)">No homework assigned yet.</td></tr>';return;}
+        const today=new Date().toISOString().split('T')[0]; let pending=0;
+        const sorted=[...snap.docs].sort((a,b)=>(b.data().dueDate||'').localeCompare(a.data().dueDate||''));
+        tbody.innerHTML=sorted.map(d=>{
+          const hw=d.data(); const isPast=hw.dueDate&&hw.dueDate<today;
+          const status=isPast?'<span class="badge badge-danger">Overdue</span>':'<span class="badge badge-warning">Pending</span>';
+          if(!isPast) pending++;
+          return `<tr><td>${hw.subject||'—'}</td><td><strong>${hw.title||'—'}</strong><br><span style="font-size:11px;color:var(--text-light)">${hw.description||''}</span></td><td>${hw.postedBy||'—'}</td><td style="font-size:13px">${hw.dueDate||'—'}</td><td>${status}</td></tr>`;
+        }).join('');
+        const pendEl=document.getElementById('s-stat-pending-hw'); if(pendEl) pendEl.textContent=pending;
+      },
+      e=>{tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
+    );
   };
 
   // ================================================================
@@ -3245,6 +3255,40 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     sel.innerHTML='<option value="">— Select Class —</option>'+classes.map(c=>`<option value="${c}"${c===String(window._currentTeacherClass)?'selected':''}>${getL(c)}</option>`).join('');
   };
 
+  window._hwEditId = null;
+
+  window.prefillHwForm = function(docId, data){
+    window._hwEditId = docId;
+    const sel=document.getElementById('hw-class-select');
+    if(sel){sel.value=data.class||'';}
+    ['hw-subject','hw-title','hw-desc','hw-due'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el)return;
+      if(id==='hw-subject')el.value=data.subject||'';
+      else if(id==='hw-title')el.value=data.title||'';
+      else if(id==='hw-desc')el.value=data.description||'';
+      else if(id==='hw-due')el.value=data.dueDate||'';
+    });
+    const titleEl=document.getElementById('hw-form-title');
+    if(titleEl)titleEl.innerHTML='<i class="fas fa-edit" style="margin-right:8px;color:var(--accent)"></i>Edit Homework';
+    const btn=document.getElementById('hw-submit-btn');
+    if(btn)btn.innerHTML='<i class="fas fa-save"></i> Update Homework';
+    const cancelBtn=document.getElementById('hw-cancel-btn');
+    if(cancelBtn)cancelBtn.style.display='';
+    document.getElementById('hw-form-title')?.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+
+  window.cancelHwEdit = function(){
+    window._hwEditId = null;
+    ['hw-subject','hw-title','hw-desc','hw-due'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const titleEl=document.getElementById('hw-form-title');
+    if(titleEl)titleEl.innerHTML='<i class="fas fa-book-open" style="margin-right:8px;color:var(--accent)"></i>Post New Homework';
+    const btn=document.getElementById('hw-submit-btn');
+    if(btn)btn.innerHTML='<i class="fas fa-plus"></i> Post Homework';
+    const cancelBtn=document.getElementById('hw-cancel-btn');
+    if(cancelBtn)cancelBtn.style.display='none';
+  };
+
   window.postHomework = async function(){
     const cls=(document.getElementById('hw-class-select')?.value||'').trim();
     const subject=(document.getElementById('hw-subject')?.value||'').trim();
@@ -3253,9 +3297,16 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const due=(document.getElementById('hw-due')?.value||'').trim();
     if(!cls||!subject||!title||!due){showToast('⚠️ Class, subject, title and due date are required.');return;}
     try{
-      await addDoc(collection(db,'homework'),{class:cls,subject,title,description:desc,dueDate:due,postedBy:window._teacherName||'Teacher',teacherId:window._teacherId||'',createdAt:new Date().toISOString(),postedAt:new Date().toISOString()});
-      ['hw-subject','hw-title','hw-desc','hw-due'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-      showToast('✅ Homework posted!'); loadTeacherHomework();
+      if(window._hwEditId){
+        await updateDoc(doc(db,'homework',window._hwEditId),{class:cls,subject,title,description:desc,dueDate:due,updatedAt:new Date().toISOString()});
+        showToast('✅ Homework updated!');
+        cancelHwEdit();
+      } else {
+        await addDoc(collection(db,'homework'),{class:cls,subject,title,description:desc,dueDate:due,postedBy:window._teacherName||'Teacher',teacherId:window._teacherId||'',createdAt:new Date().toISOString(),postedAt:new Date().toISOString()});
+        ['hw-subject','hw-title','hw-desc','hw-due'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+        showToast('✅ Homework posted!');
+      }
+      loadTeacherHomework();
     }catch(e){showToast('❌ '+e.message);}
   };
 
@@ -3267,7 +3318,8 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No homework posted yet.</p>';return;}
       el.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
         const hw=d.data();
-        return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700;color:var(--accent-dark)">${hw.subject} – ${hw.title}</div><div style="font-size:12px;color:var(--text-light)">Class ${hw.class} · Due: ${hw.dueDate||'—'}</div></div><button onclick="deleteHomework('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer"><i class="fas fa-trash"></i></button></div>`;
+        const dataJson=JSON.stringify({class:hw.class,subject:hw.subject,title:hw.title,description:hw.description||'',dueDate:hw.dueDate||''}).replace(/'/g,'&#39;');
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700;color:var(--accent-dark)">${hw.subject} – ${hw.title}</div><div style="font-size:12px;color:var(--text-light)">Class ${hw.class} · Due: ${hw.dueDate||'—'}</div></div><div style="display:flex;gap:6px;flex-shrink:0"><button onclick="prefillHwForm('${d.id}',JSON.parse(this.dataset.hw))" data-hw='${dataJson}' style="background:none;border:none;color:var(--accent);cursor:pointer" title="Edit"><i class="fas fa-edit"></i></button><button onclick="deleteHomework('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer" title="Delete"><i class="fas fa-trash"></i></button></div></div>`;
       }).join('');
     }catch(e){el.innerHTML=`<p style="color:var(--danger);font-size:13px">❌ ${e.message}</p>`;}
   };
@@ -3280,6 +3332,34 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   // ================================================================
   //  TEACHER — Notices
   // ================================================================
+  window._tnEditId = null;
+
+  window.prefillNoticeForm = function(docId, data){
+    window._tnEditId = docId;
+    const titleEl=document.getElementById('tn-title');   if(titleEl) titleEl.value=data.title||'';
+    const bodyEl=document.getElementById('tn-body');     if(bodyEl)  bodyEl.value=data.body||'';
+    const audEl=document.getElementById('tn-audience');  if(audEl)   audEl.value=data.audience||'class';
+    const priEl=document.getElementById('tn-priority');  if(priEl)   priEl.value=data.priority||'Normal';
+    const hdr=document.getElementById('tn-form-title');
+    if(hdr) hdr.innerHTML='<i class="fas fa-edit" style="margin-right:8px;color:var(--accent)"></i>Edit Notice';
+    const btn=document.getElementById('tn-submit-btn');
+    if(btn) btn.innerHTML='<i class="fas fa-save"></i> Update Notice';
+    const cancelBtn=document.getElementById('tn-cancel-btn');
+    if(cancelBtn) cancelBtn.style.display='';
+    document.getElementById('tn-form-title')?.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+
+  window.cancelNoticeEdit = function(){
+    window._tnEditId = null;
+    ['tn-title','tn-body'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const hdr=document.getElementById('tn-form-title');
+    if(hdr) hdr.innerHTML='<i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Post a Notice';
+    const btn=document.getElementById('tn-submit-btn');
+    if(btn) btn.innerHTML='<i class="fas fa-paper-plane"></i> Publish Notice';
+    const cancelBtn=document.getElementById('tn-cancel-btn');
+    if(cancelBtn) cancelBtn.style.display='none';
+  };
+
   window.postTeacherNotice = async function(){
     const title=(document.getElementById('tn-title')?.value||'').trim();
     const body=(document.getElementById('tn-body')?.value||'').trim();
@@ -3287,9 +3367,16 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const priority=document.getElementById('tn-priority')?.value||'Normal';
     if(!title||!body){showToast('⚠️ Title and content are required.');return;}
     try{
-      await addDoc(collection(db,'notices'),{title,body,audience,priority,postedBy:window._teacherName||'Teacher',teacherId:window._teacherId||'',class:window._currentTeacherClass||'',postedAt:new Date().toISOString(),createdAt:new Date().toISOString()});
-      document.getElementById('tn-title').value=''; document.getElementById('tn-body').value='';
-      showToast('✅ Notice published!'); loadTeacherNotices();
+      if(window._tnEditId){
+        await updateDoc(doc(db,'notices',window._tnEditId),{title,body,audience,priority,updatedAt:new Date().toISOString()});
+        showToast('✅ Notice updated!');
+        cancelNoticeEdit();
+      } else {
+        await addDoc(collection(db,'notices'),{title,body,audience,priority,postedBy:window._teacherName||'Teacher',teacherId:window._teacherId||'',class:window._currentTeacherClass||'',postedAt:new Date().toISOString(),createdAt:new Date().toISOString()});
+        document.getElementById('tn-title').value=''; document.getElementById('tn-body').value='';
+        showToast('✅ Notice published!');
+      }
+      loadTeacherNotices();
     }catch(e){showToast('❌ '+e.message);}
   };
 
@@ -3302,7 +3389,8 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       const bc=p=>p==='Urgent'?'badge-danger':p==='Important'?'badge-warning':'badge-info';
       el.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
         const n=d.data();
-        return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700">${n.title}</div><div style="font-size:12px;color:var(--text-light)">${(n.body||'').slice(0,60)}…</div><span class="badge ${bc(n.priority)}" style="margin-top:4px">${n.priority||'Normal'}</span></div><button onclick="deleteNotice('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer"><i class="fas fa-trash"></i></button></div>`;
+        const dataJson=JSON.stringify({title:n.title,body:n.body||'',audience:n.audience||'class',priority:n.priority||'Normal'}).replace(/'/g,'&#39;');
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700">${n.title}</div><div style="font-size:12px;color:var(--text-light)">${(n.body||'').slice(0,60)}…</div><span class="badge ${bc(n.priority)}" style="margin-top:4px">${n.priority||'Normal'}</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button onclick="prefillNoticeForm('${d.id}',JSON.parse(this.dataset.n))" data-n='${dataJson}' style="background:none;border:none;color:var(--accent);cursor:pointer" title="Edit"><i class="fas fa-edit"></i></button><button onclick="deleteNotice('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer" title="Delete"><i class="fas fa-trash"></i></button></div></div>`;
       }).join('');
     }catch(e){el.innerHTML=`<p style="color:var(--danger);font-size:13px">❌ ${e.message}</p>`;}
   };
@@ -3381,22 +3469,25 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   window.loadAdminFees = async function(){
     const tbody=document.getElementById('admin-fees-tbody'); if(!tbody) return;
     tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i></td></tr>';
-    const filter=document.getElementById('a-fee-filter')?.value||'all';
+    const filter=(document.getElementById('a-fee-filter')?.value||'all').toLowerCase();
     try{
-      const q=filter==='all'?query(collection(db,'fees'),limit(50)):query(collection(db,'fees'),where('status','==',filter),limit(50));
+      const q=filter==='all'
+        ?query(collection(db,'fee_transactions'),orderBy('createdAt','desc'),limit(50))
+        :query(collection(db,'fee_transactions'),where('status','==',filter),orderBy('createdAt','desc'),limit(50));
       const snap=await getDocs(q);
       if(snap.empty){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--text-light)">No fee records found.</td></tr>';return;}
-      tbody.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
-        const f=d.data(); const bc=f.status==='Approved'?'badge-success':f.status==='Rejected'?'badge-danger':'badge-warning';
-        const fmt=f.submittedAt?new Date(f.submittedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—';
-        return `<tr><td><strong>${f.studentName||'—'}</strong></td><td style="font-size:12px;font-family:monospace">${f.studentId||'—'}</td><td>${f.feeType||'—'}</td><td style="font-weight:700">₹${(f.amount||0).toLocaleString('en-IN')}</td><td style="font-size:12px">${f.mode||'—'}</td><td style="font-size:12px;font-family:monospace">${f.txnNo||'—'}</td><td style="font-size:12px">${fmt}</td><td><span class="badge ${bc}">${f.status||'Pending'}</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-sm btn-success" style="font-size:11px;padding:3px 7px" onclick="updateFeeStatus('${d.id}','Approved')"><i class="fas fa-check"></i></button><button class="btn btn-sm btn-danger" style="font-size:11px;padding:3px 7px" onclick="updateFeeStatus('${d.id}','Rejected')"><i class="fas fa-times"></i></button></div></td></tr>`;
+      tbody.innerHTML=snap.docs.map(d=>{
+        const f=d.data();
+        const bc=f.status==='approved'?'badge-success':f.status==='rejected'?'badge-danger':'badge-warning';
+        const label=f.status?f.status.charAt(0).toUpperCase()+f.status.slice(1):'Pending';
+        const fmt=f.date||(f.createdAt?new Date(f.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—');
+        const isPending=f.status==='pending';
+        const actions=isPending
+          ?`<div style="display:flex;gap:4px"><button class="btn btn-sm btn-success" style="font-size:11px;padding:3px 7px" onclick="approveFeeTransaction('${d.id}')"><i class="fas fa-check"></i></button><button class="btn btn-sm btn-danger" style="font-size:11px;padding:3px 7px" onclick="rejectFeeTransaction('${d.id}')"><i class="fas fa-times"></i></button></div>`
+          :`<span style="font-size:11px;color:var(--text-light)">${f.approvedBy||f.rejectedBy||'—'}</span>`;
+        return `<tr><td><strong>${f.studentName||'—'}</strong></td><td style="font-size:12px;font-family:monospace">${f.studentId||'—'}</td><td>${f.feeType||f.notes||'—'}</td><td style="font-weight:700">₹${(f.amount||0).toLocaleString('en-IN')}</td><td style="font-size:12px">${f.paymentMode||f.mode||'—'}</td><td style="font-size:12px;font-family:monospace">${f.receiptNo||f.txnNo||'—'}</td><td style="font-size:12px">${fmt}</td><td><span class="badge ${bc}">${label}</span></td><td>${actions}</td></tr>`;
       }).join('');
     }catch(e){tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
-  };
-
-  window.updateFeeStatus = async function(docId,status){
-    try{await setDoc(doc(db,'fees',docId),{status,updatedAt:new Date().toISOString()},{merge:true});showToast('✅ Status: '+status);loadAdminFees();}
-    catch(e){showToast('❌ '+e.message);}
   };
 
   window.adminAddFeeRecord = async function(){
@@ -3405,10 +3496,16 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const cls=(document.getElementById('af-class')?.value||'').trim();
     const feeType=document.getElementById('af-type')?.value||'';
     const amount=parseFloat(document.getElementById('af-amount')?.value||0);
-    const status=document.getElementById('af-status')?.value||'Pending';
+    const status=(document.getElementById('af-status')?.value||'pending').toLowerCase();
     if(!sid||!name||!amount){showToast('⚠️ Student ID, name and amount are required.');return;}
+    const now=new Date().toISOString();
     try{
-      await addDoc(collection(db,'fees'),{studentId:sid,studentName:name,class:cls,feeType,amount,status,mode:'Manual',txnNo:'MANUAL',submittedAt:new Date().toISOString(),createdAt:new Date().toISOString()});
+      await addDoc(collection(db,'fee_transactions'),{
+        studentId:sid,studentName:name,studentClass:cls,
+        feeType,amount,paymentMode:'Manual',receiptNo:'MANUAL-'+Date.now(),
+        status,source:'admin',staffName:'Admin',
+        createdAt:now,date:now.split('T')[0]
+      });
       ['af-sid','af-name','af-class','af-amount'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
       showToast('✅ Fee record added.'); loadAdminFees();
     }catch(e){showToast('❌ '+e.message);}
@@ -3821,10 +3918,14 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   window._feeSelectedStudent  = null;
   window._feeSelectedFeeData  = null;
 
+  window._officePortalLoaded = false;
+
   window.loadOfficePortal = async function(user) {
+    if (window._officePortalLoaded) return;
+    window._officePortalLoaded = true;
     try {
       const uSnap = await getDoc(doc(db, 'users', user.uid));
-      if (!uSnap.exists()) return;
+      if (!uSnap.exists()) { window._officePortalLoaded = false; return; }
       const u = uSnap.data();
       window._officeStaffId   = u.staffId || u.loginId || user.uid;
       window._officeStaffName = u.name || 'Office Staff';
@@ -4813,19 +4914,6 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (sectionId==='o-fee-collection') {
       const pd=document.getElementById('pay-date');
       if (pd && !pd.value) pd.value=new Date().toISOString().split('T')[0];
-    }
-  };
-
-  /* ── Extend loginAs for 'office' role ── */
-  const _prevLoginAs = window.loginAs;
-  window.loginAs = function(role) {
-    // Always call the original first — it sets the script.js closure `isLoggedIn = true`
-    // and calls showPage('office-dash'). We only add the portal-load side-effect.
-    _prevLoginAs(role);
-    if (role === 'office') {
-      const auth = window._firebaseAuth;
-      if (auth?.currentUser && window.loadOfficePortal)
-        window.loadOfficePortal(auth.currentUser).catch(console.error);
     }
   };
 
