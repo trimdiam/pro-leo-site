@@ -1263,13 +1263,16 @@
         <div id="t-homework" class="dash-section">
           <div class="grid-2">
             <div class="card" style="padding:24px;max-width:600px">
-              <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-book-open" style="margin-right:8px;color:var(--accent)"></i>Post New Homework</h4>
+              <h4 id="hw-form-title" style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-book-open" style="margin-right:8px;color:var(--accent)"></i>Post New Homework</h4>
               <div class="form-group"><label>Class *</label><select id="hw-class-select"><option value="">— Select Class —</option></select></div>
               <div class="form-group"><label>Subject *</label><input type="text" id="hw-subject" placeholder="e.g., English, Maths"></div>
               <div class="form-group"><label>Assignment Title *</label><input type="text" id="hw-title" placeholder="e.g., Letter Writing Exercise"></div>
               <div class="form-group"><label>Description</label><textarea id="hw-desc" placeholder="Detailed instructions for students..."></textarea></div>
               <div class="form-group"><label>Due Date *</label><input type="date" id="hw-due"></div>
-              <button class="btn btn-primary" onclick="postHomework()"><i class="fas fa-plus"></i> Post Homework</button>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button id="hw-submit-btn" class="btn btn-primary" onclick="postHomework()"><i class="fas fa-plus"></i> Post Homework</button>
+                <button id="hw-cancel-btn" class="btn btn-outline" onclick="cancelHwEdit()" style="display:none"><i class="fas fa-times"></i> Cancel Edit</button>
+              </div>
             </div>
             <div class="card" style="padding:24px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">

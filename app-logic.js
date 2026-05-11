@@ -3245,6 +3245,40 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     sel.innerHTML='<option value="">— Select Class —</option>'+classes.map(c=>`<option value="${c}"${c===String(window._currentTeacherClass)?'selected':''}>${getL(c)}</option>`).join('');
   };
 
+  window._hwEditId = null;
+
+  window.prefillHwForm = function(docId, data){
+    window._hwEditId = docId;
+    const sel=document.getElementById('hw-class-select');
+    if(sel){sel.value=data.class||'';}
+    ['hw-subject','hw-title','hw-desc','hw-due'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el)return;
+      if(id==='hw-subject')el.value=data.subject||'';
+      else if(id==='hw-title')el.value=data.title||'';
+      else if(id==='hw-desc')el.value=data.description||'';
+      else if(id==='hw-due')el.value=data.dueDate||'';
+    });
+    const titleEl=document.getElementById('hw-form-title');
+    if(titleEl)titleEl.innerHTML='<i class="fas fa-edit" style="margin-right:8px;color:var(--accent)"></i>Edit Homework';
+    const btn=document.getElementById('hw-submit-btn');
+    if(btn)btn.innerHTML='<i class="fas fa-save"></i> Update Homework';
+    const cancelBtn=document.getElementById('hw-cancel-btn');
+    if(cancelBtn)cancelBtn.style.display='';
+    document.getElementById('hw-form-title')?.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+
+  window.cancelHwEdit = function(){
+    window._hwEditId = null;
+    ['hw-subject','hw-title','hw-desc','hw-due'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const titleEl=document.getElementById('hw-form-title');
+    if(titleEl)titleEl.innerHTML='<i class="fas fa-book-open" style="margin-right:8px;color:var(--accent)"></i>Post New Homework';
+    const btn=document.getElementById('hw-submit-btn');
+    if(btn)btn.innerHTML='<i class="fas fa-plus"></i> Post Homework';
+    const cancelBtn=document.getElementById('hw-cancel-btn');
+    if(cancelBtn)cancelBtn.style.display='none';
+  };
+
   window.postHomework = async function(){
     const cls=(document.getElementById('hw-class-select')?.value||'').trim();
     const subject=(document.getElementById('hw-subject')?.value||'').trim();
@@ -3253,9 +3287,16 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const due=(document.getElementById('hw-due')?.value||'').trim();
     if(!cls||!subject||!title||!due){showToast('⚠️ Class, subject, title and due date are required.');return;}
     try{
-      await addDoc(collection(db,'homework'),{class:cls,subject,title,description:desc,dueDate:due,postedBy:window._teacherName||'Teacher',teacherId:window._teacherId||'',createdAt:new Date().toISOString(),postedAt:new Date().toISOString()});
-      ['hw-subject','hw-title','hw-desc','hw-due'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-      showToast('✅ Homework posted!'); loadTeacherHomework();
+      if(window._hwEditId){
+        await updateDoc(doc(db,'homework',window._hwEditId),{class:cls,subject,title,description:desc,dueDate:due,updatedAt:new Date().toISOString()});
+        showToast('✅ Homework updated!');
+        cancelHwEdit();
+      } else {
+        await addDoc(collection(db,'homework'),{class:cls,subject,title,description:desc,dueDate:due,postedBy:window._teacherName||'Teacher',teacherId:window._teacherId||'',createdAt:new Date().toISOString(),postedAt:new Date().toISOString()});
+        ['hw-subject','hw-title','hw-desc','hw-due'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+        showToast('✅ Homework posted!');
+      }
+      loadTeacherHomework();
     }catch(e){showToast('❌ '+e.message);}
   };
 
@@ -3267,7 +3308,8 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No homework posted yet.</p>';return;}
       el.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
         const hw=d.data();
-        return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700;color:var(--accent-dark)">${hw.subject} – ${hw.title}</div><div style="font-size:12px;color:var(--text-light)">Class ${hw.class} · Due: ${hw.dueDate||'—'}</div></div><button onclick="deleteHomework('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer"><i class="fas fa-trash"></i></button></div>`;
+        const dataJson=JSON.stringify({class:hw.class,subject:hw.subject,title:hw.title,description:hw.description||'',dueDate:hw.dueDate||''}).replace(/'/g,'&#39;');
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700;color:var(--accent-dark)">${hw.subject} – ${hw.title}</div><div style="font-size:12px;color:var(--text-light)">Class ${hw.class} · Due: ${hw.dueDate||'—'}</div></div><div style="display:flex;gap:6px;flex-shrink:0"><button onclick="prefillHwForm('${d.id}',JSON.parse(this.dataset.hw))" data-hw='${dataJson}' style="background:none;border:none;color:var(--accent);cursor:pointer" title="Edit"><i class="fas fa-edit"></i></button><button onclick="deleteHomework('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer" title="Delete"><i class="fas fa-trash"></i></button></div></div>`;
       }).join('');
     }catch(e){el.innerHTML=`<p style="color:var(--danger);font-size:13px">❌ ${e.message}</p>`;}
   };
