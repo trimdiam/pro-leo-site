@@ -1566,6 +1566,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     }
     if (sectionId === 't-homework') { if(window.populateHwClassSelect) populateHwClassSelect(); if(window.loadTeacherHomework) loadTeacherHomework(); }
     if (sectionId === 's-homework') { if(window.loadStudentHomework) loadStudentHomework(); }
+    else if(window._hwUnsubscribe){window._hwUnsubscribe();window._hwUnsubscribe=null;}
     if (sectionId === 's-notices')  { if(window.loadStudentNotices) loadStudentNotices(); }
     if (sectionId === 's-fees')     { if(window.loadStudentFees) loadStudentFees(); }
     if (sectionId === 't-notices')  { if(window.loadTeacherNotices) loadTeacherNotices(); }
@@ -2270,24 +2271,31 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   // ================================================================
   //  STUDENT — Homework
   // ================================================================
-  window.loadStudentHomework = async function() {
+  window._hwUnsubscribe = null;
+
+  window.loadStudentHomework = function() {
     const tbody=document.getElementById('s-homework-tbody');
     if(!tbody) return;
-    try {
-      const cls=window._studentClass||'';
-      if(!cls){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-light)">Class not assigned.</td></tr>';return;}
-      const snap=await getDocs(query(collection(db,'homework'),where('class','==',cls),limit(20)));
-      if(snap.empty){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-light)">No homework assigned yet.</td></tr>';return;}
-      const today=new Date().toISOString().split('T')[0]; let pending=0;
-      const sorted=[...snap.docs].sort((a,b)=>(b.data().dueDate||'').localeCompare(a.data().dueDate||''));
-      tbody.innerHTML=sorted.map(d=>{
-        const hw=d.data(); const isPast=hw.dueDate&&hw.dueDate<today;
-        const status=isPast?'<span class="badge badge-danger">Overdue</span>':'<span class="badge badge-warning">Pending</span>';
-        if(!isPast) pending++;
-        return `<tr><td>${hw.subject||'—'}</td><td><strong>${hw.title||'—'}</strong><br><span style="font-size:11px;color:var(--text-light)">${hw.description||''}</span></td><td>${hw.postedBy||'—'}</td><td style="font-size:13px">${hw.dueDate||'—'}</td><td>${status}</td></tr>`;
-      }).join('');
-      const pendEl=document.getElementById('s-stat-pending-hw'); if(pendEl) pendEl.textContent=pending;
-    } catch(e){tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
+    if(window._hwUnsubscribe){window._hwUnsubscribe();window._hwUnsubscribe=null;}
+    const cls=window._studentClass||'';
+    if(!cls){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-light)">Class not assigned.</td></tr>';return;}
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading homework...</td></tr>';
+    window._hwUnsubscribe=onSnapshot(
+      query(collection(db,'homework'),where('class','==',cls),limit(20)),
+      snap=>{
+        if(snap.empty){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-light)">No homework assigned yet.</td></tr>';return;}
+        const today=new Date().toISOString().split('T')[0]; let pending=0;
+        const sorted=[...snap.docs].sort((a,b)=>(b.data().dueDate||'').localeCompare(a.data().dueDate||''));
+        tbody.innerHTML=sorted.map(d=>{
+          const hw=d.data(); const isPast=hw.dueDate&&hw.dueDate<today;
+          const status=isPast?'<span class="badge badge-danger">Overdue</span>':'<span class="badge badge-warning">Pending</span>';
+          if(!isPast) pending++;
+          return `<tr><td>${hw.subject||'—'}</td><td><strong>${hw.title||'—'}</strong><br><span style="font-size:11px;color:var(--text-light)">${hw.description||''}</span></td><td>${hw.postedBy||'—'}</td><td style="font-size:13px">${hw.dueDate||'—'}</td><td>${status}</td></tr>`;
+        }).join('');
+        const pendEl=document.getElementById('s-stat-pending-hw'); if(pendEl) pendEl.textContent=pending;
+      },
+      e=>{tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
+    );
   };
 
   // ================================================================
