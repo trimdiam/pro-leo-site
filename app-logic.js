@@ -3322,6 +3322,34 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   // ================================================================
   //  TEACHER — Notices
   // ================================================================
+  window._tnEditId = null;
+
+  window.prefillNoticeForm = function(docId, data){
+    window._tnEditId = docId;
+    const titleEl=document.getElementById('tn-title');   if(titleEl) titleEl.value=data.title||'';
+    const bodyEl=document.getElementById('tn-body');     if(bodyEl)  bodyEl.value=data.body||'';
+    const audEl=document.getElementById('tn-audience');  if(audEl)   audEl.value=data.audience||'class';
+    const priEl=document.getElementById('tn-priority');  if(priEl)   priEl.value=data.priority||'Normal';
+    const hdr=document.getElementById('tn-form-title');
+    if(hdr) hdr.innerHTML='<i class="fas fa-edit" style="margin-right:8px;color:var(--accent)"></i>Edit Notice';
+    const btn=document.getElementById('tn-submit-btn');
+    if(btn) btn.innerHTML='<i class="fas fa-save"></i> Update Notice';
+    const cancelBtn=document.getElementById('tn-cancel-btn');
+    if(cancelBtn) cancelBtn.style.display='';
+    document.getElementById('tn-form-title')?.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+
+  window.cancelNoticeEdit = function(){
+    window._tnEditId = null;
+    ['tn-title','tn-body'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const hdr=document.getElementById('tn-form-title');
+    if(hdr) hdr.innerHTML='<i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Post a Notice';
+    const btn=document.getElementById('tn-submit-btn');
+    if(btn) btn.innerHTML='<i class="fas fa-paper-plane"></i> Publish Notice';
+    const cancelBtn=document.getElementById('tn-cancel-btn');
+    if(cancelBtn) cancelBtn.style.display='none';
+  };
+
   window.postTeacherNotice = async function(){
     const title=(document.getElementById('tn-title')?.value||'').trim();
     const body=(document.getElementById('tn-body')?.value||'').trim();
@@ -3329,9 +3357,16 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const priority=document.getElementById('tn-priority')?.value||'Normal';
     if(!title||!body){showToast('⚠️ Title and content are required.');return;}
     try{
-      await addDoc(collection(db,'notices'),{title,body,audience,priority,postedBy:window._teacherName||'Teacher',teacherId:window._teacherId||'',class:window._currentTeacherClass||'',postedAt:new Date().toISOString(),createdAt:new Date().toISOString()});
-      document.getElementById('tn-title').value=''; document.getElementById('tn-body').value='';
-      showToast('✅ Notice published!'); loadTeacherNotices();
+      if(window._tnEditId){
+        await updateDoc(doc(db,'notices',window._tnEditId),{title,body,audience,priority,updatedAt:new Date().toISOString()});
+        showToast('✅ Notice updated!');
+        cancelNoticeEdit();
+      } else {
+        await addDoc(collection(db,'notices'),{title,body,audience,priority,postedBy:window._teacherName||'Teacher',teacherId:window._teacherId||'',class:window._currentTeacherClass||'',postedAt:new Date().toISOString(),createdAt:new Date().toISOString()});
+        document.getElementById('tn-title').value=''; document.getElementById('tn-body').value='';
+        showToast('✅ Notice published!');
+      }
+      loadTeacherNotices();
     }catch(e){showToast('❌ '+e.message);}
   };
 
@@ -3344,7 +3379,8 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       const bc=p=>p==='Urgent'?'badge-danger':p==='Important'?'badge-warning':'badge-info';
       el.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
         const n=d.data();
-        return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700">${n.title}</div><div style="font-size:12px;color:var(--text-light)">${(n.body||'').slice(0,60)}…</div><span class="badge ${bc(n.priority)}" style="margin-top:4px">${n.priority||'Normal'}</span></div><button onclick="deleteNotice('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer"><i class="fas fa-trash"></i></button></div>`;
+        const dataJson=JSON.stringify({title:n.title,body:n.body||'',audience:n.audience||'class',priority:n.priority||'Normal'}).replace(/'/g,'&#39;');
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700">${n.title}</div><div style="font-size:12px;color:var(--text-light)">${(n.body||'').slice(0,60)}…</div><span class="badge ${bc(n.priority)}" style="margin-top:4px">${n.priority||'Normal'}</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button onclick="prefillNoticeForm('${d.id}',JSON.parse(this.dataset.n))" data-n='${dataJson}' style="background:none;border:none;color:var(--accent);cursor:pointer" title="Edit"><i class="fas fa-edit"></i></button><button onclick="deleteNotice('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer" title="Delete"><i class="fas fa-trash"></i></button></div></div>`;
       }).join('');
     }catch(e){el.innerHTML=`<p style="color:var(--danger);font-size:13px">❌ ${e.message}</p>`;}
   };
