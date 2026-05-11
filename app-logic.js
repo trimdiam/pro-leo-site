@@ -352,6 +352,8 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       try { await _handleAuthUser(user); } catch(e) { console.warn('Session restore:', e.message); }
+    } else {
+      window._officePortalLoaded = false;
     }
   });
 
@@ -3916,10 +3918,14 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   window._feeSelectedStudent  = null;
   window._feeSelectedFeeData  = null;
 
+  window._officePortalLoaded = false;
+
   window.loadOfficePortal = async function(user) {
+    if (window._officePortalLoaded) return;
+    window._officePortalLoaded = true;
     try {
       const uSnap = await getDoc(doc(db, 'users', user.uid));
-      if (!uSnap.exists()) return;
+      if (!uSnap.exists()) { window._officePortalLoaded = false; return; }
       const u = uSnap.data();
       window._officeStaffId   = u.staffId || u.loginId || user.uid;
       window._officeStaffName = u.name || 'Office Staff';
@@ -4908,19 +4914,6 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (sectionId==='o-fee-collection') {
       const pd=document.getElementById('pay-date');
       if (pd && !pd.value) pd.value=new Date().toISOString().split('T')[0];
-    }
-  };
-
-  /* ── Extend loginAs for 'office' role ── */
-  const _prevLoginAs = window.loginAs;
-  window.loginAs = function(role) {
-    // Always call the original first — it sets the script.js closure `isLoggedIn = true`
-    // and calls showPage('office-dash'). We only add the portal-load side-effect.
-    _prevLoginAs(role);
-    if (role === 'office') {
-      const auth = window._firebaseAuth;
-      if (auth?.currentUser && window.loadOfficePortal)
-        window.loadOfficePortal(auth.currentUser).catch(console.error);
     }
   };
 
