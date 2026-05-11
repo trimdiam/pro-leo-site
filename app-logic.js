@@ -3467,22 +3467,25 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   window.loadAdminFees = async function(){
     const tbody=document.getElementById('admin-fees-tbody'); if(!tbody) return;
     tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i></td></tr>';
-    const filter=document.getElementById('a-fee-filter')?.value||'all';
+    const filter=(document.getElementById('a-fee-filter')?.value||'all').toLowerCase();
     try{
-      const q=filter==='all'?query(collection(db,'fees'),limit(50)):query(collection(db,'fees'),where('status','==',filter),limit(50));
+      const q=filter==='all'
+        ?query(collection(db,'fee_transactions'),orderBy('createdAt','desc'),limit(50))
+        :query(collection(db,'fee_transactions'),where('status','==',filter),orderBy('createdAt','desc'),limit(50));
       const snap=await getDocs(q);
       if(snap.empty){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--text-light)">No fee records found.</td></tr>';return;}
-      tbody.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
-        const f=d.data(); const bc=f.status==='Approved'?'badge-success':f.status==='Rejected'?'badge-danger':'badge-warning';
-        const fmt=f.submittedAt?new Date(f.submittedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—';
-        return `<tr><td><strong>${f.studentName||'—'}</strong></td><td style="font-size:12px;font-family:monospace">${f.studentId||'—'}</td><td>${f.feeType||'—'}</td><td style="font-weight:700">₹${(f.amount||0).toLocaleString('en-IN')}</td><td style="font-size:12px">${f.mode||'—'}</td><td style="font-size:12px;font-family:monospace">${f.txnNo||'—'}</td><td style="font-size:12px">${fmt}</td><td><span class="badge ${bc}">${f.status||'Pending'}</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-sm btn-success" style="font-size:11px;padding:3px 7px" onclick="updateFeeStatus('${d.id}','Approved')"><i class="fas fa-check"></i></button><button class="btn btn-sm btn-danger" style="font-size:11px;padding:3px 7px" onclick="updateFeeStatus('${d.id}','Rejected')"><i class="fas fa-times"></i></button></div></td></tr>`;
+      tbody.innerHTML=snap.docs.map(d=>{
+        const f=d.data();
+        const bc=f.status==='approved'?'badge-success':f.status==='rejected'?'badge-danger':'badge-warning';
+        const label=f.status?f.status.charAt(0).toUpperCase()+f.status.slice(1):'Pending';
+        const fmt=f.date||(f.createdAt?new Date(f.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—');
+        const isPending=f.status==='pending';
+        const actions=isPending
+          ?`<div style="display:flex;gap:4px"><button class="btn btn-sm btn-success" style="font-size:11px;padding:3px 7px" onclick="approveFeeTransaction('${d.id}')"><i class="fas fa-check"></i></button><button class="btn btn-sm btn-danger" style="font-size:11px;padding:3px 7px" onclick="rejectFeeTransaction('${d.id}')"><i class="fas fa-times"></i></button></div>`
+          :`<span style="font-size:11px;color:var(--text-light)">${f.approvedBy||f.rejectedBy||'—'}</span>`;
+        return `<tr><td><strong>${f.studentName||'—'}</strong></td><td style="font-size:12px;font-family:monospace">${f.studentId||'—'}</td><td>${f.feeType||f.notes||'—'}</td><td style="font-weight:700">₹${(f.amount||0).toLocaleString('en-IN')}</td><td style="font-size:12px">${f.paymentMode||f.mode||'—'}</td><td style="font-size:12px;font-family:monospace">${f.receiptNo||f.txnNo||'—'}</td><td style="font-size:12px">${fmt}</td><td><span class="badge ${bc}">${label}</span></td><td>${actions}</td></tr>`;
       }).join('');
     }catch(e){tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
-  };
-
-  window.updateFeeStatus = async function(docId,status){
-    try{await setDoc(doc(db,'fees',docId),{status,updatedAt:new Date().toISOString()},{merge:true});showToast('✅ Status: '+status);loadAdminFees();}
-    catch(e){showToast('❌ '+e.message);}
   };
 
   window.adminAddFeeRecord = async function(){
