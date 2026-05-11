@@ -1556,12 +1556,11 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (sectionId === 'a-leave')         { if(window.loadLeaveQuota) loadLeaveQuota(); if(window.loadAdminLeave) loadAdminLeave(); }
     if (sectionId === 'a-teachers')      { if(window.seedTeachersIfNeeded) window.seedTeachersIfNeeded().then(()=>{ if(window.loadTeachers) window.loadTeachers(); }); }
     if (sectionId === 'a-dashboard')     { if(window.loadAdminDashboardStats) window.loadAdminDashboardStats(); }
-    if (sectionId === 't-attendance')    {
-      if (window._currentTeacherClass && !window._attInitialized) {
+    if (sectionId === 't-attendance') {
+      window._attInitialized = false;
+      if (window._currentTeacherClass) {
         window._attInitialized = true;
         if(window.initTeacherAttendance) initTeacherAttendance(window._currentTeacherClass);
-      } else if (window._currentTeacherClass) {
-        if(window.loadAttendanceForDate) loadAttendanceForDate();
       }
     }
     if (sectionId === 't-homework') { if(window.populateHwClassSelect) populateHwClassSelect(); if(window.loadTeacherHomework) loadTeacherHomework(); }
@@ -2678,6 +2677,8 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   // ================================================================
   window.initTeacherAttendance = async function(classNum) {
     window._attClass = classNum;
+    window._attEditMode = false;
+    window._monthLockCache = {};
     window._teacherStudentDocs = null;
     const dateInp = document.getElementById('t-att-date');
     if (dateInp && !dateInp.value) dateInp.value = new Date().toISOString().split('T')[0];
@@ -2691,10 +2692,14 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   };
 
   async function isMonthLocked(classNum, date) {
+    const cacheKey = classNum + '_' + date.slice(0, 7);
+    if (window._monthLockCache && cacheKey in window._monthLockCache) return window._monthLockCache[cacheKey];
+    if (!window._monthLockCache) window._monthLockCache = {};
     const monthYear = date.substring(0,4) + '_' + date.substring(5,7);
     try {
       const mDoc = await getDoc(doc(db,'attendance_monthly',`${classNum}_${monthYear}`));
-      return mDoc.exists() && mDoc.data().status === 'locked';
+      window._monthLockCache[cacheKey] = mDoc.exists() && mDoc.data().status === 'locked';
+      return window._monthLockCache[cacheKey];
     } catch(e) { return false; }
   }
 
@@ -2708,7 +2713,6 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (lockBanner)    lockBanner.style.display = 'none';
     if (holidayBanner) holidayBanner.style.display = 'none';
     if (alreadyMarked) alreadyMarked.style.display = 'none';
-    window._attEditMode = false;
     try {
       const locked = await isMonthLocked(classNum, date);
       if (locked) {
@@ -2729,8 +2733,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       const attId = `${classNum}_${date}`;
       const attDoc = await getDoc(doc(db,'attendance_daily',attId));
       const existingData = attDoc.exists() ? attDoc.data() : null;
-      if (existingData && !window._attEditMode) { if (alreadyMarked) alreadyMarked.style.display = 'block'; }
-      renderAttendanceCards(window._teacherStudentDocs || [], existingData);
+      const viewOnly = !!(existingData && !window._attEditMode);
+      if (viewOnly) { if (alreadyMarked) alreadyMarked.style.display = 'block'; }
+      renderAttendanceCards(window._teacherStudentDocs || [], existingData, false, viewOnly);
     } catch(e) { showToast('⚠️ ' + e.message); }
   };
 
