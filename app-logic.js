@@ -95,6 +95,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') msg = 'ID or password is incorrect. Contact admin if you need help.';
       else if (err.code === 'auth/wrong-password') msg = 'Wrong password. Contact admin to reset it.';
       else if (err.code === 'auth/too-many-requests') msg = 'Too many failed attempts. Please wait a few minutes and try again.';
+      else if (err.code) msg = 'Login failed [' + err.code + ']';
       showLoginError(msg);
     } finally {
       setLoginLoading(false);
