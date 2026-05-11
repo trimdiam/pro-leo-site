@@ -3494,10 +3494,16 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const cls=(document.getElementById('af-class')?.value||'').trim();
     const feeType=document.getElementById('af-type')?.value||'';
     const amount=parseFloat(document.getElementById('af-amount')?.value||0);
-    const status=document.getElementById('af-status')?.value||'Pending';
+    const status=(document.getElementById('af-status')?.value||'pending').toLowerCase();
     if(!sid||!name||!amount){showToast('⚠️ Student ID, name and amount are required.');return;}
+    const now=new Date().toISOString();
     try{
-      await addDoc(collection(db,'fees'),{studentId:sid,studentName:name,class:cls,feeType,amount,status,mode:'Manual',txnNo:'MANUAL',submittedAt:new Date().toISOString(),createdAt:new Date().toISOString()});
+      await addDoc(collection(db,'fee_transactions'),{
+        studentId:sid,studentName:name,studentClass:cls,
+        feeType,amount,paymentMode:'Manual',receiptNo:'MANUAL-'+Date.now(),
+        status,source:'admin',staffName:'Admin',
+        createdAt:now,date:now.split('T')[0]
+      });
       ['af-sid','af-name','af-class','af-amount'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
       showToast('✅ Fee record added.'); loadAdminFees();
     }catch(e){showToast('❌ '+e.message);}
