@@ -4776,12 +4776,18 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         const sourceTag = t.source==='student-portal'
           ? `<div style="font-size:10px;color:var(--primary);margin-top:2px"><i class="fas fa-mobile-alt"></i> Online</div>`
           : '';
+        const editDelBtns = `<button onclick="editFeeTransaction('${d.id}')" style="padding:3px 8px;font-size:11px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer" title="Edit"><i class="fas fa-edit"></i></button>
+               <button onclick="deleteFeeTransaction('${d.id}')" style="padding:3px 8px;font-size:11px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer" title="Delete"><i class="fas fa-trash"></i></button>`;
         const acts = t.status==='pending'
           ? `<div style="display:flex;gap:4px;flex-wrap:wrap">
                <button class="btn btn-sm btn-success" style="font-size:11px;padding:3px 8px" onclick="approveFeeTransaction('${d.id}')"><i class="fas fa-check"></i> Approve</button>
                <button class="btn btn-sm btn-danger"  style="font-size:11px;padding:3px 7px" onclick="rejectFeeTransaction('${d.id}')"><i class="fas fa-times"></i></button>
+               ${editDelBtns}
              </div>`
-          : `<span style="font-size:11px;color:var(--text-light)">${t.status==='approved'?(t.approvedBy||'Staff'):'Rejected'}</span>`;
+          : `<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+               <span style="font-size:11px;color:var(--text-light)">${t.status==='approved'?(t.approvedBy||'Staff'):'Rejected'}</span>
+               ${editDelBtns}
+             </div>`;
         return `<tr>
           <td style="font-size:12px">${t.date||'—'}</td>
           <td><strong>${t.studentName||'—'}</strong>${sourceTag}</td>
