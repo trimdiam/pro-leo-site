@@ -4579,6 +4579,53 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
     }
   };
+
+  window.loadClasswiseDueReport = async function() {
+    const cls    = document.getElementById('o-classwise-filter')?.value || '';
+    const tbody  = document.getElementById('o-classwise-tbody');
+    const summary= document.getElementById('o-classwise-summary');
+    if (!tbody) return;
+    if (!cls) { showToast('⚠️ Please select a class.'); return; }
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>`;
+    if (summary) summary.innerHTML = '';
+    try {
+      const snap = await getDocs(query(collection(db,'students'), where('class','==',cls), limit(200)));
+      if (snap.empty) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-light)">No students found in this class.</td></tr>`;
+        return;
+      }
+      const students = snap.docs.map(d => d.data())
+        .sort((a,b) => (parseInt(a.rollNo)||0) - (parseInt(b.rollNo)||0));
+      let totalBalance = 0, cleared = 0;
+      tbody.innerHTML = students.map(s => {
+        const total   = parseFloat(s.feeTotal  || 0);
+        const paid    = parseFloat(s.feePaid   || 0);
+        const balance = parseFloat(s.feeBalance|| Math.max(0, total - paid));
+        if (balance <= 0) cleared++;
+        totalBalance += balance;
+        const rowColor = balance <= 0 ? 'background:#d4edda' : 'background:#fff3cd';
+        const badge    = balance <= 0
+          ? `<span class="badge badge-success">Cleared</span>`
+          : `<span class="badge badge-danger">Due: ${fmtINR(balance)}</span>`;
+        return `<tr style="${rowColor}">
+          <td style="font-size:12px">${s.rollNo||'—'}</td>
+          <td><strong>${s.name||'—'}</strong></td>
+          <td style="font-weight:700">${fmtINR(total)}</td>
+          <td style="color:#28a745;font-weight:700">${fmtINR(paid)}</td>
+          <td style="color:#dc3545;font-weight:700">${fmtINR(balance)}</td>
+          <td>${badge}</td>
+        </tr>`;
+      }).join('');
+      if (summary) summary.innerHTML = `
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+          <span style="background:#d4edda;color:#155724;border:1px solid #c3e6cb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700"><i class="fas fa-check-circle"></i> ${cleared} Cleared</span>
+          <span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700"><i class="fas fa-exclamation-triangle"></i> ${students.length - cleared} With Dues</span>
+          <span style="background:#f8d7da;color:#721c24;border:1px solid #dc3545;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700"><i class="fas fa-rupee-sign"></i> ${fmtINR(totalBalance)} Outstanding</span>
+        </div>`;
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
+    }
+  };
 })();
 
 // ================================================================
