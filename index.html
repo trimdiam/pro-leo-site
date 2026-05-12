@@ -1172,6 +1172,7 @@
         <button onclick="showDash('t','t-notices',this)"><i class="fas fa-bullhorn"></i> Notices</button>
         <button onclick="showDash('t','t-exams',this)"><i class="fas fa-file-alt"></i> Exams</button>
         <button onclick="showDash('t','t-leave',this)"><i class="fas fa-calendar-times"></i> Leave</button>
+        <button onclick="showDash('t','t-profile',this)"><i class="fas fa-user-circle"></i> My Profile</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
     </nav>
@@ -1216,7 +1217,10 @@
           <div class="card" style="padding:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
               <h4 style="color:var(--accent-dark)"><i class="fas fa-users" style="margin-right:8px;color:var(--accent)"></i><span id="t-class-heading">My Class</span> – Student List</h4>
-              <input type="text" placeholder="🔍 Search student..." style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--primary);font-family:var(--font-body);font-size:13px;width:220px">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input type="text" placeholder="🔍 Search student..." style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--primary);font-family:var(--font-body);font-size:13px;width:220px">
+                <button class="btn btn-sm" style="background:var(--primary);color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer" onclick="exportTeacherClassList()"><i class="fas fa-file-csv" style="margin-right:6px"></i>Export CSV</button>
+              </div>
             </div>
             <div class="table-wrap"><table><thead><tr><th>Roll No.</th><th>Name</th><th>Gender</th><th>Blood Grp</th><th>WhatsApp</th><th>Action</th></tr></thead>
             <tbody id="teacher-student-tbody"><tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading students...</td></tr></tbody></table></div>
@@ -1235,7 +1239,7 @@
             </div>
             <div id="t-att-lock-banner" class="am-lock-banner"><i class="fas fa-lock" style="margin-right:8px"></i>This month's records have been locked by Admin. No changes can be made.</div>
             <div id="t-att-holiday-banner" style="display:none;background:#fff3cd;border:1.5px solid #ffc107;border-radius:8px;padding:10px 16px;margin-bottom:12px;color:#856404;font-weight:600;font-size:13px"><i class="fas fa-calendar-times" style="margin-right:8px"></i><span id="t-att-holiday-msg">Holiday</span></div>
-            <div id="t-att-already-marked" style="display:none;background:#d4edda;border:1.5px solid #28a745;border-radius:8px;padding:10px 16px;margin-bottom:12px;color:#155724;font-weight:600;font-size:13px"><i class="fas fa-check-circle" style="margin-right:8px"></i>Attendance already submitted for this date. <a href="#" onclick="window._attEditMode=true;document.getElementById('t-att-already-marked').style.display='none';return false" style="color:#155724;text-decoration:underline;cursor:pointer;margin-left:6px">Edit</a></div>
+            <div id="t-att-already-marked" style="display:none;background:#d4edda;border:1.5px solid #28a745;border-radius:8px;padding:10px 16px;margin-bottom:12px;color:#155724;font-weight:600;font-size:13px"><i class="fas fa-check-circle" style="margin-right:8px"></i>Attendance already submitted for this date. <a href="#" onclick="window._attEditMode=true;document.getElementById('t-att-already-marked').style.display='none';if(window.loadAttendanceForDate)loadAttendanceForDate();return false" style="color:#155724;text-decoration:underline;cursor:pointer;margin-left:6px">Edit</a></div>
             <div style="margin-bottom:12px">
               <input type="text" id="att-search" placeholder="🔍 Search by name or roll number..." oninput="filterAttCards(this.value)" style="width:100%;padding:9px 14px;border:1.5px solid var(--primary);border-radius:10px;font-family:var(--font-body);font-size:13px;outline:none;box-sizing:border-box">
             </div>
@@ -1254,7 +1258,11 @@
           <div class="card" style="padding:24px;margin-top:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
               <h4 style="color:var(--accent-dark)"><i class="fas fa-history" style="margin-right:8px;color:var(--accent)"></i>Attendance History</h4>
-              <button class="btn btn-sm btn-outline" onclick="loadAttendanceHistory()"><i class="fas fa-sync-alt"></i> Refresh</button>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input type="month" id="att-history-month" style="padding:7px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                <button class="btn btn-sm btn-outline" onclick="loadAttendanceHistory()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <button class="btn btn-sm" style="background:var(--primary);color:#fff;border:none;padding:7px 12px;border-radius:8px;font-size:13px;cursor:pointer" onclick="exportAttendanceHistory()"><i class="fas fa-file-csv" style="margin-right:5px"></i>Export CSV</button>
+              </div>
             </div>
             <div class="table-wrap"><table><thead><tr><th>Date</th><th>Day</th><th>Present</th><th>Absent</th><th>Late</th><th>Total</th><th>%</th></tr></thead>
             <tbody id="t-att-history-tbody"><tr><td colspan="7" style="text-align:center;padding:14px;color:var(--text-light)">Click <strong>Refresh</strong> to load history.</td></tr></tbody></table></div>
@@ -1369,6 +1377,38 @@
             </table></div>
           </div>
         </div>
+
+        <!-- My Profile -->
+        <div id="t-profile" class="dash-section">
+          <div class="grid-2">
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-user-circle" style="margin-right:8px;color:var(--accent)"></i>My Profile</h4>
+              <div id="t-profile-card" style="display:flex;flex-direction:column;gap:14px">
+                <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid var(--border)">
+                  <div style="width:72px;height:72px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;margin:0 auto 10px" id="t-profile-avatar">—</div>
+                  <div style="font-weight:700;font-size:16px" id="t-profile-name">—</div>
+                  <div style="font-size:13px;color:var(--text-light)" id="t-profile-role">—</div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+                  <div><span style="color:var(--text-light)">Teacher ID</span><br><strong id="t-profile-id">—</strong></div>
+                  <div><span style="color:var(--text-light)">Class Teacher</span><br><strong id="t-profile-class">—</strong></div>
+                  <div><span style="color:var(--text-light)">Subject(s)</span><br><strong id="t-profile-subjects">—</strong></div>
+                  <div><span style="color:var(--text-light)">Gender</span><br><strong id="t-profile-gender">—</strong></div>
+                  <div><span style="color:var(--text-light)">Email</span><br><strong id="t-profile-email" style="word-break:break-all">—</strong></div>
+                  <div><span style="color:var(--text-light)">Phone</span><br><strong id="t-profile-phone">—</strong></div>
+                </div>
+              </div>
+            </div>
+            <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-key" style="margin-right:8px;color:var(--accent)"></i>Change Password</h4>
+              <div class="form-group"><label>Current Password</label><input type="password" id="t-pwd-current" placeholder="Enter current password"></div>
+              <div class="form-group"><label>New Password</label><input type="password" id="t-pwd-new" placeholder="Min. 6 characters"></div>
+              <div class="form-group"><label>Confirm New Password</label><input type="password" id="t-pwd-confirm" placeholder="Repeat new password"></div>
+              <button class="btn btn-primary" onclick="teacherChangePassword()"><i class="fas fa-save" style="margin-right:6px"></i>Update Password</button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
