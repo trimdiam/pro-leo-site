@@ -1583,7 +1583,20 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (sectionId === 'a-leave')    { if(window.loadLeaveQuota) loadLeaveQuota(); if(window.loadAdminLeave) loadAdminLeave(); }
     if (sectionId === 'a-notices')     { if(window.loadAdminNotices) loadAdminNotices(); }
     if (sectionId === 'a-fees')        { if(window.loadAdminFees) loadAdminFees(); }
-    if (sectionId === 'a-monthly-att') { if(window.loadAdminMonthlyAtt) loadAdminMonthlyAtt(); if(window.loadAcademicSessions) loadAcademicSessions(); }
+    if (sectionId === 'a-monthly-att')    { if(window.loadAdminMonthlyAtt) loadAdminMonthlyAtt(); if(window.loadAcademicSessions) loadAcademicSessions(); }
+    // Office section auto-loaders (consolidated from Blocks 5, 7, 8)
+    if (sectionId === 'o-fee-structure')    { if(window.officeStaffLoadFeeStructure)  officeStaffLoadFeeStructure();  }
+    if (sectionId === 'a-fee-structure')    { if(window.loadAdminFeeStructure)         loadAdminFeeStructure();         }
+    if (sectionId === 'a-fee-transactions') { if(window.loadAdminFeeTransactions)      loadAdminFeeTransactions();      }
+    if (sectionId === 'o-fee-approvals')    { if(window.loadAdminFeeTransactions)      loadAdminFeeTransactions();      }
+    if (sectionId === 'o-dues')             { if(window.loadDuesList)                  loadDuesList();                  }
+    if (sectionId === 'o-dashboard')        { if(window.loadOfficeDashboardStats)       loadOfficeDashboardStats();       }
+    if (sectionId === 'o-reports')          { if(window.loadOfficeReports)             loadOfficeReports();             }
+    if (sectionId === 'o-admissions')       { if(window.loadOfficeAdmissions)          loadOfficeAdmissions();          }
+    if (sectionId === 'o-fee-collection') {
+      const pd = document.getElementById('pay-date');
+      if (pd && !pd.value) pd.value = new Date().toISOString().split('T')[0];
+    }
   };
 
   // ================================================================
@@ -4782,12 +4795,6 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   };
 
   /* Auto-load when the section is opened */
-  const _prevShowDash = window.showDash;
-  window.showDash = function(prefix, sectionId, btn) {
-    _prevShowDash(prefix, sectionId, btn);
-    if (sectionId === 'o-fee-structure') officeStaffLoadFeeStructure();
-  };
-
   console.log('[OfficeFeeStructure] ✅ Loaded');
 })();
 
@@ -5029,22 +5036,6 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         }, 800);
       }
     } catch(e) {}
-  };
-
-  /* ── showDash auto-load hooks ── */
-  const _prevShowDash = window.showDash;
-  window.showDash = function(prefix, sectionId, btn) {
-    _prevShowDash(prefix, sectionId, btn);
-    if (sectionId==='a-fee-structure')    { if(window.loadAdminFeeStructure)    loadAdminFeeStructure();    }
-    if (sectionId==='a-fee-transactions') { if(window.loadAdminFeeTransactions) loadAdminFeeTransactions(); }
-    if (sectionId==='o-fee-approvals')    { if(window.loadAdminFeeTransactions) loadAdminFeeTransactions(); }
-    if (sectionId==='o-dues')             { if(window.loadDuesList)             loadDuesList();             }
-    if (sectionId==='o-dashboard')        { if(window.loadOfficeDashboardStats) loadOfficeDashboardStats(); }
-    if (sectionId==='o-reports')          { if(window.loadOfficeReports)        loadOfficeReports();        }
-    if (sectionId==='o-fee-collection') {
-      const pd=document.getElementById('pay-date');
-      if (pd && !pd.value) pd.value=new Date().toISOString().split('T')[0];
-    }
   };
 
   console.log('[FeeModule] ✅ Loaded — Office Portal · Fee Structure · Approvals · Notifications');
@@ -5304,12 +5295,6 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   };
 
   // Auto-load when navigating to admissions section
-  const _prevShowDash = window.showDash;
-  window.showDash = function(prefix, sectionId, btn) {
-    _prevShowDash(prefix, sectionId, btn);
-    if (sectionId === 'o-admissions') window.loadOfficeAdmissions();
-  };
-
   console.log('[Admissions] ✅ Loaded — Office Staff admissions review module');
 })();
 
