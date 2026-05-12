@@ -5186,8 +5186,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
           <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${a.classApplied || '—'}</td>
           <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${date}</td>
           <td style="padding:10px 12px;font-size:13px">${statusBadge}</td>
-          <td style="padding:10px 12px">
+          <td style="padding:10px 12px;white-space:nowrap;display:flex;gap:6px">
             <button onclick="viewAdmission('${d.id}')" style="padding:6px 12px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer"><i class="fas fa-eye"></i> View</button>
+            <button onclick="printAdmissionById('${d.id}')" style="padding:6px 10px;background:#6b7280;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer" title="Print"><i class="fas fa-print"></i></button>
           </td>`;
         tbody.appendChild(tr);
       });
@@ -5196,6 +5197,16 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     } catch(e) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:#ef4444">Error: ${e.message}</td></tr>`;
     }
+  };
+
+  window.printAdmissionById = async function(id) {
+    const cached = (window.__admissionsCache || {})[id];
+    if (cached) { window._printAdmissionPDF(cached); return; }
+    try {
+      const snap = await getDoc(doc(db, 'admissions', id));
+      if (!snap.exists()) { showToast('⚠️ Application not found.'); return; }
+      window._printAdmissionPDF(snap.data());
+    } catch(e) { showToast('❌ Could not load application: ' + e.message); }
   };
 
   // ── View single application ───────────────────────────────────
