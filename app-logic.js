@@ -1594,6 +1594,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (sectionId === 'o-reports')          { if(window.loadOfficeReports)             loadOfficeReports();             }
     if (sectionId === 'o-admissions')       { if(window.loadOfficeAdmissions)          loadOfficeAdmissions();          }
     if (sectionId === 'o-profile')          { if(window.loadOfficeProfile)             loadOfficeProfile();             }
+    if (sectionId === 'a-student-records') { if(window.loadStudentRecords)            window.loadStudentRecords();      }
     if (sectionId === 'o-fee-collection') {
       const pd = document.getElementById('pay-date');
       if (pd && !pd.value) pd.value = new Date().toISOString().split('T')[0];
@@ -6102,14 +6103,6 @@ window.markReminded = async function(docId) {
     a.click();
     URL.revokeObjectURL(a.href);
   }
-
-  const _prevShowDash = window.showDash;
-  window.showDash = function(prefix, sectionId, btn) {
-    if (_prevShowDash) _prevShowDash(prefix, sectionId, btn);
-    if (sectionId === 'a-student-records' && !_srAllRecords.length) {
-      window.loadStudentRecords();
-    }
-  };
 
 })();
 // ============================================================
