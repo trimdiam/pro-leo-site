@@ -5345,6 +5345,14 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         officeNotes: notes,
         forwardedAt: serverTimestamp()
       });
+      await addDoc(collection(db, 'admin_notifications'), {
+        type: 'admission_forwarded',
+        admissionId: currentAdmissionId,
+        studentName: currentAdmissionData?.fullName || '',
+        forwardedBy: window._officeStaffName || 'Office Staff',
+        read: false,
+        createdAt: new Date().toISOString()
+      });
       showToast('✅ Application forwarded to Admin.');
       if (window.__admissionsCache?.[currentAdmissionId]) {
         window.__admissionsCache[currentAdmissionId].status = 'forwarded_to_admin';
