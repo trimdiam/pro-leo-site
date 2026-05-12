@@ -4748,7 +4748,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const tbody = document.getElementById('admin-fee-txn-tbody');
     if (!tbody) return;
     tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
-    const filter = document.getElementById('a-txn-filter')?.value||'pending';
+    const filter = (document.getElementById('a-txn-filter') || document.getElementById('o-txn-filter'))?.value || 'pending';
     try {
       const snap = filter==='all'
         ? await getDocs(query(collection(db,'fee_transactions'), limit(100)))
