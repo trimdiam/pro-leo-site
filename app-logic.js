@@ -5403,6 +5403,90 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
 })();
 
 // ================================================================
+// BLOCK 8B — BULK FEE ENTRY
+// ================================================================
+(async () => {
+  const clsLabel = c => ({ PLG:'Play Group', SKG:'SKG', LKG:'LKG' }[c] || (c ? 'Class ' + c : '—'));
+  const fmtINR   = n => '₹' + (parseFloat(n)||0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
+  window.loadBulkFeeClass = async function() {
+    const cls  = document.getElementById('bulk-class-sel')?.value;
+    if (!cls) { showToast('⚠️ Select a class first.'); return; }
+    const wrap = document.getElementById('bulk-fee-table-wrap');
+    const tbody = document.getElementById('bulk-fee-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:14px"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
+    if (wrap) wrap.style.display = 'block';
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'students'),
+        where('class', '==', cls),
+        limit(200)
+      ));
+      const students = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (parseInt(a.rollNo)||0) - (parseInt(b.rollNo)||0));
+      if (!students.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:14px;color:var(--text-light)">No students found for this class.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = students.map(s => {
+        const bal = parseFloat(s.feeBalance ?? s.feeTotal ?? 0);
+        return `<tr>
+          <td style="padding:7px 6px"><input type="checkbox" class="bulk-row-chk" data-sid="${s.id}" data-student='${JSON.stringify({id:s.id,studentId:s.studentId||'',name:s.name||'',class:s.class||'',rollNo:s.rollNo||'',feeBalance:bal,feeTotal:parseFloat(s.feeTotal||0)})}' onchange="document.getElementById('bulk-selected-count').textContent=document.querySelectorAll('.bulk-row-chk:checked').length+' selected'"></td>
+          <td style="padding:7px 6px">${s.rollNo||'—'}</td>
+          <td style="padding:7px 6px;font-weight:600">${s.name||'—'}</td>
+          <td style="padding:7px 6px;color:${bal>0?'#dc2626':'#16a34a'}">${fmtINR(bal)}</td>
+          <td style="padding:7px 6px"><input type="number" class="bulk-amt-input" data-sid="${s.id}" value="${bal>0?bal:''}" min="0" style="width:100px;padding:4px 8px;border:1.5px solid var(--primary);border-radius:6px;font-family:var(--font-body);font-size:13px"></td>
+        </tr>`;
+      }).join('');
+      document.getElementById('bulk-selected-count').textContent = '0 selected';
+      const selectAll = document.getElementById('bulk-select-all');
+      if (selectAll) selectAll.checked = false;
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger);padding:12px">${e.message}</td></tr>`;
+    }
+  };
+
+  window.recordBulkFeePayments = async function() {
+    const checked = [...document.querySelectorAll('.bulk-row-chk:checked')];
+    if (!checked.length) { showToast('⚠️ Select at least one student.'); return; }
+    const feeType = document.getElementById('bulk-fee-type')?.value || 'Annual Fee';
+    const mode    = document.getElementById('bulk-mode')?.value    || 'Cash';
+    const staffName = window._officeStaffName || 'Office Staff';
+    let ok = 0, fail = 0;
+    for (const chk of checked) {
+      try {
+        const s   = JSON.parse(chk.dataset.student);
+        const amt = parseFloat(document.querySelector(`.bulk-amt-input[data-sid="${chk.dataset.sid}"]`)?.value || 0);
+        if (!amt || amt <= 0) { fail++; continue; }
+        const balAfter = Math.max(0, (s.feeBalance || 0) - amt);
+        await addDoc(collection(db, 'fee_transactions'), {
+          studentId:    s.studentId,
+          studentName:  s.name,
+          studentClass: s.class,
+          feeType,
+          amount:       amt,
+          paymentMode:  mode,
+          receiptNo:    '',
+          date:         new Date().toISOString().slice(0, 10),
+          status:       'approved',
+          staffName,
+          balanceBefore: s.feeBalance || 0,
+          balanceAfter:  balAfter,
+          feeTotal:      s.feeTotal   || 0,
+          source:        'bulk-entry',
+          createdAt:     serverTimestamp()
+        });
+        ok++;
+      } catch(e) { fail++; console.warn('Bulk entry error:', e.message); }
+    }
+    showToast(ok ? `✅ ${ok} payment(s) recorded${fail ? ', ' + fail + ' failed' : ''}.` : '❌ All entries failed.');
+    if (ok) window.loadBulkFeeClass();
+  };
+})();
+
+// ================================================================
 // BLOCK 9 — FEE LEDGER SUBMIT PAYMENT
 // ================================================================
 (async () => {
