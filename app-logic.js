@@ -4,6 +4,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
 // ================================================================
 // BLOCK 1 — MAIN APP LOGIC
 // ================================================================
+const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
   // Cloudinary handles uploads — Firebase Storage is not used
 
   const firebaseConfig = {
@@ -446,7 +447,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       if (items.length === 0) return;
       const ticker = document.getElementById('home-ticker-content');
       if (ticker) {
-        ticker.innerHTML = items.map(a => `<span>${a.text || a.title}</span>`).join('');
+        ticker.innerHTML = items.map(a => `<span>${pur(a.text || a.title)}</span>`).join('');
       }
     } catch(e) { /* keep static */ }
   }
@@ -504,9 +505,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         return `<div class="notice-card">
           <div class="notice-icon"><i class="fas ${icon(n.priority)}"></i></div>
           <div>
-            <div class="notice-title">${n.title}</div>
+            <div class="notice-title">${pur(n.title)}</div>
             <div class="notice-date">📅 ${fmt} &nbsp;|&nbsp; <span class="badge ${bc(n.priority)}">${n.priority||'Normal'}</span></div>
-            <div class="notice-body">${n.body}</div>
+            <div class="notice-body">${pur(n.body)}</div>
           </div>
         </div>`;
       }).join('');
@@ -585,7 +586,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       if (!snap.empty) {
         const notice = snap.docs[0].data().value;
         const box = document.getElementById('admission-notice-box');
-        if (box && notice) { box.innerHTML = '<i class="fas fa-info-circle" style="margin-right:8px"></i>' + notice; box.style.display = 'block'; }
+        if (box && notice) { box.innerHTML = '<i class="fas fa-info-circle" style="margin-right:8px"></i>' + pur(notice); box.style.display = 'block'; }
         const adminEl = document.getElementById('adm-public-notice');
         if (adminEl) adminEl.value = notice;
       }
@@ -793,7 +794,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         const a = d.data();
         return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:center;gap:8px">
           <div>
-            <div style="font-size:14px;color:var(--text)">${a.text}</div>
+            <div style="font-size:14px;color:var(--text)">${pur(a.text)}</div>
             <div style="font-size:11px;color:var(--text-light);margin-top:3px">${a.activeFrom?'From: '+a.activeFrom:''} ${a.activeTo?'Until: '+a.activeTo:''} · <span class="badge ${a.priority==='High'?'badge-danger':'badge-info'}">${a.priority}</span></div>
           </div>
           <button onclick="deleteAnnouncement('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;flex-shrink:0"><i class="fas fa-trash"></i></button>
@@ -1047,8 +1048,8 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     }
     lb.innerHTML = `
       <button onclick="this.parentElement.remove()" style="position:absolute;top:16px;right:20px;background:none;border:none;color:#fff;font-size:1.8rem;cursor:pointer"><i class="fas fa-times"></i></button>
-      <img src="${url}" alt="${caption}" style="max-width:90vw;max-height:80vh;border-radius:10px;object-fit:contain;box-shadow:0 20px 60px rgba(0,0,0,.5)">
-      ${caption ? `<p style="color:rgba(255,255,255,.8);margin-top:14px;font-size:14px;text-align:center">${caption}</p>` : ''}`;
+      <img src="${url}" alt="${pur(caption)}" style="max-width:90vw;max-height:80vh;border-radius:10px;object-fit:contain;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      ${caption ? `<p style="color:rgba(255,255,255,.8);margin-top:14px;font-size:14px;text-align:center">${pur(caption)}</p>` : ''}`;
     lb.style.display = 'flex';
   };
 
@@ -1506,13 +1507,13 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       const map = {};
       snap.docs.forEach(d => { if (keys.includes(d.data().key)) map[d.data().key] = d.data().value; });
       const aboutEl = document.getElementById('dynamic-about-text');
-      if (aboutEl && map.about) aboutEl.innerHTML = map.about;
+      if (aboutEl && map.about) aboutEl.innerHTML = pur(map.about);
       const missionEl = document.getElementById('dynamic-mission-text');
-      if (missionEl && map.mission) missionEl.innerHTML = map.mission;
+      if (missionEl && map.mission) missionEl.innerHTML = pur(map.mission);
       const visionEl = document.getElementById('dynamic-vision-text');
-      if (visionEl && map.vision) visionEl.innerHTML = map.vision;
+      if (visionEl && map.vision) visionEl.innerHTML = pur(map.vision);
       const parentsEl = document.getElementById('dynamic-parents-note');
-      if (parentsEl && map.parentsNote) parentsEl.innerHTML = map.parentsNote;
+      if (parentsEl && map.parentsNote) parentsEl.innerHTML = pur(map.parentsNote);
     } catch(e) { /* use static fallback */ }
   }
 
@@ -1544,9 +1545,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         const fmt = c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '—';
         const bc = c.status==='Replied'?'badge-success':'badge-warning';
         return `<tr>
-          <td><strong>${c.name||'—'}</strong><br><span style="font-size:11px;color:var(--text-light)">${c.email||''}</span></td>
-          <td style="font-size:13px">${c.subject||'—'}</td>
-          <td style="font-size:12px;color:var(--text-light);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.message||'—'}</td>
+          <td><strong>${pur(c.name||'—')}</strong><br><span style="font-size:11px;color:var(--text-light)">${pur(c.email||'')}</span></td>
+          <td style="font-size:13px">${pur(c.subject||'—')}</td>
+          <td style="font-size:12px;color:var(--text-light);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pur(c.message||'—')}</td>
           <td style="font-size:12px">${fmt}</td>
           <td><span class="badge ${bc}">${c.status||'Unread'}</span></td>
           <td>
@@ -1681,7 +1682,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       // Ticker
       if (ticker) {
         ticker.innerHTML = items.map(a =>
-          `<span>${a.isNew||a.date>=threeDaysAgo?'🔴 ':''}<strong>${a.title||''}</strong>${a.title&&a.message?' — ':''}${a.message||a.text||''}</span>`
+          `<span>${a.isNew||a.date>=threeDaysAgo?'🔴 ':''}<strong>${pur(a.title||'')}</strong>${a.title&&a.message?' — ':''}${pur(a.message||a.text||'')}</span>`
         ).join('');
       }
       // Cards
