@@ -2956,7 +2956,7 @@
 
         <!-- ── REPORTS ── -->
         <div id="o-reports" class="dash-section">
-          <div class="card" style="padding:24px">
+          <div class="card" style="padding:24px;margin-bottom:20px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
               <h4 style="color:var(--accent-dark)"><i class="fas fa-chart-bar" style="margin-right:8px;color:var(--accent)"></i>All Transactions</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2974,6 +2974,32 @@
                 <thead><tr><th>Date</th><th>Student</th><th>Class</th><th>Amount</th><th>Mode</th><th>Receipt No.</th><th>Staff</th><th>Status</th></tr></thead>
                 <tbody id="o-reports-tbody">
                   <tr><td colspan="8" style="text-align:center;padding:16px;color:var(--text-light)">Click Refresh to load.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+              <h4 style="color:var(--accent-dark)"><i class="fas fa-users" style="margin-right:8px;color:var(--accent)"></i>Class-wise Fee Status</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <select id="o-classwise-filter" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="">— Select Class —</option>
+                  <option value="PLG">Play Group</option><option value="SKG">SKG</option><option value="LKG">LKG</option>
+                  <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option>
+                  <option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option>
+                  <option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option>
+                  <option value="10">Class 10</option>
+                </select>
+                <button class="btn btn-sm btn-primary" onclick="loadClasswiseDueReport()"><i class="fas fa-search"></i> Load</button>
+              </div>
+            </div>
+            <div id="o-classwise-summary" style="margin-bottom:12px"></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Roll No.</th><th>Student</th><th>Total Fee</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+                <tbody id="o-classwise-tbody">
+                  <tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-light)">Select a class and click Load.</td></tr>
                 </tbody>
               </table>
             </div>
