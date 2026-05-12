@@ -5261,7 +5261,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
 <div style="margin-top:40px;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:12px">
   St. Francis De Sales Secondary School · Laitkor, Shillong · Generated ${new Date().toLocaleString('en-IN')}
 </div>`;
+    document.body.classList.add('adm-printing');
     window.print();
+    setTimeout(() => document.body.classList.remove('adm-printing'), 500);
   };
 
   // Office portal wrapper — uses currentAdmissionData
