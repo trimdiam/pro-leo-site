@@ -3678,6 +3678,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       set('a-inbox-fee',      fSnap.size);
       set('a-inbox-contacts', cSnap.size);
       set('a-inbox-leave',    lSnap.size);
+      if (window.loadAdminNotifications) window.loadAdminNotifications();
       const tbody=document.getElementById('classwise-tbody');
       if(tbody&&sSnap.size>0){
         const classMap={};
@@ -3697,6 +3698,19 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       if(homeS&&sSnap.size>0) homeS.textContent=sSnap.size.toLocaleString('en-IN')+'+';
       if(homeT&&tSnap.size>0) homeT.textContent=tSnap.size.toLocaleString('en-IN')+'+';
     }catch(e){console.warn('Dashboard stats:',e.message);}
+  };
+
+  window.loadAdminNotifications = async function() {
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'admin_notifications'),
+        where('read', '==', false),
+        where('type', '==', 'admission_forwarded'),
+        limit(100)
+      ));
+      const el = document.getElementById('a-inbox-forwarded');
+      if (el) el.textContent = snap.size;
+    } catch(e) { console.warn('Admin notifications:', e.message); }
   };
 
   // ================================================================
