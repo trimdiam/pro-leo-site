@@ -2280,7 +2280,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         feeSnap.forEach(d => {
           const f   = d.data();
           const amt = parseFloat(f.amount) || 0;
-          if (f.status === 'Approved') totalPaid += amt;
+          if ((f.status || '').toLowerCase() === 'approved') totalPaid += amt;
           else { totalDue += amt; if (f.dueDate && f.dueDate > latestDue) latestDue = f.dueDate; }
         });
         feeData = {
