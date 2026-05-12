@@ -5545,51 +5545,56 @@ window.loadDuesList = async function() {
     const filterType   = document.getElementById('dues-filter-type')?.value   || '';
     const filterStatus = document.getElementById('dues-filter-status')?.value || '';
 
-    const snap = await getDocs(query(collection(db2, 'fees'), where('status', '!=', 'approved')));
+    const snap = await getDocs(query(collection(db2, 'fee_transactions'), where('status', '==', 'pending')));
 
     let records = [];
     snap.forEach(doc => {
       const d = { id: doc.id, ...doc.data() };
-      if (filterClass  && d.class   !== filterClass)  return;
-      if (filterType   && d.feeType !== filterType)   return;
-      if (filterStatus && d.status  !== filterStatus) return;
-      records.push(d);
+      const cls = d.studentClass || d.class || '';
+      if (filterClass  && cls         !== filterClass)  return;
+      if (filterType   && d.feeType   !== filterType)   return;
+      if (filterStatus && d.status    !== filterStatus) return;
+      records.push({ ...d, _cls: cls });
     });
 
-    const totalDue = records.reduce((s, r) => s + ((r.amount || 0) - (r.paidAmount || 0)), 0);
+    // Batch-fetch WhatsApp numbers from students collection
+    const uniqueIds = [...new Set(records.map(r => r.studentId).filter(Boolean))];
+    const waMap = {};
+    for (let i = 0; i < uniqueIds.length; i += 30) {
+      const batch = uniqueIds.slice(i, i + 30);
+      const sSnap = await getDocs(query(collection(db2, 'students'), where('studentId', 'in', batch)));
+      sSnap.forEach(d => { const s = d.data(); if (s.studentId) waMap[s.studentId] = s.whatsapp || ''; });
+    }
+
+    const totalDue = records.reduce((s, r) => s + (r.amount || 0), 0);
     if (chipsEl) chipsEl.innerHTML = `
       <span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">
-        <i class="fas fa-users"></i> ${records.length} Students in Dues
+        <i class="fas fa-users"></i> ${records.length} Pending Transactions
       </span>
       <span style="background:#f8d7da;color:#721c24;border:1px solid #dc3545;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">
-        <i class="fas fa-rupee-sign"></i> ₹${totalDue.toLocaleString('en-IN')} Total Outstanding
+        <i class="fas fa-rupee-sign"></i> ₹${totalDue.toLocaleString('en-IN')} Total Pending
       </span>`;
 
     if (records.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#28a745;font-weight:600;"><i class="fas fa-check-circle"></i> No dues found — all clear!</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#28a745;font-weight:600;"><i class="fas fa-check-circle"></i> No pending dues found — all clear!</td></tr>`;
       return;
     }
 
-    records.sort((a, b) => ({ rejected:0, pending:1 }[a.status] ?? 2) - ({ rejected:0, pending:1 }[b.status] ?? 2));
-
     tbody.innerHTML = records.map(r => {
-      const balance  = (r.amount || 0) - (r.paidAmount || 0);
       const reminded = r.lastRemindedDate ? new Date(r.lastRemindedDate).toLocaleDateString('en-IN') : '—';
-      const badge    = r.status === 'pending'
-        ? `<span class="badge badge-warning">Pending</span>`
-        : `<span class="badge badge-danger">Rejected</span>`;
-      const waMsg = encodeURIComponent(
-        `Dear Parent of ${r.studentName || r.studentId},\nThis is a reminder from St. Francis De Sales Sec. School, Laitkor.\nYour fee of ₹${balance.toLocaleString('en-IN')} (${r.feeType}) is unpaid.\nKindly pay at the earliest to avoid inconvenience.\nThank you.`
+      const badge    = `<span class="badge badge-warning">Pending</span>`;
+      const waNum    = (waMap[r.studentId] || '').replace(/\D/g, '');
+      const waMsg    = encodeURIComponent(
+        `Dear Parent of ${r.studentName || r.studentId},\nThis is a reminder from St. Francis De Sales Sec. School, Laitkor.\nYour fee payment of ₹${(r.amount||0).toLocaleString('en-IN')} is awaiting approval.\nKindly contact the school office.\nThank you.`
       );
-      const waNum = (r.whatsapp || '').replace(/\D/g, '');
       const waBtn = waNum
         ? `<a href="https://wa.me/91${waNum}?text=${waMsg}" target="_blank" class="btn btn-success btn-sm" onclick="window.markReminded('${r.id}')"><i class="fab fa-whatsapp"></i> Remind</a>`
         : `<span style="font-size:12px;color:var(--text-light);">No WhatsApp</span>`;
       return `<tr>
         <td><strong>${r.studentName || r.studentId || '—'}</strong><br><span style="font-size:11px;color:var(--text-light);">${r.studentId || ''}</span></td>
-        <td>${r.class || '—'}</td>
-        <td>${r.feeType || '—'}</td>
-        <td style="font-weight:700;color:#dc3545;">₹${balance.toLocaleString('en-IN')}</td>
+        <td>${r._cls || '—'}</td>
+        <td>${r.feeType || r.notes || '—'}</td>
+        <td style="font-weight:700;color:#dc3545;">₹${(r.amount||0).toLocaleString('en-IN')}</td>
         <td>${badge}</td>
         <td style="font-size:12px;">${reminded}</td>
         <td>${waBtn}</td>
@@ -5607,7 +5612,7 @@ window.loadDuesList = async function() {
 window.markReminded = async function(docId) {
   try {
     const { getFirestore, doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
-    await updateDoc(doc(getFirestore(), 'fees', docId), {
+    await updateDoc(doc(getFirestore(), 'fee_transactions', docId), {
       lastRemindedDate: new Date().toISOString().split('T')[0]
     });
   } catch(e) { console.warn('markReminded:', e.message); }
