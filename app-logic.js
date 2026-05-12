@@ -116,8 +116,17 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   // ================================================================
   let _pendingFirstTimeUser = null;
 
+  let _ftsTimeoutId = null;
+
   function _showFirstTimeSetup(user) {
     _pendingFirstTimeUser = user;
+
+    if (_ftsTimeoutId) clearTimeout(_ftsTimeoutId);
+    _ftsTimeoutId = setTimeout(() => {
+      if (_pendingFirstTimeUser) {
+        _showFTSError('Taking too long? Try signing in again or contact admin.');
+      }
+    }, 2 * 60 * 1000);
 
     const photo = user.photoURL    || '';
     const name  = user.displayName || 'Student';
@@ -152,13 +161,15 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const overlay = document.getElementById('first-time-setup-overlay');
     if (overlay) overlay.style.display = 'none';
     _pendingFirstTimeUser = null;
+    if (_ftsTimeoutId) { clearTimeout(_ftsTimeoutId); _ftsTimeoutId = null; }
   }
 
   function _showFTSError(msg) {
     const box = document.getElementById('fts-error');
     if (!box) return;
     if (msg) {
-      box.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>' + msg + '</span>';
+      box.innerHTML = '<i class="fas fa-exclamation-circle"></i><span style="flex:1">' + msg + '</span>'
+        + '<button onclick="linkStudentAccount()" style="margin-left:8px;padding:3px 10px;background:#991b1b;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">Try Again</button>';
       box.style.display = 'flex';
     } else {
       box.style.display = 'none';
@@ -245,7 +256,10 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       // 5. Clear the modal and continue with the normal login flow
       showToast('✅ Account linked! Opening your portal…');
       _hideFirstTimeSetup();
-      setTimeout(() => { _handleAuthUser(user).catch(console.error); }, 400);
+      setTimeout(async () => {
+        try { await _handleAuthUser(user); }
+        catch(e) { console.error('[FTS] _handleAuthUser failed, reloading:', e.message); window.location.reload(); }
+      }, 400);
 
     } catch (e) {
       console.error('[FirstTimeSetup] Link failed:', e);
