@@ -1583,7 +1583,20 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (sectionId === 'a-leave')    { if(window.loadLeaveQuota) loadLeaveQuota(); if(window.loadAdminLeave) loadAdminLeave(); }
     if (sectionId === 'a-notices')     { if(window.loadAdminNotices) loadAdminNotices(); }
     if (sectionId === 'a-fees')        { if(window.loadAdminFees) loadAdminFees(); }
-    if (sectionId === 'a-monthly-att') { if(window.loadAdminMonthlyAtt) loadAdminMonthlyAtt(); if(window.loadAcademicSessions) loadAcademicSessions(); }
+    if (sectionId === 'a-monthly-att')    { if(window.loadAdminMonthlyAtt) loadAdminMonthlyAtt(); if(window.loadAcademicSessions) loadAcademicSessions(); }
+    // Office section auto-loaders (consolidated from Blocks 5, 7, 8)
+    if (sectionId === 'o-fee-structure')    { if(window.officeStaffLoadFeeStructure)  officeStaffLoadFeeStructure();  }
+    if (sectionId === 'a-fee-structure')    { if(window.loadAdminFeeStructure)         loadAdminFeeStructure();         }
+    if (sectionId === 'a-fee-transactions') { if(window.loadAdminFeeTransactions)      loadAdminFeeTransactions();      }
+    if (sectionId === 'o-fee-approvals')    { if(window.loadAdminFeeTransactions)      loadAdminFeeTransactions();      }
+    if (sectionId === 'o-dues')             { if(window.loadDuesList)                  loadDuesList();                  }
+    if (sectionId === 'o-dashboard')        { if(window.loadOfficeDashboardStats)       loadOfficeDashboardStats();       }
+    if (sectionId === 'o-reports')          { if(window.loadOfficeReports)             loadOfficeReports();             }
+    if (sectionId === 'o-admissions')       { if(window.loadOfficeAdmissions)          loadOfficeAdmissions();          }
+    if (sectionId === 'o-fee-collection') {
+      const pd = document.getElementById('pay-date');
+      if (pd && !pd.value) pd.value = new Date().toISOString().split('T')[0];
+    }
   };
 
   // ================================================================
@@ -4076,15 +4089,20 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   };
 
   window.loadOfficeDashboardStats = async function() {
-    const today = new Date().toISOString().split('T')[0];
+    const today     = new Date().toISOString().split('T')[0];
+    const monthPfx  = today.slice(0, 7); // YYYY-MM
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
     try {
-      const [pendSnap, todaySnap] = await Promise.all([
-        getDocs(query(collection(db,'fee_transactions'), where('status','==','pending'), limit(200))),
-        getDocs(query(collection(db,'fee_transactions'), where('date','==',today),       limit(200)))
+      const [pendSnap, todaySnap, monthSnap, studentsSnap] = await Promise.all([
+        getDocs(query(collection(db,'fee_transactions'), where('status','==','pending'),  limit(500))),
+        getDocs(query(collection(db,'fee_transactions'), where('date','==',today),        limit(500))),
+        getDocs(query(collection(db,'fee_transactions'), where('status','==','approved'), where('date','>=',monthPfx+'-01'), where('date','<=',monthPfx+'-31'), limit(500))),
+        getDocs(query(collection(db,'students'), limit(500)))
       ]);
-      const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+
       set('o-stat-pending', pendSnap.size);
       set('o-stat-today',   todaySnap.size);
+
       let approvedAmt = 0, approvedCount = 0;
       todaySnap.forEach(d => {
         if (d.data().status === 'approved') {
@@ -4094,6 +4112,15 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       });
       set('o-stat-total-today',    fmtINR(approvedAmt));
       set('o-stat-approved-today', approvedCount);
+
+      let monthCollected = 0;
+      monthSnap.forEach(d => { monthCollected += parseFloat(d.data().amount) || 0; });
+      set('o-stat-month-collected', fmtINR(monthCollected));
+
+      let totalOutstanding = 0;
+      studentsSnap.forEach(d => { totalOutstanding += parseFloat(d.data().feeBalance) || 0; });
+      set('o-stat-total-outstanding', fmtINR(totalOutstanding));
+
       loadOfficeRecentTransactions();
     } catch(e) { console.warn('[OfficeDash]', e.message); }
   };
@@ -4552,6 +4579,53 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
     }
   };
+
+  window.loadClasswiseDueReport = async function() {
+    const cls    = document.getElementById('o-classwise-filter')?.value || '';
+    const tbody  = document.getElementById('o-classwise-tbody');
+    const summary= document.getElementById('o-classwise-summary');
+    if (!tbody) return;
+    if (!cls) { showToast('⚠️ Please select a class.'); return; }
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>`;
+    if (summary) summary.innerHTML = '';
+    try {
+      const snap = await getDocs(query(collection(db,'students'), where('class','==',cls), limit(200)));
+      if (snap.empty) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-light)">No students found in this class.</td></tr>`;
+        return;
+      }
+      const students = snap.docs.map(d => d.data())
+        .sort((a,b) => (parseInt(a.rollNo)||0) - (parseInt(b.rollNo)||0));
+      let totalBalance = 0, cleared = 0;
+      tbody.innerHTML = students.map(s => {
+        const total   = parseFloat(s.feeTotal  || 0);
+        const paid    = parseFloat(s.feePaid   || 0);
+        const balance = parseFloat(s.feeBalance|| Math.max(0, total - paid));
+        if (balance <= 0) cleared++;
+        totalBalance += balance;
+        const rowColor = balance <= 0 ? 'background:#d4edda' : 'background:#fff3cd';
+        const badge    = balance <= 0
+          ? `<span class="badge badge-success">Cleared</span>`
+          : `<span class="badge badge-danger">Due: ${fmtINR(balance)}</span>`;
+        return `<tr style="${rowColor}">
+          <td style="font-size:12px">${s.rollNo||'—'}</td>
+          <td><strong>${s.name||'—'}</strong></td>
+          <td style="font-weight:700">${fmtINR(total)}</td>
+          <td style="color:#28a745;font-weight:700">${fmtINR(paid)}</td>
+          <td style="color:#dc3545;font-weight:700">${fmtINR(balance)}</td>
+          <td>${badge}</td>
+        </tr>`;
+      }).join('');
+      if (summary) summary.innerHTML = `
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+          <span style="background:#d4edda;color:#155724;border:1px solid #c3e6cb;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700"><i class="fas fa-check-circle"></i> ${cleared} Cleared</span>
+          <span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700"><i class="fas fa-exclamation-triangle"></i> ${students.length - cleared} With Dues</span>
+          <span style="background:#f8d7da;color:#721c24;border:1px solid #dc3545;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700"><i class="fas fa-rupee-sign"></i> ${fmtINR(totalBalance)} Outstanding</span>
+        </div>`;
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
+    }
+  };
 })();
 
 // ================================================================
@@ -4782,12 +4856,6 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   };
 
   /* Auto-load when the section is opened */
-  const _prevShowDash = window.showDash;
-  window.showDash = function(prefix, sectionId, btn) {
-    _prevShowDash(prefix, sectionId, btn);
-    if (sectionId === 'o-fee-structure') officeStaffLoadFeeStructure();
-  };
-
   console.log('[OfficeFeeStructure] ✅ Loaded');
 })();
 
@@ -5031,22 +5099,6 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     } catch(e) {}
   };
 
-  /* ── showDash auto-load hooks ── */
-  const _prevShowDash = window.showDash;
-  window.showDash = function(prefix, sectionId, btn) {
-    _prevShowDash(prefix, sectionId, btn);
-    if (sectionId==='a-fee-structure')    { if(window.loadAdminFeeStructure)    loadAdminFeeStructure();    }
-    if (sectionId==='a-fee-transactions') { if(window.loadAdminFeeTransactions) loadAdminFeeTransactions(); }
-    if (sectionId==='o-fee-approvals')    { if(window.loadAdminFeeTransactions) loadAdminFeeTransactions(); }
-    if (sectionId==='o-dues')             { if(window.loadDuesList)             loadDuesList();             }
-    if (sectionId==='o-dashboard')        { if(window.loadOfficeDashboardStats) loadOfficeDashboardStats(); }
-    if (sectionId==='o-reports')          { if(window.loadOfficeReports)        loadOfficeReports();        }
-    if (sectionId==='o-fee-collection') {
-      const pd=document.getElementById('pay-date');
-      if (pd && !pd.value) pd.value=new Date().toISOString().split('T')[0];
-    }
-  };
-
   console.log('[FeeModule] ✅ Loaded — Office Portal · Fee Structure · Approvals · Notifications');
 })();
 
@@ -5058,7 +5110,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   // db and Firestore functions are available from module-level imports
 
   // ── Load admissions list ──────────────────────────────────────
-  window.loadAdmissions = async function() {
+  window.loadOfficeAdmissions = async function() {
     const tbody = document.getElementById('adm-list-body');
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
@@ -5270,7 +5322,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
 <div style="margin-top:40px;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:12px">
   St. Francis De Sales Secondary School · Laitkor, Shillong · Generated ${new Date().toLocaleString('en-IN')}
 </div>`;
+    document.body.classList.add('adm-printing');
     window.print();
+    setTimeout(() => document.body.classList.remove('adm-printing'), 500);
   };
 
   // Office portal wrapper — uses currentAdmissionData
@@ -5296,7 +5350,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         window.__admissionsCache[currentAdmissionId].status = 'forwarded_to_admin';
       }
       if (btn) { btn.disabled = true; btn.innerHTML = '✓ Already Forwarded'; btn.style.opacity = '0.6'; }
-      await window.loadAdmissions();
+      await window.loadOfficeAdmissions();
     } catch(e) {
       showToast('❌ Error: ' + e.message);
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-share" style="margin-right:6px"></i>Forward to Admin'; }
@@ -5304,12 +5358,6 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   };
 
   // Auto-load when navigating to admissions section
-  const _prevShowDash = window.showDash;
-  window.showDash = function(prefix, sectionId, btn) {
-    _prevShowDash(prefix, sectionId, btn);
-    if (sectionId === 'o-admissions') window.loadAdmissions();
-  };
-
   console.log('[Admissions] ✅ Loaded — Office Staff admissions review module');
 })();
 
@@ -5558,51 +5606,56 @@ window.loadDuesList = async function() {
     const filterType   = document.getElementById('dues-filter-type')?.value   || '';
     const filterStatus = document.getElementById('dues-filter-status')?.value || '';
 
-    const snap = await getDocs(query(collection(db2, 'fees'), where('status', '!=', 'approved')));
+    const snap = await getDocs(query(collection(db2, 'fee_transactions'), where('status', '==', 'pending')));
 
     let records = [];
     snap.forEach(doc => {
       const d = { id: doc.id, ...doc.data() };
-      if (filterClass  && d.class   !== filterClass)  return;
-      if (filterType   && d.feeType !== filterType)   return;
-      if (filterStatus && d.status  !== filterStatus) return;
-      records.push(d);
+      const cls = d.studentClass || d.class || '';
+      if (filterClass  && cls         !== filterClass)  return;
+      if (filterType   && d.feeType   !== filterType)   return;
+      if (filterStatus && d.status    !== filterStatus) return;
+      records.push({ ...d, _cls: cls });
     });
 
-    const totalDue = records.reduce((s, r) => s + ((r.amount || 0) - (r.paidAmount || 0)), 0);
+    // Batch-fetch WhatsApp numbers from students collection
+    const uniqueIds = [...new Set(records.map(r => r.studentId).filter(Boolean))];
+    const waMap = {};
+    for (let i = 0; i < uniqueIds.length; i += 30) {
+      const batch = uniqueIds.slice(i, i + 30);
+      const sSnap = await getDocs(query(collection(db2, 'students'), where('studentId', 'in', batch)));
+      sSnap.forEach(d => { const s = d.data(); if (s.studentId) waMap[s.studentId] = s.whatsapp || ''; });
+    }
+
+    const totalDue = records.reduce((s, r) => s + (r.amount || 0), 0);
     if (chipsEl) chipsEl.innerHTML = `
       <span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">
-        <i class="fas fa-users"></i> ${records.length} Students in Dues
+        <i class="fas fa-users"></i> ${records.length} Pending Transactions
       </span>
       <span style="background:#f8d7da;color:#721c24;border:1px solid #dc3545;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">
-        <i class="fas fa-rupee-sign"></i> ₹${totalDue.toLocaleString('en-IN')} Total Outstanding
+        <i class="fas fa-rupee-sign"></i> ₹${totalDue.toLocaleString('en-IN')} Total Pending
       </span>`;
 
     if (records.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#28a745;font-weight:600;"><i class="fas fa-check-circle"></i> No dues found — all clear!</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#28a745;font-weight:600;"><i class="fas fa-check-circle"></i> No pending dues found — all clear!</td></tr>`;
       return;
     }
 
-    records.sort((a, b) => ({ rejected:0, pending:1 }[a.status] ?? 2) - ({ rejected:0, pending:1 }[b.status] ?? 2));
-
     tbody.innerHTML = records.map(r => {
-      const balance  = (r.amount || 0) - (r.paidAmount || 0);
       const reminded = r.lastRemindedDate ? new Date(r.lastRemindedDate).toLocaleDateString('en-IN') : '—';
-      const badge    = r.status === 'pending'
-        ? `<span class="badge badge-warning">Pending</span>`
-        : `<span class="badge badge-danger">Rejected</span>`;
-      const waMsg = encodeURIComponent(
-        `Dear Parent of ${r.studentName || r.studentId},\nThis is a reminder from St. Francis De Sales Sec. School, Laitkor.\nYour fee of ₹${balance.toLocaleString('en-IN')} (${r.feeType}) is unpaid.\nKindly pay at the earliest to avoid inconvenience.\nThank you.`
+      const badge    = `<span class="badge badge-warning">Pending</span>`;
+      const waNum    = (waMap[r.studentId] || '').replace(/\D/g, '');
+      const waMsg    = encodeURIComponent(
+        `Dear Parent of ${r.studentName || r.studentId},\nThis is a reminder from St. Francis De Sales Sec. School, Laitkor.\nYour fee payment of ₹${(r.amount||0).toLocaleString('en-IN')} is awaiting approval.\nKindly contact the school office.\nThank you.`
       );
-      const waNum = (r.whatsapp || '').replace(/\D/g, '');
       const waBtn = waNum
         ? `<a href="https://wa.me/91${waNum}?text=${waMsg}" target="_blank" class="btn btn-success btn-sm" onclick="window.markReminded('${r.id}')"><i class="fab fa-whatsapp"></i> Remind</a>`
         : `<span style="font-size:12px;color:var(--text-light);">No WhatsApp</span>`;
       return `<tr>
         <td><strong>${r.studentName || r.studentId || '—'}</strong><br><span style="font-size:11px;color:var(--text-light);">${r.studentId || ''}</span></td>
-        <td>${r.class || '—'}</td>
-        <td>${r.feeType || '—'}</td>
-        <td style="font-weight:700;color:#dc3545;">₹${balance.toLocaleString('en-IN')}</td>
+        <td>${r._cls || '—'}</td>
+        <td>${r.feeType || r.notes || '—'}</td>
+        <td style="font-weight:700;color:#dc3545;">₹${(r.amount||0).toLocaleString('en-IN')}</td>
         <td>${badge}</td>
         <td style="font-size:12px;">${reminded}</td>
         <td>${waBtn}</td>
@@ -5620,7 +5673,7 @@ window.loadDuesList = async function() {
 window.markReminded = async function(docId) {
   try {
     const { getFirestore, doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
-    await updateDoc(doc(getFirestore(), 'fees', docId), {
+    await updateDoc(doc(getFirestore(), 'fee_transactions', docId), {
       lastRemindedDate: new Date().toISOString().split('T')[0]
     });
   } catch(e) { console.warn('markReminded:', e.message); }

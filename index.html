@@ -2453,8 +2453,8 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
               <h4 style="color:var(--accent-dark)"><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent)"></i>Admission Applications</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <select id="adm-filter-status" onchange="loadAdmissions()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px"><option value="all">All Applications</option><option value="Pending">Pending</option><option value="Shortlisted">Shortlisted</option><option value="Admitted">Admitted</option><option value="Rejected">Rejected</option></select>
-                <button class="btn btn-sm btn-outline" onclick="loadAdmissions()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <select id="adm-filter-status" onchange="loadOfficeAdmissions()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px"><option value="all">All Applications</option><option value="Pending">Pending</option><option value="Shortlisted">Shortlisted</option><option value="Admitted">Admitted</option><option value="Rejected">Rejected</option></select>
+                <button class="btn btn-sm btn-outline" onclick="loadOfficeAdmissions()"><i class="fas fa-sync-alt"></i> Refresh</button>
               </div>
             </div>
             <!-- Admission notice to public -->
@@ -2762,6 +2762,8 @@
             <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-check-circle"></i></div><div><div class="dash-stat-val" id="o-stat-today">—</div><div class="dash-stat-label">Today's Entries</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-rupee-sign"></i></div><div><div class="dash-stat-val" id="o-stat-total-today">—</div><div class="dash-stat-label">₹ Collected Today</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-check-double"></i></div><div><div class="dash-stat-val" id="o-stat-approved-today">—</div><div class="dash-stat-label">Approved Today</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-calendar-alt"></i></div><div><div class="dash-stat-val" id="o-stat-month-collected">—</div><div class="dash-stat-label">₹ Collected This Month</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon red"><i class="fas fa-exclamation-circle"></i></div><div><div class="dash-stat-val" id="o-stat-total-outstanding">—</div><div class="dash-stat-label">₹ Total Outstanding</div></div></div>
           </div>
           <div class="card" style="padding:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -2954,7 +2956,7 @@
 
         <!-- ── REPORTS ── -->
         <div id="o-reports" class="dash-section">
-          <div class="card" style="padding:24px">
+          <div class="card" style="padding:24px;margin-bottom:20px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
               <h4 style="color:var(--accent-dark)"><i class="fas fa-chart-bar" style="margin-right:8px;color:var(--accent)"></i>All Transactions</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2972,6 +2974,32 @@
                 <thead><tr><th>Date</th><th>Student</th><th>Class</th><th>Amount</th><th>Mode</th><th>Receipt No.</th><th>Staff</th><th>Status</th></tr></thead>
                 <tbody id="o-reports-tbody">
                   <tr><td colspan="8" style="text-align:center;padding:16px;color:var(--text-light)">Click Refresh to load.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+              <h4 style="color:var(--accent-dark)"><i class="fas fa-users" style="margin-right:8px;color:var(--accent)"></i>Class-wise Fee Status</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <select id="o-classwise-filter" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="">— Select Class —</option>
+                  <option value="PLG">Play Group</option><option value="SKG">SKG</option><option value="LKG">LKG</option>
+                  <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option>
+                  <option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option>
+                  <option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option>
+                  <option value="10">Class 10</option>
+                </select>
+                <button class="btn btn-sm btn-primary" onclick="loadClasswiseDueReport()"><i class="fas fa-search"></i> Load</button>
+              </div>
+            </div>
+            <div id="o-classwise-summary" style="margin-bottom:12px"></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Roll No.</th><th>Student</th><th>Total Fee</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+                <tbody id="o-classwise-tbody">
+                  <tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-light)">Select a class and click Load.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -3142,12 +3170,12 @@
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
               <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-file-alt" style="color:var(--primary);margin-right:8px"></i>Admissions Review</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <select id="adm-filter-status" onchange="loadAdmissions()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg)">
+                <select id="adm-filter-status" onchange="loadOfficeAdmissions()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg)">
                   <option value="pending">Pending</option>
                   <option value="forwarded_to_admin">Forwarded to Admin</option>
                   <option value="all">All</option>
                 </select>
-                <button onclick="loadAdmissions()" style="padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <button onclick="loadOfficeAdmissions()" style="padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-sync-alt"></i> Refresh</button>
               </div>
             </div>
             <div id="adm-list-wrap">

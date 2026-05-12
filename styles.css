@@ -899,8 +899,8 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 
 /* --- Print receipt ----------------------------------------- */
 @media print {
-  body > *:not(#printable-receipt) { display: none !important; }
-  #printable-receipt {
+  body.receipt-printing > *:not(#printable-receipt) { display: none !important; }
+  body.receipt-printing #printable-receipt {
     display: block !important;
     position: fixed !important;
     inset: 0 !important;
@@ -909,8 +909,22 @@ tr:hover td { background: rgba(214,195,163,0.15); }
     padding: 0 !important;
     overflow: visible !important;
   }
-  #receipt-actions { display: none !important; }
-  * { box-shadow: none !important; backdrop-filter: none !important; }
+  body.receipt-printing #receipt-actions { display: none !important; }
+  body.receipt-printing * { box-shadow: none !important; backdrop-filter: none !important; }
+}
+
+/* --- Print admission form ---------------------------------- */
+@media print {
+  body.adm-printing > *:not(#adm-print-frame) { display: none !important; }
+  body.adm-printing #adm-print-frame {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: #fff !important;
+    z-index: 999999 !important;
+    padding: 24px !important;
+    overflow: visible !important;
+  }
 }
 
 @media (max-width: 640px) {
