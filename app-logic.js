@@ -4517,7 +4517,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       }
 
       showToast('✅ Payment recorded and approved. Opening receipt…');
-      _populateReceipt({ ...txnData, txnId: txnRef.id });
+      _populateReceipt({ ...txnData, txnId: txnRef.id, receiptType: 'official' });
       ['pay-amount','pay-receipt-no','pay-notes'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
@@ -4546,6 +4546,23 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     set('rcp-notes',        txn.notes||'N/A');
     set('rcp-staff-name',   txn.staffName);
     set('rcp-generated-at', new Date().toLocaleString('en-IN'));
+    const isOfficial = txn.receiptType !== 'provisional';
+    const badge = document.getElementById('rcp-type-badge');
+    if (badge) {
+      badge.textContent = isOfficial ? 'Official Receipt' : 'Provisional Receipt';
+      badge.style.color = isOfficial ? 'var(--accent)' : '#d97706';
+      badge.style.borderColor = isOfficial ? 'var(--accent)' : '#d97706';
+    }
+    const disc = document.getElementById('rcp-disclaimer');
+    if (disc) {
+      if (isOfficial) {
+        disc.style.background = '#d4edda'; disc.style.color = '#155724';
+        disc.innerHTML = '<i class="fas fa-check-circle" style="margin-right:5px"></i>This is an <strong>official receipt</strong> issued by St. Francis De Sales Secondary School.';
+      } else {
+        disc.style.background = '#fff3cd'; disc.style.color = '#856404';
+        disc.innerHTML = '<i class="fas fa-clock" style="margin-right:5px"></i>This is a <strong>provisional receipt</strong> — pending office approval. Official confirmation will be issued upon approval.';
+      }
+    }
     const rcpEl = document.getElementById('printable-receipt');
     if (rcpEl) rcpEl.style.display='block';
   }
@@ -4556,7 +4573,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     try {
       const snap = await getDoc(doc(db, 'fee_transactions', txnId));
       if (!snap.exists()) { showToast('⚠️ Receipt not found.'); return; }
-      _populateReceipt({ ...snap.data(), txnId });
+      const txnData = snap.data();
+      const receiptType = txnData.status === 'approved' ? 'official' : 'provisional';
+      _populateReceipt({ ...txnData, txnId, receiptType });
       const rcpEl = document.getElementById('printable-receipt');
       if (rcpEl) rcpEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch(e) { showToast('⚠️ Could not load receipt: ' + e.message); }
