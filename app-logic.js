@@ -1,6 +1,6 @@
   import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, createUserWithEmailAndPassword, updatePassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit, serverTimestamp, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit, serverTimestamp, updateDoc, onSnapshot, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 // ================================================================
 // BLOCK 1 — MAIN APP LOGIC
 // ================================================================
@@ -424,14 +424,14 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   // ── Homepage stats from Firestore ────────────────────────────────
   async function loadHomeStats() {
     try {
-      const [sSnap, tSnap] = await Promise.all([
-        getDocs(collection(db,'students')),
-        getDocs(collection(db,'teachers'))
+      const [sCount, tCount] = await Promise.all([
+        getCountFromServer(collection(db,'students')),
+        getCountFromServer(collection(db,'teachers'))
       ]);
       const sEl = document.getElementById('home-stat-students');
       const tEl = document.getElementById('home-stat-teachers');
-      if (sEl && sSnap.size > 0) sEl.textContent = sSnap.size.toLocaleString('en-IN') + '+';
-      if (tEl && tSnap.size > 0) tEl.textContent = tSnap.size.toLocaleString('en-IN') + '+';
+      if (sEl && sCount.data().count > 0) sEl.textContent = sCount.data().count.toLocaleString('en-IN') + '+';
+      if (tEl && tCount.data().count > 0) tEl.textContent = tCount.data().count.toLocaleString('en-IN') + '+';
     } catch(e) { /* use static fallback */ }
   }
 
