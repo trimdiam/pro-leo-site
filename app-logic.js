@@ -25,6 +25,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   window.firebaseConfig   = firebaseConfig;
   window.initializeApp    = initializeApp;
   window._firestoreDb     = db;
+  window._sfAppReady      = Promise.resolve(app);
 
   // Hide the "loading Firebase" notice now that the module loaded successfully
   const moduleErrEl = document.getElementById('login-module-error');
@@ -4516,12 +4517,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
    processPayment · _populateReceipt · loadOfficeReports
 ================================================================ */
 (async () => {
-  let app;
-  for (let i = 0; i < 40; i++) {
-    if (getApps().length > 0) { app = getApp(); break; }
-    await new Promise(r => setTimeout(r, 150));
-  }
-  if (!app) return;
+  const app = await window._sfAppReady;
   const db = getFirestore(app);
   const CLS = { PLG:'Play Group', SKG:'SKG', LKG:'LKG' };
   const clsLabel = c => CLS[c] || (c ? 'Class ' + c : '—');
@@ -4751,12 +4747,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
    Admin Fee Structure CRUD · loadAdminFeeTransactions
 ================================================================ */
 (async () => {
-  let app;
-  for (let i = 0; i < 40; i++) {
-    if (getApps().length > 0) { app = getApp(); break; }
-    await new Promise(r => setTimeout(r, 150));
-  }
-  if (!app) return;
+  const app = await window._sfAppReady;
   const db = getFirestore(app);
   const CLS = { PLG:'Play Group', SKG:'SKG', LKG:'LKG' };
   const clsLabel = c => CLS[c] || (c ? 'Class ' + c : '—');
@@ -4897,12 +4888,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
    OFFICE STAFF — Fee Structure Logic (Step 2)
 ================================================================ */
 (async () => {
-  let app;
-  for (let i = 0; i < 40; i++) {
-    if (getApps().length > 0) { app = getApp(); break; }
-    await new Promise(r => setTimeout(r, 150));
-  }
-  if (!app) return;
+  const app = await window._sfAppReady;
   const db = getFirestore(app);
 
   const CLS   = { PLG:'Play Group', SKG:'SKG', LKG:'LKG' };
@@ -4988,12 +4974,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
    Admin can create / list / delete Office Staff logins
 ================================================================ */
 (async () => {
-  let app;
-  for (let i = 0; i < 40; i++) {
-    if (getApps().length > 0) { app = getApp(); break; }
-    await new Promise(r => setTimeout(r, 150));
-  }
-  if (!app) return;
+  const app = await window._sfAppReady;
   const auth = getAuth(app);
   const db   = getFirestore(app);
 
@@ -5098,12 +5079,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
    Approve/Reject · Student Notifications · showDash hooks · loginAs
 ================================================================ */
 (async () => {
-  let app;
-  for (let i = 0; i < 40; i++) {
-    if (getApps().length > 0) { app = getApp(); break; }
-    await new Promise(r => setTimeout(r, 150));
-  }
-  if (!app) return;
+  const app = await window._sfAppReady;
   const db = getFirestore(app);
   const fmtINR = n => '₹' + (parseFloat(n)||0).toLocaleString('en-IN');
 
