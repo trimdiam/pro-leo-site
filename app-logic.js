@@ -359,8 +359,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       if (role === 'admin')   { setTimeout(()=>{ if (window.loadAdminDashboardStats) window.loadAdminDashboardStats(); }, 800); }
     }, 400);
     } finally {
-      // Release guard after routing is complete so future sign-outs/re-logins work
-      setTimeout(() => { _authHandling = false; }, 3000);
+      _authHandling = false;
     }
   }
 
