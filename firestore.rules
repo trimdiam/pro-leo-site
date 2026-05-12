@@ -2,79 +2,127 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Public admission form ─────────────────────────────────────
-    // Anyone can CREATE (submit a new application).
-    // Only authenticated staff/admin can read or update existing ones.
-    match /admissions/{docId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+    // ── Role helpers ─────────────────────────────────────────────────
+    function isRole(role) {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+    // office staff may be stored as 'office' or 'office_staff'
+    function isOffice()    { return isRole('office') || isRole('office_staff'); }
+    function isAnyStaff()  { return isRole('admin') || isOffice() || isRole('teacher'); }
+    function isAdmin()     { return isRole('admin'); }
+    function isOwner()     { return request.auth != null && request.auth.uid == resource.id; }
+
+    // ── Users ────────────────────────────────────────────────────────
+    // Each user manages their own doc; admin can read all.
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read:        if isAdmin();
     }
 
-    // ── Homepage CMS ──────────────────────────────────────────────
-    // Public visitors need to READ public_settings/homepage to render
-    // the dynamic hero/stats/announcement/feature-cards.
-    // Only authenticated admins can WRITE.
-    match /public_settings/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    // ── Students ─────────────────────────────────────────────────────
+    match /students/{docId} {
+      allow read:  if isAnyStaff();
+      allow write: if isAdmin() || isOffice();
     }
 
-    // ── Settings (about, mission, vision, etc.) ───────────────────
-    match /settings/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    // ── Daily attendance (with month-locking guard) ───────────────────
+    match /attendance_daily/{docId} {
+      allow read:  if isAnyStaff();
+      allow write: if request.auth != null
+        && (isRole('teacher') || isAdmin())
+        && (isDailyWriteAllowed(database, docId) || isAdmin());
     }
 
-    // ── Public-read collections ───────────────────────────────────
-    match /events/{docId}        { allow read: if true; allow write: if request.auth != null; }
-    match /announcements/{docId} { allow read: if true; allow write: if request.auth != null; }
-    match /why_choose_us/{docId} { allow read: if true; allow write: if request.auth != null; }
-    match /school_leaders/{docId}{ allow read: if true; allow write: if request.auth != null; }
-    match /gallery/{docId}       { allow read: if true; allow write: if request.auth != null; }
-    match /quotes/{docId}        { allow read: if true; allow write: if request.auth != null; }
-
-    // ── Monthly attendance snapshots ──────────────────────────────
-    // READ  : any authenticated user.
-    // CREATE: any authenticated user (teachers generating snapshots).
-    // UPDATE: three-tier rule —
-    //   • Draft docs  → any authenticated user can update (regenerate).
-    //   • Locked docs → only admin/super_admin can update (approve, correct).
-    //   • Unlocking   → only super_admin can set status back to 'draft'.
-    // DELETE: never allowed.
+    // ── Monthly attendance snapshots (locking workflow) ───────────────
     match /attendance_monthly/{docId} {
-      allow read:   if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && isMonthlyUpdateAllowed(database);
+      allow read:   if isAnyStaff();
+      allow create: if isAnyStaff();
+      allow update: if isAnyStaff() && isMonthlyUpdateAllowed(database);
       allow delete: if false;
     }
 
-    // ── Daily attendance records ───────────────────────────────────
-    // Teachers: read always; write only when the month is not locked.
-    // Admins  : can still write (corrections) when month is locked.
-    // Derive monthly doc ID from daily doc ID:
-    //   "{classNum}_{YYYY-MM-DD}" → "{classNum}_{YYYY_MM}"
-    match /attendance_daily/{docId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
-        && (isDailyWriteAllowed(database, docId)
-            || isAdminOrSuper(database));
+    // ── Fee transactions ─────────────────────────────────────────────
+    // Students can read their own records via the studentId field.
+    match /fee_transactions/{docId} {
+      allow read: if isAnyStaff() ||
+        (request.auth != null &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId ==
+         resource.data.studentId);
+      allow write: if isAdmin() || isOffice();
     }
 
-    // ── Academic Sessions ─────────────────────────────────────────
-    // Public read so the session selector works without auth.
-    // Only authenticated users (admins) can write.
-    match /academicSessions/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    // ── Fees (older collection — student notification center reads) ───
+    match /fees/{docId} {
+      allow read:  if request.auth != null;
+      allow write: if isAdmin() || isOffice();
     }
 
-    // ── All other documents — require authentication ───────────────
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // ── Fee structure ─────────────────────────────────────────────────
+    match /fee_structure/{docId} {
+      allow read:  if request.auth != null;
+      allow write: if isAdmin() || isOffice();
+    }
+
+    // ── Homework ─────────────────────────────────────────────────────
+    match /homework/{docId} {
+      allow read:  if request.auth != null;
+      allow write: if isRole('teacher') || isAdmin();
+    }
+
+    // ── Notices ──────────────────────────────────────────────────────
+    match /notices/{docId} {
+      allow read:  if true;
+      allow write: if isAdmin() || isRole('teacher');
+    }
+
+    // ── Public-read / admin-write collections ─────────────────────────
+    match /events/{docId}         { allow read: if true; allow write: if isAdmin(); }
+    match /gallery/{docId}        { allow read: if true; allow write: if isAdmin(); }
+    match /announcements/{docId}  { allow read: if true; allow write: if isAdmin(); }
+    match /teachers/{docId}       { allow read: if true; allow write: if isAdmin(); }
+    match /settings/{docId}       { allow read: if true; allow write: if isAdmin(); }
+    match /public_settings/{docId}{ allow read: if true; allow write: if isAdmin(); }
+    match /holidays/{docId}       { allow read: if true; allow write: if isAdmin(); }
+    match /academicSessions/{docId}{ allow read: if true; allow write: if isAdmin(); }
+    match /why_choose_us/{docId}  { allow read: if true; allow write: if isAdmin(); }
+    match /school_leaders/{docId} { allow read: if true; allow write: if isAdmin(); }
+    match /quotes/{docId}         { allow read: if true; allow write: if isAdmin(); }
+
+    // ── Admissions: public create; staff reads/updates ────────────────
+    match /admissions/{docId} {
+      allow create:        if true;
+      allow read, update:  if isAnyStaff();
+      allow delete:        if isAdmin();
+    }
+
+    // ── Contacts: public create; admin reads ─────────────────────────
+    match /contacts/{docId} {
+      allow create:     if true;
+      allow read, write: if isAdmin();
+    }
+
+    // ── Leave applications ───────────────────────────────────────────
+    match /leave_applications/{docId} {
+      allow create: if request.auth != null;
+      allow read:   if isAnyStaff();
+      allow update: if isAdmin();
+    }
+
+    // ── New account links (Google sign-in self-linking) ───────────────
+    match /newAccountLinks/{docId} {
+      allow create: if request.auth != null;
+      allow read:   if isAdmin();
+    }
+
+    // ── Admin notifications ──────────────────────────────────────────
+    match /admin_notifications/{docId} {
+      allow read, write: if isAdmin() || isOffice();
     }
   }
 
-  // docId format: "10_2026-05-16"  →  monthly key: "10_2026_05"
+  // ── Helper: is the daily doc's month unlocked? ───────────────────────
+  // docId format: "{classNum}_{YYYY-MM-DD}"
   function isDailyWriteAllowed(database, docId) {
     let parts    = docId.split('_');
     let classNum = parts[0];
@@ -83,24 +131,17 @@ service cloud.firestore {
     let mm       = datePart.split('-')[1];
     let monthKey = classNum + '_' + yyyy + '_' + mm;
     let monthDoc = get(/databases/$(database)/documents/attendance_monthly/$(monthKey));
-    return !monthDoc.exists() || monthDoc.data().status != 'locked';
+    return !monthDoc.exists() || monthDoc.data.status != 'locked';
   }
 
-  // Returns true if the authenticated user has role 'admin' or 'super_admin'.
-  function isAdminOrSuper(database) {
-    let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-    let role    = userDoc.data().role;
-    return role == 'admin' || role == 'super_admin';
-  }
-
-  // Monthly snapshot update rules:
-  //   • Draft  → any authenticated user.
-  //   • Locked → admin or super_admin only (can lock / correct).
-  //   • Unlock (locked → draft) → super_admin only.
+  // ── Helper: monthly snapshot update rules ────────────────────────────
+  //   draft  → any staff can update (regenerate)
+  //   locked → only admin/super_admin can update
+  //   unlock (locked→draft) → only super_admin
   function isMonthlyUpdateAllowed(database) {
     let currentlyLocked = resource.data.status == 'locked';
     let tryingToUnlock  = request.resource.data.status == 'draft';
-    let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data().role;
+    let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     return !currentlyLocked
       || ((role == 'admin' || role == 'super_admin') && (!tryingToUnlock || role == 'super_admin'));
   }
