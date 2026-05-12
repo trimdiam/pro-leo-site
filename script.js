@@ -133,6 +133,8 @@ function logout() {
   isLoggedIn      = false;
   currentUserRole = null;
   currentRole     = 'student';
+  if (window._officeStatsUnsub) { window._officeStatsUnsub(); window._officeStatsUnsub = null; }
+  if (window._hwUnsubscribe)    { window._hwUnsubscribe();    window._hwUnsubscribe    = null; }
   if (window._firebaseAuth) {
     import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js')
       .then(({ signOut }) => signOut(window._firebaseAuth).catch(console.error));
