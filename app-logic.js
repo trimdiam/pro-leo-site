@@ -2212,6 +2212,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       setTxt('s-card-parent-contact', s.whatsapp||s.altContact||'—');
       setTxt('s-card-pen', s.penNumber||'—');
       setTxt('s-card-house', houseMap2[s.house]||s.house||'—');
+      const bal = parseFloat(s.feeBalance ?? s.feeTotal ?? 0);
+      const feeDueEl = document.getElementById('s-stat-fee-due');
+      if (feeDueEl) feeDueEl.textContent = bal > 0 ? '₹' + bal.toLocaleString('en-IN') : '₹0';
       loadStudentHomework(); loadStudentNotices(); loadStudentFees();
     } catch(e){ showToast('⚠️ Could not load profile: '+e.message); }
   };
@@ -2308,12 +2311,27 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       // 5. EXAMS — placeholder (no `exams` collection yet); wire when ready
       const exams = [];
 
-      // 6. Render the personalized payload into the Bento Grid
-      window.NotificationCenter.render({
-        attendance: { todayStatus, percentage, present, absent, total },
-        fees:       feeData,
-        exams
-      }, notices);
+      // 6. Update stat cards with real data
+      const setEl = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      setEl('s-stat-attendance', total > 0 ? percentage + '%' : '—');
+      // Fee due: use student doc feeBalance if available (more accurate than fees collection)
+      const stuSnap = sid ? await getDocs(query(collection(db,'students'), where('studentId','==',sid), limit(1))) : null;
+      if (stuSnap && !stuSnap.empty) {
+        const bal = parseFloat(stuSnap.docs[0].data().feeBalance || 0);
+        setEl('s-stat-fee-due', bal > 0 ? '₹' + bal.toLocaleString('en-IN') : '₹0');
+      } else {
+        setEl('s-stat-fee-due', feeData.isPaid ? '₹0' : '₹' + (feeData.amount||0).toLocaleString('en-IN'));
+      }
+      setEl('s-stat-days-exam', '—');
+
+      // 7. Render the personalized payload into the Bento Grid
+      if (window.NotificationCenter) {
+        window.NotificationCenter.render({
+          attendance: { todayStatus, percentage, present, absent, total },
+          fees:       feeData,
+          exams
+        }, notices);
+      }
     } catch (e) {
       console.warn('[NotificationCenter] auth-bound fetch failed:', e.message);
     }
