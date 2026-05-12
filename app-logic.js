@@ -4089,15 +4089,20 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   };
 
   window.loadOfficeDashboardStats = async function() {
-    const today = new Date().toISOString().split('T')[0];
+    const today     = new Date().toISOString().split('T')[0];
+    const monthPfx  = today.slice(0, 7); // YYYY-MM
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
     try {
-      const [pendSnap, todaySnap] = await Promise.all([
-        getDocs(query(collection(db,'fee_transactions'), where('status','==','pending'), limit(200))),
-        getDocs(query(collection(db,'fee_transactions'), where('date','==',today),       limit(200)))
+      const [pendSnap, todaySnap, monthSnap, studentsSnap] = await Promise.all([
+        getDocs(query(collection(db,'fee_transactions'), where('status','==','pending'),  limit(500))),
+        getDocs(query(collection(db,'fee_transactions'), where('date','==',today),        limit(500))),
+        getDocs(query(collection(db,'fee_transactions'), where('status','==','approved'), where('date','>=',monthPfx+'-01'), where('date','<=',monthPfx+'-31'), limit(500))),
+        getDocs(query(collection(db,'students'), limit(500)))
       ]);
-      const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+
       set('o-stat-pending', pendSnap.size);
       set('o-stat-today',   todaySnap.size);
+
       let approvedAmt = 0, approvedCount = 0;
       todaySnap.forEach(d => {
         if (d.data().status === 'approved') {
@@ -4107,6 +4112,15 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       });
       set('o-stat-total-today',    fmtINR(approvedAmt));
       set('o-stat-approved-today', approvedCount);
+
+      let monthCollected = 0;
+      monthSnap.forEach(d => { monthCollected += parseFloat(d.data().amount) || 0; });
+      set('o-stat-month-collected', fmtINR(monthCollected));
+
+      let totalOutstanding = 0;
+      studentsSnap.forEach(d => { totalOutstanding += parseFloat(d.data().feeBalance) || 0; });
+      set('o-stat-total-outstanding', fmtINR(totalOutstanding));
+
       loadOfficeRecentTransactions();
     } catch(e) { console.warn('[OfficeDash]', e.message); }
   };
