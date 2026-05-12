@@ -5058,7 +5058,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   // db and Firestore functions are available from module-level imports
 
   // ── Load admissions list ──────────────────────────────────────
-  window.loadAdmissions = async function() {
+  window.loadOfficeAdmissions = async function() {
     const tbody = document.getElementById('adm-list-body');
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
@@ -5296,7 +5296,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         window.__admissionsCache[currentAdmissionId].status = 'forwarded_to_admin';
       }
       if (btn) { btn.disabled = true; btn.innerHTML = '✓ Already Forwarded'; btn.style.opacity = '0.6'; }
-      await window.loadAdmissions();
+      await window.loadOfficeAdmissions();
     } catch(e) {
       showToast('❌ Error: ' + e.message);
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-share" style="margin-right:6px"></i>Forward to Admin'; }
@@ -5307,7 +5307,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   const _prevShowDash = window.showDash;
   window.showDash = function(prefix, sectionId, btn) {
     _prevShowDash(prefix, sectionId, btn);
-    if (sectionId === 'o-admissions') window.loadAdmissions();
+    if (sectionId === 'o-admissions') window.loadOfficeAdmissions();
   };
 
   console.log('[Admissions] ✅ Loaded — Office Staff admissions review module');

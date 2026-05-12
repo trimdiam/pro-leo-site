@@ -2453,8 +2453,8 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
               <h4 style="color:var(--accent-dark)"><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent)"></i>Admission Applications</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <select id="adm-filter-status" onchange="loadAdmissions()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px"><option value="all">All Applications</option><option value="Pending">Pending</option><option value="Shortlisted">Shortlisted</option><option value="Admitted">Admitted</option><option value="Rejected">Rejected</option></select>
-                <button class="btn btn-sm btn-outline" onclick="loadAdmissions()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <select id="adm-filter-status" onchange="loadOfficeAdmissions()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px"><option value="all">All Applications</option><option value="Pending">Pending</option><option value="Shortlisted">Shortlisted</option><option value="Admitted">Admitted</option><option value="Rejected">Rejected</option></select>
+                <button class="btn btn-sm btn-outline" onclick="loadOfficeAdmissions()"><i class="fas fa-sync-alt"></i> Refresh</button>
               </div>
             </div>
             <!-- Admission notice to public -->
@@ -3142,12 +3142,12 @@
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
               <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-file-alt" style="color:var(--primary);margin-right:8px"></i>Admissions Review</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <select id="adm-filter-status" onchange="loadAdmissions()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg)">
+                <select id="adm-filter-status" onchange="loadOfficeAdmissions()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg)">
                   <option value="pending">Pending</option>
                   <option value="forwarded_to_admin">Forwarded to Admin</option>
                   <option value="all">All</option>
                 </select>
-                <button onclick="loadAdmissions()" style="padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <button onclick="loadOfficeAdmissions()" style="padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer"><i class="fas fa-sync-alt"></i> Refresh</button>
               </div>
             </div>
             <div id="adm-list-wrap">
