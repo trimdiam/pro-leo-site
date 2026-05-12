@@ -351,6 +351,19 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
 
   window.firebaseLogin = window.doLogin;
 
+  window.sendPasswordReset = async function() {
+    const email = (document.getElementById('login-email')?.value || '').trim();
+    if (!email) { showLoginError('Enter your email address above first.'); return; }
+    try {
+      const { sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js');
+      await sendPasswordResetEmail(auth, email);
+      showToast('✅ Password reset email sent. Check your inbox.');
+    } catch(e) {
+      const msg = e.code === 'auth/user-not-found' ? 'No account found for that email.' : e.message;
+      showLoginError(msg);
+    }
+  };
+
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       try { await _handleAuthUser(user); } catch(e) { console.warn('Session restore:', e.message); }
@@ -4601,12 +4614,18 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   window._populateReceipt = _populateReceipt;
 
   window.showStudentReceipt = async function(txnId) {
+    const populate = window._populateReceipt || _populateReceipt;
+    if (!populate) {
+      // Block 3 not yet ready — retry once after a short delay
+      setTimeout(() => window.showStudentReceipt(txnId), 600);
+      return;
+    }
     try {
       const snap = await getDoc(doc(db, 'fee_transactions', txnId));
       if (!snap.exists()) { showToast('⚠️ Receipt not found.'); return; }
       const txnData = snap.data();
       const receiptType = txnData.status === 'approved' ? 'official' : 'provisional';
-      _populateReceipt({ ...txnData, txnId, receiptType });
+      populate({ ...txnData, txnId, receiptType });
       const rcpEl = document.getElementById('printable-receipt');
       if (rcpEl) rcpEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch(e) { showToast('⚠️ Could not load receipt: ' + e.message); }
