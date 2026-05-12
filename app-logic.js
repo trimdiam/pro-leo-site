@@ -95,6 +95,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') msg = 'ID or password is incorrect. Contact admin if you need help.';
       else if (err.code === 'auth/wrong-password') msg = 'Wrong password. Contact admin to reset it.';
       else if (err.code === 'auth/too-many-requests') msg = 'Too many failed attempts. Please wait a few minutes and try again.';
+      else if (err.code) msg = 'Login failed [' + err.code + ']';
       showLoginError(msg);
     } finally {
       setLoginLoading(false);
@@ -328,6 +329,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     showToast('✅ Welcome! Opening your portal…');
     setTimeout(async () => {
       loginAs(role);
+      window._currentUserRole = role;
       if (role === 'student') {
         await loadStudentProfile(user);
         // Notification Center fetch is gated by auth — uses user.uid
@@ -1558,21 +1560,26 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (sectionId === 'a-leave')         { if(window.loadLeaveQuota) loadLeaveQuota(); if(window.loadAdminLeave) loadAdminLeave(); }
     if (sectionId === 'a-teachers')      { if(window.seedTeachersIfNeeded) window.seedTeachersIfNeeded().then(()=>{ if(window.loadTeachers) window.loadTeachers(); }); }
     if (sectionId === 'a-dashboard')     { if(window.loadAdminDashboardStats) window.loadAdminDashboardStats(); }
-    if (sectionId === 't-attendance')    {
-      if (window._currentTeacherClass && !window._attInitialized) {
+    if (sectionId === 't-attendance') {
+      window._attInitialized = false;
+      if (window._currentTeacherClass) {
         window._attInitialized = true;
         if(window.initTeacherAttendance) initTeacherAttendance(window._currentTeacherClass);
-      } else if (window._currentTeacherClass) {
-        if(window.loadAttendanceForDate) loadAttendanceForDate();
       }
     }
-    if (sectionId === 't-homework') { if(window.populateHwClassSelect) populateHwClassSelect(); if(window.loadTeacherHomework) loadTeacherHomework(); }
+    if (sectionId === 't-homework') {
+      const hwDue = document.getElementById('hw-due');
+      if (hwDue) hwDue.min = new Date().toISOString().split('T')[0];
+      if(window.populateHwClassSelect) populateHwClassSelect();
+      if(window.loadTeacherHomework) loadTeacherHomework();
+    }
     if (sectionId === 's-homework') { if(window.loadStudentHomework) loadStudentHomework(); }
     else if(window._hwUnsubscribe){window._hwUnsubscribe();window._hwUnsubscribe=null;}
     if (sectionId === 's-notices')  { if(window.loadStudentNotices) loadStudentNotices(); }
     if (sectionId === 's-fees')     { if(window.loadStudentFees) loadStudentFees(); }
     if (sectionId === 't-notices')  { if(window.loadTeacherNotices) loadTeacherNotices(); }
     if (sectionId === 't-leave')    { if(window.loadLeaveHistory) window.loadLeaveHistory(); }
+    if (sectionId === 't-profile')  { if(window.loadTeacherProfile) loadTeacherProfile(); }
     if (sectionId === 'a-leave')    { if(window.loadLeaveQuota) loadLeaveQuota(); if(window.loadAdminLeave) loadAdminLeave(); }
     if (sectionId === 'a-notices')     { if(window.loadAdminNotices) loadAdminNotices(); }
     if (sectionId === 'a-fees')        { if(window.loadAdminFees) loadAdminFees(); }
@@ -2547,6 +2554,55 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     } catch(e){ showToast('⚠️ Teacher portal: '+e.message); }
   };
 
+  window.loadTeacherProfile = async function() {
+    const user = window._firebaseAuth?.currentUser; if (!user) return;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || '—'; };
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userData = userDoc.exists() ? userDoc.data() : {};
+      const teacherId = userData.teacherId || userData.loginId || '';
+      set('t-profile-email', user.email);
+      if (teacherId) {
+        const snap = await getDocs(query(collection(db, 'teachers'), where('teacherId', '==', teacherId)));
+        if (!snap.empty) {
+          const t = snap.docs[0].data();
+          const classLabel = { PLG:'Play Group', SKG:'SKG', LKG:'LKG' };
+          const getClsLabel = c => classLabel[c] || (c ? 'Class '+c : '—');
+          const initials = (t.name||'T').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+          const avatar = document.getElementById('t-profile-avatar'); if (avatar) avatar.textContent = initials;
+          set('t-profile-name',     (t.title ? t.title+' ' : '') + (t.name||''));
+          set('t-profile-role',     t.subjects || 'Teacher');
+          set('t-profile-id',       teacherId);
+          set('t-profile-class',    t.classTeacher ? getClsLabel(t.classTeacher) : '—');
+          set('t-profile-subjects', t.subjects || '—');
+          set('t-profile-gender',   t.gender === 'M' ? 'Male' : t.gender === 'F' ? 'Female' : t.gender || '—');
+          set('t-profile-phone',    t.phone || t.mobile || '—');
+        }
+      }
+    } catch(e) { showToast('⚠️ Could not load profile: ' + e.message); }
+  };
+
+  window.teacherChangePassword = async function() {
+    const current = document.getElementById('t-pwd-current')?.value || '';
+    const newPwd  = document.getElementById('t-pwd-new')?.value || '';
+    const confirm = document.getElementById('t-pwd-confirm')?.value || '';
+    if (!current || !newPwd || !confirm) { showToast('⚠️ All password fields are required.'); return; }
+    if (newPwd.length < 6) { showToast('⚠️ New password must be at least 6 characters.'); return; }
+    if (newPwd !== confirm) { showToast('⚠️ New passwords do not match.'); return; }
+    const user = window._firebaseAuth?.currentUser; if (!user) { showToast('⚠️ Not logged in.'); return; }
+    try {
+      const { EmailAuthProvider, reauthenticateWithCredential } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js');
+      const cred = EmailAuthProvider.credential(user.email, current);
+      await reauthenticateWithCredential(user, cred);
+      await updatePassword(user, newPwd);
+      ['t-pwd-current','t-pwd-new','t-pwd-confirm'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      showToast('✅ Password updated successfully.');
+    } catch(e) {
+      if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') showToast('❌ Current password is incorrect.');
+      else showToast('❌ ' + e.message);
+    }
+  };
+
   window.submitLeaveApplication = async function() {
     const from   = (document.getElementById('lv-from')?.value   || '').trim();
     const to     = (document.getElementById('lv-to')?.value     || '').trim();
@@ -2558,6 +2614,28 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const user = auth?.currentUser;
     if (!user) { showToast('⚠️ Not logged in.'); return; }
     try {
+      // Overlap and quota checks
+      const existingSnap = await getDocs(query(
+        collection(db, 'leave_applications'),
+        where('uid', '==', user.uid),
+        where('status', 'in', ['Pending', 'Approved'])
+      ));
+      const hasOverlap = existingSnap.docs.some(d => {
+        const l = d.data();
+        return l.from <= to && l.to >= from;
+      });
+      if (hasOverlap) {
+        showToast('⚠️ You already have a Pending or Approved leave overlapping these dates.');
+        return;
+      }
+      const settingsSnap = await getDoc(doc(db, 'settings', 'leave_config'));
+      const quota = settingsSnap.exists() ? (settingsSnap.data().annualQuota || 15) : 15;
+      const daysTaken = existingSnap.docs.filter(d => d.data().status === 'Approved')
+        .reduce((sum, d) => sum + _calcDays(d.data().from, d.data().to), 0);
+      const requested = _calcDays(from, to);
+      if (daysTaken + requested > quota) {
+        showToast(`⚠️ This leave (${requested}d) would exceed your annual quota of ${quota} days (${quota - daysTaken}d remaining). Submitting anyway.`);
+      }
       await addDoc(collection(db, 'leave_applications'), {
         uid: user.uid,
         teacherId: window._teacherId || '',
@@ -2683,11 +2761,31 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     }).join('');
   }
 
+  window.exportTeacherClassList = function() {
+    const docs = window._teacherStudentDocs;
+    if (!docs || !docs.length) { showToast('⚠️ No student data to export.'); return; }
+    const rows = [['Roll No', 'Name', 'Gender', 'Blood Group', 'WhatsApp', 'Class']];
+    docs.forEach(d => {
+      const s = d.data();
+      rows.push([s.rollNo||'', s.name||'', s.gender||'', s.bloodGroup||'', s.whatsapp||'', s.class||'']);
+    });
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Class_${window._currentTeacherClass||'List'}_Students.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // ================================================================
   //  TEACHER — Attendance (card-based exceptions-only UI)
   // ================================================================
   window.initTeacherAttendance = async function(classNum) {
     window._attClass = classNum;
+    window._attEditMode = false;
+    window._monthLockCache = {};
     window._teacherStudentDocs = null;
     const dateInp = document.getElementById('t-att-date');
     if (dateInp && !dateInp.value) dateInp.value = new Date().toISOString().split('T')[0];
@@ -2701,10 +2799,14 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   };
 
   async function isMonthLocked(classNum, date) {
+    const cacheKey = classNum + '_' + date.slice(0, 7);
+    if (window._monthLockCache && cacheKey in window._monthLockCache) return window._monthLockCache[cacheKey];
+    if (!window._monthLockCache) window._monthLockCache = {};
     const monthYear = date.substring(0,4) + '_' + date.substring(5,7);
     try {
       const mDoc = await getDoc(doc(db,'attendance_monthly',`${classNum}_${monthYear}`));
-      return mDoc.exists() && mDoc.data().status === 'locked';
+      window._monthLockCache[cacheKey] = mDoc.exists() && mDoc.data().status === 'locked';
+      return window._monthLockCache[cacheKey];
     } catch(e) { return false; }
   }
 
@@ -2718,7 +2820,6 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (lockBanner)    lockBanner.style.display = 'none';
     if (holidayBanner) holidayBanner.style.display = 'none';
     if (alreadyMarked) alreadyMarked.style.display = 'none';
-    window._attEditMode = false;
     try {
       const locked = await isMonthLocked(classNum, date);
       if (locked) {
@@ -2739,8 +2840,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       const attId = `${classNum}_${date}`;
       const attDoc = await getDoc(doc(db,'attendance_daily',attId));
       const existingData = attDoc.exists() ? attDoc.data() : null;
-      if (existingData && !window._attEditMode) { if (alreadyMarked) alreadyMarked.style.display = 'block'; }
-      renderAttendanceCards(window._teacherStudentDocs || [], existingData);
+      const viewOnly = !!(existingData && !window._attEditMode);
+      if (viewOnly) { if (alreadyMarked) alreadyMarked.style.display = 'block'; }
+      renderAttendanceCards(window._teacherStudentDocs || [], existingData, false, viewOnly);
     } catch(e) { showToast('⚠️ ' + e.message); }
   };
 
@@ -2838,11 +2940,17 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const tbody = document.getElementById('t-att-history-tbody'); if (!tbody) return;
     const classNum = window._attClass || window._currentTeacherClass;
     if (!classNum) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text-light)">Class not set.</td></tr>'; return; }
+    const monthFilter = document.getElementById('att-history-month')?.value || '';
     tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:14px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
     try {
-      const snap = await getDocs(query(collection(db,'attendance_daily'), where('class','==',String(classNum)), limit(30)));
+      let q = query(collection(db,'attendance_daily'), where('class','==',String(classNum)), limit(90));
+      const snap = await getDocs(q);
       if (snap.empty) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:14px;color:var(--text-light)">No history found.</td></tr>'; return; }
-      tbody.innerHTML = [...snap.docs].sort((a,b)=>b.data().date.localeCompare(a.data().date)).map(d => {
+      let docs = [...snap.docs].sort((a,b)=>b.data().date.localeCompare(a.data().date));
+      if (monthFilter) docs = docs.filter(d => (d.data().date||'').startsWith(monthFilter));
+      if (!docs.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:14px;color:var(--text-light)">No records for selected month.</td></tr>'; return; }
+      window._attHistoryDocs = docs;
+      tbody.innerHTML = docs.map(d => {
         const a=d.data();
         const pct = a.total>0 ? Math.round((a.present/a.total)*100) : 0;
         const day = a.date ? new Date(a.date+'T00:00:00').toLocaleDateString('en',{weekday:'short'}) : '—';
@@ -2850,6 +2958,27 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         return `<tr><td>${a.date||'—'}</td><td>${day}</td><td style="color:var(--success);font-weight:700">${a.present||0}</td><td style="color:var(--danger);font-weight:700">${(a.absent||[]).length}</td><td style="color:#856404;font-weight:700">${(a.late||[]).length}</td><td>${a.total||0}</td><td><span class="badge ${bc}">${pct}%</span></td></tr>`;
       }).join('');
     } catch(e) { tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
+  };
+
+  window.exportAttendanceHistory = function() {
+    const docs = window._attHistoryDocs;
+    if (!docs || !docs.length) { showToast('⚠️ Load history first, then export.'); return; }
+    const rows = [['Date','Day','Present','Absent','Late','Total','%']];
+    docs.forEach(d => {
+      const a = d.data();
+      const pct = a.total>0 ? Math.round((a.present/a.total)*100) : 0;
+      const day = a.date ? new Date(a.date+'T00:00:00').toLocaleDateString('en',{weekday:'short'}) : '';
+      rows.push([a.date||'', day, a.present||0, (a.absent||[]).length, (a.late||[]).length, a.total||0, pct+'%']);
+    });
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const month = document.getElementById('att-history-month')?.value || 'All';
+    a.download = `Attendance_Class${window._attClass||''}_${month}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // ================================================================
@@ -3296,6 +3425,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const desc=(document.getElementById('hw-desc')?.value||'').trim();
     const due=(document.getElementById('hw-due')?.value||'').trim();
     if(!cls||!subject||!title||!due){showToast('⚠️ Class, subject, title and due date are required.');return;}
+    if(due < new Date().toISOString().split('T')[0]){showToast('⚠️ Due date cannot be in the past.');return;}
     try{
       if(window._hwEditId){
         await updateDoc(doc(db,'homework',window._hwEditId),{class:cls,subject,title,description:desc,dueDate:due,updatedAt:new Date().toISOString()});

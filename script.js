@@ -202,6 +202,7 @@ function changeAttDate(delta) {
   const d = new Date(inp.value + 'T00:00:00');
   d.setDate(d.getDate() + delta);
   inp.value = d.toISOString().split('T')[0];
+  window._attEditMode = false;
   if (window.loadAttendanceForDate) loadAttendanceForDate();
 }
 
