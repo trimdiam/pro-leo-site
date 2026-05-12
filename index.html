@@ -2738,6 +2738,7 @@
         <button onclick="showDash('o','o-dues',this)"><i class="fas fa-bell"></i> Dues &amp; Reminders</button>
         <button onclick="showDash('o','o-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('o','o-reports',this)"><i class="fas fa-chart-bar"></i> Reports</button>
+        <button onclick="showDash('o','o-profile',this)"><i class="fas fa-user-circle"></i> My Profile</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
     </nav>
@@ -3320,6 +3321,25 @@
                 <button id="adm-forward-btn" onclick="forwardAdmissionToAdmin()" style="padding:10px 20px;background:linear-gradient(135deg,var(--primary),var(--accent-dark));color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600"><i class="fas fa-share" style="margin-right:6px"></i>Forward to Admin</button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- ── MY PROFILE (Office Staff) ── -->
+        <div id="o-profile" class="dash-section">
+          <div class="card" style="padding:24px;margin-bottom:20px;max-width:540px">
+            <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-user-circle" style="margin-right:8px;color:var(--accent)"></i>My Profile</h4>
+            <div style="display:flex;flex-direction:column;gap:14px;font-size:14px">
+              <div style="display:flex;gap:12px"><span style="color:var(--text-light);min-width:110px">Name</span><strong id="op-name">—</strong></div>
+              <div style="display:flex;gap:12px"><span style="color:var(--text-light);min-width:110px">Staff ID</span><strong id="op-staffid">—</strong></div>
+              <div style="display:flex;gap:12px"><span style="color:var(--text-light);min-width:110px">Email</span><strong id="op-email">—</strong></div>
+              <div style="display:flex;gap:12px"><span style="color:var(--text-light);min-width:110px">Role</span><strong id="op-role">Office Staff</strong></div>
+            </div>
+            <hr style="margin:24px 0;border-color:var(--border)">
+            <h5 style="color:var(--accent-dark);margin-bottom:14px"><i class="fas fa-lock" style="margin-right:6px;color:var(--primary)"></i>Change Password</h5>
+            <div class="form-group"><label>Current Password</label><input type="password" id="op-current-pw" placeholder="Enter current password"></div>
+            <div class="form-group"><label>New Password</label><input type="password" id="op-new-pw" placeholder="Min 6 characters"></div>
+            <div class="form-group"><label>Confirm New Password</label><input type="password" id="op-confirm-pw" placeholder="Repeat new password"></div>
+            <button class="btn btn-primary" onclick="changeOfficePassword()" style="margin-top:4px"><i class="fas fa-key"></i> Update Password</button>
           </div>
         </div>
 

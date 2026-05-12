@@ -1593,6 +1593,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (sectionId === 'o-dashboard')        { if(window.loadOfficeDashboardStats)       loadOfficeDashboardStats();       }
     if (sectionId === 'o-reports')          { if(window.loadOfficeReports)             loadOfficeReports();             }
     if (sectionId === 'o-admissions')       { if(window.loadOfficeAdmissions)          loadOfficeAdmissions();          }
+    if (sectionId === 'o-profile')          { if(window.loadOfficeProfile)             loadOfficeProfile();             }
     if (sectionId === 'o-fee-collection') {
       const pd = document.getElementById('pay-date');
       if (pd && !pd.value) pd.value = new Date().toISOString().split('T')[0];
@@ -4100,6 +4101,36 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         payDateEl.value = new Date().toISOString().split('T')[0];
       loadOfficeDashboardStats();
     } catch(e) { console.warn('[OfficePortal]', e.message); }
+  };
+
+  window.loadOfficeProfile = function() {
+    const u = auth.currentUser;
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v || '—'; };
+    set('op-name',    window._officeStaffName || (u?.displayName) || '—');
+    set('op-staffid', window._officeStaffId   || '—');
+    set('op-email',   u?.email                || '—');
+    set('op-role',    'Office Staff');
+  };
+
+  window.changeOfficePassword = async function() {
+    const current = document.getElementById('op-current-pw')?.value || '';
+    const newPw   = document.getElementById('op-new-pw')?.value     || '';
+    const confirm = document.getElementById('op-confirm-pw')?.value || '';
+    if (!current || !newPw) { showToast('⚠️ Fill in current and new password.'); return; }
+    if (newPw.length < 6)   { showToast('⚠️ New password must be at least 6 characters.'); return; }
+    if (newPw !== confirm)  { showToast('⚠️ Passwords do not match.'); return; }
+    try {
+      const u = auth.currentUser;
+      const { EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+      const cred = EmailAuthProvider.credential(u.email, current);
+      await reauthenticateWithCredential(u, cred);
+      await updatePassword(u, newPw);
+      ['op-current-pw','op-new-pw','op-confirm-pw'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+      showToast('✅ Password updated successfully.');
+    } catch(e) {
+      const msg = e.code === 'auth/wrong-password' ? 'Current password is incorrect.' : e.message;
+      showToast('❌ ' + msg);
+    }
   };
 
   window.loadOfficeDashboardStats = async function() {
