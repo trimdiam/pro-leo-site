@@ -2785,6 +2785,55 @@
         <!-- ── FEE COLLECTION ── -->
         <div id="o-fee-collection" class="dash-section">
 
+          <!-- Bulk Entry -->
+          <div class="card" style="padding:24px;margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+              <h4 style="color:var(--accent-dark)"><i class="fas fa-layer-group" style="margin-right:8px;color:var(--accent)"></i>Bulk Fee Entry</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <select id="bulk-class-sel" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="">Select Class…</option>
+                  <option value="PLG">Play Group</option><option value="SKG">SKG</option><option value="LKG">LKG</option>
+                  <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option>
+                  <option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option>
+                  <option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option>
+                  <option value="10">Class 10</option>
+                </select>
+                <select id="bulk-fee-type" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="Annual Fee">Annual Fee</option>
+                  <option value="Term Fee">Term Fee</option>
+                  <option value="Exam Fee">Exam Fee</option>
+                  <option value="Transport Fee">Transport Fee</option>
+                  <option value="Other">Other</option>
+                </select>
+                <select id="bulk-mode" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="NEFT">NEFT</option>
+                </select>
+                <button class="btn btn-sm btn-primary" onclick="loadBulkFeeClass()"><i class="fas fa-search"></i> Load Class</button>
+              </div>
+            </div>
+            <div id="bulk-fee-table-wrap" style="display:none">
+              <div style="overflow-x:auto">
+                <table style="width:100%;font-size:13px;border-collapse:collapse">
+                  <thead><tr style="background:rgba(214,195,163,.2)">
+                    <th style="padding:8px 6px;text-align:left"><input type="checkbox" id="bulk-select-all" onchange="document.querySelectorAll('.bulk-row-chk').forEach(c=>c.checked=this.checked)"> All</th>
+                    <th style="padding:8px 6px;text-align:left">Roll</th>
+                    <th style="padding:8px 6px;text-align:left">Name</th>
+                    <th style="padding:8px 6px;text-align:left">Balance Due</th>
+                    <th style="padding:8px 6px;text-align:left">Amount (₹)</th>
+                  </tr></thead>
+                  <tbody id="bulk-fee-tbody"></tbody>
+                </table>
+              </div>
+              <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end">
+                <span id="bulk-selected-count" style="font-size:13px;color:var(--text-light);align-self:center">0 selected</span>
+                <button class="btn btn-primary" onclick="recordBulkFeePayments()"><i class="fas fa-check-double"></i> Record All Selected</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Step 1: Find Student -->
           <div class="card" style="padding:24px;margin-bottom:20px">
             <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-search" style="margin-right:8px;color:var(--accent)"></i>Step 1 — Find Student</h4>
