@@ -1476,7 +1476,8 @@
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-inbox" style="margin-right:8px;color:var(--accent)"></i>Inbox</h4>
               <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--danger);font-size:8px;margin-right:8px"></i>Fee approvals pending</span><span class="badge badge-danger" id="a-inbox-fee"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
               <div class="chapter-item" style="display:flex;justify-content:space-between;cursor:pointer" onclick="showDash('a','a-leave',document.querySelector('#adminSidebar button[onclick*=a-leave]'))"><span><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>Leave applications</span><span class="badge badge-warning" id="a-inbox-leave"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
-              <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>New admission enquiries</span><span class="badge badge-info" id="a-admission-count"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
+              <div class="chapter-item" style="display:flex;justify-content:space-between;cursor:pointer" onclick="showDash('a','a-admissions',document.querySelector('#adminSidebar button[onclick*=a-admissions]'))"><span><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>New admission enquiries</span><span class="badge badge-info" id="a-admission-count"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
+              <div class="chapter-item" style="display:flex;justify-content:space-between;cursor:pointer" onclick="showDash('a','a-admissions',document.querySelector('#adminSidebar button[onclick*=a-admissions]'))"><span><i class="fas fa-share-square" style="color:#7c3aed;font-size:8px;margin-right:8px"></i>Forwarded by office</span><span class="badge" style="background:#ede9fe;color:#7c3aed" id="a-inbox-forwarded">0</span></div>
               <div class="chapter-item" style="display:flex;justify-content:space-between"><span><i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-right:8px"></i>Contact messages</span><span class="badge badge-success" id="a-inbox-contacts"><i class="fas fa-spinner fa-spin" style="font-size:10px"></i></span></div>
             </div>
           </div>
@@ -2737,6 +2738,7 @@
         <button onclick="showDash('o','o-dues',this)"><i class="fas fa-bell"></i> Dues &amp; Reminders</button>
         <button onclick="showDash('o','o-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('o','o-reports',this)"><i class="fas fa-chart-bar"></i> Reports</button>
+        <button onclick="showDash('o','o-profile',this)"><i class="fas fa-user-circle"></i> My Profile</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
     </nav>
@@ -2783,6 +2785,55 @@
 
         <!-- ── FEE COLLECTION ── -->
         <div id="o-fee-collection" class="dash-section">
+
+          <!-- Bulk Entry -->
+          <div class="card" style="padding:24px;margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+              <h4 style="color:var(--accent-dark)"><i class="fas fa-layer-group" style="margin-right:8px;color:var(--accent)"></i>Bulk Fee Entry</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <select id="bulk-class-sel" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="">Select Class…</option>
+                  <option value="PLG">Play Group</option><option value="SKG">SKG</option><option value="LKG">LKG</option>
+                  <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option>
+                  <option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option>
+                  <option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option>
+                  <option value="10">Class 10</option>
+                </select>
+                <select id="bulk-fee-type" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="Annual Fee">Annual Fee</option>
+                  <option value="Term Fee">Term Fee</option>
+                  <option value="Exam Fee">Exam Fee</option>
+                  <option value="Transport Fee">Transport Fee</option>
+                  <option value="Other">Other</option>
+                </select>
+                <select id="bulk-mode" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="NEFT">NEFT</option>
+                </select>
+                <button class="btn btn-sm btn-primary" onclick="loadBulkFeeClass()"><i class="fas fa-search"></i> Load Class</button>
+              </div>
+            </div>
+            <div id="bulk-fee-table-wrap" style="display:none">
+              <div style="overflow-x:auto">
+                <table style="width:100%;font-size:13px;border-collapse:collapse">
+                  <thead><tr style="background:rgba(214,195,163,.2)">
+                    <th style="padding:8px 6px;text-align:left"><input type="checkbox" id="bulk-select-all" onchange="document.querySelectorAll('.bulk-row-chk').forEach(c=>c.checked=this.checked)"> All</th>
+                    <th style="padding:8px 6px;text-align:left">Roll</th>
+                    <th style="padding:8px 6px;text-align:left">Name</th>
+                    <th style="padding:8px 6px;text-align:left">Balance Due</th>
+                    <th style="padding:8px 6px;text-align:left">Amount (₹)</th>
+                  </tr></thead>
+                  <tbody id="bulk-fee-tbody"></tbody>
+                </table>
+              </div>
+              <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end">
+                <span id="bulk-selected-count" style="font-size:13px;color:var(--text-light);align-self:center">0 selected</span>
+                <button class="btn btn-primary" onclick="recordBulkFeePayments()"><i class="fas fa-check-double"></i> Record All Selected</button>
+              </div>
+            </div>
+          </div>
 
           <!-- Step 1: Find Student -->
           <div class="card" style="padding:24px;margin-bottom:20px">
@@ -3086,7 +3137,7 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
               <h4 style="color:var(--accent-dark)"><i class="fas fa-exchange-alt" style="margin-right:8px;color:var(--accent)"></i>Fee Transaction Approvals</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <select id="a-txn-filter" onchange="loadAdminFeeTransactions()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                <select id="o-txn-filter" onchange="loadAdminFeeTransactions()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
                   <option value="pending">Pending Only</option>
                   <option value="all">All Transactions</option>
                   <option value="approved">Approved</option>
@@ -3273,6 +3324,25 @@
           </div>
         </div>
 
+        <!-- ── MY PROFILE (Office Staff) ── -->
+        <div id="o-profile" class="dash-section">
+          <div class="card" style="padding:24px;margin-bottom:20px;max-width:540px">
+            <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-user-circle" style="margin-right:8px;color:var(--accent)"></i>My Profile</h4>
+            <div style="display:flex;flex-direction:column;gap:14px;font-size:14px">
+              <div style="display:flex;gap:12px"><span style="color:var(--text-light);min-width:110px">Name</span><strong id="op-name">—</strong></div>
+              <div style="display:flex;gap:12px"><span style="color:var(--text-light);min-width:110px">Staff ID</span><strong id="op-staffid">—</strong></div>
+              <div style="display:flex;gap:12px"><span style="color:var(--text-light);min-width:110px">Email</span><strong id="op-email">—</strong></div>
+              <div style="display:flex;gap:12px"><span style="color:var(--text-light);min-width:110px">Role</span><strong id="op-role">Office Staff</strong></div>
+            </div>
+            <hr style="margin:24px 0;border-color:var(--border)">
+            <h5 style="color:var(--accent-dark);margin-bottom:14px"><i class="fas fa-lock" style="margin-right:6px;color:var(--primary)"></i>Change Password</h5>
+            <div class="form-group"><label>Current Password</label><input type="password" id="op-current-pw" placeholder="Enter current password"></div>
+            <div class="form-group"><label>New Password</label><input type="password" id="op-new-pw" placeholder="Min 6 characters"></div>
+            <div class="form-group"><label>Confirm New Password</label><input type="password" id="op-confirm-pw" placeholder="Repeat new password"></div>
+            <button class="btn btn-primary" onclick="changeOfficePassword()" style="margin-top:4px"><i class="fas fa-key"></i> Update Password</button>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -3420,7 +3490,7 @@
     <div style="text-align:center;border-bottom:3px solid var(--accent);padding-bottom:20px;margin-bottom:24px">
       <div style="font-family:var(--font-head);font-size:1.6rem;color:var(--accent-dark)">St. Francis De Sales Secondary School</div>
       <div style="font-size:13px;color:var(--text-light)">Laitkor, Shillong, Meghalaya – 793010 &nbsp;|&nbsp; Tel: +91 98000 00000</div>
-      <div style="font-family:var(--font-head);font-size:1.1rem;color:var(--accent);margin-top:14px;letter-spacing:2.5px;text-transform:uppercase;border:2px solid var(--accent);display:inline-block;padding:4px 20px;border-radius:6px">
+      <div id="rcp-type-badge" style="font-family:var(--font-head);font-size:1.1rem;color:var(--accent);margin-top:14px;letter-spacing:2.5px;text-transform:uppercase;border:2px solid var(--accent);display:inline-block;padding:4px 20px;border-radius:6px">
         Fee Payment Receipt
       </div>
     </div>
@@ -3469,7 +3539,7 @@
     <div style="font-size:13px;margin-bottom:22px;display:flex;flex-direction:column;gap:6px">
       <div><strong>Payment Mode:</strong> <span id="rcp-mode">—</span></div>
       <div><strong>Notes:</strong> <span id="rcp-notes">—</span></div>
-      <div style="margin-top:6px;background:#d4edda;border-radius:6px;padding:9px 13px;font-size:12px;color:#155724">
+      <div id="rcp-disclaimer" style="margin-top:6px;background:#d4edda;border-radius:6px;padding:9px 13px;font-size:12px;color:#155724">
         <i class="fas fa-check-circle" style="margin-right:5px"></i>
         This is an <strong>official receipt</strong> issued by St. Francis De Sales Secondary School.
       </div>

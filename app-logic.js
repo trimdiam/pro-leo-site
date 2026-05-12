@@ -1593,6 +1593,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (sectionId === 'o-dashboard')        { if(window.loadOfficeDashboardStats)       loadOfficeDashboardStats();       }
     if (sectionId === 'o-reports')          { if(window.loadOfficeReports)             loadOfficeReports();             }
     if (sectionId === 'o-admissions')       { if(window.loadOfficeAdmissions)          loadOfficeAdmissions();          }
+    if (sectionId === 'o-profile')          { if(window.loadOfficeProfile)             loadOfficeProfile();             }
     if (sectionId === 'o-fee-collection') {
       const pd = document.getElementById('pay-date');
       if (pd && !pd.value) pd.value = new Date().toISOString().split('T')[0];
@@ -3678,6 +3679,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       set('a-inbox-fee',      fSnap.size);
       set('a-inbox-contacts', cSnap.size);
       set('a-inbox-leave',    lSnap.size);
+      if (window.loadAdminNotifications) window.loadAdminNotifications();
       const tbody=document.getElementById('classwise-tbody');
       if(tbody&&sSnap.size>0){
         const classMap={};
@@ -3697,6 +3699,19 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       if(homeS&&sSnap.size>0) homeS.textContent=sSnap.size.toLocaleString('en-IN')+'+';
       if(homeT&&tSnap.size>0) homeT.textContent=tSnap.size.toLocaleString('en-IN')+'+';
     }catch(e){console.warn('Dashboard stats:',e.message);}
+  };
+
+  window.loadAdminNotifications = async function() {
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'admin_notifications'),
+        where('read', '==', false),
+        where('type', '==', 'admission_forwarded'),
+        limit(100)
+      ));
+      const el = document.getElementById('a-inbox-forwarded');
+      if (el) el.textContent = snap.size;
+    } catch(e) { console.warn('Admin notifications:', e.message); }
   };
 
   // ================================================================
@@ -4088,41 +4103,70 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     } catch(e) { console.warn('[OfficePortal]', e.message); }
   };
 
-  window.loadOfficeDashboardStats = async function() {
-    const today     = new Date().toISOString().split('T')[0];
-    const monthPfx  = today.slice(0, 7); // YYYY-MM
-    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  window.loadOfficeProfile = function() {
+    const u = auth.currentUser;
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v || '—'; };
+    set('op-name',    window._officeStaffName || (u?.displayName) || '—');
+    set('op-staffid', window._officeStaffId   || '—');
+    set('op-email',   u?.email                || '—');
+    set('op-role',    'Office Staff');
+  };
+
+  window.changeOfficePassword = async function() {
+    const current = document.getElementById('op-current-pw')?.value || '';
+    const newPw   = document.getElementById('op-new-pw')?.value     || '';
+    const confirm = document.getElementById('op-confirm-pw')?.value || '';
+    if (!current || !newPw) { showToast('⚠️ Fill in current and new password.'); return; }
+    if (newPw.length < 6)   { showToast('⚠️ New password must be at least 6 characters.'); return; }
+    if (newPw !== confirm)  { showToast('⚠️ Passwords do not match.'); return; }
     try {
-      const [pendSnap, todaySnap, monthSnap, studentsSnap] = await Promise.all([
-        getDocs(query(collection(db,'fee_transactions'), where('status','==','pending'),  limit(500))),
-        getDocs(query(collection(db,'fee_transactions'), where('date','==',today),        limit(500))),
-        getDocs(query(collection(db,'fee_transactions'), where('status','==','approved'), where('date','>=',monthPfx+'-01'), where('date','<=',monthPfx+'-31'), limit(500))),
-        getDocs(query(collection(db,'students'), limit(500)))
-      ]);
+      const u = auth.currentUser;
+      const { EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+      const cred = EmailAuthProvider.credential(u.email, current);
+      await reauthenticateWithCredential(u, cred);
+      await updatePassword(u, newPw);
+      ['op-current-pw','op-new-pw','op-confirm-pw'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+      showToast('✅ Password updated successfully.');
+    } catch(e) {
+      const msg = e.code === 'auth/wrong-password' ? 'Current password is incorrect.' : e.message;
+      showToast('❌ ' + msg);
+    }
+  };
 
-      set('o-stat-pending', pendSnap.size);
-      set('o-stat-today',   todaySnap.size);
+  window.loadOfficeDashboardStats = function() {
+    const today    = new Date().toISOString().split('T')[0];
+    const monthPfx = today.slice(0, 7);
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
 
+    // Real-time listener for pending count
+    if (window._officeStatsUnsub) { window._officeStatsUnsub(); window._officeStatsUnsub = null; }
+    window._officeStatsUnsub = onSnapshot(
+      query(collection(db, 'fee_transactions'), where('status', '==', 'pending'), limit(500)),
+      snap => { set('o-stat-pending', snap.size); },
+      e => console.warn('[OfficeDash:pending]', e.message)
+    );
+
+    // One-shot queries for remaining stats
+    Promise.all([
+      getDocs(query(collection(db,'fee_transactions'), where('date','==',today), limit(500))),
+      getDocs(query(collection(db,'fee_transactions'), where('status','==','approved'), where('date','>=',monthPfx+'-01'), where('date','<=',monthPfx+'-31'), limit(500))),
+      getDocs(query(collection(db,'students'), limit(500)))
+    ]).then(([todaySnap, monthSnap, studentsSnap]) => {
+      set('o-stat-today', todaySnap.size);
       let approvedAmt = 0, approvedCount = 0;
       todaySnap.forEach(d => {
-        if (d.data().status === 'approved') {
-          approvedAmt += parseFloat(d.data().amount) || 0;
-          approvedCount++;
-        }
+        if (d.data().status === 'approved') { approvedAmt += parseFloat(d.data().amount) || 0; approvedCount++; }
       });
       set('o-stat-total-today',    fmtINR(approvedAmt));
       set('o-stat-approved-today', approvedCount);
-
       let monthCollected = 0;
       monthSnap.forEach(d => { monthCollected += parseFloat(d.data().amount) || 0; });
       set('o-stat-month-collected', fmtINR(monthCollected));
-
       let totalOutstanding = 0;
       studentsSnap.forEach(d => { totalOutstanding += parseFloat(d.data().feeBalance) || 0; });
       set('o-stat-total-outstanding', fmtINR(totalOutstanding));
-
       loadOfficeRecentTransactions();
-    } catch(e) { console.warn('[OfficeDash]', e.message); }
+    }).catch(e => console.warn('[OfficeDash]', e.message));
   };
 
   window.loadOfficeRecentTransactions = async function() {
@@ -4503,7 +4547,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       }
 
       showToast('✅ Payment recorded and approved. Opening receipt…');
-      _populateReceipt({ ...txnData, txnId: txnRef.id });
+      _populateReceipt({ ...txnData, txnId: txnRef.id, receiptType: 'official' });
       ['pay-amount','pay-receipt-no','pay-notes'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
@@ -4532,6 +4576,23 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     set('rcp-notes',        txn.notes||'N/A');
     set('rcp-staff-name',   txn.staffName);
     set('rcp-generated-at', new Date().toLocaleString('en-IN'));
+    const isOfficial = txn.receiptType !== 'provisional';
+    const badge = document.getElementById('rcp-type-badge');
+    if (badge) {
+      badge.textContent = isOfficial ? 'Official Receipt' : 'Provisional Receipt';
+      badge.style.color = isOfficial ? 'var(--accent)' : '#d97706';
+      badge.style.borderColor = isOfficial ? 'var(--accent)' : '#d97706';
+    }
+    const disc = document.getElementById('rcp-disclaimer');
+    if (disc) {
+      if (isOfficial) {
+        disc.style.background = '#d4edda'; disc.style.color = '#155724';
+        disc.innerHTML = '<i class="fas fa-check-circle" style="margin-right:5px"></i>This is an <strong>official receipt</strong> issued by St. Francis De Sales Secondary School.';
+      } else {
+        disc.style.background = '#fff3cd'; disc.style.color = '#856404';
+        disc.innerHTML = '<i class="fas fa-clock" style="margin-right:5px"></i>This is a <strong>provisional receipt</strong> — pending office approval. Official confirmation will be issued upon approval.';
+      }
+    }
     const rcpEl = document.getElementById('printable-receipt');
     if (rcpEl) rcpEl.style.display='block';
   }
@@ -4542,7 +4603,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     try {
       const snap = await getDoc(doc(db, 'fee_transactions', txnId));
       if (!snap.exists()) { showToast('⚠️ Receipt not found.'); return; }
-      _populateReceipt({ ...snap.data(), txnId });
+      const txnData = snap.data();
+      const receiptType = txnData.status === 'approved' ? 'official' : 'provisional';
+      _populateReceipt({ ...txnData, txnId, receiptType });
       const rcpEl = document.getElementById('printable-receipt');
       if (rcpEl) rcpEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch(e) { showToast('⚠️ Could not load receipt: ' + e.message); }
@@ -4715,7 +4778,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const tbody = document.getElementById('admin-fee-txn-tbody');
     if (!tbody) return;
     tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
-    const filter = document.getElementById('a-txn-filter')?.value||'pending';
+    const filter = (document.getElementById('a-txn-filter') || document.getElementById('o-txn-filter'))?.value || 'pending';
     try {
       const snap = filter==='all'
         ? await getDocs(query(collection(db,'fee_transactions'), limit(100)))
@@ -4743,12 +4806,18 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         const sourceTag = t.source==='student-portal'
           ? `<div style="font-size:10px;color:var(--primary);margin-top:2px"><i class="fas fa-mobile-alt"></i> Online</div>`
           : '';
+        const editDelBtns = `<button onclick="editFeeTransaction('${d.id}')" style="padding:3px 8px;font-size:11px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer" title="Edit"><i class="fas fa-edit"></i></button>
+               <button onclick="deleteFeeTransaction('${d.id}')" style="padding:3px 8px;font-size:11px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer" title="Delete"><i class="fas fa-trash"></i></button>`;
         const acts = t.status==='pending'
           ? `<div style="display:flex;gap:4px;flex-wrap:wrap">
                <button class="btn btn-sm btn-success" style="font-size:11px;padding:3px 8px" onclick="approveFeeTransaction('${d.id}')"><i class="fas fa-check"></i> Approve</button>
                <button class="btn btn-sm btn-danger"  style="font-size:11px;padding:3px 7px" onclick="rejectFeeTransaction('${d.id}')"><i class="fas fa-times"></i></button>
+               ${editDelBtns}
              </div>`
-          : `<span style="font-size:11px;color:var(--text-light)">${t.status==='approved'?(t.approvedBy||'Staff'):'Rejected'}</span>`;
+          : `<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+               <span style="font-size:11px;color:var(--text-light)">${t.status==='approved'?(t.approvedBy||'Staff'):'Rejected'}</span>
+               ${editDelBtns}
+             </div>`;
         return `<tr>
           <td style="font-size:12px">${t.date||'—'}</td>
           <td><strong>${t.studentName||'—'}</strong>${sourceTag}</td>
@@ -5147,8 +5216,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
           <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${a.classApplied || '—'}</td>
           <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${date}</td>
           <td style="padding:10px 12px;font-size:13px">${statusBadge}</td>
-          <td style="padding:10px 12px">
+          <td style="padding:10px 12px;white-space:nowrap;display:flex;gap:6px">
             <button onclick="viewAdmission('${d.id}')" style="padding:6px 12px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer"><i class="fas fa-eye"></i> View</button>
+            <button onclick="printAdmissionById('${d.id}')" style="padding:6px 10px;background:#6b7280;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer" title="Print"><i class="fas fa-print"></i></button>
           </td>`;
         tbody.appendChild(tr);
       });
@@ -5157,6 +5227,16 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     } catch(e) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:#ef4444">Error: ${e.message}</td></tr>`;
     }
+  };
+
+  window.printAdmissionById = async function(id) {
+    const cached = (window.__admissionsCache || {})[id];
+    if (cached) { window._printAdmissionPDF(cached); return; }
+    try {
+      const snap = await getDoc(doc(db, 'admissions', id));
+      if (!snap.exists()) { showToast('⚠️ Application not found.'); return; }
+      window._printAdmissionPDF(snap.data());
+    } catch(e) { showToast('❌ Could not load application: ' + e.message); }
   };
 
   // ── View single application ───────────────────────────────────
@@ -5345,6 +5425,14 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
         officeNotes: notes,
         forwardedAt: serverTimestamp()
       });
+      await addDoc(collection(db, 'admin_notifications'), {
+        type: 'admission_forwarded',
+        admissionId: currentAdmissionId,
+        studentName: currentAdmissionData?.fullName || '',
+        forwardedBy: window._officeStaffName || 'Office Staff',
+        read: false,
+        createdAt: new Date().toISOString()
+      });
       showToast('✅ Application forwarded to Admin.');
       if (window.__admissionsCache?.[currentAdmissionId]) {
         window.__admissionsCache[currentAdmissionId].status = 'forwarded_to_admin';
@@ -5359,6 +5447,90 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
 
   // Auto-load when navigating to admissions section
   console.log('[Admissions] ✅ Loaded — Office Staff admissions review module');
+})();
+
+// ================================================================
+// BLOCK 8B — BULK FEE ENTRY
+// ================================================================
+(async () => {
+  const clsLabel = c => ({ PLG:'Play Group', SKG:'SKG', LKG:'LKG' }[c] || (c ? 'Class ' + c : '—'));
+  const fmtINR   = n => '₹' + (parseFloat(n)||0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
+  window.loadBulkFeeClass = async function() {
+    const cls  = document.getElementById('bulk-class-sel')?.value;
+    if (!cls) { showToast('⚠️ Select a class first.'); return; }
+    const wrap = document.getElementById('bulk-fee-table-wrap');
+    const tbody = document.getElementById('bulk-fee-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:14px"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
+    if (wrap) wrap.style.display = 'block';
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'students'),
+        where('class', '==', cls),
+        limit(200)
+      ));
+      const students = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (parseInt(a.rollNo)||0) - (parseInt(b.rollNo)||0));
+      if (!students.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:14px;color:var(--text-light)">No students found for this class.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = students.map(s => {
+        const bal = parseFloat(s.feeBalance ?? s.feeTotal ?? 0);
+        return `<tr>
+          <td style="padding:7px 6px"><input type="checkbox" class="bulk-row-chk" data-sid="${s.id}" data-student='${JSON.stringify({id:s.id,studentId:s.studentId||'',name:s.name||'',class:s.class||'',rollNo:s.rollNo||'',feeBalance:bal,feeTotal:parseFloat(s.feeTotal||0)})}' onchange="document.getElementById('bulk-selected-count').textContent=document.querySelectorAll('.bulk-row-chk:checked').length+' selected'"></td>
+          <td style="padding:7px 6px">${s.rollNo||'—'}</td>
+          <td style="padding:7px 6px;font-weight:600">${s.name||'—'}</td>
+          <td style="padding:7px 6px;color:${bal>0?'#dc2626':'#16a34a'}">${fmtINR(bal)}</td>
+          <td style="padding:7px 6px"><input type="number" class="bulk-amt-input" data-sid="${s.id}" value="${bal>0?bal:''}" min="0" style="width:100px;padding:4px 8px;border:1.5px solid var(--primary);border-radius:6px;font-family:var(--font-body);font-size:13px"></td>
+        </tr>`;
+      }).join('');
+      document.getElementById('bulk-selected-count').textContent = '0 selected';
+      const selectAll = document.getElementById('bulk-select-all');
+      if (selectAll) selectAll.checked = false;
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger);padding:12px">${e.message}</td></tr>`;
+    }
+  };
+
+  window.recordBulkFeePayments = async function() {
+    const checked = [...document.querySelectorAll('.bulk-row-chk:checked')];
+    if (!checked.length) { showToast('⚠️ Select at least one student.'); return; }
+    const feeType = document.getElementById('bulk-fee-type')?.value || 'Annual Fee';
+    const mode    = document.getElementById('bulk-mode')?.value    || 'Cash';
+    const staffName = window._officeStaffName || 'Office Staff';
+    let ok = 0, fail = 0;
+    for (const chk of checked) {
+      try {
+        const s   = JSON.parse(chk.dataset.student);
+        const amt = parseFloat(document.querySelector(`.bulk-amt-input[data-sid="${chk.dataset.sid}"]`)?.value || 0);
+        if (!amt || amt <= 0) { fail++; continue; }
+        const balAfter = Math.max(0, (s.feeBalance || 0) - amt);
+        await addDoc(collection(db, 'fee_transactions'), {
+          studentId:    s.studentId,
+          studentName:  s.name,
+          studentClass: s.class,
+          feeType,
+          amount:       amt,
+          paymentMode:  mode,
+          receiptNo:    '',
+          date:         new Date().toISOString().slice(0, 10),
+          status:       'approved',
+          staffName,
+          balanceBefore: s.feeBalance || 0,
+          balanceAfter:  balAfter,
+          feeTotal:      s.feeTotal   || 0,
+          source:        'bulk-entry',
+          createdAt:     serverTimestamp()
+        });
+        ok++;
+      } catch(e) { fail++; console.warn('Bulk entry error:', e.message); }
+    }
+    showToast(ok ? `✅ ${ok} payment(s) recorded${fail ? ', ' + fail + ' failed' : ''}.` : '❌ All entries failed.');
+    if (ok) window.loadBulkFeeClass();
+  };
 })();
 
 // ================================================================
