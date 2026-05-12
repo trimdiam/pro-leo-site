@@ -116,8 +116,17 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   // ================================================================
   let _pendingFirstTimeUser = null;
 
+  let _ftsTimeoutId = null;
+
   function _showFirstTimeSetup(user) {
     _pendingFirstTimeUser = user;
+
+    if (_ftsTimeoutId) clearTimeout(_ftsTimeoutId);
+    _ftsTimeoutId = setTimeout(() => {
+      if (_pendingFirstTimeUser) {
+        _showFTSError('Taking too long? Try signing in again or contact admin.');
+      }
+    }, 2 * 60 * 1000);
 
     const photo = user.photoURL    || '';
     const name  = user.displayName || 'Student';
@@ -152,13 +161,15 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     const overlay = document.getElementById('first-time-setup-overlay');
     if (overlay) overlay.style.display = 'none';
     _pendingFirstTimeUser = null;
+    if (_ftsTimeoutId) { clearTimeout(_ftsTimeoutId); _ftsTimeoutId = null; }
   }
 
   function _showFTSError(msg) {
     const box = document.getElementById('fts-error');
     if (!box) return;
     if (msg) {
-      box.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>' + msg + '</span>';
+      box.innerHTML = '<i class="fas fa-exclamation-circle"></i><span style="flex:1">' + msg + '</span>'
+        + '<button onclick="linkStudentAccount()" style="margin-left:8px;padding:3px 10px;background:#991b1b;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">Try Again</button>';
       box.style.display = 'flex';
     } else {
       box.style.display = 'none';
@@ -245,7 +256,10 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       // 5. Clear the modal and continue with the normal login flow
       showToast('✅ Account linked! Opening your portal…');
       _hideFirstTimeSetup();
-      setTimeout(() => { _handleAuthUser(user).catch(console.error); }, 400);
+      setTimeout(async () => {
+        try { await _handleAuthUser(user); }
+        catch(e) { console.error('[FTS] _handleAuthUser failed, reloading:', e.message); window.location.reload(); }
+      }, 400);
 
     } catch (e) {
       console.error('[FirstTimeSetup] Link failed:', e);
@@ -350,6 +364,19 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   }
 
   window.firebaseLogin = window.doLogin;
+
+  window.sendPasswordReset = async function() {
+    const email = (document.getElementById('login-email')?.value || '').trim();
+    if (!email) { showLoginError('Enter your email address above first.'); return; }
+    try {
+      const { sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js');
+      await sendPasswordResetEmail(auth, email);
+      showToast('✅ Password reset email sent. Check your inbox.');
+    } catch(e) {
+      const msg = e.code === 'auth/user-not-found' ? 'No account found for that email.' : e.message;
+      showLoginError(msg);
+    }
+  };
 
   onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -1594,6 +1621,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
     if (sectionId === 'o-reports')          { if(window.loadOfficeReports)             loadOfficeReports();             }
     if (sectionId === 'o-admissions')       { if(window.loadOfficeAdmissions)          loadOfficeAdmissions();          }
     if (sectionId === 'o-profile')          { if(window.loadOfficeProfile)             loadOfficeProfile();             }
+    if (sectionId === 'a-student-records') { if(window.loadStudentRecords)            window.loadStudentRecords();      }
     if (sectionId === 'o-fee-collection') {
       const pd = document.getElementById('pay-date');
       if (pd && !pd.value) pd.value = new Date().toISOString().split('T')[0];
@@ -2184,6 +2212,9 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       setTxt('s-card-parent-contact', s.whatsapp||s.altContact||'—');
       setTxt('s-card-pen', s.penNumber||'—');
       setTxt('s-card-house', houseMap2[s.house]||s.house||'—');
+      const bal = parseFloat(s.feeBalance ?? s.feeTotal ?? 0);
+      const feeDueEl = document.getElementById('s-stat-fee-due');
+      if (feeDueEl) feeDueEl.textContent = bal > 0 ? '₹' + bal.toLocaleString('en-IN') : '₹0';
       loadStudentHomework(); loadStudentNotices(); loadStudentFees();
     } catch(e){ showToast('⚠️ Could not load profile: '+e.message); }
   };
@@ -2280,12 +2311,27 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
       // 5. EXAMS — placeholder (no `exams` collection yet); wire when ready
       const exams = [];
 
-      // 6. Render the personalized payload into the Bento Grid
-      window.NotificationCenter.render({
-        attendance: { todayStatus, percentage, present, absent, total },
-        fees:       feeData,
-        exams
-      }, notices);
+      // 6. Update stat cards with real data
+      const setEl = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      setEl('s-stat-attendance', total > 0 ? percentage + '%' : '—');
+      // Fee due: use student doc feeBalance if available (more accurate than fees collection)
+      const stuSnap = sid ? await getDocs(query(collection(db,'students'), where('studentId','==',sid), limit(1))) : null;
+      if (stuSnap && !stuSnap.empty) {
+        const bal = parseFloat(stuSnap.docs[0].data().feeBalance || 0);
+        setEl('s-stat-fee-due', bal > 0 ? '₹' + bal.toLocaleString('en-IN') : '₹0');
+      } else {
+        setEl('s-stat-fee-due', feeData.isPaid ? '₹0' : '₹' + (feeData.amount||0).toLocaleString('en-IN'));
+      }
+      setEl('s-stat-days-exam', '—');
+
+      // 7. Render the personalized payload into the Bento Grid
+      if (window.NotificationCenter) {
+        window.NotificationCenter.render({
+          attendance: { todayStatus, percentage, present, absent, total },
+          fees:       feeData,
+          exams
+        }, notices);
+      }
     } catch (e) {
       console.warn('[NotificationCenter] auth-bound fetch failed:', e.message);
     }
@@ -4600,12 +4646,18 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDo
   window._populateReceipt = _populateReceipt;
 
   window.showStudentReceipt = async function(txnId) {
+    const populate = window._populateReceipt || _populateReceipt;
+    if (!populate) {
+      // Block 3 not yet ready — retry once after a short delay
+      setTimeout(() => window.showStudentReceipt(txnId), 600);
+      return;
+    }
     try {
       const snap = await getDoc(doc(db, 'fee_transactions', txnId));
       if (!snap.exists()) { showToast('⚠️ Receipt not found.'); return; }
       const txnData = snap.data();
       const receiptType = txnData.status === 'approved' ? 'official' : 'provisional';
-      _populateReceipt({ ...txnData, txnId, receiptType });
+      populate({ ...txnData, txnId, receiptType });
       const rcpEl = document.getElementById('printable-receipt');
       if (rcpEl) rcpEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch(e) { showToast('⚠️ Could not load receipt: ' + e.message); }
@@ -6102,14 +6154,6 @@ window.markReminded = async function(docId) {
     a.click();
     URL.revokeObjectURL(a.href);
   }
-
-  const _prevShowDash = window.showDash;
-  window.showDash = function(prefix, sectionId, btn) {
-    if (_prevShowDash) _prevShowDash(prefix, sectionId, btn);
-    if (sectionId === 'a-student-records' && !_srAllRecords.length) {
-      window.loadStudentRecords();
-    }
-  };
 
 })();
 // ============================================================
