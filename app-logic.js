@@ -2245,7 +2245,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const feeDueEl = document.getElementById('s-stat-fee-due');
       if (feeDueEl) feeDueEl.textContent = bal > 0 ? '₹' + bal.toLocaleString('en-IN') : '₹0';
       loadStudentHomework(); loadStudentNotices(); loadStudentFees();
-      loadAcademicSnapshot(studentId); // non-blocking — Phase 5
+      window.loadAcademicSnapshot(studentId); // non-blocking — Phase 5
     } catch(e){ showToast('⚠️ Could not load profile: '+e.message); }
   };
 
