@@ -676,6 +676,106 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 .profile-row .label { color: var(--text-light); }
 .profile-row .value { font-weight: 700; color: var(--text); }
 
+/* Academic Intelligence Snapshot */
+.academic-snapshot-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--card-shadow);
+  margin-top: 20px;
+  border-top: 4px solid var(--accent);
+}
+.academic-snapshot-card h4 {
+  font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--accent); margin-bottom: 18px;
+  display: flex; align-items: center; gap: 8px;
+}
+.academic-snapshot-loading {
+  color: var(--text-light); font-size: 14px;
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+}
+.academic-snapshot-empty {
+  color: var(--text-light); font-size: 14px; font-style: italic; padding: 4px 0;
+}
+.academic-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 16px; margin-bottom: 18px;
+}
+.academic-stat {
+  background: var(--bg); border-radius: 10px; padding: 14px 16px; text-align: center;
+}
+.academic-stat-val {
+  font-family: var(--font-head); font-size: 1.6rem;
+  font-weight: 700; color: var(--accent-dark); line-height: 1.1;
+}
+.academic-stat-label {
+  font-size: 11px; color: var(--text-light); margin-top: 4px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.academic-trend-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 700;
+  padding: 3px 10px; border-radius: 20px; margin-top: 4px;
+}
+.trend-improving { background: rgba(40,167,69,0.12);  color: var(--success); }
+.trend-declining  { background: rgba(220,53,69,0.12);  color: var(--danger); }
+.trend-stable     { background: rgba(90,74,53,0.10);   color: var(--text-light); }
+.academic-subjects-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+}
+.academic-subject-block {
+  background: var(--bg); border-radius: 10px; padding: 12px 14px;
+}
+.academic-subject-block .subject-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text-light); margin-bottom: 4px;
+}
+.academic-subject-block .subject-name { font-weight: 700; color: var(--accent-dark); font-size: 14px; }
+.academic-subject-block .subject-pct  { font-size: 13px; font-weight: 700; margin-top: 2px; }
+.subject-pct-good { color: var(--success); }
+.subject-pct-risk { color: var(--danger); }
+.academic-alerts {
+  background: rgba(220,53,69,0.07); border-left: 4px solid var(--danger);
+  border-radius: 0 8px 8px 0; padding: 10px 14px; margin-bottom: 16px;
+}
+.academic-alerts-title {
+  font-size: 12px; font-weight: 700; color: var(--danger);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 6px;
+}
+.academic-alert-item { font-size: 13px; color: var(--text); padding: 2px 0; }
+.academic-summary {
+  font-size: 13px; color: var(--text-light); line-height: 1.6;
+  margin-bottom: 18px; padding: 10px 14px;
+  background: rgba(139,111,71,0.06); border-radius: 8px;
+}
+.academic-report-link { display: flex; justify-content: flex-end; }
+.academic-report-link a {
+  font-size: 13px; font-weight: 700; color: var(--accent); text-decoration: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 8px; border: 2px solid var(--accent);
+  transition: background var(--transition), color var(--transition);
+}
+.academic-report-link a:hover  { background: var(--accent); color: var(--white); }
+.academic-report-link a.disabled { opacity: 0.45; pointer-events: none; cursor: default; }
+
+/* Academic snapshot — subject breakdown bars */
+.academic-section-title { font-size: 13px; font-weight: 700; color: var(--accent); margin: 14px 0 8px; display: flex; align-items: center; gap: 6px; }
+.academic-subject-breakdown { margin-top: 4px; }
+.subject-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.subject-bar-name { font-size: 12px; color: var(--text); min-width: 110px; flex-shrink: 0; }
+.subject-bar-track { flex: 1; height: 10px; background: rgba(0,0,0,0.07); border-radius: 6px; overflow: hidden; }
+.subject-bar-fill { height: 100%; border-radius: 6px; transition: width 0.5s ease; }
+.bar-good  { background: var(--success); }
+.bar-avg   { background: #f0a500; }
+.bar-low   { background: #e07b00; }
+.bar-risk  { background: var(--danger); }
+.subject-bar-pct { font-size: 12px; font-weight: 700; color: var(--text); min-width: 36px; text-align: right; }
+
+/* Academic snapshot — monthly trend chart */
+.academic-trend-chart-wrap { background: rgba(0,0,0,0.02); border-radius: 10px; padding: 10px; margin-top: 4px; }
+
 /* Attendance Visual */
 .attendance-circle {
   width: 100px; height: 100px; border-radius: 50%;

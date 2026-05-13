@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="notification-center.css">
   <link rel="stylesheet" href="theme-modular.css">
+  <!-- Chart.js for academic performance charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- PDF / Excel export libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
@@ -1072,6 +1074,14 @@
               <div class="profile-row"><span class="label">House</span><span class="value" id="s-card-house">—</span></div>
             </div>
           </div>
+
+          <!-- Academic Intelligence Snapshot — populated by loadAcademicSnapshot() -->
+          <div id="s-academic-snapshot" class="academic-snapshot-card">
+            <div class="academic-snapshot-loading">
+              <i class="fas fa-spinner fa-spin"></i> Loading academic report...
+            </div>
+          </div>
+
         </div>
         <div id="s-attendance" class="dash-section">
           <div class="card" style="padding:28px;max-width:480px;text-align:center;margin-bottom:24px">

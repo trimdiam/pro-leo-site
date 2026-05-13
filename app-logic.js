@@ -24,6 +24,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   window._firebaseAuth    = auth;
   window.firebaseConfig   = firebaseConfig;
   window.initializeApp    = initializeApp;
+  // Phase 6 — deep-link to assessment-app student profile
+  window._academicAppUrl  = '../assessment-app/index.html';
   window._firestoreDb     = db;
   window._sfAppReady      = Promise.resolve(app);
 
@@ -1646,18 +1648,27 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   //  BOOTSTRAP — run on load
   // ================================================================
   (async () => {
-    loadHomeStats();
     loadHomeTicker();
     loadPublicEvents();
     loadAdmissionNotice();
     loadPublicGallery();
     loadDynamicHomepageContent();
-    // New dynamic homepage sections
     initAnnouncementsRealtime();
     initWhyChooseUsRealtime();
     initQuoteRealtime();
-    initHousePointsRealtime();
     initLeadersRealtime();
+    // These require admin-level Firestore read — skip if a non-admin user is signed in
+    const _authUnsub = auth.onAuthStateChanged(async u => {
+      _authUnsub();
+      if (!u) { loadHomeStats(); initHousePointsRealtime(); return; }
+      try {
+        const uDoc = await getDoc(doc(db,'users',u.uid));
+        const role = uDoc.exists() ? (uDoc.data().role||'') : '';
+        if (['admin','super_admin','teacher','office','office_staff'].includes(role)) {
+          loadHomeStats(); initHousePointsRealtime();
+        }
+      } catch(e) { /* non-critical */ }
+    });
   })();
 
   // ================================================================
@@ -2180,7 +2191,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const userData=userDoc.data(); const studentId=userData.studentId;
       window._studentId=studentId||userData.loginId||''; window._studentName=userData.name||'Student';
       if(!studentId){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';showToast('ℹ️ No studentId linked.');return;}
-      let studentSnap=await getDocs(query(collection(db,"students"),where("studentId","==",studentId)));
+      let studentSnap={docs:[],empty:true};
+      try{studentSnap=await getDocs(query(collection(db,"students"),where("studentId","==",studentId)));}catch(e){}
       if(studentSnap.empty){try{const d=await getDoc(doc(db,"students",studentId));if(d.exists())studentSnap={docs:[d],empty:false};}catch(e){}}
       if(studentSnap.empty){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';const headerName=document.getElementById('s-header-name');if(headerName)headerName.textContent=userData.name||'Student';window._studentClass=userData.class||'';window._studentRollNo=userData.rollNo||'';loadStudentHomework();return;}
       const s=studentSnap.docs[0].data();
@@ -2217,8 +2229,153 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const feeDueEl = document.getElementById('s-stat-fee-due');
       if (feeDueEl) feeDueEl.textContent = bal > 0 ? '₹' + bal.toLocaleString('en-IN') : '₹0';
       loadStudentHomework(); loadStudentNotices(); loadStudentFees();
+      loadAcademicSnapshot(studentId); // non-blocking — Phase 5
     } catch(e){ showToast('⚠️ Could not load profile: '+e.message); }
   };
+
+  // ================================================================
+  //  ACADEMIC INTELLIGENCE SNAPSHOT — Phase 5
+  //
+  //  Reads the pre-computed student_profiles/{sanitizedStudentId}
+  //  document written by assessment-app and renders a summary widget
+  //  inside #s-academic-snapshot on the My Profile page.
+  //
+  //  Completely non-blocking. If the document does not exist yet
+  //  (assessment-app has not run any sessions for this student),
+  //  the card shows a graceful "not available" message.
+  //  The rest of the student portal is unaffected either way.
+  // ================================================================
+  async function loadAcademicSnapshot(studentId) {
+    const container = document.getElementById('s-academic-snapshot');
+    if (!container || !studentId) return;
+
+    // Sanitize studentId to match assessment-app's document ID convention:
+    // 'SFS/2025/001' → 'SFS_2025_001'
+    const docId = studentId.replace(/\//g, '_').replace(/\s+/g, '_');
+
+    try {
+      const snap = await getDoc(doc(db, 'student_profiles', docId));
+
+      if (!snap.exists()) {
+        container.innerHTML = `
+          <h4><i class="fas fa-chart-line"></i> Academic Performance</h4>
+          <p class="academic-snapshot-empty">Academic report not yet available. Reports are generated after assessments are reviewed.</p>`;
+        return;
+      }
+
+      const p = snap.data();
+      const trendClass = p.trendDirection === 'improving' ? 'trend-improving'
+                       : p.trendDirection === 'declining'  ? 'trend-declining'
+                       : 'trend-stable';
+      const trendIcon  = p.trendDirection === 'improving' ? '↑'
+                       : p.trendDirection === 'declining'  ? '↓' : '→';
+
+      const strongestPctClass = (p.strongestSubject?.averagePercentage ?? 0) >= 40 ? 'subject-pct-good' : 'subject-pct-risk';
+      const weakestPctClass   = (p.weakestSubject?.averagePercentage  ?? 0) >= 40 ? 'subject-pct-good' : 'subject-pct-risk';
+
+      const alertsHtml = (p.activeAlerts?.length > 0) ? `
+        <div class="academic-alerts">
+          <div class="academic-alerts-title"><i class="fas fa-exclamation-triangle"></i> Alerts</div>
+          ${(p.alertReasons || []).map(r => `<div class="academic-alert-item">• ${r}</div>`).join('')}
+        </div>` : '';
+
+      // "View Full Academic Report" button — URL wired in Phase 6.
+      // Set window._academicAppUrl before this loads to enable the link.
+      const reportUrl = (typeof window._academicAppUrl === 'string' && window._academicAppUrl)
+        ? `${window._academicAppUrl}?student=${encodeURIComponent(studentId)}`
+        : '';
+      const linkClass = reportUrl ? '' : ' disabled';
+      const linkHref  = reportUrl || '#';
+
+      // Subject breakdown bars
+      const subjectBarsHtml = Array.isArray(p.subjectBreakdown) && p.subjectBreakdown.length
+        ? `<div class="academic-subject-breakdown">
+            <div class="academic-section-title"><i class="fas fa-book"></i> Subject Breakdown</div>
+            ${p.subjectBreakdown.sort((a,b) => b.averagePercentage - a.averagePercentage).map(s => {
+              const pct = s.averagePercentage ?? 0;
+              const barClass = pct >= 75 ? 'bar-good' : pct >= 50 ? 'bar-avg' : pct >= 40 ? 'bar-low' : 'bar-risk';
+              return `<div class="subject-bar-row">
+                <div class="subject-bar-name">${s.subject_name}</div>
+                <div class="subject-bar-track">
+                  <div class="subject-bar-fill ${barClass}" style="width:${Math.min(pct,100)}%"></div>
+                </div>
+                <div class="subject-bar-pct">${pct}%</div>
+              </div>`;
+            }).join('')}
+          </div>` : '';
+
+      // Monthly trend chart (canvas — drawn after innerHTML set)
+      const hasTrend = Array.isArray(p.monthlyTrend) && p.monthlyTrend.length > 1;
+      const trendChartHtml = hasTrend
+        ? `<div class="academic-section-title" style="margin-top:16px"><i class="fas fa-chart-area"></i> Monthly Trend</div>
+           <div class="academic-trend-chart-wrap"><canvas id="s-academic-trend-chart" height="120"></canvas></div>` : '';
+
+      container.innerHTML = `
+        <h4><i class="fas fa-chart-line"></i> Academic Performance</h4>
+        <div class="academic-stat-row">
+          <div class="academic-stat">
+            <div class="academic-stat-val">${p.overallAverage ?? '—'}%</div>
+            <div class="academic-stat-label">Overall Average</div>
+            <span class="academic-trend-badge ${trendClass}">${trendIcon} ${p.trendLabel || 'Stable'}</span>
+          </div>
+          <div class="academic-stat">
+            <div class="academic-stat-val">${p.monthsTracked ?? '—'}</div>
+            <div class="academic-stat-label">Months Tracked</div>
+          </div>
+          <div class="academic-stat">
+            <div class="academic-stat-val">${p.totalSessions ?? '—'}</div>
+            <div class="academic-stat-label">Total Sessions</div>
+          </div>
+        </div>
+        ${alertsHtml}
+        ${p.summaryText ? `<div class="academic-summary">${p.summaryText}</div>` : ''}
+        ${subjectBarsHtml}
+        ${trendChartHtml}
+        <div class="academic-report-link">
+          <a href="${linkHref}" id="s-academic-report-btn" class="${linkClass}" ${reportUrl ? 'target="_blank"' : ''}>
+            <i class="fas fa-external-link-alt"></i> View Full Academic Report
+          </a>
+        </div>`;
+
+      // Draw monthly trend chart with Chart.js
+      if (hasTrend) {
+        const canvas = document.getElementById('s-academic-trend-chart');
+        if (canvas && window.Chart) {
+          new window.Chart(canvas, {
+            type: 'line',
+            data: {
+              labels: p.monthlyTrend.map(m => m.month),
+              datasets: [{
+                label: 'Overall %',
+                data: p.monthlyTrend.map(m => m.overallPercentage),
+                borderColor: '#a07735',
+                backgroundColor: 'rgba(160,119,53,0.12)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointBackgroundColor: '#a07735',
+                fill: true,
+                tension: 0.3
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: { legend: { display: false } },
+              scales: {
+                y: { min: 0, max: 100, ticks: { callback: v => v+'%', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } },
+                x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+              }
+            }
+          });
+        }
+      }
+
+    } catch (e) {
+      container.innerHTML = `
+        <h4><i class="fas fa-chart-line"></i> Academic Performance</h4>
+        <p class="academic-snapshot-empty">Could not load academic report.</p>`;
+      console.warn('Academic snapshot load failed:', e.message);
+    }
+  }
 
   // ================================================================
   //  NOTIFICATION CENTER — auth-gated personalized fetch
@@ -3964,6 +4121,24 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   // ================================================================
   //  LOGIN CREATION — helpers
   // ================================================================
+
+  // Creates a Firebase Auth account via REST API — admin session is never touched.
+  async function createAuthAccountSafe(email, password) {
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseConfig.apiKey}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, returnSecureToken: false }) }
+    );
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = data?.error?.message || 'UNKNOWN';
+      console.error('[createAuthAccountSafe] Firebase error:', msg, data);
+      if (msg === 'EMAIL_EXISTS') { const err = new Error('auth/email-already-in-use'); err.code = 'auth/email-already-in-use'; throw err; }
+      throw new Error('Failed to create account: ' + msg);
+    }
+    return data.localId; // UID
+  }
+
   window.generatePassword=function(seed=''){
     const chars='ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#';
     const base=(seed||'').replace(/[^a-zA-Z0-9]/g,'').slice(-4).toUpperCase();
@@ -4011,7 +4186,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Creating...';btn.disabled=true;
     try{
       const loginEmail=idToEmailLocal(tid); let uid='';
-      try{const cred=await createUserWithEmailAndPassword(auth,loginEmail,password);uid=cred.user.uid;}
+      try{ uid = await createAuthAccountSafe(loginEmail, password); }
       catch(e){
         if(e.code==='auth/email-already-in-use'){const snap=await getDocs(query(collection(db,'users'),where('loginId','==',tid)));if(!snap.empty)uid=snap.docs[0].id;}
         else throw e;
@@ -4070,9 +4245,13 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Creating...';btn.disabled=true;
     try{
       const loginEmail=idToEmailLocal(sid); let uid='';
-      try{const cred=await createUserWithEmailAndPassword(auth,loginEmail,password);uid=cred.user.uid;}
+      try{ uid = await createAuthAccountSafe(loginEmail, password); }
       catch(e){
-        if(e.code==='auth/email-already-in-use'){const snap=await getDocs(query(collection(db,'users'),where('loginId','==',sid)));if(!snap.empty)uid=snap.docs[0].id;}
+        if(e.code==='auth/email-already-in-use'){
+          const snap=await getDocs(query(collection(db,'users'),where('loginId','==',sid)));
+          if(!snap.empty){uid=snap.docs[0].id;}
+          else{throw new Error('A login account already exists for this student but no portal record was found. Delete the account from Firebase Console and try again.');}
+        }
         else throw e;
       }
       if(uid){
@@ -5008,8 +5187,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       let uid = '';
 
       try {
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        uid = cred.user.uid;
+        uid = await createAuthAccountSafe(email, password);
       } catch(e) {
         if (e.code === 'auth/email-already-in-use') {
           const snap = await getDocs(query(collection(db,'users'), where('loginId','==',staffId), limit(1)));
