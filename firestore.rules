@@ -25,7 +25,13 @@ service cloud.firestore {
     match /students/{docId} {
       allow read:  if isAnyStaff() ||
         (request.auth != null &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId == docId);
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId == docId) ||
+        // Sibling system: allow a student to read linked family members
+        (request.auth != null &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student' &&
+         resource.data.familyId != null &&
+         resource.data.familyId ==
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId);
       allow write: if isAdmin() || isOffice();
     }
 

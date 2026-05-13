@@ -1,6 +1,6 @@
   import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, createUserWithEmailAndPassword, updatePassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit, serverTimestamp, updateDoc, onSnapshot, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit, serverTimestamp, updateDoc, onSnapshot, getCountFromServer, deleteField, writeBatch } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 // ================================================================
 // BLOCK 1 — MAIN APP LOGIC
 // ================================================================
@@ -28,6 +28,9 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   window._academicAppUrl  = '../assessment-app/index.html';
   window._firestoreDb     = db;
   window._sfAppReady      = Promise.resolve(app);
+
+  // Expose Firebase utilities for non-module scripts (sibling-system.js, notification-center.js)
+  Object.assign(window, { db, auth, getDoc, getDocs, doc, collection, query, where, updateDoc, setDoc, addDoc, deleteDoc, deleteField, serverTimestamp, writeBatch, orderBy, limit, onSnapshot, getCountFromServer });
 
   // Hide the "loading Firebase" notice now that the module loaded successfully
   const moduleErrEl = document.getElementById('login-module-error');
@@ -350,6 +353,11 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       window._currentUserRole = role;
       if (role === 'student') {
         await loadStudentProfile(user);
+        // Sibling linking system — load linked students after profile
+        if (window.detectAndLoadSiblings) {
+          try { await window.detectAndLoadSiblings(user); }
+          catch (e) { console.warn('[SiblingSystem] init failed:', e.message); }
+        }
         // Notification Center fetch is gated by auth — uses user.uid
         if (window.loadStudentNotificationCenter) {
           window.loadStudentNotificationCenter(user).catch(e =>
@@ -1603,6 +1611,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       if(window.populateHwClassSelect) populateHwClassSelect();
       if(window.loadTeacherHomework) loadTeacherHomework();
     }
+    if (sectionId === 's-attendance') { if(window.loadStudentAttendance) loadStudentAttendance(); }
     if (sectionId === 's-homework') { if(window.loadStudentHomework) loadStudentHomework(); }
     else if(window._hwUnsubscribe){window._hwUnsubscribe();window._hwUnsubscribe=null;}
     if (sectionId === 's-notices')  { if(window.loadStudentNotices) loadStudentNotices(); }
@@ -1625,6 +1634,12 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     if (sectionId === 'o-admissions')       { if(window.loadOfficeAdmissions)          loadOfficeAdmissions();          }
     if (sectionId === 'o-profile')          { if(window.loadOfficeProfile)             loadOfficeProfile();             }
     if (sectionId === 'a-student-records') { if(window.loadStudentRecords)            window.loadStudentRecords();      }
+    if (sectionId === 'a-family-mgmt') {
+      const famInput = document.getElementById('fam-search-input');
+      const famList  = document.getElementById('fam-search-results');
+      if (famInput) famInput.value = '';
+      if (famList)  famList.innerHTML = '<p style="color:var(--text-light);font-size:13px">Search to find students.</p>';
+    }
     if (sectionId === 'o-fee-collection') {
       const pd = document.getElementById('pay-date');
       if (pd && !pd.value) pd.value = new Date().toISOString().split('T')[0];
@@ -2138,6 +2153,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
           <button class="btn btn-sm btn-outline" title="View" onclick='viewStudentDetails(${JSON.stringify(s)})'><i class="fas fa-eye"></i></button>
           <button class="btn btn-sm btn-outline" title="Edit" onclick='editStudent("${docId}",${JSON.stringify(s)})'><i class="fas fa-edit"></i></button>
           <button class="btn btn-sm" title="Login" onclick='openStudentLoginModal("${(s.studentId||'').replace(/"/g,'')}", "${(s.name||'').replace(/"/g,'')}", "${(s.gender||'F')}", "${(s.email||'').replace(/"/g,'')}")' style="background:#1a4a8a;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px"><i class="fas fa-key"></i></button>
+          <button class="btn btn-sm" title="Link Siblings" onclick='openFamilyLinkModal("${(s.studentId||'').replace(/"/g,'')}", "${(s.name||'').replace(/"/g,'')}")' style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px"><i class="fas fa-link"></i></button>
           <button class="btn btn-sm btn-danger" title="Delete" onclick='promptDeleteStudent("${docId}","${(s.name||'').replace(/"/g,'')}")'><i class="fas fa-trash"></i></button>
         </div></td>
       </tr>`;
@@ -2245,7 +2261,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   //  the card shows a graceful "not available" message.
   //  The rest of the student portal is unaffected either way.
   // ================================================================
-  async function loadAcademicSnapshot(studentId) {
+  window.loadAcademicSnapshot = async function loadAcademicSnapshot(studentId) {
     const container = document.getElementById('s-academic-snapshot');
     if (!container || !studentId) return;
 
@@ -2395,7 +2411,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const userSnap = await getDoc(doc(db, 'users', user.uid));
       if (!userSnap.exists()) return;
       const u   = userSnap.data();
-      const sid = u.studentId || window._studentId || '';
+      const sid = (window.getActiveStudentId && window.getActiveStudentId()) || u.studentId || window._studentId || '';
       const cls = window._studentClass || u.class || '';
 
       // 2. ATTENDANCE — count present/absent for this student
@@ -2546,6 +2562,71 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         return `<div class="notice-card"><div class="notice-icon"><i class="fas ${icon(n.priority)}"></i></div><div><div class="notice-title">${n.title}</div><div class="notice-date">📅 ${fmt} &nbsp;|&nbsp; <span class="badge ${bc(n.priority)}">${n.priority||'Normal'}</span></div><div class="notice-body">${n.body}</div></div></div>`;
       }).join('');
     } catch(e){el.innerHTML=`<div style="color:var(--danger);padding:16px">❌ ${e.message}</div>`;}
+  };
+
+  // ================================================================
+  //  STUDENT — Attendance (dynamic, sibling-aware)
+  // ================================================================
+  window.loadStudentAttendance = async function() {
+    const sid = (window.getActiveStudentId && window.getActiveStudentId()) || window._studentId || '';
+    if (!sid) return;
+
+    // Summary card elements
+    const pctEl   = document.querySelector('#s-attendance .attendance-pct');
+    const msgEl   = document.querySelector('#s-attendance > .card > p');
+    const presEl  = document.querySelector('#s-attendance .card div[style*="gap:32px"] div:nth-child(1) div:first-child');
+    const absEl   = document.querySelector('#s-attendance .card div[style*="gap:32px"] div:nth-child(2) div:first-child');
+    const totalEl = document.querySelector('#s-attendance .card div[style*="gap:32px"] div:nth-child(3) div:first-child');
+    const tbody   = document.querySelector('#s-attendance .table-wrap tbody');
+
+    try {
+      const snap = await getDocs(query(collection(db, 'attendance'), where('studentId', '==', sid), limit(300)));
+      let present = 0, absent = 0, total = 0;
+      const byMonth = {};
+
+      snap.forEach(d => {
+        const a = d.data();
+        const st = (a.status || '').toString().toUpperCase();
+        total++;
+        if (st === 'P' || st === 'PRESENT') present++;
+        else if (st === 'A' || st === 'ABSENT') absent++;
+        // Group by month
+        const month = (a.date || '').substring(0, 7); // 'YYYY-MM'
+        if (month) {
+          if (!byMonth[month]) byMonth[month] = { present: 0, absent: 0, total: 0 };
+          byMonth[month].total++;
+          if (st === 'P' || st === 'PRESENT') byMonth[month].present++;
+          else if (st === 'A' || st === 'ABSENT') byMonth[month].absent++;
+        }
+      });
+
+      const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+      const pctClass = pct >= 90 ? 'var(--success)' : pct >= 75 ? 'var(--warning)' : 'var(--danger)';
+      const pctLabel = pct >= 90 ? 'Good Standing' : pct >= 75 ? 'Needs Improvement' : 'Below Minimum';
+
+      if (pctEl) pctEl.textContent = pct + '%';
+      if (msgEl) msgEl.innerHTML = `${pct}% Attendance — <span style="color:${pctClass};font-weight:700">${pctLabel}</span>`;
+      if (presEl) presEl.textContent = present;
+      if (absEl) absEl.textContent = absent;
+      if (totalEl) totalEl.textContent = total;
+
+      if (tbody) {
+        const months = Object.keys(byMonth).sort().reverse();
+        if (!months.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px">No attendance records yet.</td></tr>';
+        } else {
+          tbody.innerHTML = months.map(m => {
+            const r = byMonth[m];
+            const mp = r.total > 0 ? Math.round((r.present / r.total) * 100) : 0;
+            const badge = mp >= 90 ? 'badge-success' : mp >= 75 ? 'badge-warning' : 'badge-danger';
+            const label = new Date(m + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+            return `<tr><td>${label}</td><td>${r.total}</td><td>${r.present}</td><td>${r.absent}</td><td><span class="badge ${badge}">${mp}%</span></td></tr>`;
+          }).join('');
+        }
+      }
+    } catch (e) {
+      console.warn('[Attendance] load failed:', e.message);
+    }
   };
 
   // ================================================================
