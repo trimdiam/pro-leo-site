@@ -314,6 +314,21 @@ img { max-width: 100%; }
 .event-info h4 { color: var(--accent-dark); margin-bottom: 4px; font-size: 1rem; }
 .event-info p  { font-size: 13px; color: var(--text-light); }
 
+/* ============================================================
+   SKELETON LOADING SHIMMER
+============================================================ */
+.skel {
+  display: inline-block;
+  background: linear-gradient(90deg, #f0ebe3 25%, #faf5ef 50%, #f0ebe3 75%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+}
+@keyframes skel-shimmer {
+  0%   { background-position:  200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .notice-card {
   background: var(--white); border-radius: var(--radius); padding: 18px 20px;
   box-shadow: var(--card-shadow); border-left: 5px solid var(--accent);
