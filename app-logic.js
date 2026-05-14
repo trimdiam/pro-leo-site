@@ -2763,7 +2763,17 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     const txn     = (document.getElementById('s-fee-txn')?.value || '').trim();
     const date    = document.getElementById('s-fee-date')?.value || '';
     const file    = document.getElementById('s-fee-receipt-img')?.files[0];
-    if (!feeType || !amount || !txn) { showToast('⚠️ Fee type, amount and transaction number are required.'); return; }
+    let _valid = true;
+    const _markErr = id => {
+      const el = document.getElementById(id); if (!el) return;
+      el.classList.add('field-error');
+      el.addEventListener('input', () => el.classList.remove('field-error'), { once: true });
+    };
+    if (!feeType)                        { _markErr('s-fee-type-sel'); _valid = false; }
+    if (!amount || parseFloat(amount) <= 0) { _markErr('s-fee-amount');   _valid = false; }
+    if (!txn)                            { _markErr('s-fee-txn');      _valid = false; }
+    if (!date)                           { _markErr('s-fee-date');      _valid = false; }
+    if (!_valid) { showToast('⚠️ Please fill in all required fields.'); return; }
 
     const btn      = document.getElementById('s-fee-submit-btn');
     const progBox  = document.getElementById('s-fee-upload-progress');

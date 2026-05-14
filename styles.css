@@ -474,6 +474,17 @@ img { max-width: 100%; }
   box-shadow: 0 0 0 3px rgba(139,111,71,0.12);
 }
 .form-group textarea { resize: vertical; min-height: 100px; }
+.form-group input.field-error,
+.form-group select.field-error {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px rgba(220,53,69,0.12) !important;
+  animation: field-shake 0.3s ease;
+}
+@keyframes field-shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
 
