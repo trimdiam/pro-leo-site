@@ -6750,8 +6750,9 @@ window.saveTAAssignments = async function() {
     classTeacherOf: classTeacherOf,
     classTeacher:   _ctNum,
     assignments:    _taAssignments,
-    name:           _taCurrentData?.name  || '',
-    email:          _taCurrentData?.email || '',
+    name:           _taCurrentData?.name     || '',
+    email:          _taCurrentData?.email    || '',
+    teacherId:      _taCurrentData?.teacherId || '',
     updatedAt:      serverTimestamp()
   }, { merge: true });
 
@@ -6781,6 +6782,8 @@ window.saveTAAssignments = async function() {
       try {
         let uSnap = await getDocs(query(collection(db,'users'), where('loginId','==',tid)));
         if (uSnap.empty) uSnap = await getDocs(query(collection(db,'users'), where('loginId','==',tid.toUpperCase())));
+        if (uSnap.empty) uSnap = await getDocs(query(collection(db,'users'), where('loginId','==',tid.toLowerCase())));
+        if (uSnap.empty && _taCurrentData?.email) uSnap = await getDocs(query(collection(db,'users'), where('email','==',_taCurrentData.email)));
         if (!uSnap.empty) {
           const authUid = uSnap.docs[0].id;
           await setDoc(doc(db,'users',authUid), portalPayload, { merge: true });
@@ -6962,15 +6965,14 @@ window.loadTeacherPortal = async function(user) {
     let rawCTOf    = userData.tpClassTeacherOf || null;
     let newAssigns = userData.tpAssignments    || [];
 
-    // FALLBACK: if /users fields not yet synced, try /teachers/{uid} mirror doc
-    if (!newRole) {
+    // FALLBACK: if /users fields not yet synced (or tpAssignments empty), try /teachers/{uid} mirror doc
+    if (!newRole || !newAssigns.length) {
       try {
         const mirrorSnap = await getDoc(doc(db, 'teachers', user.uid));
         if (mirrorSnap.exists()) {
           const m = mirrorSnap.data();
-          newRole    = m.role    || null;
-          rawCTOf    = m.classTeacherOf || null;
-          newAssigns = m.assignments    || [];
+          if (!newRole)         { newRole = m.role || null; rawCTOf = m.classTeacherOf || null; }
+          if (!newAssigns.length) newAssigns = m.assignments || [];
         }
       } catch(ef) { /* security rules — skip */ }
     }
@@ -6981,7 +6983,13 @@ window.loadTeacherPortal = async function(user) {
     try {
       let snap = await getDocs(query(collection(db,'teachers'), where('teacherId','==',teacherId)));
       if (snap.empty) snap = await getDocs(query(collection(db,'teachers'), where('teacherId','==',teacherId.toUpperCase())));
-      if (!snap.empty) { teacherDocId = snap.docs[0].id; profileData = snap.docs[0].data(); if (!newRole) { newRole = profileData.role||null; rawCTOf = profileData.classTeacherOf||null; newAssigns = profileData.assignments||[]; } }
+      if (snap.empty) snap = await getDocs(query(collection(db,'teachers'), where('teacherId','==',teacherId.toLowerCase())));
+      if (!snap.empty) {
+        teacherDocId = snap.docs[0].id;
+        profileData  = snap.docs[0].data();
+        if (!newRole)         { newRole = profileData.role||null; rawCTOf = profileData.classTeacherOf||null; }
+        if (!newAssigns.length) newAssigns = profileData.assignments||[];
+      }
     } catch(eq) { /* blocked by rules */ }
 
     const newCTOf = rawCTOf ? rawCTOf.split('-')[0] : null;
