@@ -826,7 +826,6 @@ tr:hover td { background: rgba(214,195,163,0.15); }
   .dash-role     { display: none; }
   .dash-user { gap: 6px; flex-shrink: 0; }
 }
-}
 
 /* Syllabus */
 .schedule-table th { background: rgba(139,111,71,0.18); }
