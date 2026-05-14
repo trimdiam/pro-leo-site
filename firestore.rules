@@ -90,6 +90,7 @@ service cloud.firestore {
     match /gallery/{docId}        { allow read: if true; allow write: if isAdmin(); }
     match /announcements/{docId}  { allow read: if true; allow write: if isAdmin(); }
     match /teachers/{docId}       { allow read: if true; allow write: if isAdmin(); }
+    match /classes/{docId}        { allow read: if isAnyStaff(); allow write: if isAdmin(); }
     match /settings/{docId}       { allow read: if true; allow write: if isAdmin(); }
     match /public_settings/{docId}{ allow read: if true; allow write: if isAdmin(); }
     match /holidays/{docId}       { allow read: if true; allow write: if isAdmin(); }

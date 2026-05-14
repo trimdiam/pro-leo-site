@@ -3049,7 +3049,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     try { await setDoc(doc(db,'leave_applications',docId),{status:'Rejected',updatedAt:new Date().toISOString()},{merge:true}); showToast('Leave rejected.'); loadAdminLeave(); } catch(e){showToast('❌ '+e.message);}
   };
 
-  function renderTeacherStudentList(docs) {
+  window.renderTeacherStudentList = function renderTeacherStudentList(docs) {
     const tbody=document.getElementById('teacher-student-tbody');
     if(!tbody) return;
     if(!docs||!docs.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-light)">No students found.</td></tr>';return;}
@@ -3058,7 +3058,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const waNum=(s.whatsapp||'').replace(/[^0-9]/g,'');
       return `<tr><td>${s.rollNo||'—'}</td><td><strong>${s.name||'—'}</strong></td><td>${s.gender==='M'?'Male':s.gender==='F'?'Female':s.gender||'—'}</td><td><span class="badge badge-info">${s.bloodGroup||'—'}</span></td><td style="font-size:12px">${s.whatsapp||'—'}</td><td>${waNum?`<a href="https://wa.me/${waNum}" target="_blank" class="btn btn-sm btn-success" style="font-size:11px"><i class="fab fa-whatsapp"></i></a>`:'—'}</td></tr>`;
     }).join('');
-  }
+  };
 
   window.exportTeacherClassList = function() {
     const docs = window._teacherStudentDocs;
@@ -6394,4 +6394,537 @@ window.markReminded = async function(docId) {
 // ============================================================
 // END STUDENT RECORDS MODULE
 // ============================================================
+
+// ============================================================
+// TEACHER ASSIGNMENT MODULE  (Phase 1)
+// ============================================================
+
+const TA_CLASS_MAP   = { 'I':1,'II':2,'III':3,'IV':4,'V':5,'VI':6,'VII':7,'VIII':8,'IX':9,'X':10 };
+const TA_CLASS_NAMES = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+const TA_CLASS_NUMS  = [1,2,3,4,5,6,7,8,9,10];
+
+// Valid classes per subject key (for multi-class helper)
+const TA_SUBJECT_CLASSES = {
+  mathematics:       [1,2,3,4,5,6,7,8,9,10],
+  science:           [1,2,3,4,5,6,7,8],
+  english_i:         [1,2,3,4,5,6,7,8,9,10],
+  english_ii:        [1,2,3,4,5,6,7,8,9,10],
+  khasi_alt_english: [1,2,3,4,5,6,7,8,9,10],
+  hindi:             [1,2,3,4,5,6],
+  spelling:          [1,2,3,4,5],
+  computer:          [4,5,6,7,8],
+  social_studies:    [3,4,5],
+  geography:         [6,7,8,9,10],
+  civics:            [6,7,8,9,10],
+  history:           [6,7,8,9,10],
+  health_education:  [6],
+  h_education:       [7,8,9,10],
+  physics:           [9,10],
+  chemistry:         [9,10],
+  biology:           [9,10],
+  economics:         [9,10]
+};
+
+let _taCurrentUid  = null;
+let _taCurrentData = null;
+let _taAssignments = [];
+
+// ── Teacher list ────────────────────────────────────────────
+
+window.loadTeacherAssignList = async function() {
+  const listEl = document.getElementById('ta-teacher-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
+  try {
+    const snap = await getDocs(collection(db, 'teachers'));
+    window._taAllTeachers = [];
+    snap.forEach(d => window._taAllTeachers.push({ uid: d.id, ...d.data() }));
+    renderTAList(window._taAllTeachers);
+  } catch(e) {
+    listEl.innerHTML = `<p style="color:var(--danger);padding:16px">Error: ${e.message}</p>`;
+  }
+};
+
+function renderTAList(teachers) {
+  const listEl = document.getElementById('ta-teacher-list');
+  if (!teachers.length) {
+    listEl.innerHTML = '<p style="color:var(--text-light);padding:16px;text-align:center">No teachers found.</p>';
+    return;
+  }
+  listEl.innerHTML = teachers.map(t => {
+    const badge = taBadge(t.role);
+    const ctOf  = t.classTeacherOf ? `Class Teacher of: <strong>${t.classTeacherOf}</strong> &nbsp;·&nbsp; ` : '';
+    const subs  = taSubjectSummary(t.assignments || []);
+    return `<div class="admin-ta-card">
+      <div class="admin-ta-card-info">
+        <div class="admin-ta-card-name">
+          <i class="fas fa-user-circle" style="color:var(--accent);font-size:18px"></i>
+          ${taEsc(t.name || 'Unnamed')} ${badge}
+        </div>
+        <div class="admin-ta-card-meta">${ctOf}${taEsc(t.email || '')}</div>
+        ${subs ? `<div class="admin-ta-card-subjects"><i class="fas fa-book" style="margin-right:4px;color:var(--accent)"></i>${subs}</div>` : ''}
+      </div>
+      <button class="admin-ta-assign-btn" onclick="openTAPanel('${t.uid}')">
+        <i class="fas fa-pen"></i> Assign →
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function taBadge(role) {
+  const map = { admin:'admin', class_teacher:'class', subject_teacher:'subject' };
+  const cls = map[role];
+  if (!cls) return '<span class="admin-ta-badge admin-ta-badge-none">Unassigned</span>';
+  const lbl = { admin:'Admin', class:'Class Teacher', subject:'Subject Teacher' };
+  return `<span class="admin-ta-badge admin-ta-badge-${cls}">${lbl[cls]}</span>`;
+}
+
+function taSubjectSummary(assignments) {
+  if (!assignments.length) return '';
+  const map = {};
+  assignments.forEach(a => {
+    if (!map[a.subjectLabel]) map[a.subjectLabel] = [];
+    map[a.subjectLabel].push(a.class);
+  });
+  return Object.entries(map).map(([lbl, cls]) => `${lbl} (${cls.join(', ')})`).join(' &nbsp;|&nbsp; ');
+}
+
+window.filterTAList = function() {
+  const q = (document.getElementById('ta-search').value || '').toLowerCase();
+  const filtered = (window._taAllTeachers || []).filter(t =>
+    (t.name||'').toLowerCase().includes(q) ||
+    (t.email||'').toLowerCase().includes(q) ||
+    (t.assignments||[]).some(a => (a.subjectLabel||'').toLowerCase().includes(q))
+  );
+  renderTAList(filtered);
+};
+
+// ── Panel open / close ──────────────────────────────────────
+
+window.openTAPanel = async function(uid) {
+  const teacher = (window._taAllTeachers || []).find(t => t.uid === uid);
+  if (!teacher) return;
+  _taCurrentUid  = uid;
+  _taCurrentData = teacher;
+  _taAssignments = JSON.parse(JSON.stringify(teacher.assignments || []));
+
+  document.getElementById('ta-panel-title').textContent = `Assign Roles — ${teacher.name || 'Teacher'}`;
+
+  // Role radio
+  document.querySelectorAll('input[name="ta-role"]').forEach(r => { r.checked = (r.value === (teacher.role || '')); });
+  onTARoleChange();
+
+  // Class teacher dropdown
+  document.getElementById('ta-ct-class').value = teacher.classTeacherOf || '';
+  document.getElementById('ta-ct-conflict').style.display = 'none';
+
+  // Reset add-row controls
+  document.getElementById('ta-sub-class').value = '';
+  document.getElementById('ta-sub-subject').innerHTML = '<option value="">— Select Class First —</option>';
+  document.getElementById('ta-sub-error').style.display = 'none';
+
+  renderTAAssignTable();
+  document.getElementById('ta-panel-overlay').style.display = 'block';
+  document.getElementById('ta-panel').classList.add('open');
+};
+
+window.closeTAPanel = function() {
+  document.getElementById('ta-panel').classList.remove('open');
+  document.getElementById('ta-panel-overlay').style.display = 'none';
+  _taCurrentUid = null; _taCurrentData = null; _taAssignments = [];
+};
+
+// ── Section A — role change ─────────────────────────────────
+
+window.onTARoleChange = function() {
+  const role = document.querySelector('input[name="ta-role"]:checked')?.value;
+  document.getElementById('ta-section-b').style.display = (role === 'class_teacher') ? '' : 'none';
+};
+
+// ── Section B — conflict check ──────────────────────────────
+
+window.onTACTClassChange = async function() {
+  const cls = document.getElementById('ta-ct-class').value;
+  const sec = 'A';
+  const conflictEl = document.getElementById('ta-ct-conflict');
+  conflictEl.style.display = 'none';
+  if (!cls || !sec) return;
+  try {
+    const snap = await getDoc(doc(db, 'classes', `${cls}-${sec}`));
+    if (snap.exists()) {
+      const d = snap.data();
+      if (d.classTeacherId && d.classTeacherId !== _taCurrentUid) {
+        conflictEl.textContent = `⚠ ${cls}-${sec} already has a class teacher: ${d.classTeacherName || d.classTeacherId}. Saving will reassign this class.`;
+        conflictEl.style.display = 'block';
+      }
+    }
+  } catch(e) { /* ignore */ }
+};
+
+// ── Section C — subject dropdown ────────────────────────────
+
+window.onTASubClassChange = function() {
+  const cls     = document.getElementById('ta-sub-class').value;
+  const subjSel = document.getElementById('ta-sub-subject');
+  subjSel.innerHTML = '<option value="">— Subject —</option>';
+  if (!cls) return;
+  const cfg = window.CONFIG && window.CONFIG[TA_CLASS_MAP[cls]];
+  if (!cfg) return;
+  cfg.subjects.filter(s => !s.isAggregate).forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.key; o.textContent = s.label;
+    subjSel.appendChild(o);
+  });
+};
+
+window.addTASubjectRow = function() {
+  const cls      = document.getElementById('ta-sub-class').value;
+  const sec      = 'A';
+  const subjSel  = document.getElementById('ta-sub-subject');
+  const key      = subjSel.value;
+  const label    = subjSel.options[subjSel.selectedIndex]?.text || '';
+  const errEl    = document.getElementById('ta-sub-error');
+  errEl.style.display = 'none';
+  if (!cls || !key) { errEl.textContent = 'Select a class and subject.'; errEl.style.display = 'block'; return; }
+  if (_taAssignments.some(a => a.class === cls && a.subjectKey === key)) {
+    errEl.textContent = 'Already added.'; errEl.style.display = 'block'; return;
+  }
+  _taAssignments.push({ class: cls, subjectKey: key, subjectLabel: label });
+  renderTAAssignTable();
+};
+
+// ── Multi-class helper ──────────────────────────────────────
+
+window.onTAMultiSubjectChange = function() {
+  const key       = document.getElementById('ta-multi-subject').value;
+  const container = document.getElementById('ta-multi-classes');
+  container.innerHTML = '';
+  if (!key) return;
+  const validNums = TA_SUBJECT_CLASSES[key] || [];
+  TA_CLASS_NAMES.forEach((name, i) => {
+    if (!validNums.includes(TA_CLASS_NUMS[i])) return;
+    const lbl = document.createElement('label');
+    lbl.style.cssText = 'display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff';
+    lbl.innerHTML = `<input type="checkbox" value="${name}"> ${name}`;
+    container.appendChild(lbl);
+  });
+};
+
+window.addTAMultiRows = function() {
+  const key     = document.getElementById('ta-multi-subject').value;
+  const sec     = 'A';
+  if (!key) { showToast('Select a subject first.'); return; }
+  const checked = [...document.querySelectorAll('#ta-multi-classes input:checked')].map(c => c.value);
+  if (!checked.length) { showToast('Select at least one class.'); return; }
+  let added = 0;
+  checked.forEach(cls => {
+    const cfg  = window.CONFIG && window.CONFIG[TA_CLASS_MAP[cls]];
+    const subj = cfg?.subjects.find(s => s.key === key && !s.isAggregate);
+    if (!subj) return;
+    if (_taAssignments.some(a => a.class === cls && a.subjectKey === key)) return;
+    _taAssignments.push({ class: cls, subjectKey: key, subjectLabel: subj.label });
+    added++;
+  });
+  renderTAAssignTable();
+  showToast(added ? `✅ Added ${added} assignment${added > 1 ? 's' : ''}.` : 'All selected were already added.');
+};
+
+window.removeTARow = function(idx) {
+  _taAssignments.splice(idx, 1);
+  renderTAAssignTable();
+};
+
+function renderTAAssignTable() {
+  const tbody = document.getElementById('ta-assign-tbody');
+  if (!_taAssignments.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-light);padding:12px;font-size:13px">No assignments yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _taAssignments.map((a, i) => `
+    <tr>
+      <td>${taEsc(a.class)}</td>
+      <td>${taEsc(a.subjectLabel)}</td>
+      <td><button onclick="removeTARow(${i})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:15px" title="Remove">✕</button></td>
+    </tr>`).join('');
+}
+
+// ── Save (Firestore batch) ──────────────────────────────────
+
+window.saveTAAssignments = async function() {
+  const role = document.querySelector('input[name="ta-role"]:checked')?.value;
+  if (!role) { showToast('⚠ Please select a role.'); return; }
+
+  let classTeacherOf = null;
+  if (role === 'class_teacher') {
+    const cls = document.getElementById('ta-ct-class').value;
+    if (!cls) { showToast('⚠ Select a class for Class Teacher assignment.'); return; }
+    classTeacherOf = cls;
+  }
+
+  const oldCT = _taCurrentData?.classTeacherOf || null;
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, 'teachers', _taCurrentUid), {
+    role,
+    classTeacherOf: classTeacherOf,
+    assignments:    _taAssignments,
+    updatedAt:      serverTimestamp()
+  });
+
+  if (oldCT && oldCT !== classTeacherOf) {
+    batch.set(doc(db, 'classes', oldCT), { classTeacherId: null, classTeacherName: null }, { merge: true });
+  }
+  if (classTeacherOf) {
+    batch.set(doc(db, 'classes', classTeacherOf), {
+      classTeacherId:   _taCurrentUid,
+      classTeacherName: _taCurrentData?.name || ''
+    }, { merge: true });
+  }
+
+  try {
+    await batch.commit();
+    showToast(`✅ Assignments saved for ${_taCurrentData?.name || 'teacher'}`);
+    closeTAPanel();
+    loadTeacherAssignList();
+  } catch(e) {
+    showToast(`❌ Save failed: ${e.message}`);
+  }
+};
+
+window.openAddTeacherForAssign = function() {
+  if (typeof openTeacherModal === 'function') openTeacherModal();
+  else showToast('Use the Teachers tab to add new teachers.');
+};
+
+function taEsc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+// END TEACHER ASSIGNMENT MODULE
+// ============================================================
+
+// ============================================================
+// TEACHER PORTAL — REFLECT ASSIGNMENTS  (Phase 2)
+// ============================================================
+
+let _tpAssignUnsubscribe = null; // holds onSnapshot unsubscribe fn
+
+// Called from loadTeacherPortal after the teacher doc is found
+window.initTeacherAssignments = function(teacherDocId, teacherData) {
+  // Render immediately with current data
+  renderTPAssignments(teacherData);
+
+  // Live listener — update if admin changes assignments while logged in
+  if (_tpAssignUnsubscribe) _tpAssignUnsubscribe();
+  _tpAssignUnsubscribe = onSnapshot(
+    doc(db, 'teachers', teacherDocId),
+    (snap) => {
+      if (!snap.exists()) return;
+      const fresh = snap.data();
+      renderTPAssignments(fresh);
+      // Only show toast after initial load (avoid firing on first attach)
+      if (window._tpAssignLoaded) showTPLiveToast('📋 Your assignments have been updated.');
+      window._tpAssignLoaded = true;
+    },
+    (err) => { console.warn('TP onSnapshot error:', err.message); }
+  );
+};
+
+function renderTPAssignments(data) {
+  const role            = data.role || '';
+  const classTeacherOf  = data.classTeacherOf || null;
+  const assignments     = data.assignments || [];
+
+  // ── Class card (only for class_teacher) ──────────────────
+  const classCard = document.getElementById('tp-class-card');
+  const classLabel = document.getElementById('tp-class-label');
+  if (classCard) {
+    if (role === 'class_teacher' && classTeacherOf) {
+      classCard.style.display = '';
+      if (classLabel) classLabel.textContent = `Class ${classTeacherOf.replace(/-A$/,'')}` ;
+    } else {
+      classCard.style.display = 'none';
+    }
+  }
+
+  // ── Subjects table ────────────────────────────────────────
+  const wrap = document.getElementById('tp-subjects-wrap');
+  if (!wrap) return;
+
+  if (!assignments.length) {
+    wrap.innerHTML = `<div class="tp-assign-empty">
+      <i class="fas fa-exclamation-triangle" style="color:#f0c040;margin-right:8px"></i>
+      ${role === 'class_teacher'
+        ? 'You are assigned as Class Teacher only. Subject marks will be entered by individual subject teachers.'
+        : 'No subjects have been assigned to you yet. Please contact the Admin.'}
+    </div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div class="table-wrap">
+      <table class="tp-assign-table">
+        <thead>
+          <tr><th>Class</th><th>Subject</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          ${assignments.map(a => `
+            <tr>
+              <td data-label="Class">${taEsc(a.class)}</td>
+              <td data-label="Subject">${taEsc(a.subjectLabel)}</td>
+              <td data-label="Action">
+                <button class="tp-enter-marks-btn"
+                  data-class-id="${taEsc(a.class)}"
+                  data-subject-key="${taEsc(a.subjectKey)}"
+                  onclick="tpOpenMarkEntry(this)">
+                  <i class="fas fa-pen"></i> Enter Marks →
+                </button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  // Also update dashboard stat card
+  const statSub = document.getElementById('t-stat-subjects');
+  if (statSub) {
+    const unique = [...new Set(assignments.map(a => a.subjectLabel))];
+    statSub.textContent = unique.slice(0, 2).join(', ') + (unique.length > 2 ? ` +${unique.length - 2}` : '');
+  }
+}
+
+window.tpOpenMarkEntry = function(btn) {
+  const classId    = btn.dataset.classId;
+  const subjectKey = btn.dataset.subjectKey;
+  // Wire to markentry.html when Phase 3 is built
+  const url = `sfds-reportcard/markentry.html?classId=${classId}&subject=${subjectKey}&term=HY`;
+  showToast('📝 Mark entry coming soon — will open: ' + url);
+  // Uncomment when markentry.html is ready:
+  // window.location.href = url;
+};
+
+function showTPLiveToast(msg) {
+  const existing = document.querySelector('.tp-live-toast');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.className = 'tp-live-toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── Hook into existing loadTeacherPortal ─────────────────────
+// Roman numeral → Arabic number for _currentTeacherClass and student queries
+const TA_ROMAN_TO_NUM = { I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10 };
+
+// Patch: override loadTeacherPortal to use Phase 1 assignment fields
+const _origLoadTeacherPortal = window.loadTeacherPortal;
+window.loadTeacherPortal = async function(user) {
+  // Run original first (sets up base portal, but may use stale class/subject fields)
+  await _origLoadTeacherPortal(user);
+
+  try {
+    window._tpAssignLoaded = false;
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists()) return;
+    const teacherId = userDoc.data().teacherId || userDoc.data().loginId || '';
+    if (!teacherId) return;
+    const snap = await getDocs(query(collection(db, 'teachers'), where('teacherId', '==', teacherId)));
+    if (snap.empty) return;
+    const teacherDoc = snap.docs[0];
+    const t = teacherDoc.data();
+
+    // Only override if Phase 1 fields are present
+    const newRole      = t.role || null;
+    const newCTOf      = t.classTeacherOf ? t.classTeacherOf.split('-')[0] : null; // strip legacy "-A" suffix
+    const newAssigns   = t.assignments || [];
+
+    if (!newRole) {
+      // Phase 1 hasn't assigned this teacher yet — just show subjects panel
+      initTeacherAssignments(teacherDoc.id, t);
+      return;
+    }
+
+    // ── Convert Roman → Arabic for student/attendance queries ───────────
+    const classNum = newCTOf ? (TA_ROMAN_TO_NUM[newCTOf] || null) : null;
+    const classLabel = { PLG:'Play Group', SKG:'SKG', LKG:'LKG' };
+    const getClsLabel = c => classLabel[c] || (c ? 'Class ' + c : '—');
+    const classDisplay = newCTOf ? `Class ${newCTOf}` : '—';
+
+    // ── Build subject display string from assignments ─────────────────────
+    const uniqueSubjects = [...new Set(newAssigns.map(a => a.subjectLabel))];
+    const subjectsStr = uniqueSubjects.join(', ') || '—';
+
+    // ── Update header ─────────────────────────────────────────────────────
+    const hdrRole = document.querySelector('#page-teacher-dash .dash-role');
+    if (hdrRole) {
+      const roleLabel = newRole === 'class_teacher' ? 'Class Teacher' : newRole === 'admin' ? 'Admin' : 'Subject Teacher';
+      hdrRole.textContent = `${subjectsStr !== '—' ? subjectsStr : roleLabel} · ${classDisplay}`;
+    }
+    const subtitle = document.getElementById('t-dash-subtitle');
+    if (subtitle) {
+      const roleLabel = newRole === 'class_teacher' ? `Class Teacher – ${classDisplay}` : newRole === 'admin' ? 'Admin' : `Subject Teacher · ${classDisplay}`;
+      subtitle.textContent = roleLabel;
+    }
+
+    // ── Update stat cards ─────────────────────────────────────────────────
+    const tStatClass = document.getElementById('t-stat-class');
+    if (tStatClass) tStatClass.textContent = classDisplay;
+
+    const tStatSub = document.getElementById('t-stat-subjects');
+    if (tStatSub) {
+      const preview = uniqueSubjects.slice(0, 2).join(', ') + (uniqueSubjects.length > 2 ? ` +${uniqueSubjects.length - 2}` : '');
+      tStatSub.textContent = preview || '—';
+    }
+
+    // ── Update class headings (student list, attendance) ──────────────────
+    const tClassHd = document.getElementById('t-class-heading');
+    if (tClassHd) tClassHd.textContent = classDisplay;
+
+    const tAttHd = document.getElementById('t-att-heading');
+    if (tAttHd) tAttHd.textContent = classDisplay;
+
+    // ── Re-fetch students and re-init attendance with correct class ────────
+    if (newRole === 'class_teacher' && classNum) {
+      window._currentTeacherClass = classNum;
+
+      // Re-fetch student list for the correct class
+      const sSnap = await getDocs(query(
+        collection(db, 'students'),
+        where('class', '==', String(classNum)),
+        orderBy('rollNo')
+      ));
+      const tStatStu = document.getElementById('t-stat-students');
+      if (tStatStu) tStatStu.textContent = sSnap.size;
+      window._teacherStudentDocs = sSnap.docs;
+      if (typeof window.renderTeacherStudentList === 'function') window.renderTeacherStudentList(sSnap.docs);
+
+      // Re-init attendance for correct class
+      if (typeof window.initTeacherAttendance === 'function') window.initTeacherAttendance(classNum);
+    } else if (newRole === 'subject_teacher') {
+      // Subject teacher — clear stale class data
+      window._currentTeacherClass = '';
+      const tStatStu = document.getElementById('t-stat-students');
+      if (tStatStu) tStatStu.textContent = '—';
+    }
+
+    // ── Render My Subjects panel ──────────────────────────────────────────
+    initTeacherAssignments(teacherDoc.id, t);
+
+  } catch(e) {
+    console.warn('Phase 2 assignments load:', e.message);
+  }
+};
+
+// Cleanup listener on logout
+const _origLogout = window.logout;
+window.logout = function() {
+  if (_tpAssignUnsubscribe) { _tpAssignUnsubscribe(); _tpAssignUnsubscribe = null; }
+  window._tpAssignLoaded = false;
+  if (typeof _origLogout === 'function') _origLogout();
+};
+
+// ============================================================
+// END TEACHER PORTAL ASSIGNMENTS MODULE
 // ============================================================
