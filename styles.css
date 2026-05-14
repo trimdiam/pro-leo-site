@@ -802,6 +802,21 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 .fee-name   { font-weight: 600; font-size: 14px; }
 .fee-amount { color: var(--text-light); font-size: 13px; }
 
+/* Sidebar backdrop — shown on mobile when sidebar is open */
+.sidebar-backdrop {
+  display: none;
+  position: fixed; inset: 0; z-index: 99;
+  background: rgba(44, 31, 14, 0.45);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  animation: backdrop-in 0.25s ease;
+}
+.sidebar-backdrop.visible { display: block; }
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* Sidebar toggle mobile */
 .sidebar-toggle {
   display: none; background: none; border: none;
@@ -820,7 +835,7 @@ tr:hover td { background: rgba(214,195,163,0.15); }
   .dash-stats { grid-template-columns: 1fr 1fr; }
   /* Header: prevent cramping */
   .dash-header { padding: 10px 14px; gap: 8px; flex-wrap: nowrap; }
-  .dash-header h2 { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+  .dash-header h2 { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dash-header p  { display: none; }
   /* Hide username/role text on mobile — keep avatar only */
   .dash-username { display: none; }

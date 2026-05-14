@@ -150,9 +150,31 @@ function toggleMobileMenu() {
   const m = document.getElementById('mobileMenu');
   if (m) m.classList.toggle('open');
 }
+function _getSidebarBackdrop() {
+  let bd = document.getElementById('sidebar-backdrop');
+  if (!bd) {
+    bd = document.createElement('div');
+    bd.id = 'sidebar-backdrop';
+    bd.className = 'sidebar-backdrop';
+    bd.addEventListener('click', _closeAllSidebars);
+    document.body.appendChild(bd);
+  }
+  return bd;
+}
+function _closeAllSidebars() {
+  ['studentSidebar','teacherSidebar','adminSidebar','officeSidebar'].forEach(id => {
+    const sb = document.getElementById(id);
+    if (sb) sb.classList.remove('open');
+  });
+  const bd = document.getElementById('sidebar-backdrop');
+  if (bd) bd.classList.remove('visible');
+}
 function toggleSidebar(id) {
   const sb = document.getElementById(id);
-  if (sb) sb.classList.toggle('open');
+  if (!sb) return;
+  const isOpening = !sb.classList.contains('open');
+  sb.classList.toggle('open');
+  _getSidebarBackdrop().classList.toggle('visible', isOpening);
 }
 
 // ================================================================
@@ -167,14 +189,17 @@ function showToast(msg) {
 }
 
 // ================================================================
-//  Close sidebar on outside click
+//  Close sidebar on outside click (backdrop handles tap-outside on mobile)
 // ================================================================
 document.addEventListener('click', function(e) {
+  const bd = document.getElementById('sidebar-backdrop');
+  if (bd && bd.contains(e.target)) return; // backdrop click handled separately
   ['studentSidebar', 'teacherSidebar', 'adminSidebar', 'officeSidebar'].forEach(id => {
     const sb = document.getElementById(id);
     if (sb && sb.classList.contains('open')) {
       if (!sb.contains(e.target) && !e.target.classList.contains('sidebar-toggle')) {
         sb.classList.remove('open');
+        if (bd) bd.classList.remove('visible');
       }
     }
   });
