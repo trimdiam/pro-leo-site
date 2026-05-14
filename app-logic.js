@@ -4331,14 +4331,6 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       }
       if(uid){
         await setDoc(doc(db,'users',uid),{role:'teacher',teacherId:tid,loginId:tid,email:loginEmail,name:document.getElementById('tlm-name')?.textContent||tid,updatedAt:new Date().toISOString()},{merge:true});
-        // Mirror teacher profile into /teachers/{authUid} so markentry.html can find it by uid
-        try{
-          const tSnap=await getDocs(query(collection(db,'teachers'),where('teacherId','==',tid)));
-          if(!tSnap.empty){
-            const tData=tSnap.docs[0].data();
-            await setDoc(doc(db,'teachers',uid),{...tData,authUid:uid,loginId:tid,updatedAt:new Date().toISOString()},{merge:true});
-          }
-        }catch(e2){console.warn('Could not mirror teacher doc:',e2.message);}
       }
       document.getElementById('tlm-done-tid').textContent=tid;
       document.getElementById('tlm-done-pass').textContent=password;
@@ -6542,12 +6534,24 @@ function renderTAList(teachers) {
         <div class="admin-ta-card-meta">${ctOf}${taEsc(t.email || '')}</div>
         ${subs ? `<div class="admin-ta-card-subjects"><i class="fas fa-book" style="margin-right:4px;color:var(--accent)"></i>${subs}</div>` : ''}
       </div>
-      <button class="admin-ta-assign-btn" onclick="openTAPanel('${t.uid}')">
-        <i class="fas fa-pen"></i> Assign →
-      </button>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${!t.role ? `<button onclick="deleteTARecord('${t.uid}','${taEsc(t.name||'Unnamed')}')" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:600"><i class="fas fa-trash"></i></button>` : ''}
+        <button class="admin-ta-assign-btn" onclick="openTAPanel('${t.uid}')">
+          <i class="fas fa-pen"></i> Assign →
+        </button>
+      </div>
     </div>`;
   }).join('');
 }
+
+window.deleteTARecord = async function(uid, name) {
+  if (!confirm(`Delete "${name}" from the assignments list? This only removes the unassigned duplicate record.`)) return;
+  try {
+    await deleteDoc(doc(db, 'teachers', uid));
+    showToast(`🗑️ Deleted duplicate record for ${name}`);
+    loadTeacherAssignList();
+  } catch(e) { showToast('❌ ' + e.message); }
+};
 
 function taBadge(role) {
   const map = { admin:'admin', class_teacher:'class', subject_teacher:'subject' };
@@ -6784,13 +6788,6 @@ window.saveTAAssignments = async function() {
         if (!uSnap.empty) {
           const authUid = uSnap.docs[0].id;
           await setDoc(doc(db,'users',authUid), portalPayload, { merge: true });
-          // Also mirror to /teachers/{authUid} for markentry.js direct lookup
-          const teacherMirror = {
-            role, classTeacherOf, classTeacher: _ctNum, assignments: _taAssignments,
-            name: _taCurrentData?.name || '', teacherId: tid,
-            updatedAt: new Date().toISOString()
-          };
-          await setDoc(doc(db,'teachers',authUid), teacherMirror, { merge: true });
         }
       } catch(e2) { console.warn('Portal sync failed:', e2.message); }
     }
