@@ -86,6 +86,18 @@ function showDash(prefix, sectionId, btn) {
   if (titleEl && btn) titleEl.textContent = btn.textContent.trim();
 }
 
+// Student bottom nav helpers
+window.syncStudentBottomNav = function(sectionId) {
+  document.querySelectorAll('#studentBottomNav button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.section === sectionId);
+  });
+};
+window.navStudentTo = function(sectionId) {
+  const sidebarBtn = document.querySelector('#studentSidebar button[onclick*="' + sectionId + '"]');
+  showDash('s', sectionId, sidebarBtn);
+  window.syncStudentBottomNav(sectionId);
+};
+
 function adminInboxGo(sectionId, feeFilter) {
   const btn = document.querySelector('#adminSidebar button[onclick*="' + sectionId + '"]');
   showDash('a', sectionId, btn || null);

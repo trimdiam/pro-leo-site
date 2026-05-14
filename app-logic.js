@@ -1605,6 +1605,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   const _origShowDash = window.showDash;
   window.showDash = function(prefix, sectionId, btn) {
     _origShowDash(prefix, sectionId, btn);
+    if (prefix === 's' && window.syncStudentBottomNav) window.syncStudentBottomNav(sectionId);
     // Admin section auto-loaders
     if (sectionId === 'a-events')        loadAdminEvents();
     if (sectionId === 'a-announcements') loadAdminAnnouncements();
