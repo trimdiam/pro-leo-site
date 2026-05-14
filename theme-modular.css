@@ -62,7 +62,8 @@
       .staff-grid { grid-template-columns: 1fr !important; }
       .login-box { padding: 24px 20px !important; }
       .role-tabs { flex-wrap: wrap; }
-      .role-tab { flex: 1; min-width: 80px; }
+      .role-tab { flex: 1 1 50%; min-width: 0; }
+      .role-tab:nth-child(n+3) { border-top: 1px solid var(--primary); }
       /* Admin table */
       #admin-admissions-tbody td:nth-child(3),
       #admin-admissions-tbody td:nth-child(6) { display: none; }

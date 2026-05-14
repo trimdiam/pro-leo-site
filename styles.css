@@ -550,7 +550,7 @@ img { max-width: 100%; }
 
 /* Mobile login input sizing */
 @media (max-width: 480px) {
-  .role-tab { font-size: 11px; padding: 8px 4px; }
+  .role-tab { font-size: 12px; padding: 11px 4px; }
   .login-box .form-group input { font-size: 16px; padding: 12px 14px; }
   .login-box .btn-primary { padding: 14px; font-size: 15px; }
 }
@@ -791,6 +791,14 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 .attendance-pct {
   position: relative; z-index: 1;
   font-family: var(--font-head); font-size: 1.3rem; font-weight: 700; color: var(--accent-dark);
+}
+
+/* Attendance stats row */
+.att-stats-row {
+  display: flex; justify-content: center; gap: 32px;
+}
+@media (max-width: 400px) {
+  .att-stats-row { gap: 12px; }
 }
 
 /* Fees */
