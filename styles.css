@@ -779,7 +779,7 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 /* Attendance Visual */
 .attendance-circle {
   width: 100px; height: 100px; border-radius: 50%;
-  background: conic-gradient(var(--success) 0% 87%, var(--danger) 87% 100%);
+  background: conic-gradient(var(--bg) 0% 100%);
   display: flex; align-items: center; justify-content: center;
   position: relative; margin: 0 auto 16px; box-shadow: 0 4px 16px rgba(40,167,69,0.2);
 }

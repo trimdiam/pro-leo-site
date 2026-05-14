@@ -2605,6 +2605,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const pctLabel = pct >= 90 ? 'Good Standing' : pct >= 75 ? 'Needs Improvement' : 'Below Minimum';
 
       if (pctEl) pctEl.textContent = pct + '%';
+      const circleEl = document.querySelector('#s-attendance .attendance-circle');
+      if (circleEl) circleEl.style.background = `conic-gradient(var(--success) 0% ${pct}%, var(--danger) ${pct}% 100%)`;
       if (msgEl) msgEl.innerHTML = `${pct}% Attendance — <span style="color:${pctClass};font-weight:700">${pctLabel}</span>`;
       if (presEl) presEl.textContent = present;
       if (absEl) absEl.textContent = absent;
