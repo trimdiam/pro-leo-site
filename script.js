@@ -156,6 +156,30 @@ function logout() {
 }
 
 // ================================================================
+//  Count-up animation for stat cards
+// ================================================================
+window.countUp = function(el, finalText, duration) {
+  if (!el) return;
+  duration = duration || 650;
+  const match = String(finalText).match(/[\d,]+/);
+  if (!match || finalText === '—') { el.textContent = finalText; return; }
+  const raw    = parseFloat(match[0].replace(/,/g, ''));
+  const idx    = finalText.indexOf(match[0]);
+  const prefix = finalText.slice(0, idx);
+  const suffix = finalText.slice(idx + match[0].length);
+  let start = null;
+  function step(ts) {
+    if (!start) start = ts;
+    const p = Math.min((ts - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = prefix + Math.round(raw * ease).toLocaleString('en-IN') + suffix;
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = finalText;
+  }
+  requestAnimationFrame(step);
+};
+
+// ================================================================
 //  Mobile
 // ================================================================
 function toggleMobileMenu() {

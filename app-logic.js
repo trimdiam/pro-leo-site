@@ -2510,7 +2510,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const exams = [];
 
       // 6. Update stat cards with real data
-      const setEl = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      const setEl = (id, v) => { countUp(document.getElementById(id), v); };
       setEl('s-stat-attendance', total > 0 ? percentage + '%' : '—');
       // Fee due: use student doc feeBalance if available (more accurate than fees collection)
       const stuSnap = sid ? await getDocs(query(collection(db,'students'), where('studentId','==',sid), limit(1))) : null;
@@ -2559,7 +2559,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
           if(!isPast) pending++;
           return `<tr><td>${hw.subject||'—'}</td><td><strong>${hw.title||'—'}</strong><br><span style="font-size:11px;color:var(--text-light)">${hw.description||''}</span></td><td>${hw.postedBy||'—'}</td><td style="font-size:13px">${hw.dueDate||'—'}</td><td>${status}</td></tr>`;
         }).join('');
-        const pendEl=document.getElementById('s-stat-pending-hw'); if(pendEl) pendEl.textContent=pending;
+        const pendEl=document.getElementById('s-stat-pending-hw'); if(pendEl) countUp(pendEl, String(pending));
       },
       e=>{tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
     );
