@@ -2230,14 +2230,21 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       if(!userDoc.exists())return;
       const userData=userDoc.data(); const studentId=userData.studentId;
       window._studentId=studentId||userData.loginId||''; window._studentName=userData.name||'Student';
-      if(!studentId){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';showToast('ℹ️ No studentId linked.');return;}
+      if(!studentId){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';showToast('ℹ️ No studentId linked.');const _l=document.getElementById('s-portal-loader');if(_l){_l.classList.add('fade-out');setTimeout(()=>{_l.style.display='none';_l.classList.remove('fade-out');},380);}return;}
       let studentSnap={docs:[],empty:true};
       try{studentSnap=await getDocs(query(collection(db,"students"),where("studentId","==",studentId)));}catch(e){}
       if(studentSnap.empty){try{const d=await getDoc(doc(db,"students",studentId));if(d.exists())studentSnap={docs:[d],empty:false};}catch(e){}}
-      if(studentSnap.empty){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';const headerName=document.getElementById('s-header-name');if(headerName)headerName.textContent=userData.name||'Student';window._studentClass=userData.class||'';window._studentRollNo=userData.rollNo||'';loadStudentHomework();return;}
+      if(studentSnap.empty){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';const headerName=document.getElementById('s-header-name');if(headerName)headerName.textContent=userData.name||'Student';window._studentClass=userData.class||'';window._studentRollNo=userData.rollNo||'';const _l2=document.getElementById('s-portal-loader');if(_l2){_l2.classList.add('fade-out');setTimeout(()=>{_l2.style.display='none';_l2.classList.remove('fade-out');},380);}loadStudentHomework();return;}
       const s=studentSnap.docs[0].data();
       window._studentClass=String(s.class||''); window._studentRollNo=s.rollNo; window._studentName=s.name||userData.name||'Student';
       const setTxt=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||'—';};
+      const setPhone=(id,val)=>{
+        const el=document.getElementById(id); if(!el) return;
+        if(!val||val==='—'){el.textContent='—';return;}
+        const clean=val.replace(/[^0-9+\-() ]/g,'');
+        if(!clean.replace(/\D/g,'')){el.textContent=val;return;}
+        el.innerHTML=`<a href="tel:${clean}" style="color:var(--accent);font-weight:700;text-decoration:none">${val}</a>`;
+      };
       const houseMap2={G:'🟢 Green',R:'🔴 Red',Y:'🟡 Yellow',B:'🔵 Blue'};
       const classLabel2={PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
       const getClsLabel=c=>classLabel2[c]||(c?'Class '+c:'—');
@@ -2258,19 +2265,21 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       setTxt('s-card-blood', s.bloodGroup||'—');
       setTxt('s-card-gender', s.gender==='M'?'Male':s.gender==='F'?'Female':s.gender||'—');
       setTxt('s-card-nationality', s.nationality||'Indian');
-      setTxt('s-card-contact', s.whatsapp||'—');
+      setPhone('s-card-contact', s.whatsapp||'—');
       setTxt('s-card-address', s.address||'—');
       setTxt('s-card-father', s.fatherName||'—');
       setTxt('s-card-mother', s.motherName||'—');
-      setTxt('s-card-parent-contact', s.whatsapp||s.altContact||'—');
+      setPhone('s-card-parent-contact', s.whatsapp||s.altContact||'—');
       setTxt('s-card-pen', s.penNumber||'—');
       setTxt('s-card-house', houseMap2[s.house]||s.house||'—');
       const bal = parseFloat(s.feeBalance ?? s.feeTotal ?? 0);
       const feeDueEl = document.getElementById('s-stat-fee-due');
       if (feeDueEl) feeDueEl.textContent = bal > 0 ? '₹' + bal.toLocaleString('en-IN') : '₹0';
+      const _ldr = document.getElementById('s-portal-loader');
+      if (_ldr) { _ldr.classList.add('fade-out'); setTimeout(() => { _ldr.style.display = 'none'; _ldr.classList.remove('fade-out'); }, 380); }
       loadStudentHomework(); loadStudentNotices(); loadStudentFees();
       window.loadAcademicSnapshot(studentId); // non-blocking — Phase 5
-    } catch(e){ showToast('⚠️ Could not load profile: '+e.message); }
+    } catch(e){ showToast('⚠️ Could not load profile: '+e.message); const _le=document.getElementById('s-portal-loader');if(_le){_le.classList.add('fade-out');setTimeout(()=>{_le.style.display='none';_le.classList.remove('fade-out');},380);} }
   };
 
   // ================================================================
@@ -2756,7 +2765,17 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     const txn     = (document.getElementById('s-fee-txn')?.value || '').trim();
     const date    = document.getElementById('s-fee-date')?.value || '';
     const file    = document.getElementById('s-fee-receipt-img')?.files[0];
-    if (!feeType || !amount || !txn) { showToast('⚠️ Fee type, amount and transaction number are required.'); return; }
+    let _valid = true;
+    const _markErr = id => {
+      const el = document.getElementById(id); if (!el) return;
+      el.classList.add('field-error');
+      el.addEventListener('input', () => el.classList.remove('field-error'), { once: true });
+    };
+    if (!feeType)                        { _markErr('s-fee-type-sel'); _valid = false; }
+    if (!amount || parseFloat(amount) <= 0) { _markErr('s-fee-amount');   _valid = false; }
+    if (!txn)                            { _markErr('s-fee-txn');      _valid = false; }
+    if (!date)                           { _markErr('s-fee-date');      _valid = false; }
+    if (!_valid) { showToast('⚠️ Please fill in all required fields.'); return; }
 
     const btn      = document.getElementById('s-fee-submit-btn');
     const progBox  = document.getElementById('s-fee-upload-progress');

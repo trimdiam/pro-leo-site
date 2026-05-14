@@ -962,6 +962,10 @@
      STUDENT DASHBOARD (unchanged structure, preserved fully)
 ================================================================ -->
 <div id="page-student-dash" class="page">
+  <div id="s-portal-loader">
+    <div class="spl-spinner"></div>
+    <span class="spl-text">Loading your portal…</span>
+  </div>
   <div class="dash-shell">
     <nav class="sidebar" id="studentSidebar">
       <div class="sidebar-brand"><img src="assets/images/logo.jpg" class="s-logo" alt="School Logo"><h4>St. Francis De Sales Sec. School</h4><p>Student Portal</p></div>
@@ -1137,11 +1141,11 @@
           </div>
           <div class="card" style="padding:24px;max-width:600px">
             <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-upload" style="margin-right:8px;color:var(--accent)"></i>Submit Fee Payment</h4>
-            <div class="form-group"><label>Fee Type</label><select id="s-fee-type-sel"><option value="">— Select Fee Type —</option><option>Tuition Fee – Q1</option><option>Tuition Fee – Q2</option><option>Tuition Fee – Q3</option><option>Tuition Fee – Q4</option><option>Exam Fee</option><option>Sports Fee</option><option>Library Fee</option><option>Annual Fee</option></select></div>
-            <div class="form-group"><label>Amount Paid (₹)</label><input type="number" id="s-fee-amount" placeholder="e.g. 4500" min="0"></div>
+            <div class="form-group"><label>Fee Type <span style="color:var(--danger)">*</span></label><select id="s-fee-type-sel" required><option value="">— Select Fee Type —</option><option>Tuition Fee – Q1</option><option>Tuition Fee – Q2</option><option>Tuition Fee – Q3</option><option>Tuition Fee – Q4</option><option>Exam Fee</option><option>Sports Fee</option><option>Library Fee</option><option>Annual Fee</option></select></div>
+            <div class="form-group"><label>Amount Paid (₹) <span style="color:var(--danger)">*</span></label><input type="number" id="s-fee-amount" placeholder="e.g. 4500" min="1" required></div>
             <div class="form-group"><label>Payment Mode</label><select id="s-fee-mode"><option>Bank Transfer / NEFT</option><option>Cash</option><option>UPI / QR</option><option>Cheque</option></select></div>
-            <div class="form-group"><label>Transaction / Receipt No.</label><input type="text" id="s-fee-txn" placeholder="e.g. TXN123456 or Receipt No."></div>
-            <div class="form-group"><label>Payment Date</label><input type="date" id="s-fee-date"></div>
+            <div class="form-group"><label>Transaction / Receipt No. <span style="color:var(--danger)">*</span></label><input type="text" id="s-fee-txn" placeholder="e.g. TXN123456 or Receipt No." required></div>
+            <div class="form-group"><label>Payment Date <span style="color:var(--danger)">*</span></label><input type="date" id="s-fee-date" required></div>
             <div class="form-group">
               <label>Receipt Screenshot <span style="font-size:11px;color:var(--text-light)">(UPI/bank screenshot — recommended)</span></label>
               <input type="file" id="s-fee-receipt-img" accept="image/*" capture="environment" style="padding:6px;border:1px solid var(--border);border-radius:8px;width:100%;font-size:13px;box-sizing:border-box">

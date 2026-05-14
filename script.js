@@ -132,10 +132,14 @@ function loginAs(role) {
   currentRole     = cleanRole;
   const loginPage = document.getElementById('page-login');
   if (loginPage) loginPage.classList.remove('active');
-  if      (cleanRole === 'student') showPage('student-dash');
-  else if (cleanRole === 'teacher') showPage('teacher-dash');
-  else if (cleanRole === 'admin')   showPage('admin-dash');
-  else if (cleanRole === 'office')  showPage('office-dash');
+  if (cleanRole === 'student') {
+    showPage('student-dash');
+    const ldr = document.getElementById('s-portal-loader');
+    if (ldr) ldr.style.display = 'flex';
+    setTimeout(() => { if (window.navStudentTo) window.navStudentTo('s-dashboard'); }, 50);
+  } else if (cleanRole === 'teacher') showPage('teacher-dash');
+  else if   (cleanRole === 'admin')   showPage('admin-dash');
+  else if   (cleanRole === 'office')  showPage('office-dash');
 }
 
 // ================================================================
