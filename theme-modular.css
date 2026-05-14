@@ -43,7 +43,6 @@
       .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
       /* Dashboard mobile */
       .dash-layout { flex-direction: column !important; }
-      .sidebar { width: 100% !important; height: auto !important; position: fixed !important; }
       .dash-main { margin-left: 0 !important; padding: 0 !important; }
       /* Sub-nav scroll */
       div[style*="display:flex;gap:0"] { overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
