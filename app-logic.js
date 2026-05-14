@@ -2826,27 +2826,53 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const teacherId=userData.teacherId||userData.loginId||'';
       window._teacherId=teacherId; window._teacherName=userData.name||'Teacher';
       if(!teacherId) return;
-      const snap=await getDocs(query(collection(db,'teachers'),where('teacherId','==',teacherId)));
-      if(snap.empty) return;
-      const t=snap.docs[0].data();
-      window._currentTeacherClass=t.classTeacher||''; window._teacherSubjects=t.subjects||'';
+
+      // 1. Try direct uid lookup (populated by TA save mirror sync)
+      let t = null;
+      const directSnap = await getDoc(doc(db,'teachers',user.uid));
+      if (directSnap.exists()) t = directSnap.data();
+
+      // 2. Fall back to teacherId field query (all case variants)
+      if (!t) {
+        let snap=await getDocs(query(collection(db,'teachers'),where('teacherId','==',teacherId)));
+        if(snap.empty) snap=await getDocs(query(collection(db,'teachers'),where('teacherId','==',teacherId.toUpperCase())));
+        if(snap.empty) snap=await getDocs(query(collection(db,'teachers'),where('loginId','==',teacherId)));
+        if(!snap.empty) t=snap.docs[0].data();
+      }
+
+      if(!t){ showToast('⚠️ Teacher profile not found. Ask admin to open your assignment panel and click Save.'); return; }
+
+      // Prefer classTeacherOf (TA panel) over classTeacher (legacy profile field)
+      const _R2N={I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10};
+      let effectiveClass = t.classTeacher || '';
+      if (t.classTeacherOf) {
+        const ctRoman = t.classTeacherOf.split('-')[0];
+        effectiveClass = _R2N[ctRoman] || parseInt(ctRoman) || effectiveClass;
+      }
+      // Also check /users fields synced by TA panel
+      if (userData.tpClassTeacherOf) {
+        const ctRoman = userData.tpClassTeacherOf.split('-')[0];
+        effectiveClass = _R2N[ctRoman] || parseInt(ctRoman) || effectiveClass;
+      }
+
+      window._currentTeacherClass=effectiveClass||''; window._teacherSubjects=t.subjects||'';
       const classLabel={PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
       const getClsLabel=c=>classLabel[c]||(c?'Class '+c:'—');
       const titleStr=(t.title&&t.title!=='Miss'?t.title+' ':t.gender==='M'?'Mr. ':'Ms. ');
       const hdrName=document.querySelector('#page-teacher-dash .dash-username');
       if(hdrName) hdrName.textContent=titleStr+t.name;
       const hdrRole=document.querySelector('#page-teacher-dash .dash-role');
-      if(hdrRole) hdrRole.textContent=`${t.subjects||'Teacher'} · ${t.classTeacher?getClsLabel(t.classTeacher):'—'}`;
-      const tStatClass=document.getElementById('t-stat-class'); if(tStatClass) tStatClass.textContent=t.classTeacher?getClsLabel(t.classTeacher):'—';
+      if(hdrRole) hdrRole.textContent=`${t.subjects||'Teacher'} · ${effectiveClass?getClsLabel(effectiveClass):'—'}`;
+      const tStatClass=document.getElementById('t-stat-class'); if(tStatClass) tStatClass.textContent=effectiveClass?getClsLabel(effectiveClass):'—';
       const tStatSub=document.getElementById('t-stat-subjects'); if(tStatSub) tStatSub.textContent=t.subjects||'—';
-      const tClassHd=document.getElementById('t-class-heading'); if(tClassHd) tClassHd.textContent=t.classTeacher?getClsLabel(t.classTeacher):'My Class';
-      const tAttHd=document.getElementById('t-att-heading'); if(tAttHd) tAttHd.textContent=t.classTeacher?getClsLabel(t.classTeacher):'My Class';
-      if(t.classTeacher){
-        const sSnap=await getDocs(query(collection(db,'students'),where('class','==',String(t.classTeacher)),orderBy('rollNo')));
+      const tClassHd=document.getElementById('t-class-heading'); if(tClassHd) tClassHd.textContent=effectiveClass?getClsLabel(effectiveClass):'My Class';
+      const tAttHd=document.getElementById('t-att-heading'); if(tAttHd) tAttHd.textContent=effectiveClass?getClsLabel(effectiveClass):'My Class';
+      if(effectiveClass){
+        const sSnap=await getDocs(query(collection(db,'students'),where('class','==',String(effectiveClass)),orderBy('rollNo')));
         const tStatStu=document.getElementById('t-stat-students'); if(tStatStu) tStatStu.textContent=sSnap.size;
         window._teacherStudentDocs=sSnap.docs;
         renderTeacherStudentList(sSnap.docs);
-        initTeacherAttendance(t.classTeacher);
+        initTeacherAttendance(effectiveClass);
       }
       populateHwClassSelect(); loadTeacherHomework(); loadTeacherNotices();
       loadLeaveHistory();
@@ -4203,6 +4229,20 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   //  LOGIN CREATION — helpers
   // ================================================================
 
+  // Resets password for an existing Firebase Auth account using a temporary secondary auth instance.
+  // Signs in as the user on a secondary app, updates their password, then signs out. Admin session untouched.
+  async function resetAuthPasswordByUid(uid, email, newPassword) {
+    const { initializeApp, getApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js');
+    const { getAuth, signInWithEmailAndPassword: signInTemp, updatePassword } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js');
+    // We cannot sign in without knowing the current password.
+    // Use accounts:update via admin lookup — not available on client.
+    // Fallback: delete via REST then recreate.
+    // DELETE requires idToken — not available without current password.
+    // FINAL APPROACH: use accounts:update with localId (works on Identity Toolkit emulator only).
+    // For production: guide admin to Firebase Console.
+    throw new Error('NEEDS_CONSOLE_RESET');
+  }
+
   // Creates a Firebase Auth account via REST API — admin session is never touched.
   async function createAuthAccountSafe(email, password) {
     const res = await fetch(
@@ -4269,10 +4309,37 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const loginEmail=idToEmailLocal(tid); let uid='';
       try{ uid = await createAuthAccountSafe(loginEmail, password); }
       catch(e){
-        if(e.code==='auth/email-already-in-use'){const snap=await getDocs(query(collection(db,'users'),where('loginId','==',tid)));if(!snap.empty)uid=snap.docs[0].id;}
-        else throw e;
+        if(e.code==='auth/email-already-in-use'){
+          const snap=await getDocs(query(collection(db,'users'),where('loginId','==',tid)));
+          if(!snap.empty){
+            uid=snap.docs[0].id;
+            try{ await resetAuthPasswordByUid(uid, loginEmail, password); }
+            catch(re){
+              if(re.message==='NEEDS_CONSOLE_RESET'){
+                // Can't reset password client-side — guide admin to Firebase Console
+                document.getElementById('tlm-done-tid').textContent=tid;
+                document.getElementById('tlm-done-pass').textContent='(see instructions below)';
+                document.getElementById('tlm-success-box').style.display='block';
+                document.getElementById('tlm-success-box').innerHTML=`<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;margin-top:8px;font-size:13px"><b>⚠️ Password Reset Required via Firebase Console</b><br>To reset this teacher\'s password:<br>1. Go to <a href="https://console.firebase.google.com/project/st-francis-school-a3e7e/authentication/users" target="_blank" style="color:#1a3a6b">Firebase Console → Authentication</a><br>2. Find <b>${loginEmail}</b><br>3. Click ⋮ → <b>Reset password</b> or set new password<br>Then share the new password with the teacher.</div>`;
+                document.getElementById('tlm-actions').style.display='none';
+                return;
+              }
+              throw re;
+            }
+          } else throw new Error('Account exists but no portal record found. Delete from Firebase Console and retry.');
+        } else throw e;
       }
-      if(uid) await setDoc(doc(db,'users',uid),{role:'teacher',teacherId:tid,loginId:tid,email:loginEmail,name:document.getElementById('tlm-name')?.textContent||tid,updatedAt:new Date().toISOString()},{merge:true});
+      if(uid){
+        await setDoc(doc(db,'users',uid),{role:'teacher',teacherId:tid,loginId:tid,email:loginEmail,name:document.getElementById('tlm-name')?.textContent||tid,updatedAt:new Date().toISOString()},{merge:true});
+        // Mirror teacher profile into /teachers/{authUid} so markentry.html can find it by uid
+        try{
+          const tSnap=await getDocs(query(collection(db,'teachers'),where('teacherId','==',tid)));
+          if(!tSnap.empty){
+            const tData=tSnap.docs[0].data();
+            await setDoc(doc(db,'teachers',uid),{...tData,authUid:uid,loginId:tid,updatedAt:new Date().toISOString()},{merge:true});
+          }
+        }catch(e2){console.warn('Could not mirror teacher doc:',e2.message);}
+      }
       document.getElementById('tlm-done-tid').textContent=tid;
       document.getElementById('tlm-done-pass').textContent=password;
       document.getElementById('tlm-success-box').style.display='block';
@@ -4330,8 +4397,19 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       catch(e){
         if(e.code==='auth/email-already-in-use'){
           const snap=await getDocs(query(collection(db,'users'),where('loginId','==',sid)));
-          if(!snap.empty){uid=snap.docs[0].id;}
-          else{throw new Error('A login account already exists for this student but no portal record was found. Delete the account from Firebase Console and try again.');}
+          if(!snap.empty){
+            uid=snap.docs[0].id;
+            try{ await resetAuthPasswordByUid(uid, loginEmail, password); }
+            catch(re){
+              if(re.message==='NEEDS_CONSOLE_RESET'){
+                document.getElementById('slm-success-box').style.display='block';
+                document.getElementById('slm-success-box').innerHTML=`<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;font-size:13px"><b>⚠️ Password Reset via Firebase Console</b><br>1. Go to <a href="https://console.firebase.google.com/project/st-francis-school-a3e7e/authentication/users" target="_blank" style="color:#1a3a6b">Firebase Console → Authentication</a><br>2. Find <b>${loginEmail}</b> → reset password<br>3. Share the new password with the student.</div>`;
+                document.getElementById('slm-actions').style.display='none';
+                return;
+              }
+              throw re;
+            }
+          } else{throw new Error('A login account already exists for this student but no portal record was found. Delete the account from Firebase Console and try again.');}
         }
         else throw e;
       }
@@ -6664,12 +6742,18 @@ window.saveTAAssignments = async function() {
   const oldCT = _taCurrentData?.classTeacherOf || null;
   const batch = writeBatch(db);
 
-  batch.update(doc(db, 'teachers', _taCurrentUid), {
+  // Also write classTeacher as Arabic number so base loadTeacherPortal reads it correctly
+  const _ctNum = classTeacherOf ? (TA_ROMAN_TO_NUM[classTeacherOf.split('-')[0]] || null) : null;
+
+  batch.set(doc(db, 'teachers', _taCurrentUid), {
     role,
     classTeacherOf: classTeacherOf,
+    classTeacher:   _ctNum,
     assignments:    _taAssignments,
+    name:           _taCurrentData?.name  || '',
+    email:          _taCurrentData?.email || '',
     updatedAt:      serverTimestamp()
-  });
+  }, { merge: true });
 
   if (oldCT && oldCT !== classTeacherOf) {
     batch.set(doc(db, 'classes', oldCT), { classTeacherId: null, classTeacherName: null }, { merge: true });
@@ -6683,6 +6767,34 @@ window.saveTAAssignments = async function() {
 
   try {
     await batch.commit();
+
+    // Sync assignments into /users/{authUid} so the teacher portal reads them directly
+    // without needing a cross-collection query (avoids Firestore security rule issues).
+    const tid = _taCurrentData?.teacherId || '';
+    if (tid) {
+      const portalPayload = {
+        tpRole: role,
+        tpClassTeacherOf: classTeacherOf || null,
+        tpAssignments: _taAssignments,
+        tpUpdatedAt: new Date().toISOString()
+      };
+      try {
+        let uSnap = await getDocs(query(collection(db,'users'), where('loginId','==',tid)));
+        if (uSnap.empty) uSnap = await getDocs(query(collection(db,'users'), where('loginId','==',tid.toUpperCase())));
+        if (!uSnap.empty) {
+          const authUid = uSnap.docs[0].id;
+          await setDoc(doc(db,'users',authUid), portalPayload, { merge: true });
+          // Also mirror to /teachers/{authUid} for markentry.js direct lookup
+          const teacherMirror = {
+            role, classTeacherOf, classTeacher: _ctNum, assignments: _taAssignments,
+            name: _taCurrentData?.name || '', teacherId: tid,
+            updatedAt: new Date().toISOString()
+          };
+          await setDoc(doc(db,'teachers',authUid), teacherMirror, { merge: true });
+        }
+      } catch(e2) { console.warn('Portal sync failed:', e2.message); }
+    }
+
     showToast(`✅ Assignments saved for ${_taCurrentData?.name || 'teacher'}`);
     closeTAPanel();
     loadTeacherAssignList();
@@ -6742,7 +6854,16 @@ function renderTPAssignments(data) {
   if (classCard) {
     if (role === 'class_teacher' && classTeacherOf) {
       classCard.style.display = '';
-      if (classLabel) classLabel.textContent = `Class ${classTeacherOf.replace(/-A$/,'')}` ;
+      if (classLabel) classLabel.textContent = `Class ${classTeacherOf.replace(/-A$/,'')}`;
+      const reviewBtn = classCard.querySelector('.tp-review-lock-btn');
+      if (reviewBtn) {
+        reviewBtn.style.opacity = '';
+        reviewBtn.style.cursor  = '';
+        reviewBtn.removeAttribute('title');
+        reviewBtn.onclick = () => {
+          window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classTeacherOf}&action=review`;
+        };
+      }
     } else {
       classCard.style.display = 'none';
     }
@@ -6766,22 +6887,28 @@ function renderTPAssignments(data) {
     <div class="table-wrap">
       <table class="tp-assign-table">
         <thead>
-          <tr><th>Class</th><th>Subject</th><th>Action</th></tr>
+          <tr><th>Class</th><th>Subject</th><th>Term</th><th>Action</th></tr>
         </thead>
         <tbody>
-          ${assignments.map(a => `
+          ${assignments.map(a => {
+            const classId = a.classId || (a.class + (a.section ? '-' + a.section : '-A'));
+            const term    = a.term || 'HY';
+            return `
             <tr>
-              <td data-label="Class">${taEsc(a.class)}</td>
+              <td data-label="Class">${taEsc(classId)}</td>
               <td data-label="Subject">${taEsc(a.subjectLabel)}</td>
+              <td data-label="Term">${term === 'HY' ? 'Half Yearly' : 'Final Term'}</td>
               <td data-label="Action">
                 <button class="tp-enter-marks-btn"
-                  data-class-id="${taEsc(a.class)}"
+                  data-class-id="${taEsc(classId)}"
                   data-subject-key="${taEsc(a.subjectKey)}"
+                  data-term="${taEsc(term)}"
                   onclick="tpOpenMarkEntry(this)">
                   <i class="fas fa-pen"></i> Enter Marks →
                 </button>
               </td>
-            </tr>`).join('')}
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>`;
@@ -6797,11 +6924,8 @@ function renderTPAssignments(data) {
 window.tpOpenMarkEntry = function(btn) {
   const classId    = btn.dataset.classId;
   const subjectKey = btn.dataset.subjectKey;
-  // Wire to markentry.html when Phase 3 is built
-  const url = `sfds-reportcard/markentry.html?classId=${classId}&subject=${subjectKey}&term=HY`;
-  showToast('📝 Mark entry coming soon — will open: ' + url);
-  // Uncomment when markentry.html is ready:
-  // window.location.href = url;
+  const term       = btn.dataset.term || 'HY';
+  window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classId}&subject=${subjectKey}&term=${term}`;
 };
 
 function showTPLiveToast(msg) {
@@ -6828,21 +6952,42 @@ window.loadTeacherPortal = async function(user) {
     window._tpAssignLoaded = false;
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     if (!userDoc.exists()) return;
-    const teacherId = userDoc.data().teacherId || userDoc.data().loginId || '';
+    const userData = userDoc.data();
+    const teacherId = userData.teacherId || userData.loginId || '';
     if (!teacherId) return;
-    const snap = await getDocs(query(collection(db, 'teachers'), where('teacherId', '==', teacherId)));
-    if (snap.empty) return;
-    const teacherDoc = snap.docs[0];
-    const t = teacherDoc.data();
 
-    // Only override if Phase 1 fields are present
-    const newRole      = t.role || null;
-    const newCTOf      = t.classTeacherOf ? t.classTeacherOf.split('-')[0] : null; // strip legacy "-A" suffix
-    const newAssigns   = t.assignments || [];
+    // PRIMARY: read assignment fields from /users/{uid} — written by saveTAAssignments.
+    // This works regardless of Firestore security rules on /teachers.
+    let newRole    = userData.tpRole    || null;
+    let rawCTOf    = userData.tpClassTeacherOf || null;
+    let newAssigns = userData.tpAssignments    || [];
+
+    // FALLBACK: if /users fields not yet synced, try /teachers/{uid} mirror doc
+    if (!newRole) {
+      try {
+        const mirrorSnap = await getDoc(doc(db, 'teachers', user.uid));
+        if (mirrorSnap.exists()) {
+          const m = mirrorSnap.data();
+          newRole    = m.role    || null;
+          rawCTOf    = m.classTeacherOf || null;
+          newAssigns = m.assignments    || [];
+        }
+      } catch(ef) { /* security rules — skip */ }
+    }
+
+    // LAST RESORT: query /teachers by teacherId
+    let teacherDocId = user.uid;
+    let profileData  = {};
+    try {
+      let snap = await getDocs(query(collection(db,'teachers'), where('teacherId','==',teacherId)));
+      if (snap.empty) snap = await getDocs(query(collection(db,'teachers'), where('teacherId','==',teacherId.toUpperCase())));
+      if (!snap.empty) { teacherDocId = snap.docs[0].id; profileData = snap.docs[0].data(); if (!newRole) { newRole = profileData.role||null; rawCTOf = profileData.classTeacherOf||null; newAssigns = profileData.assignments||[]; } }
+    } catch(eq) { /* blocked by rules */ }
+
+    const newCTOf = rawCTOf ? rawCTOf.split('-')[0] : null;
 
     if (!newRole) {
-      // Phase 1 hasn't assigned this teacher yet — just show subjects panel
-      initTeacherAssignments(teacherDoc.id, t);
+      initTeacherAssignments(teacherDocId, { ...profileData, ...userData });
       return;
     }
 
@@ -6910,12 +7055,15 @@ window.loadTeacherPortal = async function(user) {
     }
 
     // ── Render My Subjects panel ──────────────────────────────────────────
-    initTeacherAssignments(teacherDoc.id, t);
+    // teacherDocId is the auth-uid mirror doc (kept in sync by saveTAAssignments)
+    const tForPanel = { ...profileData, role: newRole, classTeacherOf: rawCTOf, assignments: newAssigns };
+    initTeacherAssignments(teacherDocId, tForPanel);
 
   } catch(e) {
     console.warn('Phase 2 assignments load:', e.message);
   }
 };
+
 
 // Cleanup listener on logout
 const _origLogout = window.logout;

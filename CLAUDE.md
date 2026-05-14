@@ -41,4 +41,3 @@ Spawn rules:
 - Dynamic pages / auth walls → agent-browser CLI
 - PDFs → pdftotext (not Read tool)
 - Repeated fetch patterns → wrap as reusable tool
-

@@ -1236,7 +1236,7 @@
             <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
               <span style="font-size:15px;font-weight:700;color:var(--accent-dark)" id="tp-class-label">—</span>
               <button class="btn btn-sm btn-outline" onclick="showDash('t','t-students',document.querySelector('#teacherSidebar button:nth-child(2)'))"><i class="fas fa-users"></i> View Student List</button>
-              <button class="btn btn-sm btn-primary" style="opacity:.6;cursor:default" title="Coming soon — Mark Entry Phase 3"><i class="fas fa-lock"></i> Review &amp; Lock Records</button>
+              <button class="btn btn-sm btn-primary tp-review-lock-btn"><i class="fas fa-lock"></i> Review &amp; Lock Records</button>
             </div>
           </div>
 
@@ -1836,9 +1836,20 @@
                 <div id="tlm-avatar" style="width:48px;height:48px;background:linear-gradient(135deg,#1a3a6b,#2563eb);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.1rem;flex-shrink:0">--</div>
                 <div><div id="tlm-name" style="font-weight:700;color:#1a3a6b;font-size:15px">—</div><div id="tlm-id" style="font-size:12px;color:#2563eb;font-weight:600;margin-top:2px;font-family:monospace">—</div></div>
               </div>
-              <div id="tlm-existing-box" style="display:none;background:#f0faf0;border:1.5px solid #86efac;border-radius:12px;padding:16px 18px;margin-bottom:18px">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><i class="fas fa-check-circle" style="color:#16a34a;font-size:1.2rem"></i><strong style="color:#15803d">Login already exists</strong></div>
-                <div style="font-size:13px;color:#166534"><div style="margin-bottom:4px"><strong>Email:</strong> <span id="tlm-existing-email" style="font-family:monospace"></span></div></div>
+              <div id="tlm-existing-box" style="display:none;background:#fff8e1;border:1.5px solid #ffc107;border-radius:12px;padding:16px 18px;margin-bottom:18px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><i class="fas fa-exclamation-circle" style="color:#d97706;font-size:1.2rem"></i><strong style="color:#92400e">Login account already exists</strong></div>
+                <div style="font-size:13px;color:#78350f;line-height:1.6">
+                  <div style="margin-bottom:6px"><strong>Login email:</strong> <span id="tlm-existing-email" style="font-family:monospace;background:#fff;padding:2px 6px;border-radius:4px;color:#1a3a6b"></span></div>
+                  <div style="background:#fef3c7;border-radius:8px;padding:10px;margin-top:6px;font-size:12px">
+                    <strong>To reset this teacher's password:</strong>
+                    <ol style="margin:5px 0 0 14px;padding:0;line-height:1.8">
+                      <li>Open <a href="https://console.firebase.google.com/project/st-francis-school-a3e7e/authentication/users" target="_blank" style="color:#1a3a6b;font-weight:600">Firebase Console → Authentication</a></li>
+                      <li>Find the login email above → click <strong>⋮ → Delete account</strong></li>
+                      <li>Come back here — the button will change to <strong>Create Login</strong></li>
+                      <li>Enter the new password and click Create</li>
+                    </ol>
+                  </div>
+                </div>
               </div>
               <div id="tlm-create-form">
                 <div style="background:#e8f0fe;border:1.5px solid #bdd4f8;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#1a3a6b"><i class="fas fa-info-circle" style="margin-right:6px"></i>Teacher logs in with their <strong>Login ID</strong> + password you set below.</div>
@@ -3622,7 +3633,7 @@
 
 <script src="config.js"></script>
 <script src="script.js"></script>
-<script type="module" src="app-logic.js?v=7"></script>
+<script type="module" src="app-logic.js?v=8"></script>
 <script>
   (function () {
     var el = document.getElementById('login-module-error');
