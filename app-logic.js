@@ -2546,7 +2546,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     if(window._hwUnsubscribe){window._hwUnsubscribe();window._hwUnsubscribe=null;}
     const cls=window._studentClass||'';
     if(!cls){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-light)">Class not assigned.</td></tr>';return;}
-    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading homework...</td></tr>';
+    const _hwSkel = () => `<tr><td><div class="skel" style="width:70px;height:13px"></div></td><td><div class="skel" style="width:130px;height:13px;margin-bottom:4px"></div><div class="skel" style="width:90px;height:10px"></div></td><td><div class="skel" style="width:65px;height:13px"></div></td><td><div class="skel" style="width:55px;height:13px"></div></td><td><div class="skel" style="width:52px;height:20px;border-radius:10px"></div></td></tr>`;
+    tbody.innerHTML = _hwSkel() + _hwSkel() + _hwSkel();
     window._hwUnsubscribe=onSnapshot(
       query(collection(db,'homework'),where('class','==',cls),limit(20)),
       snap=>{
@@ -2571,7 +2572,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   window.loadStudentNotices = async function() {
     const el=document.getElementById('s-notices-list');
     if(!el) return;
-    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i></div>';
+    const _nSkel = () => `<div class="notice-card"><div class="skel" style="width:20px;height:20px;border-radius:50%;flex-shrink:0;margin-top:2px"></div><div style="flex:1"><div class="skel" style="width:60%;height:14px;margin-bottom:8px"></div><div class="skel" style="width:35%;height:10px;margin-bottom:8px"></div><div class="skel" style="width:90%;height:10px;margin-bottom:4px"></div><div class="skel" style="width:70%;height:10px"></div></div></div>`;
+    el.innerHTML = _nSkel() + _nSkel() + _nSkel();
     try {
       const snap=await getDocs(query(collection(db,'notices'),limit(20)));
       const cls=window._studentClass||'';
@@ -2663,7 +2665,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     const totalEl = document.getElementById('s-fees-total');
     const badgeEl = document.getElementById('s-fees-total-badge');
     if (!listEl) return;
-    listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i></div>';
+    const _fSkel = () => `<div class="fee-row"><div><div class="skel" style="width:110px;height:14px;margin-bottom:5px"></div><div class="skel" style="width:75px;height:10px"></div></div><div class="skel" style="width:55px;height:14px"></div></div>`;
+    listEl.innerHTML = _fSkel() + _fSkel() + _fSkel() + _fSkel();
     try {
       const sid = window._studentId || '';
       if (!sid) { listEl.innerHTML = '<p style="color:var(--text-light);font-size:13px">Student ID not set.</p>'; return; }
