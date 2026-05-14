@@ -134,6 +134,8 @@ function loginAs(role) {
   if (loginPage) loginPage.classList.remove('active');
   if (cleanRole === 'student') {
     showPage('student-dash');
+    const ldr = document.getElementById('s-portal-loader');
+    if (ldr) ldr.style.display = 'flex';
     setTimeout(() => { if (window.navStudentTo) window.navStudentTo('s-dashboard'); }, 50);
   } else if (cleanRole === 'teacher') showPage('teacher-dash');
   else if   (cleanRole === 'admin')   showPage('admin-dash');

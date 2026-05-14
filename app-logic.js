@@ -2230,11 +2230,11 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       if(!userDoc.exists())return;
       const userData=userDoc.data(); const studentId=userData.studentId;
       window._studentId=studentId||userData.loginId||''; window._studentName=userData.name||'Student';
-      if(!studentId){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';showToast('ℹ️ No studentId linked.');return;}
+      if(!studentId){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';showToast('ℹ️ No studentId linked.');const _l=document.getElementById('s-portal-loader');if(_l){_l.classList.add('fade-out');setTimeout(()=>{_l.style.display='none';_l.classList.remove('fade-out');},380);}return;}
       let studentSnap={docs:[],empty:true};
       try{studentSnap=await getDocs(query(collection(db,"students"),where("studentId","==",studentId)));}catch(e){}
       if(studentSnap.empty){try{const d=await getDoc(doc(db,"students",studentId));if(d.exists())studentSnap={docs:[d],empty:false};}catch(e){}}
-      if(studentSnap.empty){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';const headerName=document.getElementById('s-header-name');if(headerName)headerName.textContent=userData.name||'Student';window._studentClass=userData.class||'';window._studentRollNo=userData.rollNo||'';loadStudentHomework();return;}
+      if(studentSnap.empty){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';const headerName=document.getElementById('s-header-name');if(headerName)headerName.textContent=userData.name||'Student';window._studentClass=userData.class||'';window._studentRollNo=userData.rollNo||'';const _l2=document.getElementById('s-portal-loader');if(_l2){_l2.classList.add('fade-out');setTimeout(()=>{_l2.style.display='none';_l2.classList.remove('fade-out');},380);}loadStudentHomework();return;}
       const s=studentSnap.docs[0].data();
       window._studentClass=String(s.class||''); window._studentRollNo=s.rollNo; window._studentName=s.name||userData.name||'Student';
       const setTxt=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||'—';};
@@ -2275,9 +2275,11 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const bal = parseFloat(s.feeBalance ?? s.feeTotal ?? 0);
       const feeDueEl = document.getElementById('s-stat-fee-due');
       if (feeDueEl) feeDueEl.textContent = bal > 0 ? '₹' + bal.toLocaleString('en-IN') : '₹0';
+      const _ldr = document.getElementById('s-portal-loader');
+      if (_ldr) { _ldr.classList.add('fade-out'); setTimeout(() => { _ldr.style.display = 'none'; _ldr.classList.remove('fade-out'); }, 380); }
       loadStudentHomework(); loadStudentNotices(); loadStudentFees();
       window.loadAcademicSnapshot(studentId); // non-blocking — Phase 5
-    } catch(e){ showToast('⚠️ Could not load profile: '+e.message); }
+    } catch(e){ showToast('⚠️ Could not load profile: '+e.message); const _le=document.getElementById('s-portal-loader');if(_le){_le.classList.add('fade-out');setTimeout(()=>{_le.style.display='none';_le.classList.remove('fade-out');},380);} }
   };
 
   // ================================================================
