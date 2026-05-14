@@ -632,6 +632,29 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     } catch(e) { showToast('❌ Could not send: ' + e.message); }
   };
 
+  // Student portal — internal message to administration
+  window.sendStudentMessage = async function() {
+    const to      = (document.getElementById('s-contact-to')?.value      || '').trim();
+    const subject = (document.getElementById('s-contact-subject')?.value || '').trim();
+    const message = (document.getElementById('s-contact-message')?.value || '').trim();
+    if (!message) { showToast('⚠️ Please write a message before sending.'); return; }
+    try {
+      await addDoc(collection(db, 'student_messages'), {
+        to,
+        subject:   subject || '(No subject)',
+        message,
+        studentId: window._studentId  || '',
+        studentName: window._studentName || '',
+        studentClass: window._studentClass || '',
+        status:    'Unread',
+        createdAt: new Date().toISOString(),
+      });
+      document.getElementById('s-contact-subject').value = '';
+      document.getElementById('s-contact-message').value = '';
+      showToast('✅ Message sent to the administration.');
+    } catch(e) { showToast('❌ Could not send: ' + e.message); }
+  };
+
   // ── Helper: admission doc upload (disabled — Spark plan has no Storage) ──
   async function _uploadAdmissionDoc(file, folder, label) {
     if (!file) return null;
