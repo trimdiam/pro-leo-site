@@ -2238,6 +2238,13 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const s=studentSnap.docs[0].data();
       window._studentClass=String(s.class||''); window._studentRollNo=s.rollNo; window._studentName=s.name||userData.name||'Student';
       const setTxt=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||'—';};
+      const setPhone=(id,val)=>{
+        const el=document.getElementById(id); if(!el) return;
+        if(!val||val==='—'){el.textContent='—';return;}
+        const clean=val.replace(/[^0-9+\-() ]/g,'');
+        if(!clean.replace(/\D/g,'')){el.textContent=val;return;}
+        el.innerHTML=`<a href="tel:${clean}" style="color:var(--accent);font-weight:700;text-decoration:none">${val}</a>`;
+      };
       const houseMap2={G:'🟢 Green',R:'🔴 Red',Y:'🟡 Yellow',B:'🔵 Blue'};
       const classLabel2={PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
       const getClsLabel=c=>classLabel2[c]||(c?'Class '+c:'—');
@@ -2258,11 +2265,11 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       setTxt('s-card-blood', s.bloodGroup||'—');
       setTxt('s-card-gender', s.gender==='M'?'Male':s.gender==='F'?'Female':s.gender||'—');
       setTxt('s-card-nationality', s.nationality||'Indian');
-      setTxt('s-card-contact', s.whatsapp||'—');
+      setPhone('s-card-contact', s.whatsapp||'—');
       setTxt('s-card-address', s.address||'—');
       setTxt('s-card-father', s.fatherName||'—');
       setTxt('s-card-mother', s.motherName||'—');
-      setTxt('s-card-parent-contact', s.whatsapp||s.altContact||'—');
+      setPhone('s-card-parent-contact', s.whatsapp||s.altContact||'—');
       setTxt('s-card-pen', s.penNumber||'—');
       setTxt('s-card-house', houseMap2[s.house]||s.house||'—');
       const bal = parseFloat(s.feeBalance ?? s.feeTotal ?? 0);
