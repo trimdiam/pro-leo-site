@@ -947,7 +947,7 @@
       </div>
 
       <!-- Error message area -->
-      <div id="login-error-msg" style="display:none;margin-top:12px;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;color:#991b1b;align-items:center;gap:8px">
+      <div id="login-error-msg">
         <i class="fas fa-exclamation-circle"></i><span id="login-error-text"></span>
       </div>
 
@@ -1086,23 +1086,18 @@
         <div id="s-attendance" class="dash-section">
           <div class="card" style="padding:28px;max-width:480px;text-align:center;margin-bottom:24px">
             <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Attendance Overview</h4>
-            <div class="attendance-circle"><span class="attendance-pct">87%</span></div>
-            <p style="color:var(--text-light);font-size:14px;margin-bottom:20px">87% Attendance — <span style="color:var(--warning);font-weight:700">Needs Improvement</span></p>
-            <div style="display:flex;justify-content:center;gap:32px">
-              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--success)">116</div><div style="font-size:12px;color:var(--text-light)">Days Present</div></div>
-              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--danger)">17</div><div style="font-size:12px;color:var(--text-light)">Days Absent</div></div>
-              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--accent)">133</div><div style="font-size:12px;color:var(--text-light)">Total Working Days</div></div>
+            <div class="attendance-circle"><span class="attendance-pct">—</span></div>
+            <p style="color:var(--text-light);font-size:14px;margin-bottom:20px"><i class="fas fa-spinner fa-spin" style="margin-right:6px"></i>Loading attendance…</p>
+            <div class="att-stats-row">
+              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--success)">—</div><div style="font-size:12px;color:var(--text-light)">Days Present</div></div>
+              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--danger)">—</div><div style="font-size:12px;color:var(--text-light)">Days Absent</div></div>
+              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--accent)">—</div><div style="font-size:12px;color:var(--text-light)">Total Working Days</div></div>
             </div>
           </div>
           <div class="card" style="padding:24px">
             <h4 style="color:var(--accent-dark);margin-bottom:16px">Monthly Attendance Log</h4>
             <div class="table-wrap"><table><thead><tr><th>Month</th><th>Total Days</th><th>Present</th><th>Absent</th><th>%</th></tr></thead><tbody>
-              <tr><td>April 2025</td><td>22</td><td>20</td><td>2</td><td><span class="badge badge-success">91%</span></td></tr>
-              <tr><td>May 2025</td><td>18</td><td>16</td><td>2</td><td><span class="badge badge-success">89%</span></td></tr>
-              <tr><td>June 2025</td><td>20</td><td>17</td><td>3</td><td><span class="badge badge-warning">85%</span></td></tr>
-              <tr><td>July 2025</td><td>23</td><td>20</td><td>3</td><td><span class="badge badge-warning">87%</span></td></tr>
-              <tr><td>August 2025</td><td>21</td><td>18</td><td>3</td><td><span class="badge badge-warning">86%</span></td></tr>
-              <tr><td>September 2025</td><td>19</td><td>14</td><td>5</td><td><span class="badge badge-danger">74%</span></td></tr>
+              <tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading attendance log…</td></tr>
             </tbody></table></div>
           </div>
         </div>
@@ -1149,7 +1144,7 @@
             <div class="form-group"><label>Payment Date</label><input type="date" id="s-fee-date"></div>
             <div class="form-group">
               <label>Receipt Screenshot <span style="font-size:11px;color:var(--text-light)">(UPI/bank screenshot — recommended)</span></label>
-              <input type="file" id="s-fee-receipt-img" accept="image/*" style="padding:6px;border:1px solid var(--border);border-radius:8px;width:100%;font-size:13px;box-sizing:border-box">
+              <input type="file" id="s-fee-receipt-img" accept="image/*" capture="environment" style="padding:6px;border:1px solid var(--border);border-radius:8px;width:100%;font-size:13px;box-sizing:border-box">
             </div>
             <div id="s-fee-upload-progress" style="display:none;margin-bottom:12px">
               <div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden"><div id="s-fee-progress-bar" style="height:100%;background:var(--primary);width:0%;transition:width .3s"></div></div>
@@ -1161,15 +1156,33 @@
         <div id="s-contact" class="dash-section">
           <div class="card" style="padding:28px;max-width:560px">
             <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-envelope" style="margin-right:8px;color:var(--accent)"></i>Contact School Administration</h4>
-            <div class="form-group"><label>To</label><select><option>Class Teacher</option><option>Vice Principal</option><option>Principal's Office</option><option>Accounts Office</option></select></div>
-            <div class="form-group"><label>Subject</label><input type="text" placeholder="Subject of your message"></div>
-            <div class="form-group"><label>Message</label><textarea placeholder="Write your message here..."></textarea></div>
-            <button class="btn btn-primary" onclick="showToast('✅ Message sent to the administration.')"><i class="fas fa-paper-plane"></i> Send Message</button>
+            <div class="form-group"><label>To</label><select id="s-contact-to"><option>Class Teacher</option><option>Vice Principal</option><option>Principal's Office</option><option>Accounts Office</option></select></div>
+            <div class="form-group"><label>Subject</label><input type="text" id="s-contact-subject" placeholder="Subject of your message"></div>
+            <div class="form-group"><label>Message</label><textarea id="s-contact-message" placeholder="Write your message here..."></textarea></div>
+            <button class="btn btn-primary" onclick="sendStudentMessage()"><i class="fas fa-paper-plane"></i> Send Message</button>
           </div>
         </div>
       </div>
     </div>
   </div>
+  <!-- Student bottom nav — mobile only -->
+  <nav class="s-bottom-nav" id="studentBottomNav">
+    <button class="active" data-section="s-dashboard" onclick="navStudentTo('s-dashboard')">
+      <i class="fas fa-th-large"></i><span>Home</span>
+    </button>
+    <button data-section="s-attendance" onclick="navStudentTo('s-attendance')">
+      <i class="fas fa-calendar-check"></i><span>Attendance</span>
+    </button>
+    <button data-section="s-homework" onclick="navStudentTo('s-homework')">
+      <i class="fas fa-book-open"></i><span>Homework</span>
+    </button>
+    <button data-section="s-fees" onclick="navStudentTo('s-fees')">
+      <i class="fas fa-money-bill-wave"></i><span>Fees</span>
+    </button>
+    <button data-section="s-profile" onclick="navStudentTo('s-profile')">
+      <i class="fas fa-user"></i><span>Profile</span>
+    </button>
+  </nav>
 </div>
 
 <!-- ================================================================

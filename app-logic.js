@@ -632,6 +632,29 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     } catch(e) { showToast('❌ Could not send: ' + e.message); }
   };
 
+  // Student portal — internal message to administration
+  window.sendStudentMessage = async function() {
+    const to      = (document.getElementById('s-contact-to')?.value      || '').trim();
+    const subject = (document.getElementById('s-contact-subject')?.value || '').trim();
+    const message = (document.getElementById('s-contact-message')?.value || '').trim();
+    if (!message) { showToast('⚠️ Please write a message before sending.'); return; }
+    try {
+      await addDoc(collection(db, 'student_messages'), {
+        to,
+        subject:   subject || '(No subject)',
+        message,
+        studentId: window._studentId  || '',
+        studentName: window._studentName || '',
+        studentClass: window._studentClass || '',
+        status:    'Unread',
+        createdAt: new Date().toISOString(),
+      });
+      document.getElementById('s-contact-subject').value = '';
+      document.getElementById('s-contact-message').value = '';
+      showToast('✅ Message sent to the administration.');
+    } catch(e) { showToast('❌ Could not send: ' + e.message); }
+  };
+
   // ── Helper: admission doc upload (disabled — Spark plan has no Storage) ──
   async function _uploadAdmissionDoc(file, folder, label) {
     if (!file) return null;
@@ -1582,6 +1605,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   const _origShowDash = window.showDash;
   window.showDash = function(prefix, sectionId, btn) {
     _origShowDash(prefix, sectionId, btn);
+    if (prefix === 's' && window.syncStudentBottomNav) window.syncStudentBottomNav(sectionId);
     // Admin section auto-loaders
     if (sectionId === 'a-events')        loadAdminEvents();
     if (sectionId === 'a-announcements') loadAdminAnnouncements();
@@ -2486,7 +2510,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const exams = [];
 
       // 6. Update stat cards with real data
-      const setEl = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      const setEl = (id, v) => { countUp(document.getElementById(id), v); };
       setEl('s-stat-attendance', total > 0 ? percentage + '%' : '—');
       // Fee due: use student doc feeBalance if available (more accurate than fees collection)
       const stuSnap = sid ? await getDocs(query(collection(db,'students'), where('studentId','==',sid), limit(1))) : null;
@@ -2535,7 +2559,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
           if(!isPast) pending++;
           return `<tr><td>${hw.subject||'—'}</td><td><strong>${hw.title||'—'}</strong><br><span style="font-size:11px;color:var(--text-light)">${hw.description||''}</span></td><td>${hw.postedBy||'—'}</td><td style="font-size:13px">${hw.dueDate||'—'}</td><td>${status}</td></tr>`;
         }).join('');
-        const pendEl=document.getElementById('s-stat-pending-hw'); if(pendEl) pendEl.textContent=pending;
+        const pendEl=document.getElementById('s-stat-pending-hw'); if(pendEl) countUp(pendEl, String(pending));
       },
       e=>{tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
     );
@@ -2605,6 +2629,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const pctLabel = pct >= 90 ? 'Good Standing' : pct >= 75 ? 'Needs Improvement' : 'Below Minimum';
 
       if (pctEl) pctEl.textContent = pct + '%';
+      const circleEl = document.querySelector('#s-attendance .attendance-circle');
+      if (circleEl) circleEl.style.background = `conic-gradient(var(--success) 0% ${pct}%, var(--danger) ${pct}% 100%)`;
       if (msgEl) msgEl.innerHTML = `${pct}% Attendance — <span style="color:${pctClass};font-weight:700">${pctLabel}</span>`;
       if (presEl) presEl.textContent = present;
       if (absEl) absEl.textContent = absent;

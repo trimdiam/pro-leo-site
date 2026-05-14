@@ -86,6 +86,18 @@ function showDash(prefix, sectionId, btn) {
   if (titleEl && btn) titleEl.textContent = btn.textContent.trim();
 }
 
+// Student bottom nav helpers
+window.syncStudentBottomNav = function(sectionId) {
+  document.querySelectorAll('#studentBottomNav button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.section === sectionId);
+  });
+};
+window.navStudentTo = function(sectionId) {
+  const sidebarBtn = document.querySelector('#studentSidebar button[onclick*="' + sectionId + '"]');
+  showDash('s', sectionId, sidebarBtn);
+  window.syncStudentBottomNav(sectionId);
+};
+
 function adminInboxGo(sectionId, feeFilter) {
   const btn = document.querySelector('#adminSidebar button[onclick*="' + sectionId + '"]');
   showDash('a', sectionId, btn || null);
@@ -144,15 +156,61 @@ function logout() {
 }
 
 // ================================================================
+//  Count-up animation for stat cards
+// ================================================================
+window.countUp = function(el, finalText, duration) {
+  if (!el) return;
+  duration = duration || 650;
+  const match = String(finalText).match(/[\d,]+/);
+  if (!match || finalText === '—') { el.textContent = finalText; return; }
+  const raw    = parseFloat(match[0].replace(/,/g, ''));
+  const idx    = finalText.indexOf(match[0]);
+  const prefix = finalText.slice(0, idx);
+  const suffix = finalText.slice(idx + match[0].length);
+  let start = null;
+  function step(ts) {
+    if (!start) start = ts;
+    const p = Math.min((ts - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = prefix + Math.round(raw * ease).toLocaleString('en-IN') + suffix;
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = finalText;
+  }
+  requestAnimationFrame(step);
+};
+
+// ================================================================
 //  Mobile
 // ================================================================
 function toggleMobileMenu() {
   const m = document.getElementById('mobileMenu');
   if (m) m.classList.toggle('open');
 }
+function _getSidebarBackdrop() {
+  let bd = document.getElementById('sidebar-backdrop');
+  if (!bd) {
+    bd = document.createElement('div');
+    bd.id = 'sidebar-backdrop';
+    bd.className = 'sidebar-backdrop';
+    bd.addEventListener('click', _closeAllSidebars);
+    document.body.appendChild(bd);
+  }
+  return bd;
+}
+function _closeAllSidebars() {
+  ['studentSidebar','teacherSidebar','adminSidebar','officeSidebar'].forEach(id => {
+    const sb = document.getElementById(id);
+    if (sb) sb.classList.remove('open');
+  });
+  const bd = document.getElementById('sidebar-backdrop');
+  if (bd) bd.classList.remove('visible');
+}
 function toggleSidebar(id) {
   const sb = document.getElementById(id);
-  if (sb) sb.classList.toggle('open');
+  if (!sb) return;
+  const isOpening = !sb.classList.contains('open');
+  sb.classList.toggle('open');
+  _getSidebarBackdrop().classList.toggle('visible', isOpening);
 }
 
 // ================================================================
@@ -167,14 +225,17 @@ function showToast(msg) {
 }
 
 // ================================================================
-//  Close sidebar on outside click
+//  Close sidebar on outside click (backdrop handles tap-outside on mobile)
 // ================================================================
 document.addEventListener('click', function(e) {
+  const bd = document.getElementById('sidebar-backdrop');
+  if (bd && bd.contains(e.target)) return; // backdrop click handled separately
   ['studentSidebar', 'teacherSidebar', 'adminSidebar', 'officeSidebar'].forEach(id => {
     const sb = document.getElementById(id);
     if (sb && sb.classList.contains('open')) {
       if (!sb.contains(e.target) && !e.target.classList.contains('sidebar-toggle')) {
         sb.classList.remove('open');
+        if (bd) bd.classList.remove('visible');
       }
     }
   });
