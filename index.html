@@ -1224,7 +1224,7 @@
         <div id="t-dashboard" class="dash-section active">
           <div class="dash-stats">
             <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-users"></i></div><div><div class="dash-stat-val" id="t-stat-students">—</div><div class="dash-stat-label">My Students</div></div></div>
-            <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-book-open"></i></div><div><div class="dash-stat-val">3</div><div class="dash-stat-label">Pending HW Reviews</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-book-open"></i></div><div><div class="dash-stat-val" id="t-stat-hw">—</div><div class="dash-stat-label">Homeworks Posted</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-calendar-check"></i></div><div><div class="dash-stat-val" id="t-stat-class">—</div><div class="dash-stat-label">My Class</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-chalkboard"></i></div><div><div class="dash-stat-val" id="t-stat-subjects" style="font-size:0.85rem;line-height:1.2">—</div><div class="dash-stat-label">Subject(s)</div></div></div>
           </div>
@@ -1240,19 +1240,17 @@
             </div>
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Recent Notices</h4>
-              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--danger);font-size:8px;margin-right:8px"></i>Exam timetable finalised – check admin board</div>
-              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>PTM on 10th Sept – prepare progress cards</div>
-              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>Staff meeting every Friday at 2:30 PM</div>
+              <div id="t-dash-notices"><p style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i> Loading…</p></div>
             </div>
           </div>
         </div>
         <!-- ── MY SUBJECTS (Phase 2) ── -->
         <div id="t-my-subjects" class="dash-section">
-          <div class="card" style="padding:24px;margin-bottom:18px" id="tp-class-card" style="display:none">
+          <div class="card" style="padding:24px;margin-bottom:18px;display:none" id="tp-class-card">
             <div class="tp-assign-section-head"><span class="tp-assign-marker">▸</span> MY CLASS</div>
             <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
               <span style="font-size:15px;font-weight:700;color:var(--accent-dark)" id="tp-class-label">—</span>
-              <button class="btn btn-sm btn-outline" onclick="showDash('t','t-students',document.querySelector('#teacherSidebar button:nth-child(2)'))"><i class="fas fa-users"></i> View Student List</button>
+              <button class="btn btn-sm btn-outline" onclick="navTeacherTo('t-students')"><i class="fas fa-users"></i> View Student List</button>
               <button class="btn btn-sm btn-primary tp-review-lock-btn"><i class="fas fa-lock"></i> Review &amp; Lock Records</button>
             </div>
           </div>
@@ -1270,7 +1268,7 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
               <h4 style="color:var(--accent-dark)"><i class="fas fa-users" style="margin-right:8px;color:var(--accent)"></i><span id="t-class-heading">My Class</span> – Student List</h4>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <input type="text" placeholder="🔍 Search student..." style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--primary);font-family:var(--font-body);font-size:13px;width:220px">
+                <input type="text" placeholder="🔍 Search student..." style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--primary);font-family:var(--font-body);font-size:13px;flex:1;min-width:0" oninput="filterTeacherStudents(this.value)">
                 <button class="btn btn-sm" style="background:var(--primary);color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer" onclick="exportTeacherClassList()"><i class="fas fa-file-csv" style="margin-right:6px"></i>Export CSV</button>
               </div>
             </div>
@@ -1464,6 +1462,24 @@
       </div>
     </div>
   </div>
+  <!-- Teacher bottom nav — mobile only -->
+  <nav class="t-bottom-nav" id="teacherBottomNav">
+    <button class="active" data-section="t-dashboard" onclick="navTeacherTo('t-dashboard')">
+      <i class="fas fa-th-large"></i><span>Home</span>
+    </button>
+    <button data-section="t-students" onclick="navTeacherTo('t-students')">
+      <i class="fas fa-users"></i><span>Students</span>
+    </button>
+    <button data-section="t-attendance" onclick="navTeacherTo('t-attendance')">
+      <i class="fas fa-calendar-check"></i><span>Attendance</span>
+    </button>
+    <button data-section="t-homework" onclick="navTeacherTo('t-homework')">
+      <i class="fas fa-book-open"></i><span>Homework</span>
+    </button>
+    <button data-section="t-profile" onclick="navTeacherTo('t-profile')">
+      <i class="fas fa-user"></i><span>Profile</span>
+    </button>
+  </nav>
 </div>
 
 <!-- ================================================================

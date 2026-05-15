@@ -3818,6 +3818,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     try{
       const tid=window._teacherId||'';
       const snap=await getDocs(tid?query(collection(db,'homework'),where('teacherId','==',tid),limit(15)):query(collection(db,'homework'),limit(15)));
+      const hwStat=document.getElementById('t-stat-hw'); if(hwStat) hwStat.textContent=snap.size;
       if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No homework posted yet.</p>';return;}
       el.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
         const hw=d.data();
@@ -3888,9 +3889,21 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     try{
       const tid=window._teacherId||'';
       const snap=await getDocs(tid?query(collection(db,'notices'),where('teacherId','==',tid),limit(20)):query(collection(db,'notices'),limit(15)));
-      if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No notices posted yet.</p>';return;}
+      if(snap.empty){
+        el.innerHTML='<p style="color:var(--text-light);font-size:13px">No notices posted yet.</p>';
+        const dashEl=document.getElementById('t-dash-notices');
+        if(dashEl) dashEl.innerHTML='<p style="color:var(--text-light);font-size:13px">No recent notices.</p>';
+        return;
+      }
       const bc=p=>p==='Urgent'?'badge-danger':p==='Important'?'badge-warning':'badge-info';
-      el.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
+      const sorted=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||''));
+      const dashEl=document.getElementById('t-dash-notices');
+      if(dashEl) dashEl.innerHTML=sorted.slice(0,3).map(d=>{
+        const n=d.data();
+        const dot=n.priority==='Urgent'?'var(--danger)':n.priority==='Important'?'var(--warning)':'var(--info)';
+        return `<div class="chapter-item"><i class="fas fa-circle" style="color:${dot};font-size:8px;margin-right:8px"></i>${n.title}</div>`;
+      }).join('');
+      el.innerHTML=sorted.map(d=>{
         const n=d.data();
         const dataJson=JSON.stringify({title:n.title,body:n.body||'',audience:n.audience||'class',priority:n.priority||'Normal'}).replace(/'/g,'&#39;');
         return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700">${n.title}</div><div style="font-size:12px;color:var(--text-light)">${(n.body||'').slice(0,60)}…</div><span class="badge ${bc(n.priority)}" style="margin-top:4px">${n.priority||'Normal'}</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button onclick="prefillNoticeForm('${d.id}',JSON.parse(this.dataset.n))" data-n='${dataJson}' style="background:none;border:none;color:var(--accent);cursor:pointer" title="Edit"><i class="fas fa-edit"></i></button><button onclick="deleteNotice('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer" title="Delete"><i class="fas fa-trash"></i></button></div></div>`;
