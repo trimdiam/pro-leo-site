@@ -1275,7 +1275,7 @@
             <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
               <span style="font-size:15px;font-weight:700;color:var(--accent-dark)" id="tp-class-label">—</span>
               <button class="btn btn-sm btn-outline" onclick="navTeacherTo('t-students')"><i class="fas fa-users"></i> View Student List</button>
-              <button class="btn btn-sm btn-primary tp-review-lock-btn" onclick="openCTReview()"><i class="fas fa-lock"></i> Review &amp; Lock Records</button>
+              <button class="btn btn-sm btn-primary tp-review-lock-btn"><i class="fas fa-lock"></i> Review &amp; Lock Records</button>
             </div>
           </div>
 
@@ -1520,8 +1520,8 @@
     <button data-section="t-attendance" onclick="navTeacherTo('t-attendance')">
       <i class="fas fa-calendar-check"></i><span>Attendance</span>
     </button>
-    <button data-section="t-schedule" onclick="navTeacherTo('t-schedule')">
-      <i class="fas fa-clock"></i><span>Schedule</span>
+    <button data-section="t-homework" onclick="navTeacherTo('t-homework')">
+      <i class="fas fa-book-open"></i><span>Homework</span>
     </button>
     <button data-section="t-profile" onclick="navTeacherTo('t-profile')">
       <i class="fas fa-user"></i><span>Profile</span>
@@ -1799,7 +1799,6 @@
               <h4 style="color:var(--accent-dark)"><i class="fas fa-chalkboard-teacher" style="margin-right:8px;color:var(--accent)"></i>Teacher Management</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button class="btn btn-primary btn-sm" onclick="openTeacherModal()"><i class="fas fa-plus"></i> Add Teacher</button>
-                <button class="btn btn-outline btn-sm" id="teacher-inactive-toggle" onclick="toggleInactiveTeachers()"><i class="fas fa-eye"></i> Show Inactive</button>
                 <button class="btn btn-outline btn-sm" id="reseed-btn" onclick="window._teacherSeedDone=false;seedTeachersIfNeeded().then(()=>{loadTeachers();showToast('✅ Teachers reloaded!');})"><i class="fas fa-sync-alt"></i> Reload All Teachers</button>
               </div>
             </div>
@@ -1809,8 +1808,8 @@
             </div>
             <div class="table-wrap">
               <table id="teacher-table">
-                <thead><tr><th>Login ID</th><th>Name</th><th>Role</th><th>Assignments</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead>
-                <tbody id="admin-teacher-tbody"><tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading teachers...</td></tr></tbody>
+                <thead><tr><th>Login ID</th><th>Title</th><th>Name</th><th>Class Teacher Of</th><th>Subject(s)</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="admin-teacher-tbody"><tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading teachers...</td></tr></tbody>
               </table>
             </div>
           </div>
@@ -1858,78 +1857,6 @@
                 <div class="sf-field"><label>Status</label><select id="tf-status"><option value="Active">Active</option><option value="On Leave">On Leave</option><option value="Resigned">Resigned</option><option value="Retired">Retired</option></select></div>
                 <div class="sf-field sf-full"><label>Remarks</label><textarea id="tf-remarks" rows="2" placeholder="Any additional notes..."></textarea></div>
               </div></div>
-
-              <!-- Role & Assignments Section (Phase 3a) -->
-              <div class="sf-section" style="margin-top:20px;border-top:2px dashed #b5d5b5;padding-top:18px;border-bottom:none;margin-bottom:0;padding-bottom:0">
-                <div class="sf-section-head" style="background:linear-gradient(90deg,#e8f4e8,transparent);border-left-color:#0e7490"><i class="fas fa-tasks" style="color:#0e7490"></i> Role &amp; Assignments <span style="font-size:11px;font-weight:400;color:var(--text-light);margin-left:8px">Optional — set here or via the Assignments panel</span></div>
-                <div style="padding:4px 0 12px">
-                  <!-- Role selector -->
-                  <div style="margin-bottom:14px">
-                    <label style="font-size:12px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px">Role</label>
-                    <div style="display:flex;gap:16px;flex-wrap:wrap">
-                      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
-                        <input type="radio" name="tf-role" id="tf-role-subject" value="subject_teacher" onchange="onTFRoleChange()" style="accent-color:#0e7490">
-                        <span>Subject Teacher</span>
-                      </label>
-                      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
-                        <input type="radio" name="tf-role" id="tf-role-class" value="class_teacher" onchange="onTFRoleChange()" style="accent-color:#059669">
-                        <span>Class Teacher</span>
-                      </label>
-                      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
-                        <input type="radio" name="tf-role" id="tf-role-admin" value="admin" onchange="onTFRoleChange()" style="accent-color:#d97706">
-                        <span>Admin</span>
-                      </label>
-                    </div>
-                  </div>
-                  <!-- Class Teacher subsection -->
-                  <div id="tf-ct-section" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:14px 16px;margin-bottom:12px">
-                    <label style="font-size:13px;font-weight:700;color:#166534;display:block;margin-bottom:8px"><i class="fas fa-school" style="margin-right:6px"></i>Class Teacher of</label>
-                    <select id="tf-ct-class-sel" style="padding:8px 12px;border:1.5px solid #86efac;border-radius:8px;font-family:var(--font-body);font-size:13px;background:#fff;min-width:160px">
-                      <option value="">— Select Class —</option>
-                      <option value="I">Class I</option>
-                      <option value="II">Class II</option>
-                      <option value="III">Class III</option>
-                      <option value="IV">Class IV</option>
-                      <option value="V">Class V</option>
-                      <option value="VI">Class VI</option>
-                      <option value="VII">Class VII</option>
-                      <option value="VIII">Class VIII</option>
-                      <option value="IX">Class IX</option>
-                      <option value="X">Class X</option>
-                    </select>
-                  </div>
-                  <!-- Subject Teacher subsection -->
-                  <div id="tf-sa-section" style="display:none;background:#f0f9ff;border:1.5px solid #7dd3fc;border-radius:10px;padding:14px 16px">
-                    <label style="font-size:13px;font-weight:700;color:#0c4a6e;display:block;margin-bottom:10px"><i class="fas fa-book-open" style="margin-right:6px"></i>Subject Assignments</label>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-                      <select id="tf-sa-class-sel" onchange="onTFSaClassChange()" style="padding:7px 10px;border:1.5px solid #7dd3fc;border-radius:7px;font-family:var(--font-body);font-size:13px;background:#fff">
-                        <option value="">— class —</option>
-                        <option value="I">Class I</option>
-                        <option value="II">Class II</option>
-                        <option value="III">Class III</option>
-                        <option value="IV">Class IV</option>
-                        <option value="V">Class V</option>
-                        <option value="VI">Class VI</option>
-                        <option value="VII">Class VII</option>
-                        <option value="VIII">Class VIII</option>
-                        <option value="IX">Class IX</option>
-                        <option value="X">Class X</option>
-                      </select>
-                      <select id="tf-sa-subject-sel" style="padding:7px 10px;border:1.5px solid #7dd3fc;border-radius:7px;font-family:var(--font-body);font-size:13px;background:#fff;min-width:160px">
-                        <option value="">— subject —</option>
-                      </select>
-                      <button type="button" id="tf-sa-add-btn" onclick="addTFSubjectRow()" class="btn btn-sm" style="background:#0e7490;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:var(--font-body);font-weight:700;font-size:13px"><i class="fas fa-plus"></i> Add</button>
-                    </div>
-                    <div class="table-wrap" style="max-height:200px;overflow-y:auto">
-                      <table style="width:100%;border-collapse:collapse;font-size:13px">
-                        <thead><tr style="background:#e0f2fe"><th style="padding:6px 10px;text-align:left;font-weight:700;color:#0c4a6e">Class</th><th style="padding:6px 10px;text-align:left;font-weight:700;color:#0c4a6e">Subject</th><th style="padding:6px 10px;width:40px"></th></tr></thead>
-                        <tbody id="tf-sa-tbody"><tr><td colspan="3" style="text-align:center;color:var(--text-light);font-size:12px;padding:10px">No assignments yet</td></tr></tbody>
-                      </table>
-                    </div>
-                  </div>
-                  <p style="font-size:11px;color:var(--text-light);margin-top:10px;margin-bottom:0"><i class="fas fa-info-circle" style="margin-right:4px"></i>You can also manage assignments separately via the <strong>Assign</strong> button in the teacher table.</p>
-                </div>
-              </div>
             </div>
             <div style="padding:20px 28px;background:#f5faf5;border-top:1.5px solid #d4e8d4;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
               <p style="font-size:12px;color:var(--text-light)">* Required fields</p>
