@@ -7989,7 +7989,7 @@ function renderTPAssignments(data) {
         reviewBtn.style.cursor  = '';
         reviewBtn.removeAttribute('title');
         reviewBtn.onclick = () => {
-          window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classTeacherOf}&action=review`;
+          window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classTeacherOf}&action=review&term=${window._currentTerm || 'HY'}`;
         };
       }
     } else {
@@ -8052,7 +8052,7 @@ function renderTPAssignments(data) {
 window.tpOpenMarkEntry = function(btn) {
   const classId    = btn.dataset.classId;
   const subjectKey = btn.dataset.subjectKey;
-  const term       = btn.dataset.term || 'HY';
+  const term       = btn.dataset.term || window._currentTerm || 'HY';
   window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classId}&subject=${subjectKey}&term=${term}`;
 };
 
@@ -8075,6 +8075,8 @@ const _origLoadTeacherPortal = window.loadTeacherPortal;
 window.loadTeacherPortal = async function(user) {
   // Run original first (sets up base portal, but may use stale class/subject fields)
   await _origLoadTeacherPortal(user);
+  // Load current academic term (Phase 3b)
+  await loadCurrentTerm();
 
   try {
     window._tpAssignLoaded = false;
@@ -8190,6 +8192,9 @@ window.loadTeacherPortal = async function(user) {
     // ── Render My Subjects panel ──────────────────────────────────────────
     // teacherDocId is the auth-uid mirror doc (kept in sync by saveTAAssignments)
     const tForPanel = { ...profileData, role: newRole, classTeacherOf: rawCTOf, assignments: newAssigns };
+    // Store for openCTReview deep-link (Phase 3b)
+    window._rawCTOf = rawCTOf;
+    window._teacherPortalData = tForPanel;
     initTeacherAssignments(teacherDocId, tForPanel);
 
   } catch(e) {
@@ -8209,3 +8214,24 @@ window.logout = function() {
 // ============================================================
 // END TEACHER PORTAL ASSIGNMENTS MODULE
 // ============================================================
+
+// ── Phase 3b: Term detection & CT Review deep-link ───────────────────────────
+async function loadCurrentTerm() {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'academicSession'));
+    window._currentTerm = snap.exists() ? (snap.data().currentTerm || 'HY') : 'HY';
+  } catch(e) {
+    window._currentTerm = 'HY';
+  }
+}
+
+window.openCTReview = function() {
+  const data = window._teacherPortalData || {};
+  const classId = data.classTeacherOf || data.tpClassTeacherOf || window._rawCTOf || '';
+  const term = window._currentTerm || 'HY';
+  if (!classId) {
+    if (typeof showToast === 'function') showToast('No class assigned');
+    return;
+  }
+  window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classId}&action=review&term=${term}`;
+};
