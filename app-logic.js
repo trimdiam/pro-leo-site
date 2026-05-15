@@ -632,6 +632,29 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     } catch(e) { showToast('❌ Could not send: ' + e.message); }
   };
 
+  // Student portal — internal message to administration
+  window.sendStudentMessage = async function() {
+    const to      = (document.getElementById('s-contact-to')?.value      || '').trim();
+    const subject = (document.getElementById('s-contact-subject')?.value || '').trim();
+    const message = (document.getElementById('s-contact-message')?.value || '').trim();
+    if (!message) { showToast('⚠️ Please write a message before sending.'); return; }
+    try {
+      await addDoc(collection(db, 'student_messages'), {
+        to,
+        subject:   subject || '(No subject)',
+        message,
+        studentId: window._studentId  || '',
+        studentName: window._studentName || '',
+        studentClass: window._studentClass || '',
+        status:    'Unread',
+        createdAt: new Date().toISOString(),
+      });
+      document.getElementById('s-contact-subject').value = '';
+      document.getElementById('s-contact-message').value = '';
+      showToast('✅ Message sent to the administration.');
+    } catch(e) { showToast('❌ Could not send: ' + e.message); }
+  };
+
   // ── Helper: admission doc upload (disabled — Spark plan has no Storage) ──
   async function _uploadAdmissionDoc(file, folder, label) {
     if (!file) return null;
@@ -1582,6 +1605,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   const _origShowDash = window.showDash;
   window.showDash = function(prefix, sectionId, btn) {
     _origShowDash(prefix, sectionId, btn);
+    if (prefix === 's' && window.syncStudentBottomNav) window.syncStudentBottomNav(sectionId);
     // Admin section auto-loaders
     if (sectionId === 'a-events')        loadAdminEvents();
     if (sectionId === 'a-announcements') loadAdminAnnouncements();
@@ -2253,14 +2277,21 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       if(!userDoc.exists())return;
       const userData=userDoc.data(); const studentId=userData.studentId;
       window._studentId=studentId||userData.loginId||''; window._studentName=userData.name||'Student';
-      if(!studentId){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';showToast('ℹ️ No studentId linked.');return;}
+      if(!studentId){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';showToast('ℹ️ No studentId linked.');const _l=document.getElementById('s-portal-loader');if(_l){_l.classList.add('fade-out');setTimeout(()=>{_l.style.display='none';_l.classList.remove('fade-out');},380);}return;}
       let studentSnap={docs:[],empty:true};
       try{studentSnap=await getDocs(query(collection(db,"students"),where("studentId","==",studentId)));}catch(e){}
       if(studentSnap.empty){try{const d=await getDoc(doc(db,"students",studentId));if(d.exists())studentSnap={docs:[d],empty:false};}catch(e){}}
-      if(studentSnap.empty){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';const headerName=document.getElementById('s-header-name');if(headerName)headerName.textContent=userData.name||'Student';window._studentClass=userData.class||'';window._studentRollNo=userData.rollNo||'';loadStudentHomework();return;}
+      if(studentSnap.empty){const nameEl=document.getElementById('student-name');if(nameEl)nameEl.textContent=userData.name||'Student';const headerName=document.getElementById('s-header-name');if(headerName)headerName.textContent=userData.name||'Student';window._studentClass=userData.class||'';window._studentRollNo=userData.rollNo||'';const _l2=document.getElementById('s-portal-loader');if(_l2){_l2.classList.add('fade-out');setTimeout(()=>{_l2.style.display='none';_l2.classList.remove('fade-out');},380);}loadStudentHomework();return;}
       const s=studentSnap.docs[0].data();
       window._studentClass=String(s.class||''); window._studentRollNo=s.rollNo; window._studentName=s.name||userData.name||'Student';
       const setTxt=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||'—';};
+      const setPhone=(id,val)=>{
+        const el=document.getElementById(id); if(!el) return;
+        if(!val||val==='—'){el.textContent='—';return;}
+        const clean=val.replace(/[^0-9+\-() ]/g,'');
+        if(!clean.replace(/\D/g,'')){el.textContent=val;return;}
+        el.innerHTML=`<a href="tel:${clean}" style="color:var(--accent);font-weight:700;text-decoration:none">${val}</a>`;
+      };
       const houseMap2={G:'🟢 Green',R:'🔴 Red',Y:'🟡 Yellow',B:'🔵 Blue'};
       const classLabel2={PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
       const getClsLabel=c=>classLabel2[c]||(c?'Class '+c:'—');
@@ -2281,20 +2312,22 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       setTxt('s-card-blood', s.bloodGroup||'—');
       setTxt('s-card-gender', s.gender==='M'?'Male':s.gender==='F'?'Female':s.gender||'—');
       setTxt('s-card-nationality', s.nationality||'Indian');
-      setTxt('s-card-contact', s.whatsapp||'—');
+      setPhone('s-card-contact', s.whatsapp||'—');
       setTxt('s-card-address', s.address||'—');
       setTxt('s-card-father', s.fatherName||'—');
       setTxt('s-card-mother', s.motherName||'—');
-      setTxt('s-card-parent-contact', s.whatsapp||s.altContact||'—');
+      setPhone('s-card-parent-contact', s.whatsapp||s.altContact||'—');
       setTxt('s-card-pen', s.penNumber||'—');
       setTxt('s-card-house', houseMap2[s.house]||s.house||'—');
       const bal = parseFloat(s.feeBalance ?? s.feeTotal ?? 0);
       const feeDueEl = document.getElementById('s-stat-fee-due');
       if (feeDueEl) feeDueEl.textContent = bal > 0 ? '₹' + bal.toLocaleString('en-IN') : '₹0';
+      const _ldr = document.getElementById('s-portal-loader');
+      if (_ldr) { _ldr.classList.add('fade-out'); setTimeout(() => { _ldr.style.display = 'none'; _ldr.classList.remove('fade-out'); }, 380); }
       loadStudentHomework(); loadStudentNotices(); loadStudentFees();
       if (window.loadStudentDashWidgets) loadStudentDashWidgets();
       window.loadAcademicSnapshot(studentId); // non-blocking — Phase 5
-    } catch(e){ showToast('⚠️ Could not load profile: '+e.message); }
+    } catch(e){ showToast('⚠️ Could not load profile: '+e.message); const _le=document.getElementById('s-portal-loader');if(_le){_le.classList.add('fade-out');setTimeout(()=>{_le.style.display='none';_le.classList.remove('fade-out');},380);} }
   };
 
   // ================================================================
@@ -2534,7 +2567,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const exams = [];
 
       // 6. Update stat cards with real data
-      const setEl = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      const setEl = (id, v) => { countUp(document.getElementById(id), v); };
       setEl('s-stat-attendance', total > 0 ? percentage + '%' : '—');
       // Fee due: use student doc feeBalance if available (more accurate than fees collection)
       const stuSnap = sid ? await getDocs(query(collection(db,'students'), where('studentId','==',sid), limit(1))) : null;
@@ -2915,7 +2948,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     if(window._hwUnsubscribe){window._hwUnsubscribe();window._hwUnsubscribe=null;}
     const cls=window._studentClass||'';
     if(!cls){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-light)">Class not assigned.</td></tr>';return;}
-    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading homework...</td></tr>';
+    const _hwSkel = () => `<tr><td><div class="skel" style="width:70px;height:13px"></div></td><td><div class="skel" style="width:130px;height:13px;margin-bottom:4px"></div><div class="skel" style="width:90px;height:10px"></div></td><td><div class="skel" style="width:65px;height:13px"></div></td><td><div class="skel" style="width:55px;height:13px"></div></td><td><div class="skel" style="width:52px;height:20px;border-radius:10px"></div></td></tr>`;
+    tbody.innerHTML = _hwSkel() + _hwSkel() + _hwSkel();
     window._hwUnsubscribe=onSnapshot(
       query(collection(db,'homework'),where('class','==',cls),limit(20)),
       snap=>{
@@ -2928,7 +2962,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
           if(!isPast) pending++;
           return `<tr><td>${hw.subject||'—'}</td><td><strong>${hw.title||'—'}</strong><br><span style="font-size:11px;color:var(--text-light)">${hw.description||''}</span></td><td>${hw.postedBy||'—'}</td><td style="font-size:13px">${hw.dueDate||'—'}</td><td>${status}</td></tr>`;
         }).join('');
-        const pendEl=document.getElementById('s-stat-pending-hw'); if(pendEl) pendEl.textContent=pending;
+        const pendEl=document.getElementById('s-stat-pending-hw'); if(pendEl) countUp(pendEl, String(pending));
       },
       e=>{tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
     );
@@ -2940,7 +2974,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   window.loadStudentNotices = async function() {
     const el=document.getElementById('s-notices-list');
     if(!el) return;
-    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i></div>';
+    const _nSkel = () => `<div class="notice-card"><div class="skel" style="width:20px;height:20px;border-radius:50%;flex-shrink:0;margin-top:2px"></div><div style="flex:1"><div class="skel" style="width:60%;height:14px;margin-bottom:8px"></div><div class="skel" style="width:35%;height:10px;margin-bottom:8px"></div><div class="skel" style="width:90%;height:10px;margin-bottom:4px"></div><div class="skel" style="width:70%;height:10px"></div></div></div>`;
+    el.innerHTML = _nSkel() + _nSkel() + _nSkel();
     try {
       const snap=await getDocs(query(collection(db,'notices'),limit(20)));
       const cls=window._studentClass||'';
@@ -2998,6 +3033,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const pctLabel = pct >= 90 ? 'Good Standing' : pct >= 75 ? 'Needs Improvement' : 'Below Minimum';
 
       if (pctEl) pctEl.textContent = pct + '%';
+      const circleEl = document.querySelector('#s-attendance .attendance-circle');
+      if (circleEl) circleEl.style.background = `conic-gradient(var(--success) 0% ${pct}%, var(--danger) ${pct}% 100%)`;
       if (msgEl) msgEl.innerHTML = `${pct}% Attendance — <span style="color:${pctClass};font-weight:700">${pctLabel}</span>`;
       if (presEl) presEl.textContent = present;
       if (absEl) absEl.textContent = absent;
@@ -3030,7 +3067,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     const totalEl = document.getElementById('s-fees-total');
     const badgeEl = document.getElementById('s-fees-total-badge');
     if (!listEl) return;
-    listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i></div>';
+    const _fSkel = () => `<div class="fee-row"><div><div class="skel" style="width:110px;height:14px;margin-bottom:5px"></div><div class="skel" style="width:75px;height:10px"></div></div><div class="skel" style="width:55px;height:14px"></div></div>`;
+    listEl.innerHTML = _fSkel() + _fSkel() + _fSkel() + _fSkel();
     try {
       const sid = window._studentId || '';
       if (!sid) { listEl.innerHTML = '<p style="color:var(--text-light);font-size:13px">Student ID not set.</p>'; return; }
@@ -3120,7 +3158,17 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     const txn     = (document.getElementById('s-fee-txn')?.value || '').trim();
     const date    = document.getElementById('s-fee-date')?.value || '';
     const file    = document.getElementById('s-fee-receipt-img')?.files[0];
-    if (!feeType || !amount || !txn) { showToast('⚠️ Fee type, amount and transaction number are required.'); return; }
+    let _valid = true;
+    const _markErr = id => {
+      const el = document.getElementById(id); if (!el) return;
+      el.classList.add('field-error');
+      el.addEventListener('input', () => el.classList.remove('field-error'), { once: true });
+    };
+    if (!feeType)                        { _markErr('s-fee-type-sel'); _valid = false; }
+    if (!amount || parseFloat(amount) <= 0) { _markErr('s-fee-amount');   _valid = false; }
+    if (!txn)                            { _markErr('s-fee-txn');      _valid = false; }
+    if (!date)                           { _markErr('s-fee-date');      _valid = false; }
+    if (!_valid) { showToast('⚠️ Please fill in all required fields.'); return; }
 
     const btn      = document.getElementById('s-fee-submit-btn');
     const progBox  = document.getElementById('s-fee-upload-progress');
@@ -4164,6 +4212,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     try{
       const tid=window._teacherId||'';
       const snap=await getDocs(tid?query(collection(db,'homework'),where('teacherId','==',tid),limit(15)):query(collection(db,'homework'),limit(15)));
+      const hwStat=document.getElementById('t-stat-hw'); if(hwStat) hwStat.textContent=snap.size;
       if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No homework posted yet.</p>';return;}
       el.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
         const hw=d.data();
@@ -4234,9 +4283,21 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     try{
       const tid=window._teacherId||'';
       const snap=await getDocs(tid?query(collection(db,'notices'),where('teacherId','==',tid),limit(20)):query(collection(db,'notices'),limit(15)));
-      if(snap.empty){el.innerHTML='<p style="color:var(--text-light);font-size:13px">No notices posted yet.</p>';return;}
+      if(snap.empty){
+        el.innerHTML='<p style="color:var(--text-light);font-size:13px">No notices posted yet.</p>';
+        const dashEl=document.getElementById('t-dash-notices');
+        if(dashEl) dashEl.innerHTML='<p style="color:var(--text-light);font-size:13px">No recent notices.</p>';
+        return;
+      }
       const bc=p=>p==='Urgent'?'badge-danger':p==='Important'?'badge-warning':'badge-info';
-      el.innerHTML=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||'')).map(d=>{
+      const sorted=[...snap.docs].sort((a,b)=>(b.data().createdAt||'').localeCompare(a.data().createdAt||''));
+      const dashEl=document.getElementById('t-dash-notices');
+      if(dashEl) dashEl.innerHTML=sorted.slice(0,3).map(d=>{
+        const n=d.data();
+        const dot=n.priority==='Urgent'?'var(--danger)':n.priority==='Important'?'var(--warning)':'var(--info)';
+        return `<div class="chapter-item"><i class="fas fa-circle" style="color:${dot};font-size:8px;margin-right:8px"></i>${n.title}</div>`;
+      }).join('');
+      el.innerHTML=sorted.map(d=>{
         const n=d.data();
         const dataJson=JSON.stringify({title:n.title,body:n.body||'',audience:n.audience||'class',priority:n.priority||'Normal'}).replace(/'/g,'&#39;');
         return `<div style="padding:10px 0;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700">${n.title}</div><div style="font-size:12px;color:var(--text-light)">${(n.body||'').slice(0,60)}…</div><span class="badge ${bc(n.priority)}" style="margin-top:4px">${n.priority||'Normal'}</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button onclick="prefillNoticeForm('${d.id}',JSON.parse(this.dataset.n))" data-n='${dataJson}' style="background:none;border:none;color:var(--accent);cursor:pointer" title="Edit"><i class="fas fa-edit"></i></button><button onclick="deleteNotice('${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer" title="Delete"><i class="fas fa-trash"></i></button></div></div>`;
@@ -7646,6 +7707,8 @@ window.saveTAAssignments = async function() {
       try {
         let uSnap = await getDocs(query(collection(db,'users'), where('loginId','==',tid)));
         if (uSnap.empty) uSnap = await getDocs(query(collection(db,'users'), where('loginId','==',tid.toUpperCase())));
+        if (uSnap.empty) uSnap = await getDocs(query(collection(db,'users'), where('loginId','==',tid.toLowerCase())));
+        if (uSnap.empty && _taCurrentData?.email) uSnap = await getDocs(query(collection(db,'users'), where('email','==',_taCurrentData.email)));
         if (!uSnap.empty) {
           const authUid = uSnap.docs[0].id;
           await setDoc(doc(db,'users',authUid), portalPayload, { merge: true });
@@ -7820,15 +7883,14 @@ window.loadTeacherPortal = async function(user) {
     let rawCTOf    = userData.tpClassTeacherOf || null;
     let newAssigns = userData.tpAssignments    || [];
 
-    // FALLBACK: if /users fields not yet synced, try /teachers/{uid} mirror doc
-    if (!newRole) {
+    // FALLBACK: if /users fields not yet synced (or tpAssignments empty), try /teachers/{uid} mirror doc
+    if (!newRole || !newAssigns.length) {
       try {
         const mirrorSnap = await getDoc(doc(db, 'teachers', user.uid));
         if (mirrorSnap.exists()) {
           const m = mirrorSnap.data();
-          newRole    = m.role    || null;
-          rawCTOf    = m.classTeacherOf || null;
-          newAssigns = m.assignments    || [];
+          if (!newRole)         { newRole = m.role || null; rawCTOf = m.classTeacherOf || null; }
+          if (!newAssigns.length) newAssigns = m.assignments || [];
         }
       } catch(ef) { /* security rules — skip */ }
     }
@@ -7839,7 +7901,13 @@ window.loadTeacherPortal = async function(user) {
     try {
       let snap = await getDocs(query(collection(db,'teachers'), where('teacherId','==',teacherId)));
       if (snap.empty) snap = await getDocs(query(collection(db,'teachers'), where('teacherId','==',teacherId.toUpperCase())));
-      if (!snap.empty) { teacherDocId = snap.docs[0].id; profileData = snap.docs[0].data(); if (!newRole) { newRole = profileData.role||null; rawCTOf = profileData.classTeacherOf||null; newAssigns = profileData.assignments||[]; } }
+      if (snap.empty) snap = await getDocs(query(collection(db,'teachers'), where('teacherId','==',teacherId.toLowerCase())));
+      if (!snap.empty) {
+        teacherDocId = snap.docs[0].id;
+        profileData  = snap.docs[0].data();
+        if (!newRole)         { newRole = profileData.role||null; rawCTOf = profileData.classTeacherOf||null; }
+        if (!newAssigns.length) newAssigns = profileData.assignments||[];
+      }
     } catch(eq) { /* blocked by rules */ }
 
     const newCTOf = rawCTOf ? rawCTOf.split('-')[0] : null;

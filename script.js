@@ -25,6 +25,10 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   window.scrollTo(0, 0);
+  // Body class for toast positioning above bottom navs
+  document.body.classList.remove('page-student', 'page-teacher');
+  if (name === 'student-dash') document.body.classList.add('page-student');
+  if (name === 'teacher-dash') document.body.classList.add('page-teacher');
 
   // Auto-focus login field when login page opens
   if (name === 'login') {
@@ -81,10 +85,40 @@ function showDash(prefix, sectionId, btn) {
     if (sidebar) sidebar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
-  // Update dash title
+  // Update dash title — strip icon glyphs, use only the visible label text
   const titleEl = document.getElementById(prefix + '-dash-title');
-  if (titleEl && btn) titleEl.textContent = btn.textContent.trim();
+  if (titleEl && btn) {
+    const labelNode = Array.from(btn.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+    titleEl.textContent = labelNode ? labelNode.textContent.trim() : btn.textContent.trim();
+  }
+  // Sync bottom navs
+  if (prefix === 't' && window.syncTeacherBottomNav) window.syncTeacherBottomNav(sectionId);
+  if (prefix === 's' && window.syncStudentBottomNav) window.syncStudentBottomNav(sectionId);
 }
+
+// Student bottom nav helpers
+window.syncStudentBottomNav = function(sectionId) {
+  document.querySelectorAll('#studentBottomNav button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.section === sectionId);
+  });
+};
+window.navStudentTo = function(sectionId) {
+  const sidebarBtn = document.querySelector('#studentSidebar button[onclick*="' + sectionId + '"]');
+  showDash('s', sectionId, sidebarBtn);
+  window.syncStudentBottomNav(sectionId);
+};
+
+// Teacher bottom nav helpers
+window.syncTeacherBottomNav = function(sectionId) {
+  document.querySelectorAll('#teacherBottomNav button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.section === sectionId);
+  });
+};
+window.navTeacherTo = function(sectionId) {
+  const sidebarBtn = document.querySelector('#teacherSidebar button[onclick*="' + sectionId + '"]');
+  showDash('t', sectionId, sidebarBtn);
+  window.syncTeacherBottomNav(sectionId);
+};
 
 function adminInboxGo(sectionId, feeFilter) {
   const btn = document.querySelector('#adminSidebar button[onclick*="' + sectionId + '"]');
@@ -120,10 +154,14 @@ function loginAs(role) {
   currentRole     = cleanRole;
   const loginPage = document.getElementById('page-login');
   if (loginPage) loginPage.classList.remove('active');
-  if      (cleanRole === 'student') showPage('student-dash');
-  else if (cleanRole === 'teacher') showPage('teacher-dash');
-  else if (cleanRole === 'admin')   showPage('admin-dash');
-  else if (cleanRole === 'office')  showPage('office-dash');
+  if (cleanRole === 'student') {
+    showPage('student-dash');
+    const ldr = document.getElementById('s-portal-loader');
+    if (ldr) ldr.style.display = 'flex';
+    setTimeout(() => { if (window.navStudentTo) window.navStudentTo('s-dashboard'); }, 50);
+  } else if (cleanRole === 'teacher') showPage('teacher-dash');
+  else if   (cleanRole === 'admin')   showPage('admin-dash');
+  else if   (cleanRole === 'office')  showPage('office-dash');
 }
 
 // ================================================================
@@ -144,15 +182,61 @@ function logout() {
 }
 
 // ================================================================
+//  Count-up animation for stat cards
+// ================================================================
+window.countUp = function(el, finalText, duration) {
+  if (!el) return;
+  duration = duration || 650;
+  const match = String(finalText).match(/[\d,]+/);
+  if (!match || finalText === '—') { el.textContent = finalText; return; }
+  const raw    = parseFloat(match[0].replace(/,/g, ''));
+  const idx    = finalText.indexOf(match[0]);
+  const prefix = finalText.slice(0, idx);
+  const suffix = finalText.slice(idx + match[0].length);
+  let start = null;
+  function step(ts) {
+    if (!start) start = ts;
+    const p = Math.min((ts - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = prefix + Math.round(raw * ease).toLocaleString('en-IN') + suffix;
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = finalText;
+  }
+  requestAnimationFrame(step);
+};
+
+// ================================================================
 //  Mobile
 // ================================================================
 function toggleMobileMenu() {
   const m = document.getElementById('mobileMenu');
   if (m) m.classList.toggle('open');
 }
+function _getSidebarBackdrop() {
+  let bd = document.getElementById('sidebar-backdrop');
+  if (!bd) {
+    bd = document.createElement('div');
+    bd.id = 'sidebar-backdrop';
+    bd.className = 'sidebar-backdrop';
+    bd.addEventListener('click', _closeAllSidebars);
+    document.body.appendChild(bd);
+  }
+  return bd;
+}
+function _closeAllSidebars() {
+  ['studentSidebar','teacherSidebar','adminSidebar','officeSidebar'].forEach(id => {
+    const sb = document.getElementById(id);
+    if (sb) sb.classList.remove('open');
+  });
+  const bd = document.getElementById('sidebar-backdrop');
+  if (bd) bd.classList.remove('visible');
+}
 function toggleSidebar(id) {
   const sb = document.getElementById(id);
-  if (sb) sb.classList.toggle('open');
+  if (!sb) return;
+  const isOpening = !sb.classList.contains('open');
+  sb.classList.toggle('open');
+  _getSidebarBackdrop().classList.toggle('visible', isOpening);
 }
 
 // ================================================================
@@ -167,14 +251,17 @@ function showToast(msg) {
 }
 
 // ================================================================
-//  Close sidebar on outside click
+//  Close sidebar on outside click (backdrop handles tap-outside on mobile)
 // ================================================================
 document.addEventListener('click', function(e) {
+  const bd = document.getElementById('sidebar-backdrop');
+  if (bd && bd.contains(e.target)) return; // backdrop click handled separately
   ['studentSidebar', 'teacherSidebar', 'adminSidebar', 'officeSidebar'].forEach(id => {
     const sb = document.getElementById(id);
     if (sb && sb.classList.contains('open')) {
       if (!sb.contains(e.target) && !e.target.classList.contains('sidebar-toggle')) {
         sb.classList.remove('open');
+        if (bd) bd.classList.remove('visible');
       }
     }
   });
@@ -211,6 +298,13 @@ function changeAttDate(delta) {
 function markAllAttendance(status) {
   document.querySelectorAll('.att-radio[data-status="' + status + '"]').forEach(r => r.click());
 }
+
+window.filterTeacherStudents = function(q) {
+  const lower = q.toLowerCase();
+  document.querySelectorAll('#teacher-student-tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(lower) ? '' : 'none';
+  });
+};
 
 // Stub functions — real implementations in Firebase module
 window.loadAttendanceForDate   = window.loadAttendanceForDate   || function() {};

@@ -947,7 +947,7 @@
       </div>
 
       <!-- Error message area -->
-      <div id="login-error-msg" style="display:none;margin-top:12px;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;color:#991b1b;align-items:center;gap:8px">
+      <div id="login-error-msg">
         <i class="fas fa-exclamation-circle"></i><span id="login-error-text"></span>
       </div>
 
@@ -962,6 +962,10 @@
      STUDENT DASHBOARD (unchanged structure, preserved fully)
 ================================================================ -->
 <div id="page-student-dash" class="page">
+  <div id="s-portal-loader">
+    <div class="spl-spinner"></div>
+    <span class="spl-text">Loading your portal…</span>
+  </div>
   <div class="dash-shell">
     <nav class="sidebar" id="studentSidebar">
       <div class="sidebar-brand"><img src="assets/images/logo.jpg" class="s-logo" alt="School Logo"><h4>St. Francis De Sales Sec. School</h4><p>Student Portal</p></div>
@@ -1085,23 +1089,18 @@
         <div id="s-attendance" class="dash-section">
           <div class="card" style="padding:28px;max-width:480px;text-align:center;margin-bottom:24px">
             <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Attendance Overview</h4>
-            <div class="attendance-circle"><span class="attendance-pct">87%</span></div>
-            <p style="color:var(--text-light);font-size:14px;margin-bottom:20px">87% Attendance — <span style="color:var(--warning);font-weight:700">Needs Improvement</span></p>
-            <div style="display:flex;justify-content:center;gap:32px">
-              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--success)">116</div><div style="font-size:12px;color:var(--text-light)">Days Present</div></div>
-              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--danger)">17</div><div style="font-size:12px;color:var(--text-light)">Days Absent</div></div>
-              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--accent)">133</div><div style="font-size:12px;color:var(--text-light)">Total Working Days</div></div>
+            <div class="attendance-circle"><span class="attendance-pct">—</span></div>
+            <p style="color:var(--text-light);font-size:14px;margin-bottom:20px"><i class="fas fa-spinner fa-spin" style="margin-right:6px"></i>Loading attendance…</p>
+            <div class="att-stats-row">
+              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--success)">—</div><div style="font-size:12px;color:var(--text-light)">Days Present</div></div>
+              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--danger)">—</div><div style="font-size:12px;color:var(--text-light)">Days Absent</div></div>
+              <div><div style="font-family:var(--font-head);font-size:1.4rem;color:var(--accent)">—</div><div style="font-size:12px;color:var(--text-light)">Total Working Days</div></div>
             </div>
           </div>
           <div class="card" style="padding:24px">
             <h4 style="color:var(--accent-dark);margin-bottom:16px">Monthly Attendance Log</h4>
             <div class="table-wrap"><table><thead><tr><th>Month</th><th>Total Days</th><th>Present</th><th>Absent</th><th>%</th></tr></thead><tbody>
-              <tr><td>April 2025</td><td>22</td><td>20</td><td>2</td><td><span class="badge badge-success">91%</span></td></tr>
-              <tr><td>May 2025</td><td>18</td><td>16</td><td>2</td><td><span class="badge badge-success">89%</span></td></tr>
-              <tr><td>June 2025</td><td>20</td><td>17</td><td>3</td><td><span class="badge badge-warning">85%</span></td></tr>
-              <tr><td>July 2025</td><td>23</td><td>20</td><td>3</td><td><span class="badge badge-warning">87%</span></td></tr>
-              <tr><td>August 2025</td><td>21</td><td>18</td><td>3</td><td><span class="badge badge-warning">86%</span></td></tr>
-              <tr><td>September 2025</td><td>19</td><td>14</td><td>5</td><td><span class="badge badge-danger">74%</span></td></tr>
+              <tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading attendance log…</td></tr>
             </tbody></table></div>
           </div>
         </div>
@@ -1164,14 +1163,14 @@
           </div>
           <div class="card" style="padding:24px;max-width:600px">
             <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-upload" style="margin-right:8px;color:var(--accent)"></i>Submit Fee Payment</h4>
-            <div class="form-group"><label>Fee Type</label><select id="s-fee-type-sel"><option value="">— Select Fee Type —</option><option>Tuition Fee – Q1</option><option>Tuition Fee – Q2</option><option>Tuition Fee – Q3</option><option>Tuition Fee – Q4</option><option>Exam Fee</option><option>Sports Fee</option><option>Library Fee</option><option>Annual Fee</option></select></div>
-            <div class="form-group"><label>Amount Paid (₹)</label><input type="number" id="s-fee-amount" placeholder="e.g. 4500" min="0"></div>
+            <div class="form-group"><label>Fee Type <span style="color:var(--danger)">*</span></label><select id="s-fee-type-sel" required><option value="">— Select Fee Type —</option><option>Tuition Fee – Q1</option><option>Tuition Fee – Q2</option><option>Tuition Fee – Q3</option><option>Tuition Fee – Q4</option><option>Exam Fee</option><option>Sports Fee</option><option>Library Fee</option><option>Annual Fee</option></select></div>
+            <div class="form-group"><label>Amount Paid (₹) <span style="color:var(--danger)">*</span></label><input type="number" id="s-fee-amount" placeholder="e.g. 4500" min="1" required></div>
             <div class="form-group"><label>Payment Mode</label><select id="s-fee-mode"><option>Bank Transfer / NEFT</option><option>Cash</option><option>UPI / QR</option><option>Cheque</option></select></div>
-            <div class="form-group"><label>Transaction / Receipt No.</label><input type="text" id="s-fee-txn" placeholder="e.g. TXN123456 or Receipt No."></div>
-            <div class="form-group"><label>Payment Date</label><input type="date" id="s-fee-date"></div>
+            <div class="form-group"><label>Transaction / Receipt No. <span style="color:var(--danger)">*</span></label><input type="text" id="s-fee-txn" placeholder="e.g. TXN123456 or Receipt No." required></div>
+            <div class="form-group"><label>Payment Date <span style="color:var(--danger)">*</span></label><input type="date" id="s-fee-date" required></div>
             <div class="form-group">
               <label>Receipt Screenshot <span style="font-size:11px;color:var(--text-light)">(UPI/bank screenshot — recommended)</span></label>
-              <input type="file" id="s-fee-receipt-img" accept="image/*" style="padding:6px;border:1px solid var(--border);border-radius:8px;width:100%;font-size:13px;box-sizing:border-box">
+              <input type="file" id="s-fee-receipt-img" accept="image/*" capture="environment" style="padding:6px;border:1px solid var(--border);border-radius:8px;width:100%;font-size:13px;box-sizing:border-box">
             </div>
             <div id="s-fee-upload-progress" style="display:none;margin-bottom:12px">
               <div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden"><div id="s-fee-progress-bar" style="height:100%;background:var(--primary);width:0%;transition:width .3s"></div></div>
@@ -1183,15 +1182,33 @@
         <div id="s-contact" class="dash-section">
           <div class="card" style="padding:28px;max-width:560px">
             <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-envelope" style="margin-right:8px;color:var(--accent)"></i>Contact School Administration</h4>
-            <div class="form-group"><label>To</label><select><option>Class Teacher</option><option>Vice Principal</option><option>Principal's Office</option><option>Accounts Office</option></select></div>
-            <div class="form-group"><label>Subject</label><input type="text" placeholder="Subject of your message"></div>
-            <div class="form-group"><label>Message</label><textarea placeholder="Write your message here..."></textarea></div>
-            <button class="btn btn-primary" onclick="showToast('✅ Message sent to the administration.')"><i class="fas fa-paper-plane"></i> Send Message</button>
+            <div class="form-group"><label>To</label><select id="s-contact-to"><option>Class Teacher</option><option>Vice Principal</option><option>Principal's Office</option><option>Accounts Office</option></select></div>
+            <div class="form-group"><label>Subject</label><input type="text" id="s-contact-subject" placeholder="Subject of your message"></div>
+            <div class="form-group"><label>Message</label><textarea id="s-contact-message" placeholder="Write your message here..."></textarea></div>
+            <button class="btn btn-primary" onclick="sendStudentMessage()"><i class="fas fa-paper-plane"></i> Send Message</button>
           </div>
         </div>
       </div>
     </div>
   </div>
+  <!-- Student bottom nav — mobile only -->
+  <nav class="s-bottom-nav" id="studentBottomNav">
+    <button class="active" data-section="s-dashboard" onclick="navStudentTo('s-dashboard')">
+      <i class="fas fa-th-large"></i><span>Home</span>
+    </button>
+    <button data-section="s-attendance" onclick="navStudentTo('s-attendance')">
+      <i class="fas fa-calendar-check"></i><span>Attendance</span>
+    </button>
+    <button data-section="s-homework" onclick="navStudentTo('s-homework')">
+      <i class="fas fa-book-open"></i><span>Homework</span>
+    </button>
+    <button data-section="s-fees" onclick="navStudentTo('s-fees')">
+      <i class="fas fa-money-bill-wave"></i><span>Fees</span>
+    </button>
+    <button data-section="s-profile" onclick="navStudentTo('s-profile')">
+      <i class="fas fa-user"></i><span>Profile</span>
+    </button>
+  </nav>
 </div>
 
 <!-- ================================================================
@@ -1230,7 +1247,7 @@
         <div id="t-dashboard" class="dash-section active">
           <div class="dash-stats">
             <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-users"></i></div><div><div class="dash-stat-val" id="t-stat-students">—</div><div class="dash-stat-label">My Students</div></div></div>
-            <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-book-open"></i></div><div><div class="dash-stat-val">3</div><div class="dash-stat-label">Pending HW Reviews</div></div></div>
+            <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-book-open"></i></div><div><div class="dash-stat-val" id="t-stat-hw">—</div><div class="dash-stat-label">Homeworks Posted</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-calendar-check"></i></div><div><div class="dash-stat-val" id="t-stat-class">—</div><div class="dash-stat-label">My Class</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-chalkboard"></i></div><div><div class="dash-stat-val" id="t-stat-subjects" style="font-size:0.85rem;line-height:1.2">—</div><div class="dash-stat-label">Subject(s)</div></div></div>
           </div>
@@ -1253,11 +1270,11 @@
         </div>
         <!-- ── MY SUBJECTS (Phase 2) ── -->
         <div id="t-my-subjects" class="dash-section">
-          <div class="card" style="padding:24px;margin-bottom:18px" id="tp-class-card" style="display:none">
+          <div class="card" style="padding:24px;margin-bottom:18px;display:none" id="tp-class-card">
             <div class="tp-assign-section-head"><span class="tp-assign-marker">▸</span> MY CLASS</div>
             <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
               <span style="font-size:15px;font-weight:700;color:var(--accent-dark)" id="tp-class-label">—</span>
-              <button class="btn btn-sm btn-outline" onclick="showDash('t','t-students',document.querySelector('#teacherSidebar button:nth-child(2)'))"><i class="fas fa-users"></i> View Student List</button>
+              <button class="btn btn-sm btn-outline" onclick="navTeacherTo('t-students')"><i class="fas fa-users"></i> View Student List</button>
               <button class="btn btn-sm btn-primary tp-review-lock-btn"><i class="fas fa-lock"></i> Review &amp; Lock Records</button>
             </div>
           </div>
@@ -1275,7 +1292,7 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
               <h4 style="color:var(--accent-dark)"><i class="fas fa-users" style="margin-right:8px;color:var(--accent)"></i><span id="t-class-heading">My Class</span> – Student List</h4>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <input type="text" placeholder="🔍 Search student..." style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--primary);font-family:var(--font-body);font-size:13px;width:220px">
+                <input type="text" placeholder="🔍 Search student..." style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--primary);font-family:var(--font-body);font-size:13px;flex:1;min-width:0" oninput="filterTeacherStudents(this.value)">
                 <button class="btn btn-sm" style="background:var(--primary);color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer" onclick="exportTeacherClassList()"><i class="fas fa-file-csv" style="margin-right:6px"></i>Export CSV</button>
               </div>
             </div>
@@ -1492,6 +1509,24 @@
       </div>
     </div>
   </div>
+  <!-- Teacher bottom nav — mobile only -->
+  <nav class="t-bottom-nav" id="teacherBottomNav">
+    <button class="active" data-section="t-dashboard" onclick="navTeacherTo('t-dashboard')">
+      <i class="fas fa-th-large"></i><span>Home</span>
+    </button>
+    <button data-section="t-students" onclick="navTeacherTo('t-students')">
+      <i class="fas fa-users"></i><span>Students</span>
+    </button>
+    <button data-section="t-attendance" onclick="navTeacherTo('t-attendance')">
+      <i class="fas fa-calendar-check"></i><span>Attendance</span>
+    </button>
+    <button data-section="t-homework" onclick="navTeacherTo('t-homework')">
+      <i class="fas fa-book-open"></i><span>Homework</span>
+    </button>
+    <button data-section="t-profile" onclick="navTeacherTo('t-profile')">
+      <i class="fas fa-user"></i><span>Profile</span>
+    </button>
+  </nav>
 </div>
 
 <!-- ================================================================

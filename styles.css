@@ -314,6 +314,21 @@ img { max-width: 100%; }
 .event-info h4 { color: var(--accent-dark); margin-bottom: 4px; font-size: 1rem; }
 .event-info p  { font-size: 13px; color: var(--text-light); }
 
+/* ============================================================
+   SKELETON LOADING SHIMMER
+============================================================ */
+.skel {
+  display: inline-block;
+  background: linear-gradient(90deg, #f0ebe3 25%, #faf5ef 50%, #f0ebe3 75%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+}
+@keyframes skel-shimmer {
+  0%   { background-position:  200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .notice-card {
   background: var(--white); border-radius: var(--radius); padding: 18px 20px;
   box-shadow: var(--card-shadow); border-left: 5px solid var(--accent);
@@ -459,6 +474,17 @@ img { max-width: 100%; }
   box-shadow: 0 0 0 3px rgba(139,111,71,0.12);
 }
 .form-group textarea { resize: vertical; min-height: 100px; }
+.form-group input.field-error,
+.form-group select.field-error {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px rgba(220,53,69,0.12) !important;
+  animation: field-shake 0.3s ease;
+}
+@keyframes field-shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
 
@@ -512,6 +538,7 @@ img { max-width: 100%; }
   color: var(--white); display: flex; align-items: center; justify-content: center;
   font-family: var(--font-head); font-size: 1.6rem; font-weight: 700;
   margin: 0 auto 12px; box-shadow: 0 6px 20px rgba(139,111,71,0.3);
+  object-fit: cover;
 }
 .login-logo h2 { font-size: 1.2rem; color: var(--accent-dark); }
 .login-logo p  { font-size: 12px; color: var(--text-light); }
@@ -549,7 +576,7 @@ img { max-width: 100%; }
 
 /* Mobile login input sizing */
 @media (max-width: 480px) {
-  .role-tab { font-size: 11px; padding: 8px 4px; }
+  .role-tab { font-size: 12px; padding: 11px 4px; }
   .login-box .form-group input { font-size: 16px; padding: 12px 14px; }
   .login-box .btn-primary { padding: 14px; font-size: 15px; }
 }
@@ -640,6 +667,17 @@ img { max-width: 100%; }
 
 /* Table */
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+@media (max-width: 768px) {
+  .table-wrap {
+    /* Scroll-shadow: local covers hide the shadow at each edge when fully scrolled;
+       scroll shadows stay fixed and indicate overflowing content. */
+    background:
+      linear-gradient(to right, #fff 20%, transparent) left  / 28px 100% no-repeat local,
+      linear-gradient(to left,  #fff 20%, transparent) right / 28px 100% no-repeat local,
+      linear-gradient(to right, rgba(139,111,71,0.14), transparent) left  / 12px 100% no-repeat scroll,
+      linear-gradient(to left,  rgba(139,111,71,0.14), transparent) right / 12px 100% no-repeat scroll;
+  }
+}
 table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
 thead tr { background: rgba(214,195,163,0.35); }
 th { padding: 12px 16px; text-align: left; font-weight: 700; color: var(--accent-dark); font-size: 13px; letter-spacing: 0.3px; white-space: nowrap; }
@@ -794,7 +832,7 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 /* Attendance Visual */
 .attendance-circle {
   width: 100px; height: 100px; border-radius: 50%;
-  background: conic-gradient(var(--success) 0% 87%, var(--danger) 87% 100%);
+  background: conic-gradient(var(--bg) 0% 100%);
   display: flex; align-items: center; justify-content: center;
   position: relative; margin: 0 auto 16px; box-shadow: 0 4px 16px rgba(40,167,69,0.2);
 }
@@ -807,6 +845,14 @@ tr:hover td { background: rgba(214,195,163,0.15); }
   font-family: var(--font-head); font-size: 1.3rem; font-weight: 700; color: var(--accent-dark);
 }
 
+/* Attendance stats row */
+.att-stats-row {
+  display: flex; justify-content: center; gap: 32px;
+}
+@media (max-width: 400px) {
+  .att-stats-row { gap: 12px; }
+}
+
 /* Fees */
 .fee-row {
   display: flex; justify-content: space-between; align-items: center;
@@ -815,6 +861,21 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 .fee-row:last-child { border-bottom: none; }
 .fee-name   { font-weight: 600; font-size: 14px; }
 .fee-amount { color: var(--text-light); font-size: 13px; }
+
+/* Sidebar backdrop — shown on mobile when sidebar is open */
+.sidebar-backdrop {
+  display: none;
+  position: fixed; inset: 0; z-index: 99;
+  background: rgba(44, 31, 14, 0.45);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  animation: backdrop-in 0.25s ease;
+}
+.sidebar-backdrop.visible { display: block; }
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 
 /* Sidebar toggle mobile */
 .sidebar-toggle {
@@ -834,13 +895,74 @@ tr:hover td { background: rgba(214,195,163,0.15); }
   .dash-stats { grid-template-columns: 1fr 1fr; }
   /* Header: prevent cramping */
   .dash-header { padding: 10px 14px; gap: 8px; flex-wrap: nowrap; }
-  .dash-header h2 { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+  .dash-header h2 { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dash-header p  { display: none; }
   /* Hide username/role text on mobile — keep avatar only */
   .dash-username { display: none; }
   .dash-role     { display: none; }
   .dash-user { gap: 6px; flex-shrink: 0; }
 }
+
+/* Student bottom nav — mobile only */
+.s-bottom-nav {
+  display: none;
+}
+@media (max-width: 768px) {
+  .s-bottom-nav {
+    display: flex;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 110;
+    background: var(--white);
+    border-top: 1.5px solid var(--primary);
+    box-shadow: 0 -4px 20px rgba(139,111,71,0.12);
+    height: 60px;
+  }
+  .s-bottom-nav button {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-light); font-family: var(--font-body);
+    font-size: 10px; font-weight: 600; padding: 6px 2px;
+    transition: color var(--transition);
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  .s-bottom-nav button i { font-size: 1.1rem; }
+  .s-bottom-nav button.active { color: var(--accent); }
+  .s-bottom-nav button.active i {
+    filter: drop-shadow(0 0 4px rgba(139,111,71,0.35));
+  }
+  /* Push content above the nav bar */
+  #page-student-dash .dash-content { padding-bottom: 74px; }
+}
+
+/* Teacher bottom nav — mobile only */
+.t-bottom-nav {
+  display: none;
+}
+@media (max-width: 768px) {
+  .t-bottom-nav {
+    display: flex;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 110;
+    background: var(--white);
+    border-top: 1.5px solid var(--primary);
+    box-shadow: 0 -4px 20px rgba(139,111,71,0.12);
+    height: 60px;
+  }
+  .t-bottom-nav button {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-light); font-family: var(--font-body);
+    font-size: 10px; font-weight: 600; padding: 6px 2px;
+    transition: color var(--transition);
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  .t-bottom-nav button i { font-size: 1.1rem; }
+  .t-bottom-nav button.active { color: var(--accent); }
+  .t-bottom-nav button.active i {
+    filter: drop-shadow(0 0 4px rgba(139,111,71,0.35));
+  }
+  /* Push content above the nav bar */
+  #page-teacher-dash .dash-content { padding-bottom: 74px; }
 }
 
 /* Syllabus */
@@ -873,6 +995,11 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 }
 @media (max-width: 480px) {
   .toast { bottom: 16px; right: 16px; left: 16px; max-width: unset; }
+}
+/* Raise toast above bottom navs on mobile */
+@media (max-width: 768px) {
+  body.page-student .toast,
+  body.page-teacher .toast { bottom: 74px; }
 }
 
 /* ============================================================
@@ -1556,6 +1683,24 @@ tr:hover td { background: rgba(214,195,163,0.15); }
   .admin-ta-assign-btn { width: 100%; text-align: center; }
   .admin-ta-panel { width: 100vw; }
 }
+
+/* ── Student portal mount loader ── */
+#s-portal-loader {
+  position: fixed; inset: 0; z-index: 300;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(255, 250, 244, 0.97);
+  gap: 18px;
+  transition: opacity 0.35s ease;
+}
+#s-portal-loader.fade-out { opacity: 0; pointer-events: none; }
+#s-portal-loader .spl-spinner {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 4px solid rgba(139,111,71,0.15);
+  border-top-color: var(--accent, #8B6F47);
+  animation: spl-spin 0.8s linear infinite;
+}
+@keyframes spl-spin { to { transform: rotate(360deg); } }
+#s-portal-loader .spl-text { font-size: 14px; color: var(--text-light, #64748b); }
 
 /* ═══════════════════════════════════════════════
    TEACHER PORTAL — ASSIGNMENTS  (.tp-assign-*)

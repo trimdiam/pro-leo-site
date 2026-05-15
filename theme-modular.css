@@ -43,7 +43,6 @@
       .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
       /* Dashboard mobile */
       .dash-layout { flex-direction: column !important; }
-      .sidebar { width: 100% !important; height: auto !important; position: fixed !important; }
       .dash-main { margin-left: 0 !important; padding: 0 !important; }
       /* Sub-nav scroll */
       div[style*="display:flex;gap:0"] { overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
@@ -63,7 +62,8 @@
       .staff-grid { grid-template-columns: 1fr !important; }
       .login-box { padding: 24px 20px !important; }
       .role-tabs { flex-wrap: wrap; }
-      .role-tab { flex: 1; min-width: 80px; }
+      .role-tab { flex: 1 1 50%; min-width: 0; }
+      .role-tab:nth-child(n+3) { border-top: 1px solid var(--primary); }
       /* Admin table */
       #admin-admissions-tbody td:nth-child(3),
       #admin-admissions-tbody td:nth-child(6) { display: none; }
