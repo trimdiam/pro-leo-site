@@ -7389,12 +7389,15 @@ async function runLoginCheck() {
   for (const dir of SFS_TEACHER_DIRECTORY) {
     const teacherDoc = teacherByDocId.get(dir.initials);
 
-    // Find users that point at this teacher via teacherId or loginId
+    // Find users that point at this teacher via teacherId or loginId.
+    // When a staffId exists, match only on staffId — not initials — to avoid
+    // false AMBIGUOUS when an old initials-based account coexists with the
+    // correct staffId account (e.g. loginId='QM' vs loginId='SFST004').
     const candidates = users.filter(u => {
       const ut = String(u.teacherId || u.loginId || '').toUpperCase();
       if (!ut) return false;
-      return (dir.staffId && ut === dir.staffId.toUpperCase()) ||
-             (ut === dir.initials.toUpperCase());
+      if (dir.staffId) return ut === dir.staffId.toUpperCase();
+      return ut === dir.initials.toUpperCase();
     });
 
     let status, detail, fix = '';
@@ -7430,8 +7433,13 @@ async function runLoginCheck() {
     report.push({ dir, status, detail, fix, teacherDoc, candidates });
   }
 
-  // Also report orphan user accounts that claim to be teachers but match no directory entry
-  const claimedDirIds = new Set(SFS_TEACHER_DIRECTORY.flatMap(d => [d.initials.toUpperCase(), (d.staffId||'').toUpperCase()].filter(Boolean)));
+  // Also report orphan user accounts that claim to be teachers but match no directory entry.
+  // For teachers with a staffId only claim that ID — initials-based accounts become orphans
+  // so the admin sees stale legacy logins that need cleanup.
+  const claimedDirIds = new Set(SFS_TEACHER_DIRECTORY.flatMap(d => {
+    if (d.staffId) return [d.staffId.toUpperCase()];
+    return [d.initials.toUpperCase()];
+  }));
   const orphans = users.filter(u => {
     const ut = String(u.teacherId || u.loginId || '').toUpperCase();
     if (!ut) return false;
