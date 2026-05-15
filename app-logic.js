@@ -1,4 +1,3 @@
-  import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, createUserWithEmailAndPassword, updatePassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit, serverTimestamp, updateDoc, onSnapshot, getCountFromServer, deleteField, writeBatch } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 // ================================================================
@@ -4533,38 +4532,71 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     }catch(e){console.warn('Seed:',e.message);}
   };
 
+  window._showInactiveTeachers = false;
   window.loadTeachers = async function(){
     const tbody=document.getElementById('admin-teacher-tbody'),countEl=document.getElementById('teacher-count');
     if(!tbody) return;
-    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
     try{
       const snap=await getDocs(query(collection(db,'teachers'),orderBy('teacherId')));
       window._loadedTeacherDocs=snap.docs;
-      if(countEl) countEl.textContent=`${snap.size} teacher${snap.size!==1?'s':''}`;
-      if(snap.empty){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-light)">No teachers found.</td></tr>';return;}
-      renderTeacherRows(snap.docs);
-    }catch(e){tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
+      const activeDocs=window._showInactiveTeachers?snap.docs:snap.docs.filter(d=>d.data().isActive!==false);
+      const total=snap.size, active=activeDocs.length;
+      if(countEl){
+        const inactiveCount=total-active;
+        countEl.innerHTML=`${active} teacher${active!==1?'s':''}${inactiveCount>0?` <span style="color:var(--text-light);font-weight:400">(${inactiveCount} inactive)</span>`:''}`;
+      }
+      // Update toggle button label
+      const toggleBtn=document.getElementById('teacher-inactive-toggle');
+      if(toggleBtn) toggleBtn.textContent=window._showInactiveTeachers?'Hide Inactive':'Show Inactive';
+      if(!activeDocs.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-light)">No teachers found.</td></tr>';return;}
+      renderTeacherRows(activeDocs);
+    }catch(e){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
+  };
+  window.toggleInactiveTeachers=function(){
+    window._showInactiveTeachers=!window._showInactiveTeachers;
+    loadTeachers();
   };
 
   function renderTeacherRows(docs){
     const tbody=document.getElementById('admin-teacher-tbody');
     const classLabel={PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
     const getL=c=>classLabel[c]||(c?'Class '+c:'—');
+    // Role badge helper
+    function getRoleBadge(t){
+      const role=t.role||'';
+      if(role==='class_teacher'||t.classTeacher||t.classTeacherOf){
+        const cls=t.classTeacherOf||t.classTeacher||'';
+        return `<span class="badge badge-success" style="font-size:11px;white-space:nowrap">Class Teacher${cls?' — '+cls:''}</span>`;
+      }
+      if(role==='admin') return `<span class="badge badge-danger" style="font-size:11px">Admin</span>`;
+      if(role==='subject_teacher') return `<span class="badge badge-info" style="font-size:11px">Subject Teacher</span>`;
+      if(t.subjects) return `<span class="badge" style="font-size:11px;background:#e8f0fe;color:#1a3a6b">Subject Teacher</span>`;
+      return '<span style="color:var(--text-light);font-size:12px">—</span>';
+    }
+    // Assignment count helper
+    function getAssignmentCell(t){
+      const arr=t.assignments||[];
+      if(arr.length>0) return `<span style="font-size:12px;color:var(--accent-dark);font-weight:600">${arr.length} subject${arr.length!==1?'s':''}</span>`;
+      if(t.subjects) return `<span style="font-size:12px;color:var(--text-light)">${t.subjects}</span>`;
+      return '<span style="color:var(--text-light);font-size:12px">—</span>';
+    }
     tbody.innerHTML=docs.map(d=>{
       const t=d.data(); const bc=t.status==='Active'?'badge-success':t.status==='On Leave'?'badge-warning':'badge-danger';
-      const tName=JSON.stringify(t).replace(/"/g,"'");
+      const safeT=JSON.stringify(t).replace(/'/g,"\\'");
       return `<tr data-tname="${(t.name||'').toLowerCase()}">
         <td><strong style="font-family:monospace;color:var(--accent)">${t.teacherId||'—'}</strong></td>
-        <td>${t.title||'—'}</td><td>${t.name||'—'}</td>
-        <td>${t.classTeacher?getL(t.classTeacher):'—'}</td>
-        <td style="font-size:13px">${t.subjects||'—'}</td>
+        <td>${t.name||'—'}</td>
+        <td>${getRoleBadge(t)}</td>
+        <td>${getAssignmentCell(t)}</td>
         <td style="font-size:12px">${t.whatsapp||'—'}</td>
         <td><span class="badge ${bc}">${t.status||'Active'}</span></td>
         <td><div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-outline" onclick='editTeacher("${d.id}",${JSON.stringify(t).replace(/'/g,"\\'")})'><i class="fas fa-edit"></i></button>
-          <button class="btn btn-sm" style="background:#1a3a6b;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px" onclick='openTeacherLoginModal("${(t.teacherId||'').replace(/"/g,'')}","${(t.name||'').replace(/"/g,'')}","${(t.email||'').replace(/"/g,'')}")' ><i class="fas fa-key"></i></button>
-          <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px" onclick='openTeacherLeavePanel("${(t.teacherId||'').replace(/"/g,'')}","${(t.name||'').replace(/"/g,'')}")'><i class="fas fa-calendar-times"></i> Leaves</button>
-          <button class="btn btn-sm btn-danger" onclick='promptDeleteTeacher("${d.id}","${(t.name||'').replace(/"/g,'')}")'><i class="fas fa-trash"></i></button>
+          <button class="btn btn-sm btn-outline" title="Edit Profile" onclick='editTeacher("${d.id}",${safeT})'><i class="fas fa-edit"></i></button>
+          <button class="btn btn-sm" style="background:#0e7490;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px" title="Manage Assignments" onclick='openTAPanel("${d.id}")'><i class="fas fa-tasks"></i> Assign</button>
+          <button class="btn btn-sm" style="background:#1a3a6b;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px" title="Login Setup" onclick='openTeacherLoginModal("${(t.teacherId||'').replace(/"/g,'')}","${(t.name||'').replace(/"/g,'')}","${(t.email||'').replace(/"/g,'')}")' ><i class="fas fa-key"></i></button>
+          <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px" title="Leave Records" onclick='openTeacherLeavePanel("${(t.teacherId||'').replace(/"/g,'')}","${(t.name||'').replace(/"/g,'')}")'><i class="fas fa-calendar-times"></i></button>
+          <button class="btn btn-sm btn-danger" title="Delete" onclick='openTeacherDeleteConfirm("${d.id}",${safeT})'><i class="fas fa-trash"></i></button>
         </div></td></tr>`;
     }).join('');
   }
@@ -4646,40 +4678,215 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     document.querySelectorAll('#admin-teacher-tbody tr[data-tname]').forEach(tr=>{tr.style.display=(tr.dataset.tname.includes(q)||tr.textContent.toLowerCase().includes(q))?'':'none';});
   };
 
-  window.openTeacherModal=function(){document.getElementById('teacher-modal-title').textContent='Add New Teacher';document.getElementById('tf-doc-id').value='';clearTeacherForm();document.getElementById('teacher-modal-overlay').style.display='block';document.body.style.overflow='hidden';};
+  window.openTeacherModal=function(){
+    document.getElementById('teacher-modal-title').textContent='Add New Teacher';
+    document.getElementById('tf-doc-id').value='';
+    clearTeacherForm();
+    // Reset role/assignment section
+    window._tfAssignments=[];
+    document.querySelectorAll('input[name="tf-role"]').forEach(r=>r.checked=false);
+    onTFRoleChange();
+    renderTFAssignments();
+    document.getElementById('teacher-modal-overlay').style.display='block';
+    document.body.style.overflow='hidden';
+  };
   window.closeTeacherModal=function(){document.getElementById('teacher-modal-overlay').style.display='none';document.body.style.overflow='';};
   window.editTeacher=function(docId,t){
-    document.getElementById('teacher-modal-title').textContent='Edit Teacher';document.getElementById('tf-doc-id').value=docId;
+    document.getElementById('teacher-modal-title').textContent='Edit Teacher';
+    document.getElementById('tf-doc-id').value=docId;
     const f={teacherId:t.teacherId,title:t.title,name:t.name,dob:t.dob,gender:t.gender,blood:t.bloodGroup,nationality:t.nationality,classTeacher:t.classTeacher,section:t.section,subjects:t.subjects,classesTaught:t.classesTaught,empType:t.empType,joiningDate:t.joiningDate,qualification:t.qualification,experience:t.experience,whatsapp:t.whatsapp,altContact:t.altContact,email:t.email,address:t.address,pen:t.penNumber,aadhaar:t.aadhaar,empId:t.empId,status:t.status,remarks:t.remarks,routineInitials:t.routineInitials||t.initials||''};
     Object.entries(f).forEach(([k,v])=>setVal('tf-'+k,v));
-    document.getElementById('teacher-modal-overlay').style.display='block';document.body.style.overflow='hidden';
+    // Populate role & assignments section
+    const role=t.role||'';
+    document.querySelectorAll('input[name="tf-role"]').forEach(r=>{r.checked=(r.value===role);});
+    onTFRoleChange();
+    // Class teacher class — prefer classTeacherOf (Roman), fall back to classTeacher (Arabic->Roman)
+    const arabicToRoman={1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII',9:'IX',10:'X'};
+    let ctClass=t.classTeacherOf||'';
+    if(!ctClass&&t.classTeacher){const num=parseInt(t.classTeacher);ctClass=arabicToRoman[num]||String(t.classTeacher);}
+    const ctSel=document.getElementById('tf-ct-class-sel');
+    if(ctSel&&ctClass) ctSel.value=ctClass;
+    // Assignments
+    window._tfAssignments=JSON.parse(JSON.stringify(t.assignments||[]));
+    renderTFAssignments();
+    document.getElementById('teacher-modal-overlay').style.display='block';
+    document.body.style.overflow='hidden';
   };
   window.saveTeacher=async function(){
     const btn=document.getElementById('tf-save-btn');
     const teacherId=getVal('tf-teacherId'),title=getVal('tf-title'),name=getVal('tf-name'),subjects=getVal('tf-subjects');
     if(!teacherId||!title||!name||!subjects){showToast('⚠️ Teacher ID, title, name and subjects are required.');return;}
     const routineInitials=(getVal('tf-routineInitials')||'').toUpperCase().trim();
-    const data={teacherId,title,name,dob:getVal('tf-dob'),gender:getVal('tf-gender'),bloodGroup:getVal('tf-blood'),nationality:getVal('tf-nationality')||'Indian',classTeacher:getVal('tf-classTeacher'),section:getVal('tf-section'),subjects,classesTaught:getVal('tf-classesTaught'),empType:getVal('tf-empType')||'Permanent',joiningDate:getVal('tf-joiningDate'),qualification:getVal('tf-qualification'),experience:getVal('tf-experience'),whatsapp:getVal('tf-whatsapp'),altContact:getVal('tf-altContact'),email:getVal('tf-email'),address:getVal('tf-address'),penNumber:getVal('tf-pen'),aadhaar:getVal('tf-aadhaar'),empId:getVal('tf-empId'),status:getVal('tf-status')||'Active',remarks:getVal('tf-remarks'),routineInitials,initials:routineInitials,updatedAt:new Date().toISOString()};
+    const data={teacherId,title,name,dob:getVal('tf-dob'),gender:getVal('tf-gender'),bloodGroup:getVal('tf-blood'),nationality:getVal('tf-nationality')||'Indian',classTeacher:getVal('tf-classTeacher'),section:getVal('tf-section'),subjects,classesTaught:getVal('tf-classesTaught'),empType:getVal('tf-empType')||'Permanent',joiningDate:getVal('tf-joiningDate'),qualification:getVal('tf-qualification'),experience:getVal('tf-experience'),whatsapp:getVal('tf-whatsapp'),altContact:getVal('tf-altContact'),email:getVal('tf-email'),address:getVal('tf-address'),penNumber:getVal('tf-pen'),aadhaar:getVal('tf-aadhaar'),empId:getVal('tf-empId'),status:getVal('tf-status')||'Active',remarks:getVal('tf-remarks'),routineInitials,initials:routineInitials,isActive:true,updatedAt:new Date().toISOString()};
+    // Read role & assignments from the new section
+    const tfRole=document.querySelector('input[name="tf-role"]:checked')?.value||null;
+    if(tfRole){
+      data.role=tfRole;
+      const tfAssignments=window._tfAssignments||[];
+      data.assignments=tfAssignments;
+      if(tfRole==='class_teacher'){
+        const ctClass=document.getElementById('tf-ct-class-sel')?.value||null;
+        data.classTeacherOf=ctClass;
+        const arabicNums={I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10};
+        if(ctClass) data.classTeacher=arabicNums[ctClass.split('-')[0]]||null;
+      }
+    }
     btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';btn.disabled=true;
     try{
       const docId=document.getElementById('tf-doc-id').value;
+      let savedDocId=docId;
       if(docId){await setDoc(doc(db,'teachers',docId),data,{merge:true});showToast('✅ Teacher updated!');}
-      else{data.createdAt=new Date().toISOString();await addDoc(collection(db,'teachers'),data);showToast('✅ Teacher added!');}
+      else{data.createdAt=new Date().toISOString();const ref=await addDoc(collection(db,'teachers'),data);savedDocId=ref.id;showToast('✅ Teacher added!');}
+      // If class teacher: update /classes/{classId}
+      if(tfRole==='class_teacher'&&data.classTeacherOf){
+        try{
+          await setDoc(doc(db,'classes',data.classTeacherOf),{classTeacherId:savedDocId,classTeacherName:name},{merge:true});
+        }catch(ce){console.warn('Class doc update failed:',ce.message);}
+      }
+      // Sync to /users/{uid} by teacherId lookup
+      if(tfRole&&teacherId){
+        try{
+          let uSnap=await getDocs(query(collection(db,'users'),where('loginId','==',teacherId)));
+          if(uSnap.empty) uSnap=await getDocs(query(collection(db,'users'),where('loginId','==',teacherId.toUpperCase())));
+          if(uSnap.empty) uSnap=await getDocs(query(collection(db,'users'),where('loginId','==',teacherId.toLowerCase())));
+          if(!uSnap.empty){
+            await setDoc(doc(db,'users',uSnap.docs[0].id),{tpRole:data.role||null,tpClassTeacherOf:data.classTeacherOf||null,tpAssignments:data.assignments||[],tpUpdatedAt:new Date().toISOString()},{merge:true});
+          }
+        }catch(ue){console.warn('User sync failed:',ue.message);}
+      }
       closeTeacherModal(); loadTeachers();
     }catch(e){showToast('❌ '+e.message);}
     finally{btn.innerHTML='<i class="fas fa-save"></i> Save Teacher';btn.disabled=false;}
   };
   window._pendingDeleteTeacherId=null;
-  window.promptDeleteTeacher=function(docId,name){window._pendingDeleteTeacherId=docId;document.getElementById('teacher-delete-msg').textContent=`Delete "${name}"? This cannot be undone.`;document.getElementById('teacher-delete-overlay').style.display='flex';};
-  window.closeTeacherDeleteConfirm=function(){document.getElementById('teacher-delete-overlay').style.display='none';window._pendingDeleteTeacherId=null;};
+  window._pendingDeleteTeacherData=null;
+  // Legacy alias kept for any inline callers that passed only two args
+  window.promptDeleteTeacher=function(docId,name){
+    window._pendingDeleteTeacherId=docId;
+    window._pendingDeleteTeacherData={name};
+    document.getElementById('teacher-delete-msg').textContent=`This will deactivate "${name}" and clear their role and subject assignments.`;
+    document.getElementById('teacher-delete-overlay').style.display='flex';
+  };
+  // New primary entry point — receives full teacher data object
+  window.openTeacherDeleteConfirm=function(docId,t){
+    window._pendingDeleteTeacherId=docId;
+    window._pendingDeleteTeacherData=t;
+    const name=t.name||'this teacher';
+    const msg=t.classTeacherOf
+      ? `This will remove ${name} as Class Teacher of Class ${t.classTeacherOf} and clear all their subject assignments. The profile will be marked Inactive.`
+      : `This will clear ${name}'s role and subject assignments. The profile will be marked Inactive.`;
+    document.getElementById('teacher-delete-msg').textContent=msg;
+    document.getElementById('teacher-delete-overlay').style.display='flex';
+  };
+  window.closeTeacherDeleteConfirm=function(){document.getElementById('teacher-delete-overlay').style.display='none';window._pendingDeleteTeacherId=null;window._pendingDeleteTeacherData=null;};
   window.confirmDeleteTeacher=async function(){
     const docId=window._pendingDeleteTeacherId; if(!docId) return;
-    const btn=document.getElementById('confirm-teacher-delete-btn');btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';btn.disabled=true;
-    try{await deleteDoc(doc(db,'teachers',docId));showToast('🗑️ Teacher deleted.');closeTeacherDeleteConfirm();loadTeachers();}
-    catch(e){showToast('❌ '+e.message);}
+    const t=window._pendingDeleteTeacherData||{};
+    const btn=document.getElementById('confirm-teacher-delete-btn');
+    btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';btn.disabled=true;
+    try{
+      const batch=writeBatch(db);
+      // Soft-delete: mark inactive, clear role/assignments
+      batch.set(doc(db,'teachers',docId),{isActive:false,role:null,classTeacherOf:null,assignments:[],updatedAt:new Date().toISOString()},{merge:true});
+      // If was class teacher: clear the class doc
+      if(t.classTeacherOf){
+        batch.set(doc(db,'classes',t.classTeacherOf),{classTeacherId:null,classTeacherName:null},{merge:true});
+      }
+      await batch.commit();
+      // Sync to /users/{uid}
+      const tid=t.teacherId||'';
+      if(tid){
+        try{
+          let uSnap=await getDocs(query(collection(db,'users'),where('loginId','==',tid)));
+          if(uSnap.empty) uSnap=await getDocs(query(collection(db,'users'),where('loginId','==',tid.toUpperCase())));
+          if(!uSnap.empty){
+            await setDoc(doc(db,'users',uSnap.docs[0].id),{tpRole:null,tpClassTeacherOf:null,tpAssignments:[],tpUpdatedAt:new Date().toISOString()},{merge:true});
+          }
+        }catch(ue){console.warn('User sync failed:',ue.message);}
+      }
+      showToast('Teacher deactivated and assignments cleared.');
+      closeTeacherDeleteConfirm();
+      loadTeachers();
+    }catch(e){showToast('❌ '+e.message);}
     finally{btn.innerHTML='<i class="fas fa-trash-alt"></i> Yes, Delete';btn.disabled=false;}
   };
-  function clearTeacherForm(){['tf-teacherId','tf-routineInitials','tf-title','tf-name','tf-dob','tf-gender','tf-blood','tf-classTeacher','tf-section','tf-subjects','tf-classesTaught','tf-empType','tf-joiningDate','tf-qualification','tf-experience','tf-whatsapp','tf-altContact','tf-email','tf-address','tf-pen','tf-aadhaar','tf-empId','tf-status','tf-remarks'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='tf-nationality'?'Indian':id==='tf-status'?'Active':'';});}
+  function clearTeacherForm(){
+    ['tf-teacherId','tf-routineInitials','tf-title','tf-name','tf-dob','tf-gender','tf-blood','tf-classTeacher','tf-section','tf-subjects','tf-classesTaught','tf-empType','tf-joiningDate','tf-qualification','tf-experience','tf-whatsapp','tf-altContact','tf-email','tf-address','tf-pen','tf-aadhaar','tf-empId','tf-status','tf-remarks'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='tf-nationality'?'Indian':id==='tf-status'?'Active':'';});
+    // Reset role/assignment section
+    document.querySelectorAll('input[name="tf-role"]').forEach(r=>r.checked=false);
+    const ctSel=document.getElementById('tf-ct-class-sel');if(ctSel)ctSel.value='';
+    const saCls=document.getElementById('tf-sa-class-sel');if(saCls)saCls.value='';
+    const saSub=document.getElementById('tf-sa-subject-sel');if(saSub)saSub.innerHTML='<option value="">— subject —</option>';
+    window._tfAssignments=[];
+    if(typeof renderTFAssignments==='function')renderTFAssignments();
+    if(typeof onTFRoleChange==='function')onTFRoleChange();
+  }
+
+  // ================================================================
+  //  TEACHER MODAL — Role & Assignment helpers (Phase 3a)
+  // ================================================================
+
+  window._tfAssignments = [];
+
+  window.addTFSubjectRow = function() {
+    const classSel = document.getElementById('tf-sa-class-sel');
+    const subjectSel = document.getElementById('tf-sa-subject-sel');
+    const classVal = classSel?.value;
+    const subjectKey = subjectSel?.value;
+    const subjectLabel = subjectSel?.options[subjectSel.selectedIndex]?.text;
+    if (!classVal || !subjectKey) { showToast('Select class and subject'); return; }
+    if (!window._tfAssignments) window._tfAssignments = [];
+    const exists = window._tfAssignments.find(a => a.class === classVal && a.subjectKey === subjectKey);
+    if (exists) { showToast('Already added'); return; }
+    window._tfAssignments.push({ class: classVal, subjectKey, subjectLabel });
+    renderTFAssignments();
+  };
+
+  window.removeTFSubjectRow = function(cls, key) {
+    window._tfAssignments = (window._tfAssignments || []).filter(a => !(a.class === cls && a.subjectKey === key));
+    renderTFAssignments();
+  };
+
+  function renderTFAssignments() {
+    const tbody = document.getElementById('tf-sa-tbody');
+    if (!tbody) return;
+    const arr = window._tfAssignments || [];
+    if (arr.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-light);font-size:12px;padding:10px">No assignments yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = arr.map(a => `
+      <tr>
+        <td style="font-size:13px">Class ${a.class}</td>
+        <td style="font-size:13px">${a.subjectLabel || a.subjectKey}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="removeTFSubjectRow('${a.class}','${a.subjectKey}')" style="padding:2px 7px;font-size:11px"><i class="fas fa-times"></i></button></td>
+      </tr>`).join('');
+  }
+
+  window.onTFRoleChange = function() {
+    const role = document.querySelector('input[name="tf-role"]:checked')?.value;
+    const ctSection = document.getElementById('tf-ct-section');
+    const saSection = document.getElementById('tf-sa-section');
+    if (ctSection) ctSection.style.display = role === 'class_teacher' ? 'block' : 'none';
+    if (saSection) saSection.style.display = role === 'subject_teacher' ? 'block' : 'none';
+  };
+
+  window.onTFSaClassChange = function() {
+    const classSel = document.getElementById('tf-sa-class-sel');
+    const subjectSel = document.getElementById('tf-sa-subject-sel');
+    const classVal = classSel?.value;
+    const romanToNum = {I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10};
+    if (!classVal || !window.CONFIG) {
+      if (subjectSel) subjectSel.innerHTML = '<option value="">— subject —</option>';
+      return;
+    }
+    const classNum = romanToNum[classVal.split('-')[0]] || parseInt(classVal);
+    const subjects = (window.CONFIG[classNum]?.subjects || []).filter(s => !s.isAggregate);
+    if (subjectSel) {
+      subjectSel.innerHTML = '<option value="">— subject —</option>' +
+        subjects.map(s => `<option value="${s.key}">${s.label}</option>`).join('');
+    }
+  };
 
   // ================================================================
   //  LOGIN CREATION — helpers
@@ -7782,7 +7989,7 @@ function renderTPAssignments(data) {
         reviewBtn.style.cursor  = '';
         reviewBtn.removeAttribute('title');
         reviewBtn.onclick = () => {
-          window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classTeacherOf}&action=review`;
+          window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classTeacherOf}&action=review&term=${window._currentTerm || 'HY'}`;
         };
       }
     } else {
@@ -7845,7 +8052,7 @@ function renderTPAssignments(data) {
 window.tpOpenMarkEntry = function(btn) {
   const classId    = btn.dataset.classId;
   const subjectKey = btn.dataset.subjectKey;
-  const term       = btn.dataset.term || 'HY';
+  const term       = btn.dataset.term || window._currentTerm || 'HY';
   window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classId}&subject=${subjectKey}&term=${term}`;
 };
 
@@ -7868,6 +8075,8 @@ const _origLoadTeacherPortal = window.loadTeacherPortal;
 window.loadTeacherPortal = async function(user) {
   // Run original first (sets up base portal, but may use stale class/subject fields)
   await _origLoadTeacherPortal(user);
+  // Load current academic term (Phase 3b)
+  await loadCurrentTerm();
 
   try {
     window._tpAssignLoaded = false;
@@ -7983,6 +8192,9 @@ window.loadTeacherPortal = async function(user) {
     // ── Render My Subjects panel ──────────────────────────────────────────
     // teacherDocId is the auth-uid mirror doc (kept in sync by saveTAAssignments)
     const tForPanel = { ...profileData, role: newRole, classTeacherOf: rawCTOf, assignments: newAssigns };
+    // Store for openCTReview deep-link (Phase 3b)
+    window._rawCTOf = rawCTOf;
+    window._teacherPortalData = tForPanel;
     initTeacherAssignments(teacherDocId, tForPanel);
 
   } catch(e) {
@@ -8002,3 +8214,24 @@ window.logout = function() {
 // ============================================================
 // END TEACHER PORTAL ASSIGNMENTS MODULE
 // ============================================================
+
+// ── Phase 3b: Term detection & CT Review deep-link ───────────────────────────
+async function loadCurrentTerm() {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'academicSession'));
+    window._currentTerm = snap.exists() ? (snap.data().currentTerm || 'HY') : 'HY';
+  } catch(e) {
+    window._currentTerm = 'HY';
+  }
+}
+
+window.openCTReview = function() {
+  const data = window._teacherPortalData || {};
+  const classId = data.classTeacherOf || data.tpClassTeacherOf || window._rawCTOf || '';
+  const term = window._currentTerm || 'HY';
+  if (!classId) {
+    if (typeof showToast === 'function') showToast('No class assigned');
+    return;
+  }
+  window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classId}&action=review&term=${term}`;
+};
