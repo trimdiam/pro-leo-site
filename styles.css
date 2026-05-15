@@ -919,6 +919,37 @@ tr:hover td { background: rgba(214,195,163,0.15); }
   #page-student-dash .dash-content { padding-bottom: 74px; }
 }
 
+/* Teacher bottom nav — mobile only */
+.t-bottom-nav {
+  display: none;
+}
+@media (max-width: 768px) {
+  .t-bottom-nav {
+    display: flex;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 110;
+    background: var(--white);
+    border-top: 1.5px solid var(--primary);
+    box-shadow: 0 -4px 20px rgba(139,111,71,0.12);
+    height: 60px;
+  }
+  .t-bottom-nav button {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-light); font-family: var(--font-body);
+    font-size: 10px; font-weight: 600; padding: 6px 2px;
+    transition: color var(--transition);
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  .t-bottom-nav button i { font-size: 1.1rem; }
+  .t-bottom-nav button.active { color: var(--accent); }
+  .t-bottom-nav button.active i {
+    filter: drop-shadow(0 0 4px rgba(139,111,71,0.35));
+  }
+  /* Push content above the nav bar */
+  #page-teacher-dash .dash-content { padding-bottom: 74px; }
+}
+
 /* Syllabus */
 .schedule-table th { background: rgba(139,111,71,0.18); }
 .chapter-item { padding: 10px 0; border-bottom: 1px solid var(--bg); font-size: 14px; }
@@ -949,6 +980,11 @@ tr:hover td { background: rgba(214,195,163,0.15); }
 }
 @media (max-width: 480px) {
   .toast { bottom: 16px; right: 16px; left: 16px; max-width: unset; }
+}
+/* Raise toast above bottom navs on mobile */
+@media (max-width: 768px) {
+  body.page-student .toast,
+  body.page-teacher .toast { bottom: 74px; }
 }
 
 /* ============================================================

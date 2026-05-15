@@ -25,6 +25,10 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   window.scrollTo(0, 0);
+  // Body class for toast positioning above bottom navs
+  document.body.classList.remove('page-student', 'page-teacher');
+  if (name === 'student-dash') document.body.classList.add('page-student');
+  if (name === 'teacher-dash') document.body.classList.add('page-teacher');
 
   // Auto-focus login field when login page opens
   if (name === 'login') {
@@ -81,9 +85,15 @@ function showDash(prefix, sectionId, btn) {
     if (sidebar) sidebar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
-  // Update dash title
+  // Update dash title — strip icon glyphs, use only the visible label text
   const titleEl = document.getElementById(prefix + '-dash-title');
-  if (titleEl && btn) titleEl.textContent = btn.textContent.trim();
+  if (titleEl && btn) {
+    const labelNode = Array.from(btn.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+    titleEl.textContent = labelNode ? labelNode.textContent.trim() : btn.textContent.trim();
+  }
+  // Sync bottom navs
+  if (prefix === 't' && window.syncTeacherBottomNav) window.syncTeacherBottomNav(sectionId);
+  if (prefix === 's' && window.syncStudentBottomNav) window.syncStudentBottomNav(sectionId);
 }
 
 // Student bottom nav helpers
@@ -96,6 +106,18 @@ window.navStudentTo = function(sectionId) {
   const sidebarBtn = document.querySelector('#studentSidebar button[onclick*="' + sectionId + '"]');
   showDash('s', sectionId, sidebarBtn);
   window.syncStudentBottomNav(sectionId);
+};
+
+// Teacher bottom nav helpers
+window.syncTeacherBottomNav = function(sectionId) {
+  document.querySelectorAll('#teacherBottomNav button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.section === sectionId);
+  });
+};
+window.navTeacherTo = function(sectionId) {
+  const sidebarBtn = document.querySelector('#teacherSidebar button[onclick*="' + sectionId + '"]');
+  showDash('t', sectionId, sidebarBtn);
+  window.syncTeacherBottomNav(sectionId);
 };
 
 function adminInboxGo(sectionId, feeFilter) {
@@ -276,6 +298,13 @@ function changeAttDate(delta) {
 function markAllAttendance(status) {
   document.querySelectorAll('.att-radio[data-status="' + status + '"]').forEach(r => r.click());
 }
+
+window.filterTeacherStudents = function(q) {
+  const lower = q.toLowerCase();
+  document.querySelectorAll('#teacher-student-tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(lower) ? '' : 'none';
+  });
+};
 
 // Stub functions — real implementations in Firebase module
 window.loadAttendanceForDate   = window.loadAttendanceForDate   || function() {};
