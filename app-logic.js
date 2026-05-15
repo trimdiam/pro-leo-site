@@ -1612,6 +1612,10 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       if(window.loadTeacherHomework) loadTeacherHomework();
     }
     if (sectionId === 's-attendance') { if(window.loadStudentAttendance) loadStudentAttendance(); }
+    if (sectionId === 's-routine')    { if(window.loadStudentRoutine) loadStudentRoutine(); }
+    if (sectionId === 't-schedule')   { if(window.loadTeacherSchedule) loadTeacherSchedule(); }
+    if (sectionId === 's-dashboard')  { if(window.loadStudentDashWidgets) loadStudentDashWidgets(); }
+    if (sectionId === 't-dashboard')  { if(window.loadTeacherDashWidgets) loadTeacherDashWidgets(); }
     if (sectionId === 's-homework') { if(window.loadStudentHomework) loadStudentHomework(); }
     else if(window._hwUnsubscribe){window._hwUnsubscribe();window._hwUnsubscribe=null;}
     if (sectionId === 's-notices')  { if(window.loadStudentNotices) loadStudentNotices(); }
@@ -2198,6 +2202,49 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   window.confirmDeleteStudent=async function(){const docId=window._pendingDeleteId;if(!docId)return;const btn=document.getElementById('confirm-delete-btn');btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';btn.disabled=true;try{await deleteDoc(doc(db,"students",docId));showToast('🗑️ Student deleted.');closeDeleteConfirm();await window.loadStudents(window._currentClassFilter);}catch(err){showToast('❌ '+err.message);}finally{btn.innerHTML='<i class="fas fa-trash-alt"></i> Yes, Delete';btn.disabled=false;}};
   function getVal(id){return(document.getElementById(id)?.value||'').trim();}
   function setVal(id,val){const el=document.getElementById(id);if(el&&val!==undefined&&val!==null)el.value=val;}
+
+  // ─────────────────────────────────────────────
+  // ROUTINE BRIDGE HELPERS (Routine-App ↔ Portal)
+  // Used by student & teacher routine widgets.
+  // ─────────────────────────────────────────────
+  const _ROUTINE_CLASS_MAP = {
+    '1':'I','2':'II','3':'III','4':'IV','5':'V',
+    '6':'VI','7':'VII','8':'VIII','9':'IX','10':'X',
+    'I':'I','II':'II','III':'III','IV':'IV','V':'V',
+    'VI':'VI','VII':'VII','VIII':'VIII','IX':'IX','X':'X'
+  };
+  window.portalClassToRoutine = function(cls) {
+    if (cls === null || cls === undefined) return '';
+    const k = String(cls).trim().toUpperCase();
+    return _ROUTINE_CLASS_MAP[k] || k;
+  };
+  window.routineHasClass = function(cls) {
+    return !!_ROUTINE_CLASS_MAP[String(cls||'').trim().toUpperCase()];
+  };
+  const _ROUTINE_DAY_NAMES = {
+    1:'Day 1 (Mon)', 2:'Day 2 (Tue)', 3:'Day 3 (Wed)',
+    4:'Day 4 (Thu)', 5:'Day 5 (Fri)', 6:'Day 6 (Sat)', 7:'Day 7'
+  };
+  window.routineDayLabel = function(n) {
+    return _ROUTINE_DAY_NAMES[Number(n)] || `Day ${n}`;
+  };
+  window.routineFormatTiming = function(t) {
+    if (!t || !t.start || !t.end) return '--:-- to --:--';
+    return `${t.start} – ${t.end}`;
+  };
+  window.routineActivePeriodIndex = function(timings) {
+    if (!timings) return -1;
+    const now = new Date();
+    const cur = now.getHours()*60 + now.getMinutes();
+    for (let i = 1; i <= 6; i++) {
+      const t = timings[`period${i}`];
+      if (!t || !t.start || !t.end) continue;
+      const [sh,sm] = t.start.split(':').map(Number);
+      const [eh,em] = t.end.split(':').map(Number);
+      if (cur >= sh*60+sm && cur < eh*60+em) return i - 1;
+    }
+    return -1;
+  };
   function clearStudentForm(){['sf-name','sf-dob','sf-gender','sf-blood','sf-nationality','sf-studentId','sf-admNo','sf-rollNo','sf-class','sf-section-field','sf-house','sf-admYear','sf-acadYear','sf-lastSchool','sf-father','sf-fatherOcc','sf-mother','sf-motherOcc','sf-whatsapp','sf-altContact','sf-email','sf-address','sf-city','sf-pin','sf-state','sf-pen','sf-aadhaar','sf-medical','sf-remarks'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='sf-nationality'?'Indian':id==='sf-state'?'Meghalaya':id==='sf-acadYear'?'2025-26':'';});}
 
   window.loadStudentProfile = async function(user) {
@@ -2245,6 +2292,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const feeDueEl = document.getElementById('s-stat-fee-due');
       if (feeDueEl) feeDueEl.textContent = bal > 0 ? '₹' + bal.toLocaleString('en-IN') : '₹0';
       loadStudentHomework(); loadStudentNotices(); loadStudentFees();
+      if (window.loadStudentDashWidgets) loadStudentDashWidgets();
       window.loadAcademicSnapshot(studentId); // non-blocking — Phase 5
     } catch(e){ showToast('⚠️ Could not load profile: '+e.message); }
   };
@@ -2512,6 +2560,351 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   };
 
   // ================================================================
+  //  STUDENT & TEACHER — Routine / Schedule (bridges to Routine-App data)
+  // ================================================================
+  window._routineState = {
+    currentDay: 1,           // server-controlled "today" (1-7)
+    viewDay: null,           // user-selected day pill; falls back to currentDay
+    timings: null,           // settings/periodTimings
+    subjects: null,          // {code: name} map cached in-session
+    teachersByInitials: null,// {INI: {fullName,...}} map cached in-session
+    daySubs: { s: null, t: null },     // onSnapshot unsubscribers for settings/schoolDay
+    timingSubs: { s: null, t: null },  // onSnapshot unsubscribers for settings/periodTimings
+    activeTimer: null        // setInterval for active-period refresh
+  };
+
+  async function _routineLoadSubjects(force) {
+    const s = window._routineState;
+    if (s.subjects && !force) return s.subjects;
+    const snap = await getDocs(collection(db, 'subjects'));
+    const map = {};
+    snap.docs.forEach(d => { const x = d.data(); if (x && x.code !== undefined) map[x.code] = x.name; });
+    s.subjects = map;
+    return map;
+  }
+  async function _routineLoadTeachers(force) {
+    const s = window._routineState;
+    if (s.teachersByInitials && !force) return s.teachersByInitials;
+    const snap = await getDocs(collection(db, 'teachers'));
+    const map = {};
+    snap.docs.forEach(d => {
+      const t = d.data() || {};
+      const ini = (t.initials || t.routineInitials || '').toString().toUpperCase().trim();
+      if (ini) map[ini] = { fullName: t.fullName || t.name || ini, name: t.name || t.fullName || ini };
+    });
+    s.teachersByInitials = map;
+    return map;
+  }
+  async function _routineGetSlotsForPeriod(dayNumber, periodNumber) {
+    const ref = collection(db, 'routine', String(dayNumber), 'periods', String(periodNumber), 'slots');
+    const snap = await getDocs(ref);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+  async function _routineGetDay(dayNumber) {
+    const out = {};
+    for (let p = 1; p <= 6; p++) out[`period${p}`] = await _routineGetSlotsForPeriod(dayNumber, p);
+    return out;
+  }
+  function _resolveSubject(code, map) {
+    if (Array.isArray(code)) return code.map(c => map[c] || `Subject ${c}`).join(' / ');
+    return map[code] || (code !== undefined ? `Subject ${code}` : '—');
+  }
+  const _ROMAN_PERIODS = ['I','II','III','IV','V','VI'];
+
+  // Bootstrap settings synchronously so the first render reads correct values
+  // *before* listeners would have a chance to fire async.
+  async function _routineEnsureSettings() {
+    const s = window._routineState;
+    if (s._settingsLoaded) return;
+    const [daySnap, timingsSnap] = await Promise.all([
+      getDoc(doc(db, 'settings', 'schoolDay')),
+      getDoc(doc(db, 'settings', 'periodTimings'))
+    ]);
+    if (daySnap.exists()) s.currentDay = Number(daySnap.data().currentDay) || 1;
+    s.timings = timingsSnap.exists() ? timingsSnap.data() : null;
+    s._settingsLoaded = true;
+  }
+
+  // Idempotent: listeners attach once per prefix per session. The latest
+  // onChange callback is stashed so updates always re-render the live view.
+  function _routineStartListeners(prefix, onChange) {
+    const s = window._routineState;
+    s[`_cb_${prefix}`] = onChange;
+    if (s.daySubs[prefix]) return;
+    s.daySubs[prefix] = onSnapshot(doc(db, 'settings', 'schoolDay'), snap => {
+      if (!snap.exists()) return;
+      const next = Number(snap.data().currentDay) || 1;
+      const changed = next !== s.currentDay;
+      s.currentDay = next;
+      if (changed && s.viewDay === null && s[`_cb_${prefix}`]) s[`_cb_${prefix}`]();
+    });
+    s.timingSubs[prefix] = onSnapshot(doc(db, 'settings', 'periodTimings'), snap => {
+      const next = snap.exists() ? snap.data() : null;
+      const changedJSON = JSON.stringify(next) !== JSON.stringify(s.timings);
+      s.timings = next;
+      if (changedJSON && s[`_cb_${prefix}`]) s[`_cb_${prefix}`]();
+    });
+    if (!s.activeTimer) {
+      s.activeTimer = setInterval(() => {
+        const sr = document.getElementById('s-routine'); const tr = document.getElementById('t-schedule');
+        if (sr && sr.classList.contains('active') && s._cb_s) s._cb_s();
+        if (tr && tr.classList.contains('active') && s._cb_t) s._cb_t();
+      }, 60000);
+    }
+  }
+
+  // ── Student Routine ──────────────────────────────────────────────
+  window.loadStudentRoutine = async function(forceReload) {
+    const body = document.getElementById('s-routine-body');
+    const sub  = document.getElementById('s-routine-sub');
+    if (!body) return;
+    const cls = window._studentClass || '';
+    if (!cls) { body.innerHTML = `<p style="color:var(--text-light);text-align:center;padding:24px">No class info on your profile yet.</p>`; return; }
+    if (!window.routineHasClass(cls)) {
+      body.innerHTML = `<p style="color:var(--text-light);text-align:center;padding:24px"><i class="fas fa-info-circle"></i> Routine for ${cls} is not configured yet.</p>`;
+      if (sub) sub.textContent = `Class ${cls}`;
+      return;
+    }
+    const routineClass = window.portalClassToRoutine(cls);
+    if (forceReload) { window._routineState.subjects = null; window._routineState.teachersByInitials = null; window._routineState._settingsLoaded = false; }
+
+    body.innerHTML = `<p style="color:var(--text-light);text-align:center;padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading routine…</p>`;
+    try {
+      await _routineEnsureSettings();
+      _routineStartListeners('s', () => window.loadStudentRoutine());
+      await _routineLoadSubjects();
+      await _routineLoadTeachers();
+      const s = window._routineState;
+      const day = s.viewDay || s.currentDay || 1;
+      if (sub) sub.textContent = `Class ${cls} · ${window.routineDayLabel(day)}${day === s.currentDay ? ' · TODAY' : ''}`;
+      document.querySelectorAll('#s-routine-daypills .routine-day-pill').forEach(btn => {
+        btn.classList.toggle('active', Number(btn.dataset.day) === day);
+        btn.classList.toggle('btn-primary', Number(btn.dataset.day) === day);
+        btn.classList.toggle('btn-outline', Number(btn.dataset.day) !== day);
+        btn.onclick = () => { window._routineState.viewDay = Number(btn.dataset.day); window.loadStudentRoutine(); };
+      });
+
+      const dayData = await _routineGetDay(day);
+      const active = window.routineActivePeriodIndex(s.timings);
+      const isToday = (day === s.currentDay);
+      const rows = _ROMAN_PERIODS.map((rom, idx) => {
+        const slots = dayData[`period${idx+1}`] || [];
+        const slot = slots.find(x => x.className === routineClass || (x.involvedClasses && x.involvedClasses.includes(routineClass)));
+        const t = s.timings ? s.timings[`period${idx+1}`] : null;
+        const tStr = window.routineFormatTiming(t);
+        const isActive = isToday && idx === active;
+        let subj = '<span style="color:var(--text-light)">—</span>', teach = '';
+        if (slot) {
+          if (slot.slotType === 'value-cate-split') {
+            subj = `Value Ed. / Catechism <span class="badge badge-warning" style="margin-left:4px">Split</span>`;
+            teach = `<span style="color:var(--text-light)">Go to your assigned room</span>`;
+          } else if (slot.slotType === 'dual-subject') {
+            subj = `English I / II <span class="badge badge-info" style="margin-left:4px">I/II</span>`;
+            const tt = s.teachersByInitials[(slot.teacherInitials||'').toUpperCase()];
+            teach = tt ? tt.fullName : (slot.teacherInitials || '');
+          } else {
+            subj = _resolveSubject(slot.subjectCode, s.subjects);
+            const tt = s.teachersByInitials[(slot.teacherInitials||'').toUpperCase()];
+            teach = tt ? tt.fullName : (slot.teacherInitials || '');
+          }
+        }
+        return `<tr class="${isActive ? 'routine-row-active' : ''}"><td style="font-weight:700;padding:10px 12px">Period ${rom}${isActive?' <i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-left:4px" title="Now"></i>':''}</td><td style="padding:10px 12px;color:var(--text-light)">${tStr}</td><td style="padding:10px 12px">${subj}</td><td style="padding:10px 12px">${teach}</td></tr>`;
+      }).join('');
+      body.innerHTML = `<div class="table-wrap"><table class="routine-table"><thead><tr><th style="padding:10px 12px">Period</th><th style="padding:10px 12px">Time</th><th style="padding:10px 12px">Subject</th><th style="padding:10px 12px">Teacher</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    } catch (e) {
+      body.innerHTML = `<p style="color:var(--danger);text-align:center;padding:24px"><i class="fas fa-exclamation-triangle"></i> Failed to load routine. ${e.message||''}</p>`;
+      console.error(e);
+    }
+  };
+
+  // ── Teacher Schedule ─────────────────────────────────────────────
+  // Resolves the logged-in teacher's "initials" by checking, in order:
+  //  1) window._teacherInitials (cached from loadTeacherPortal)
+  //  2) the teacher doc's routineInitials / initials field
+  //  3) fuzzy match teacher.name → Routine-App teachers' fullName
+  async function _resolveTeacherInitials() {
+    if (window._teacherInitials) return window._teacherInitials;
+    const user = window._firebaseAuth?.currentUser; if (!user) return '';
+    let teacherDoc = null;
+    try {
+      const direct = await getDoc(doc(db, 'teachers', user.uid));
+      if (direct.exists()) teacherDoc = direct.data();
+    } catch(_) {}
+    if (!teacherDoc) {
+      const tid = window._teacherId || '';
+      if (tid) {
+        try {
+          let snap = await getDocs(query(collection(db, 'teachers'), where('teacherId','==',tid)));
+          if (snap.empty) snap = await getDocs(query(collection(db, 'teachers'), where('teacherId','==',tid.toUpperCase())));
+          if (!snap.empty) teacherDoc = snap.docs[0].data();
+        } catch(_) {}
+      }
+    }
+    let ini = '';
+    if (teacherDoc) ini = (teacherDoc.routineInitials || teacherDoc.initials || '').toString().toUpperCase().trim();
+    if (!ini && teacherDoc && (teacherDoc.name || teacherDoc.fullName)) {
+      const wantName = (teacherDoc.name || teacherDoc.fullName || '').toLowerCase().trim();
+      await _routineLoadTeachers();
+      const map = window._routineState.teachersByInitials || {};
+      for (const k of Object.keys(map)) {
+        if ((map[k].fullName || '').toLowerCase().trim() === wantName) { ini = k; break; }
+      }
+    }
+    window._teacherInitials = ini;
+    return ini;
+  }
+
+  window.loadTeacherSchedule = async function(forceReload) {
+    const body = document.getElementById('t-schedule-body');
+    const sub  = document.getElementById('t-schedule-sub');
+    if (!body) return;
+    if (forceReload) { window._routineState.subjects = null; window._routineState.teachersByInitials = null; window._routineState._settingsLoaded = false; window._teacherInitials = ''; }
+
+    body.innerHTML = `<p style="color:var(--text-light);text-align:center;padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading schedule…</p>`;
+    try {
+      const ini = await _resolveTeacherInitials();
+      if (!ini) {
+        body.innerHTML = `<p style="color:var(--text-light);text-align:center;padding:24px"><i class="fas fa-info-circle"></i> Your <strong>Routine Initials</strong> are not set. Ask the admin to update your teacher profile.</p>`;
+        if (sub) sub.textContent = 'Routine Initials not linked';
+        return;
+      }
+      await _routineEnsureSettings();
+      _routineStartListeners('t', () => window.loadTeacherSchedule());
+      await _routineLoadSubjects();
+      await _routineLoadTeachers();
+      const s = window._routineState;
+      const day = s.viewDay || s.currentDay || 1;
+      const me = s.teachersByInitials[ini];
+      if (sub) sub.textContent = `${me ? me.fullName : ini} (${ini}) · ${window.routineDayLabel(day)}${day === s.currentDay ? ' · TODAY' : ''}`;
+
+      document.querySelectorAll('#t-schedule-daypills .routine-day-pill').forEach(btn => {
+        const isSel = Number(btn.dataset.day) === day;
+        btn.classList.toggle('active', isSel);
+        btn.classList.toggle('btn-primary', isSel);
+        btn.classList.toggle('btn-outline', !isSel);
+        btn.onclick = () => { window._routineState.viewDay = Number(btn.dataset.day); window.loadTeacherSchedule(); };
+      });
+
+      const dayData = await _routineGetDay(day);
+      const active = window.routineActivePeriodIndex(s.timings);
+      const isToday = (day === s.currentDay);
+      const rows = _ROMAN_PERIODS.map((rom, idx) => {
+        const slots = dayData[`period${idx+1}`] || [];
+        const slot = slots.find(x => (x.teacherInitials || '').toUpperCase() === ini);
+        const t = s.timings ? s.timings[`period${idx+1}`] : null;
+        const tStr = window.routineFormatTiming(t);
+        const isActive = isToday && idx === active;
+        let cls = '<span style="color:var(--text-light)">Free</span>', subj = '';
+        if (slot) {
+          if (slot.slotType === 'value-cate-split') {
+            const pool = (slot.involvedClasses || [slot.className]).join(' + ');
+            cls = `Class ${pool}`;
+            subj = `${slot.track || 'Value Ed. / Catechism'}${slot.room ? ' · '+slot.room : ''} <span class="badge badge-warning" style="margin-left:4px">Split</span>`;
+          } else if (slot.slotType === 'dual-subject') {
+            cls = `Class ${slot.className}`;
+            subj = `English I / II <span class="badge badge-info" style="margin-left:4px">I/II</span>`;
+          } else {
+            cls = `Class ${slot.className}`;
+            subj = _resolveSubject(slot.subjectCode, s.subjects);
+          }
+        }
+        return `<tr class="${isActive ? 'routine-row-active' : ''}"><td style="font-weight:700;padding:10px 12px">Period ${rom}${isActive?' <i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-left:4px" title="Now"></i>':''}</td><td style="padding:10px 12px;color:var(--text-light)">${tStr}</td><td style="padding:10px 12px">${cls}</td><td style="padding:10px 12px">${subj}</td></tr>`;
+      }).join('');
+      body.innerHTML = `<div class="table-wrap"><table class="routine-table"><thead><tr><th style="padding:10px 12px">Period</th><th style="padding:10px 12px">Time</th><th style="padding:10px 12px">Class</th><th style="padding:10px 12px">Subject</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    } catch (e) {
+      body.innerHTML = `<p style="color:var(--danger);text-align:center;padding:24px"><i class="fas fa-exclamation-triangle"></i> Failed to load schedule. ${e.message||''}</p>`;
+      console.error(e);
+    }
+  };
+
+  // ── Dashboard mini-widgets (Today's Schedule + Recent Notices) ──
+  async function _loadRecentNotices(elId, audienceFilter) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    try {
+      const snap = await getDocs(query(collection(db, 'notices'), limit(20)));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .filter(n => { const a = (n.audience || 'all').toLowerCase(); return audienceFilter(a, n); })
+        .sort((a,b) => (b.postedAt||b.createdAt||'').localeCompare(a.postedAt||a.createdAt||''))
+        .slice(0, 4);
+      if (!list.length) { el.innerHTML = `<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">No notices yet.</p>`; return; }
+      const dot = p => p === 'Urgent' ? 'var(--danger)' : p === 'Important' ? 'var(--warning)' : 'var(--info)';
+      el.innerHTML = list.map(n => {
+        const date = n.postedAt ? new Date(n.postedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '';
+        return `<div class="chapter-item"><i class="fas fa-circle" style="color:${dot(n.priority)};font-size:8px;margin-right:8px"></i>${(n.title||'').replace(/[<>]/g,'')} ${date ? `<span style="color:var(--text-light);font-size:11px;margin-left:4px">· ${date}</span>` : ''}</div>`;
+      }).join('');
+    } catch (e) {
+      el.innerHTML = `<p style="color:var(--danger);font-size:13px;padding:12px">${e.message}</p>`;
+    }
+  }
+
+  async function _renderDashScheduleRows(elId, ini, isStudent, studentRoutineClass) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    try {
+      await _routineEnsureSettings();
+      await _routineLoadSubjects();
+      await _routineLoadTeachers();
+      const s = window._routineState;
+      const day = s.currentDay || 1;
+      const dayData = await _routineGetDay(day);
+      const active = window.routineActivePeriodIndex(s.timings);
+
+      const rows = [];
+      for (let i = 0; i < 6; i++) {
+        const slots = dayData[`period${i+1}`] || [];
+        let slot = null;
+        if (isStudent) {
+          slot = slots.find(x => x.className === studentRoutineClass || (x.involvedClasses && x.involvedClasses.includes(studentRoutineClass)));
+        } else if (ini) {
+          slot = slots.find(x => (x.teacherInitials || '').toUpperCase() === ini);
+        }
+        const t = s.timings ? s.timings[`period${i+1}`] : null;
+        const tStr = (t && t.start) ? t.start : '--:--';
+        const isActive = i === active;
+        let label = isStudent ? 'Free' : 'Free Period';
+        if (slot) {
+          if (slot.slotType === 'value-cate-split') label = 'Value Ed. / Catechism';
+          else if (slot.slotType === 'dual-subject') label = isStudent ? 'English I / II' : `English I/II · Class ${slot.className}`;
+          else {
+            const subj = Array.isArray(slot.subjectCode)
+              ? slot.subjectCode.map(c => s.subjects[c] || `Subj ${c}`).join(' / ')
+              : (s.subjects[slot.subjectCode] || `Subject ${slot.subjectCode}`);
+            label = isStudent ? subj : `${subj} · Class ${slot.className}`;
+          }
+        }
+        rows.push(`<div class="chapter-item" style="${isActive?'background:rgba(90,138,90,0.12);border-left:3px solid var(--success,#5a8a5a);padding-left:8px':''}"><strong>${tStr}</strong> – ${label}${isActive?' <span style="color:var(--success,#5a8a5a);font-size:10px;font-weight:700;margin-left:4px">● NOW</span>':''}</div>`);
+      }
+      el.innerHTML = `<p style="font-size:11px;color:var(--text-light);margin:0 0 6px"><i class="fas fa-info-circle"></i> ${window.routineDayLabel(day)}</p>` + rows.join('');
+    } catch (e) {
+      el.innerHTML = `<p style="color:var(--danger);font-size:13px;padding:12px">${e.message}</p>`;
+    }
+  }
+
+  window.loadTeacherDashWidgets = async function() {
+    const ini = await _resolveTeacherInitials();
+    const schedEl = document.getElementById('t-dash-schedule');
+    if (schedEl && !ini) {
+      schedEl.innerHTML = `<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Routine Initials not linked.</p>`;
+    } else if (schedEl) {
+      await _renderDashScheduleRows('t-dash-schedule', ini, false, null);
+    }
+    await _loadRecentNotices('t-dash-notices', (aud) => aud === 'all' || aud === 'teachers' || aud === 'both');
+  };
+
+  window.loadStudentDashWidgets = async function() {
+    const cls = window._studentClass || '';
+    const schedEl = document.getElementById('s-dash-schedule');
+    if (schedEl && !cls) {
+      schedEl.innerHTML = `<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Class not set on profile.</p>`;
+    } else if (schedEl && !window.routineHasClass(cls)) {
+      schedEl.innerHTML = `<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Routine for ${cls} not configured.</p>`;
+    } else if (schedEl) {
+      await _renderDashScheduleRows('s-dash-schedule', null, true, window.portalClassToRoutine(cls));
+    }
+    await _loadRecentNotices('s-dash-notices', (aud) => aud === 'all' || aud === 'students' || aud === 'both' || aud === cls);
+  };
+
   //  STUDENT — Homework
   // ================================================================
   window._hwUnsubscribe = null;
@@ -2875,6 +3268,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         initTeacherAttendance(effectiveClass);
       }
       populateHwClassSelect(); loadTeacherHomework(); loadTeacherNotices();
+      if (window.loadTeacherDashWidgets) loadTeacherDashWidgets();
       loadLeaveHistory();
     } catch(e){ showToast('⚠️ Teacher portal: '+e.message); }
   };
@@ -4195,7 +4589,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   window.closeTeacherModal=function(){document.getElementById('teacher-modal-overlay').style.display='none';document.body.style.overflow='';};
   window.editTeacher=function(docId,t){
     document.getElementById('teacher-modal-title').textContent='Edit Teacher';document.getElementById('tf-doc-id').value=docId;
-    const f={teacherId:t.teacherId,title:t.title,name:t.name,dob:t.dob,gender:t.gender,blood:t.bloodGroup,nationality:t.nationality,classTeacher:t.classTeacher,section:t.section,subjects:t.subjects,classesTaught:t.classesTaught,empType:t.empType,joiningDate:t.joiningDate,qualification:t.qualification,experience:t.experience,whatsapp:t.whatsapp,altContact:t.altContact,email:t.email,address:t.address,pen:t.penNumber,aadhaar:t.aadhaar,empId:t.empId,status:t.status,remarks:t.remarks};
+    const f={teacherId:t.teacherId,title:t.title,name:t.name,dob:t.dob,gender:t.gender,blood:t.bloodGroup,nationality:t.nationality,classTeacher:t.classTeacher,section:t.section,subjects:t.subjects,classesTaught:t.classesTaught,empType:t.empType,joiningDate:t.joiningDate,qualification:t.qualification,experience:t.experience,whatsapp:t.whatsapp,altContact:t.altContact,email:t.email,address:t.address,pen:t.penNumber,aadhaar:t.aadhaar,empId:t.empId,status:t.status,remarks:t.remarks,routineInitials:t.routineInitials||t.initials||''};
     Object.entries(f).forEach(([k,v])=>setVal('tf-'+k,v));
     document.getElementById('teacher-modal-overlay').style.display='block';document.body.style.overflow='hidden';
   };
@@ -4203,7 +4597,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     const btn=document.getElementById('tf-save-btn');
     const teacherId=getVal('tf-teacherId'),title=getVal('tf-title'),name=getVal('tf-name'),subjects=getVal('tf-subjects');
     if(!teacherId||!title||!name||!subjects){showToast('⚠️ Teacher ID, title, name and subjects are required.');return;}
-    const data={teacherId,title,name,dob:getVal('tf-dob'),gender:getVal('tf-gender'),bloodGroup:getVal('tf-blood'),nationality:getVal('tf-nationality')||'Indian',classTeacher:getVal('tf-classTeacher'),section:getVal('tf-section'),subjects,classesTaught:getVal('tf-classesTaught'),empType:getVal('tf-empType')||'Permanent',joiningDate:getVal('tf-joiningDate'),qualification:getVal('tf-qualification'),experience:getVal('tf-experience'),whatsapp:getVal('tf-whatsapp'),altContact:getVal('tf-altContact'),email:getVal('tf-email'),address:getVal('tf-address'),penNumber:getVal('tf-pen'),aadhaar:getVal('tf-aadhaar'),empId:getVal('tf-empId'),status:getVal('tf-status')||'Active',remarks:getVal('tf-remarks'),updatedAt:new Date().toISOString()};
+    const routineInitials=(getVal('tf-routineInitials')||'').toUpperCase().trim();
+    const data={teacherId,title,name,dob:getVal('tf-dob'),gender:getVal('tf-gender'),bloodGroup:getVal('tf-blood'),nationality:getVal('tf-nationality')||'Indian',classTeacher:getVal('tf-classTeacher'),section:getVal('tf-section'),subjects,classesTaught:getVal('tf-classesTaught'),empType:getVal('tf-empType')||'Permanent',joiningDate:getVal('tf-joiningDate'),qualification:getVal('tf-qualification'),experience:getVal('tf-experience'),whatsapp:getVal('tf-whatsapp'),altContact:getVal('tf-altContact'),email:getVal('tf-email'),address:getVal('tf-address'),penNumber:getVal('tf-pen'),aadhaar:getVal('tf-aadhaar'),empId:getVal('tf-empId'),status:getVal('tf-status')||'Active',remarks:getVal('tf-remarks'),routineInitials,initials:routineInitials,updatedAt:new Date().toISOString()};
     btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';btn.disabled=true;
     try{
       const docId=document.getElementById('tf-doc-id').value;
@@ -4223,7 +4618,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     catch(e){showToast('❌ '+e.message);}
     finally{btn.innerHTML='<i class="fas fa-trash-alt"></i> Yes, Delete';btn.disabled=false;}
   };
-  function clearTeacherForm(){['tf-teacherId','tf-title','tf-name','tf-dob','tf-gender','tf-blood','tf-classTeacher','tf-section','tf-subjects','tf-classesTaught','tf-empType','tf-joiningDate','tf-qualification','tf-experience','tf-whatsapp','tf-altContact','tf-email','tf-address','tf-pen','tf-aadhaar','tf-empId','tf-status','tf-remarks'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='tf-nationality'?'Indian':id==='tf-status'?'Active':'';});}
+  function clearTeacherForm(){['tf-teacherId','tf-routineInitials','tf-title','tf-name','tf-dob','tf-gender','tf-blood','tf-classTeacher','tf-section','tf-subjects','tf-classesTaught','tf-empType','tf-joiningDate','tf-qualification','tf-experience','tf-whatsapp','tf-altContact','tf-email','tf-address','tf-pen','tf-aadhaar','tf-empId','tf-status','tf-remarks'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='tf-nationality'?'Indian':id==='tf-status'?'Active':'';});}
 
   // ================================================================
   //  LOGIN CREATION — helpers
@@ -6525,11 +6920,16 @@ function renderTAList(teachers) {
     const badge = taBadge(t.role);
     const ctOf  = t.classTeacherOf ? `Class Teacher of: <strong>${t.classTeacherOf}</strong> &nbsp;·&nbsp; ` : '';
     const subs  = taSubjectSummary(t.assignments || []);
+    const ini   = t.routineInitials || t.initials || '';
+    const sid   = t.teacherId || t.staffId || '';
+    const iniChip = ini ? `<span style="background:#e0e7ff;color:#1a4a8a;border:1px solid #c7d2fe;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:700;letter-spacing:0.5px;margin-left:6px" title="Routine Initials">${taEsc(ini)}</span>` : '';
+    const sidChip = sid ? `<span style="color:var(--text-light);font-size:12px;margin-left:6px">· ${taEsc(sid)}</span>` : '';
+    const ptChip = t.isPartTime ? `<span style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:600;margin-left:6px">Part-time</span>` : '';
     return `<div class="admin-ta-card">
       <div class="admin-ta-card-info">
         <div class="admin-ta-card-name">
           <i class="fas fa-user-circle" style="color:var(--accent);font-size:18px"></i>
-          ${taEsc(t.name || 'Unnamed')} ${badge}
+          ${taEsc(t.name || 'Unnamed')}${iniChip}${sidChip}${ptChip} ${badge}
         </div>
         <div class="admin-ta-card-meta">${ctOf}${taEsc(t.email || '')}</div>
         ${subs ? `<div class="admin-ta-card-subjects"><i class="fas fa-book" style="margin-right:4px;color:var(--accent)"></i>${subs}</div>` : ''}
@@ -6551,6 +6951,309 @@ window.deleteTARecord = async function(uid, name) {
     showToast(`🗑️ Deleted duplicate record for ${name}`);
     loadTeacherAssignList();
   } catch(e) { showToast('❌ ' + e.message); }
+};
+
+// ──────────────────────────────────────────────────────────────────
+// TEACHER DIRECTORY SYNC — one-shot reconciliation tool.
+// Source of truth: SFS Teacher Directory (24 entries).
+// Goal: exactly one doc per teacher, keyed by initials, with all fields.
+// ──────────────────────────────────────────────────────────────────
+const SFS_TEACHER_DIRECTORY = [
+  { initials:'ELN',  fullName:'Emilia Lyngdoh Nongbri',           staffId:'SFST001', isPartTime:false },
+  { initials:'AN',   fullName:'Asha Mary Nongkhlaw',              staffId:'SFST002', isPartTime:false },
+  { initials:'ARLN', fullName:'Andrea Rafelline Lyngdoh Nongbri', staffId:'SFST003', isPartTime:false },
+  { initials:'QM',   fullName:'Queency Mary Mawrie',              staffId:'SFST004', isPartTime:false },
+  { initials:'FS',   fullName:'Felicia Synjri',                   staffId:'SFST005', isPartTime:false },
+  { initials:'IM',   fullName:'Idahun Mawrie',                    staffId:'SFST006', isPartTime:false },
+  { initials:'MP',   fullName:'Michael Pamthet',                  staffId:'SFST007', isPartTime:false },
+  { initials:'DP',   fullName:'Dilang Pohshna',                   staffId:'SFST008', isPartTime:false },
+  { initials:'PK',   fullName:'Phisabet Kharumnuid',              staffId:'SFST009', isPartTime:false },
+  { initials:'MBK',  fullName:'Mary Banri Kharsyntiew',           staffId:'SFST010', isPartTime:false },
+  { initials:'DS',   fullName:'Dariker Songthiang',               staffId:'SFST011', isPartTime:false },
+  { initials:'DN',   fullName:'Darisha Nongrum',                  staffId:'SFST012', isPartTime:false },
+  { initials:'ID',   fullName:'Ittrila Dkhar',                    staffId:'SFST013', isPartTime:false },
+  { initials:'YL',   fullName:'Youlinda Lyngdoh',                 staffId:'SFST014', isPartTime:false },
+  { initials:'IOH',  fullName:'Iohhunlang Nongkhlaw',             staffId:'SFST015', isPartTime:false },
+  { initials:'DOL',  fullName:'Dolly Nongsiej',                   staffId:'SFST016', isPartTime:false },
+  { initials:'MJ',   fullName:'Merilin Jyndiang',                 staffId:'SFST018', isPartTime:false },
+  { initials:'NS',   fullName:'Niwanki Shylla',                   staffId:'SFST019', isPartTime:false },
+  { initials:'VMK',  fullName:'Vanessa Mary Kharkongor',          staffId:'SFST020', isPartTime:false },
+  { initials:'AKK',  fullName:'Audilia Kharkongor',               staffId:'SFST021', isPartTime:false },
+  { initials:'AM',   fullName:'Aidahunshisha Mawrie',             staffId:'SFST022', isPartTime:false },
+  { initials:'BK',   fullName:'Babit Kharsahnoh',                 staffId:'SFST025', isPartTime:false },
+  { initials:'DM',   fullName:'Daprikmen Massar',                 staffId:'',         isPartTime:true  },
+  { initials:'AP',   fullName:'Anando Pohtam',                    staffId:'',         isPartTime:true  }
+];
+
+function _normName(s) { return (s||'').toString().toLowerCase().replace(/\s+/g,' ').trim(); }
+
+window.planSyncDirectory = async function() {
+  const snap = await getDocs(collection(db, 'teachers'));
+  const docs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+  const plan = { update: [], merge: [], create: [], orphans: [] };
+  const usedDocIds = new Set();
+
+  for (const dir of SFS_TEACHER_DIRECTORY) {
+    const primary = docs.find(d => d.docId === dir.initials);
+    const dirNameKey = _normName(dir.fullName);
+    const dirIni = (dir.initials || '').toUpperCase();
+    const secondaries = docs.filter(d =>
+      d.docId !== dir.initials && (
+        (d.name && _normName(d.name) === dirNameKey) ||
+        (d.fullName && _normName(d.fullName) === dirNameKey) ||
+        (d.displayName && _normName(d.displayName) === dirNameKey) ||
+        (dir.staffId && d.teacherId && d.teacherId.toUpperCase() === dir.staffId.toUpperCase()) ||
+        (dir.staffId && d.staffId && d.staffId.toUpperCase() === dir.staffId.toUpperCase()) ||
+        (dirIni && d.initials && d.initials.toUpperCase() === dirIni) ||
+        (dirIni && d.routineInitials && d.routineInitials.toUpperCase() === dirIni)
+      )
+    );
+
+    if (primary && secondaries.length === 0) {
+      plan.update.push({ dir, primary });
+      usedDocIds.add(primary.docId);
+    } else if (primary || secondaries.length > 0) {
+      plan.merge.push({ dir, primary, secondaries });
+      if (primary) usedDocIds.add(primary.docId);
+      secondaries.forEach(s => usedDocIds.add(s.docId));
+    } else {
+      plan.create.push({ dir });
+    }
+  }
+
+  plan.orphans = docs.filter(d => !usedDocIds.has(d.docId));
+  return plan;
+};
+
+window._syncDirPlan = null;
+
+window.openSyncDirectoryPanel = async function() {
+  document.getElementById('sync-dir-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  const body = document.getElementById('sync-dir-body');
+  const summary = document.getElementById('sync-dir-summary');
+  const applyBtn = document.getElementById('sync-dir-apply-btn');
+  body.innerHTML = `<p style="text-align:center;color:var(--text-light);padding:32px"><i class="fas fa-spinner fa-spin"></i> Analyzing teacher records…</p>`;
+  applyBtn.disabled = true; applyBtn.style.opacity = '0.5';
+  try {
+    const plan = await window.planSyncDirectory();
+    window._syncDirPlan = plan;
+    renderSyncDirPreview(plan);
+    const total = plan.update.length + plan.merge.length + plan.create.length;
+    summary.innerHTML = `<strong>${total}</strong> directory entries will be processed · <strong>${plan.merge.length}</strong> duplicates will be consolidated · <strong>${plan.orphans.length}</strong> orphans for your review`;
+    applyBtn.disabled = false; applyBtn.style.opacity = '1';
+  } catch (e) {
+    body.innerHTML = `<p style="color:var(--danger);padding:24px">❌ ${e.message}</p>`;
+    console.error(e);
+  }
+};
+
+window.closeSyncDirectoryPanel = function() {
+  document.getElementById('sync-dir-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+  window._syncDirPlan = null;
+};
+
+function _syncEsc(s) {
+  return (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderSyncDirPreview(plan) {
+  const body = document.getElementById('sync-dir-body');
+  const sec = (title, color, items, render) => items.length === 0 ? '' : `
+    <div style="margin-bottom:22px">
+      <h5 style="color:${color};margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;font-weight:700">${title} <span style="background:${color};color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;margin-left:6px">${items.length}</span></h5>
+      <div style="border:1px solid #eee;border-radius:10px;overflow:hidden">${items.map(render).join('')}</div>
+    </div>`;
+
+  const rowStyle = 'padding:10px 14px;border-bottom:1px solid #f3f3f3;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px';
+  const updateRow = (it) => `<div style="${rowStyle}">
+    <div><strong>${_syncEsc(it.dir.fullName)}</strong> <span style="color:var(--text-light)">· ${it.dir.initials} · ${it.dir.staffId || '<em>no staff ID</em>'}</span></div>
+    <span style="color:#5a8a5a;font-size:12px"><i class="fas fa-edit"></i> enrich</span>
+  </div>`;
+  const mergeRow = (it) => `<div style="${rowStyle}">
+    <div>
+      <strong>${_syncEsc(it.dir.fullName)}</strong> <span style="color:var(--text-light)">· ${it.dir.initials} · ${it.dir.staffId || '<em>no staff ID</em>'}</span>
+      <div style="font-size:11px;color:var(--text-light);margin-top:2px">Consolidating: ${it.primary ? 'initials doc' : ''}${it.primary && it.secondaries.length ? ' + ' : ''}${it.secondaries.length ? it.secondaries.length + ' duplicate doc' + (it.secondaries.length>1?'s':'') : ''}</div>
+    </div>
+    <span style="color:#b45309;font-size:12px"><i class="fas fa-compress-arrows-alt"></i> merge</span>
+  </div>`;
+  const createRow = (it) => `<div style="${rowStyle}">
+    <div><strong>${_syncEsc(it.dir.fullName)}</strong> <span style="color:var(--text-light)">· ${it.dir.initials} · ${it.dir.staffId || '<em>no staff ID</em>'}</span></div>
+    <span style="color:#1a6b3c;font-size:12px"><i class="fas fa-plus-circle"></i> create</span>
+  </div>`;
+  const orphanRow = (d) => {
+    const name = d.name || d.fullName || '(no name)';
+    const hint = d.role ? `<span style="color:#1a4a8a">role: ${_syncEsc(d.role)}</span>` :
+                 d.email ? `<span style="color:var(--text-light)">${_syncEsc(d.email)}</span>` :
+                 `<span style="color:#dc2626">unnamed stub</span>`;
+    return `<div style="${rowStyle}">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1">
+        <input type="checkbox" class="sync-orphan-delete" data-doc-id="${_syncEsc(d.docId)}" style="width:16px;height:16px;cursor:pointer">
+        <div>
+          <strong>${_syncEsc(name)}</strong> <span style="color:var(--text-light)">· doc: <code>${_syncEsc(d.docId)}</code></span>
+          <div style="font-size:11px;margin-top:2px">${hint}</div>
+        </div>
+      </label>
+      <span style="color:#dc2626;font-size:12px">tick to delete</span>
+    </div>`;
+  };
+
+  let html = '';
+  html += sec('Will Update (existing record + enrich)', '#5a8a5a', plan.update, updateRow);
+  html += sec('Will Merge & Deduplicate', '#b45309', plan.merge, mergeRow);
+  html += sec('Will Create (new record)', '#1a6b3c', plan.create, createRow);
+  html += sec('Orphans — review before deleting', '#dc2626', plan.orphans, orphanRow);
+  if (plan.orphans.length > 0) {
+    html += `<p style="font-size:12px;color:var(--text-light);background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-top:8px"><i class="fas fa-info-circle" style="color:#b45309"></i> Tick only the orphans you want to <strong>delete</strong>. Unticked orphans (e.g., office staff like Ibankyntiew Mawrie) are left untouched.</p>`;
+  }
+  if (!html) html = `<p style="text-align:center;color:var(--text-light);padding:24px">Nothing to do — directory is fully in sync.</p>`;
+  body.innerHTML = html;
+}
+
+window.applySyncDirectory = async function() {
+  const plan = window._syncDirPlan;
+  if (!plan) { showToast('⚠️ No plan loaded. Re-open the preview.'); return; }
+
+  const orphanIds = Array.from(document.querySelectorAll('.sync-orphan-delete:checked'))
+    .map(el => el.dataset.docId);
+
+  const total = plan.update.length + plan.merge.length + plan.create.length;
+  const dupesToDelete = plan.merge.reduce((n,it) => n + it.secondaries.filter(s => s.docId !== it.dir.initials).length, 0);
+  const totalDeletes = dupesToDelete + orphanIds.length;
+  const msg = `This will write ${total} teacher records and delete ${totalDeletes} doc(s) (${dupesToDelete} duplicate(s) + ${orphanIds.length} orphan(s)).\n\nThis cannot be undone. Continue?`;
+  if (!confirm(msg)) return;
+
+  const applyBtn = document.getElementById('sync-dir-apply-btn');
+  applyBtn.disabled = true; applyBtn.style.opacity = '0.6';
+  applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Writing…';
+
+  const stats = { updated: 0, merged: 0, created: 0, deleted: 0 };
+  try {
+    const batch = writeBatch(db);
+    const ts = new Date().toISOString();
+
+    // 1. UPDATE — enrich existing initials-keyed docs (merge: true preserves untouched fields)
+    for (const it of plan.update) {
+      batch.set(doc(db, 'teachers', it.dir.initials), {
+        name:            it.dir.fullName,
+        fullName:        it.dir.fullName,
+        initials:        it.dir.initials,
+        routineInitials: it.dir.initials,
+        teacherId:       it.dir.staffId || '',
+        staffId:         it.dir.staffId || '',
+        isPartTime:      !!it.dir.isPartTime,
+        updatedAt:       ts
+      }, { merge: true });
+      stats.updated++;
+    }
+
+    // 2. MERGE — consolidate primary + secondaries into one initials-keyed doc
+    const ROLE_RANK = { class_teacher: 3, admin: 2, subject_teacher: 1 };
+    const _rank = r => ROLE_RANK[r] || 0;
+    const classesToUpdate = []; // {classKey, oldId, newId: it.dir.initials, name}
+
+    for (const it of plan.merge) {
+      const merged = {};
+      if (it.primary) Object.assign(merged, it.primary);
+      for (const s of it.secondaries) Object.assign(merged, s);
+      delete merged.docId;
+
+      // Role priority: keep the most senior role across all sources, not "whichever came last"
+      let bestRole = it.primary?.role || null;
+      let bestClassTeacherOf = it.primary?.classTeacherOf || null;
+      let bestClassTeacher   = it.primary?.classTeacher   || null;
+      const allAssignments   = it.primary?.assignments ? [...it.primary.assignments] : [];
+      for (const s of it.secondaries) {
+        if (_rank(s.role) > _rank(bestRole)) bestRole = s.role;
+        if (s.classTeacherOf && !bestClassTeacherOf) bestClassTeacherOf = s.classTeacherOf;
+        if (s.classTeacher   && !bestClassTeacher)   bestClassTeacher   = s.classTeacher;
+        if (Array.isArray(s.assignments)) allAssignments.push(...s.assignments);
+      }
+      // Dedupe assignments by class + subjectKey
+      const seenAsg = new Set();
+      const dedupedAsg = allAssignments.filter(a => {
+        const k = `${a.class}|${a.subjectKey}`;
+        if (seenAsg.has(k)) return false;
+        seenAsg.add(k); return true;
+      });
+      merged.role           = bestRole;
+      merged.classTeacherOf = bestClassTeacherOf;
+      merged.classTeacher   = bestClassTeacher;
+      merged.assignments    = dedupedAsg;
+
+      // Directory values authoritative
+      merged.name            = it.dir.fullName;
+      merged.fullName        = it.dir.fullName;
+      merged.initials        = it.dir.initials;
+      merged.routineInitials = it.dir.initials;
+      merged.teacherId       = it.dir.staffId || merged.teacherId || '';
+      merged.staffId         = it.dir.staffId || merged.staffId || '';
+      merged.isPartTime      = !!it.dir.isPartTime;
+      merged.updatedAt       = ts;
+      if (!merged.createdAt) merged.createdAt = ts;
+
+      batch.set(doc(db, 'teachers', it.dir.initials), merged);
+
+      // Queue classes/{key} update if any deleted doc was the registered classTeacher
+      const oldClassRefs = new Set();
+      if (it.primary?.classTeacherOf) oldClassRefs.add(it.primary.classTeacherOf);
+      for (const s of it.secondaries) if (s.classTeacherOf) oldClassRefs.add(s.classTeacherOf);
+      for (const classKey of oldClassRefs) {
+        classesToUpdate.push({ classKey, newId: it.dir.initials, name: it.dir.fullName });
+      }
+
+      // Delete duplicate docs
+      for (const s of it.secondaries) {
+        if (s.docId !== it.dir.initials) {
+          batch.delete(doc(db, 'teachers', s.docId));
+          stats.deleted++;
+        }
+      }
+      stats.merged++;
+    }
+
+    // 2b. Rewrite classes/{key}.classTeacherId/Name to point at the consolidated initials-keyed doc
+    for (const u of classesToUpdate) {
+      batch.set(doc(db, 'classes', u.classKey), {
+        classTeacherId: u.newId,
+        classTeacherName: u.name
+      }, { merge: true });
+    }
+
+    // 3. CREATE — fresh initials-keyed docs
+    for (const it of plan.create) {
+      batch.set(doc(db, 'teachers', it.dir.initials), {
+        name:            it.dir.fullName,
+        fullName:        it.dir.fullName,
+        initials:        it.dir.initials,
+        routineInitials: it.dir.initials,
+        teacherId:       it.dir.staffId || '',
+        staffId:         it.dir.staffId || '',
+        isPartTime:      !!it.dir.isPartTime,
+        status:          'Active',
+        createdAt:       ts,
+        updatedAt:       ts
+      });
+      stats.created++;
+    }
+
+    // 4. DELETE — user-checked orphans
+    for (const oid of orphanIds) {
+      batch.delete(doc(db, 'teachers', oid));
+      stats.deleted++;
+    }
+
+    await batch.commit();
+    showToast(`✅ Sync complete · ${stats.updated} updated · ${stats.merged} merged · ${stats.created} created · ${stats.deleted} deleted`);
+    closeSyncDirectoryPanel();
+    if (window.loadTeacherAssignList) loadTeacherAssignList();
+  } catch (e) {
+    console.error('[applySyncDirectory] failed:', e);
+    showToast('❌ Sync failed: ' + e.message);
+    applyBtn.disabled = false; applyBtn.style.opacity = '1';
+    applyBtn.innerHTML = '<i class="fas fa-check"></i> Apply Changes';
+  }
 };
 
 function taBadge(role) {
@@ -6581,6 +7284,146 @@ window.filterTAList = function() {
   renderTAList(filtered);
 };
 
+// ──────────────────────────────────────────────────────────────────
+// LOGIN LINKAGE CHECK — verifies users/{uid} → teachers/{initials}
+// resolves correctly via the same lookup chain as loadTeacherPortal.
+// Read-only diagnostic. No writes.
+// ──────────────────────────────────────────────────────────────────
+
+window.openLoginCheckPanel = async function() {
+  document.getElementById('login-check-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  const body = document.getElementById('login-check-body');
+  body.innerHTML = `<p style="text-align:center;color:var(--text-light);padding:32px"><i class="fas fa-spinner fa-spin"></i> Tracing login linkages…</p>`;
+  try {
+    const report = await runLoginCheck();
+    renderLoginCheck(report);
+  } catch (e) {
+    body.innerHTML = `<p style="color:var(--danger);padding:24px">❌ ${e.message}</p>`;
+    console.error(e);
+  }
+};
+
+window.closeLoginCheckPanel = function() {
+  document.getElementById('login-check-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+};
+
+async function runLoginCheck() {
+  const [usersSnap, teachersSnap] = await Promise.all([
+    getDocs(collection(db, 'users')),
+    getDocs(collection(db, 'teachers'))
+  ]);
+  const users    = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+  const teachers = teachersSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
+
+  // Index helpers
+  const teacherByDocId = new Map(teachers.map(t => [t.docId, t]));
+  const teachersByTeacherId = new Map();
+  for (const t of teachers) {
+    if (t.teacherId) teachersByTeacherId.set(String(t.teacherId).toUpperCase(), t);
+  }
+
+  const report = [];
+  for (const dir of SFS_TEACHER_DIRECTORY) {
+    const teacherDoc = teacherByDocId.get(dir.initials);
+
+    // Find users that point at this teacher via teacherId or loginId
+    const candidates = users.filter(u => {
+      const ut = String(u.teacherId || u.loginId || '').toUpperCase();
+      if (!ut) return false;
+      return (dir.staffId && ut === dir.staffId.toUpperCase()) ||
+             (ut === dir.initials.toUpperCase());
+    });
+
+    let status, detail, fix = '';
+    if (!teacherDoc) {
+      status = 'NO_DOC'; detail = 'Teacher doc not found. Run Sync.';
+      fix = 'Sync';
+    } else if (candidates.length === 0) {
+      status = dir.staffId ? 'NO_LOGIN' : 'PENDING';
+      detail = dir.staffId
+        ? 'No Firebase Auth account linked. Teacher cannot log in.'
+        : 'Pending staff ID — login account expected later.';
+    } else if (candidates.length > 1) {
+      status = 'AMBIGUOUS';
+      detail = `${candidates.length} user docs claim this teacher: ${candidates.map(c => c.uid.slice(0,8)).join(', ')}`;
+    } else {
+      // Simulate the portal's lookup chain
+      const u = candidates[0];
+      const tid = String(u.teacherId || u.loginId || '').toUpperCase();
+      const directHit = teacherByDocId.get(u.uid);
+      const tidHit    = teachersByTeacherId.get(tid);
+      const resolved  = directHit || tidHit;
+      if (resolved && resolved.docId === dir.initials) {
+        status = 'OK';
+        detail = `Logs in as <code>${(u.loginId || u.email || '?').replace(/</g,'&lt;')}</code>`;
+      } else if (resolved) {
+        status = 'WRONG_DOC';
+        detail = `Lookup resolves to <code>${resolved.docId}</code> (expected <code>${dir.initials}</code>).`;
+      } else {
+        status = 'BROKEN';
+        detail = `users/${u.uid.slice(0,8)}… has teacherId="${tid}" but no matching teacher doc.`;
+      }
+    }
+    report.push({ dir, status, detail, fix, teacherDoc, candidates });
+  }
+
+  // Also report orphan user accounts that claim to be teachers but match no directory entry
+  const claimedDirIds = new Set(SFS_TEACHER_DIRECTORY.flatMap(d => [d.initials.toUpperCase(), (d.staffId||'').toUpperCase()].filter(Boolean)));
+  const orphans = users.filter(u => {
+    const ut = String(u.teacherId || u.loginId || '').toUpperCase();
+    if (!ut) return false;
+    if (claimedDirIds.has(ut)) return false;
+    const role = (u.role || '').toLowerCase();
+    return role.includes('teacher');
+  });
+  return { report, orphans };
+}
+
+function renderLoginCheck({ report, orphans }) {
+  const body = document.getElementById('login-check-body');
+  const summary = document.getElementById('login-check-summary');
+
+  const counts = report.reduce((a, r) => { a[r.status] = (a[r.status]||0)+1; return a; }, {});
+  const ok = counts.OK || 0;
+  const issues = (counts.NO_LOGIN||0) + (counts.WRONG_DOC||0) + (counts.BROKEN||0) + (counts.AMBIGUOUS||0) + (counts.NO_DOC||0);
+  const pending = counts.PENDING || 0;
+  summary.innerHTML = `<span style="color:#1a6b3c;font-weight:700">✓ ${ok} OK</span> · <span style="color:#dc2626;font-weight:700">${issues} issue${issues===1?'':'s'}</span> · <span style="color:var(--text-light)">${pending} pending</span>${orphans.length ? ` · <span style="color:#b45309;font-weight:700">${orphans.length} orphan login${orphans.length===1?'':'s'}</span>` : ''}`;
+
+  const badge = (status) => {
+    const map = {
+      OK:        { bg:'#dcfce7', fg:'#166534', icon:'fa-check-circle',     label:'OK' },
+      NO_LOGIN:  { bg:'#fee2e2', fg:'#991b1b', icon:'fa-user-slash',       label:'No Login' },
+      PENDING:   { bg:'#fef3c7', fg:'#92400e', icon:'fa-clock',            label:'Pending' },
+      WRONG_DOC: { bg:'#fee2e2', fg:'#991b1b', icon:'fa-exclamation-triangle', label:'Wrong Doc' },
+      BROKEN:    { bg:'#fee2e2', fg:'#991b1b', icon:'fa-unlink',           label:'Broken' },
+      AMBIGUOUS: { bg:'#fef3c7', fg:'#92400e', icon:'fa-question-circle',  label:'Ambiguous' },
+      NO_DOC:    { bg:'#fee2e2', fg:'#991b1b', icon:'fa-times-circle',     label:'No Teacher Doc' }
+    };
+    const m = map[status] || map.BROKEN;
+    return `<span style="background:${m.bg};color:${m.fg};padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;letter-spacing:0.3px"><i class="fas ${m.icon}" style="margin-right:4px"></i>${m.label}</span>`;
+  };
+
+  const rows = report.map(r => `<tr>
+    <td style="padding:10px 12px"><strong>${r.dir.fullName}</strong></td>
+    <td style="padding:10px 12px"><span style="background:#e0e7ff;color:#1a4a8a;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700">${r.dir.initials}</span></td>
+    <td style="padding:10px 12px;color:var(--text-light);font-size:12px">${r.dir.staffId || '—'}</td>
+    <td style="padding:10px 12px">${badge(r.status)}</td>
+    <td style="padding:10px 12px;font-size:12px;color:var(--text-light)">${r.detail}</td>
+  </tr>`).join('');
+
+  let html = `<div class="table-wrap"><table style="width:100%;font-size:13px"><thead><tr style="background:#eff6ff"><th style="padding:10px 12px;text-align:left">Teacher</th><th style="padding:10px 12px;text-align:left">Initials</th><th style="padding:10px 12px;text-align:left">Staff ID</th><th style="padding:10px 12px;text-align:left">Status</th><th style="padding:10px 12px;text-align:left">Detail</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+
+  if (orphans.length) {
+    html += `<div style="margin-top:24px"><h5 style="color:#b45309;margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:0.5px">Orphan Login Accounts <span style="background:#b45309;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;margin-left:6px">${orphans.length}</span></h5>
+      <p style="font-size:12px;color:var(--text-light);margin:0 0 8px">User accounts with role=teacher whose teacherId/loginId doesn't match any directory entry.</p>
+      <div style="border:1px solid #f3d9b1;border-radius:8px;overflow:hidden">${orphans.map(o => `<div style="padding:8px 14px;border-bottom:1px solid #fbeed5;font-size:12px;display:flex;justify-content:space-between"><span><strong>${(o.name||o.email||o.uid.slice(0,8)).replace(/</g,'&lt;')}</strong></span><span style="color:var(--text-light)">teacherId: <code>${o.teacherId||o.loginId||'—'}</code></span></div>`).join('')}</div></div>`;
+  }
+
+  body.innerHTML = html;
+}
+
 // ── Panel open / close ──────────────────────────────────────
 
 window.openTAPanel = async function(uid) {
@@ -6591,6 +7434,14 @@ window.openTAPanel = async function(uid) {
   _taAssignments = JSON.parse(JSON.stringify(teacher.assignments || []));
 
   document.getElementById('ta-panel-title').textContent = `Assign Roles — ${teacher.name || 'Teacher'}`;
+
+  // Identity · Routine Link (pre-fill)
+  const riEl = document.getElementById('ta-routineInitials');
+  const sidEl = document.getElementById('ta-staffId');
+  const ptEl = document.getElementById('ta-isPartTime');
+  if (riEl)  riEl.value  = (teacher.routineInitials || teacher.initials || '').toString().toUpperCase();
+  if (sidEl) sidEl.value = teacher.teacherId || teacher.staffId || '';
+  if (ptEl)  ptEl.checked = !!teacher.isPartTime;
 
   // Role radio
   document.querySelectorAll('input[name="ta-role"]').forEach(r => { r.checked = (r.value === (teacher.role || '')); });
@@ -6749,6 +7600,11 @@ window.saveTAAssignments = async function() {
   // Also write classTeacher as Arabic number so base loadTeacherPortal reads it correctly
   const _ctNum = classTeacherOf ? (TA_ROMAN_TO_NUM[classTeacherOf.split('-')[0]] || null) : null;
 
+  // Identity · Routine Link fields
+  const riVal  = (document.getElementById('ta-routineInitials')?.value || '').toUpperCase().trim();
+  const sidVal = (document.getElementById('ta-staffId')?.value || '').trim();
+  const ptVal  = !!document.getElementById('ta-isPartTime')?.checked;
+
   batch.set(doc(db, 'teachers', _taCurrentUid), {
     role,
     classTeacherOf: classTeacherOf,
@@ -6756,6 +7612,11 @@ window.saveTAAssignments = async function() {
     assignments:    _taAssignments,
     name:           _taCurrentData?.name  || '',
     email:          _taCurrentData?.email || '',
+    routineInitials: riVal,
+    initials:       riVal,
+    teacherId:      sidVal || _taCurrentData?.teacherId || '',
+    staffId:        sidVal || _taCurrentData?.staffId || '',
+    isPartTime:     ptVal,
     updatedAt:      serverTimestamp()
   }, { merge: true });
 

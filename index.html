@@ -969,6 +969,7 @@
         <button class="active" onclick="showDash('s','s-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
         <button onclick="showDash('s','s-profile',this)"><i class="fas fa-user"></i> My Profile</button>
         <button onclick="showDash('s','s-attendance',this)"><i class="fas fa-calendar-check"></i> Attendance</button>
+        <button onclick="showDash('s','s-routine',this)"><i class="fas fa-clock"></i> My Routine</button>
         <button onclick="showDash('s','s-homework',this)"><i class="fas fa-book-open"></i> Homework</button>
         <button onclick="showDash('s','s-notices',this)"><i class="fas fa-bullhorn"></i> Notices</button>
         <button onclick="showDash('s','s-fees',this)"><i class="fas fa-money-bill-wave"></i> Fees</button>
@@ -1018,20 +1019,18 @@
           </div>
           <div class="grid-2">
             <div class="card" style="padding:24px">
-              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-calendar" style="margin-right:8px;color:var(--accent)"></i>Today's Timetable</h4>
-              <div class="chapter-item"><strong>8:00 AM</strong> – Mathematics</div>
-              <div class="chapter-item"><strong>9:00 AM</strong> – English</div>
-              <div class="chapter-item"><strong>10:00 AM</strong> – Science</div>
-              <div class="chapter-item"><strong>11:30 AM</strong> – Social Studies</div>
-              <div class="chapter-item"><strong>12:30 PM</strong> – Lunch Break</div>
-              <div class="chapter-item"><strong>1:30 PM</strong> – Computer</div>
-              <div class="chapter-item"><strong>2:30 PM</strong> – Hindi</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-calendar" style="margin-right:8px;color:var(--accent)"></i>Today's Timetable</h4>
+                <button class="btn btn-sm btn-outline" onclick="showDash('s','s-routine',document.querySelector('#studentSidebar button:nth-child(4)'))" style="font-size:11px;padding:4px 10px">Full →</button>
+              </div>
+              <div id="s-dash-schedule"><p style="color:var(--text-light);font-size:13px;text-align:center;padding:16px"><i class="fas fa-spinner fa-spin"></i> Loading…</p></div>
             </div>
             <div class="card" style="padding:24px">
-              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Recent Notices</h4>
-              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--danger);font-size:8px;margin-right:8px"></i>Exam from 20th Sept – carry admit card</div>
-              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>PTM on 10th Sept – Parents informed</div>
-              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-right:8px"></i>Library extended hours starting Monday</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Recent Notices</h4>
+                <button class="btn btn-sm btn-outline" onclick="showDash('s','s-notices',document.querySelector('#studentSidebar button:nth-child(5)'))" style="font-size:11px;padding:4px 10px">All →</button>
+              </div>
+              <div id="s-dash-notices"><p style="color:var(--text-light);font-size:13px;text-align:center;padding:16px"><i class="fas fa-spinner fa-spin"></i> Loading…</p></div>
             </div>
           </div>
         </div>
@@ -1104,6 +1103,29 @@
               <tr><td>August 2025</td><td>21</td><td>18</td><td>3</td><td><span class="badge badge-warning">86%</span></td></tr>
               <tr><td>September 2025</td><td>19</td><td>14</td><td>5</td><td><span class="badge badge-danger">74%</span></td></tr>
             </tbody></table></div>
+          </div>
+        </div>
+        <div id="s-routine" class="dash-section">
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+              <div>
+                <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-clock" style="margin-right:8px;color:var(--accent)"></i>My Class Routine</h4>
+                <p id="s-routine-sub" style="font-size:13px;color:var(--text-light);margin:4px 0 0">Loading…</p>
+              </div>
+              <button class="btn btn-sm btn-outline" onclick="loadStudentRoutine(true)"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
+            <div id="s-routine-daypills" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="1">Day 1</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="2">Day 2</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="3">Day 3</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="4">Day 4</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="5">Day 5</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="6">Day 6</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="7">Day 7</button>
+            </div>
+            <div id="s-routine-body">
+              <p style="color:var(--text-light);font-size:13px;text-align:center;padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading routine…</p>
+            </div>
           </div>
         </div>
         <div id="s-homework" class="dash-section">
@@ -1183,6 +1205,7 @@
         <button class="active" onclick="showDash('t','t-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
         <button onclick="showDash('t','t-students',this)"><i class="fas fa-users"></i> Students</button>
         <button onclick="showDash('t','t-attendance',this)"><i class="fas fa-calendar-check"></i> Attendance</button>
+        <button onclick="showDash('t','t-schedule',this)"><i class="fas fa-clock"></i> My Schedule</button>
         <button onclick="showDash('t','t-homework',this)"><i class="fas fa-book-open"></i> Homework</button>
         <button onclick="showDash('t','t-notices',this)"><i class="fas fa-bullhorn"></i> Notices</button>
         <button onclick="showDash('t','t-exams',this)"><i class="fas fa-file-alt"></i> Exams</button>
@@ -1213,19 +1236,18 @@
           </div>
           <div class="grid-2">
             <div class="card" style="padding:24px">
-              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-calendar" style="margin-right:8px;color:var(--accent)"></i>Today's Schedule</h4>
-              <div class="chapter-item"><strong>8:00 AM</strong> – English Grammar (Grade 9A)</div>
-              <div class="chapter-item"><strong>9:00 AM</strong> – English Literature (Grade 8B)</div>
-              <div class="chapter-item"><strong>10:30 AM</strong> – Free Period</div>
-              <div class="chapter-item"><strong>11:00 AM</strong> – English Composition (Grade 9A)</div>
-              <div class="chapter-item"><strong>12:00 PM</strong> – Staff Meeting</div>
-              <div class="chapter-item"><strong>2:00 PM</strong> – English (Grade 7C)</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-calendar" style="margin-right:8px;color:var(--accent)"></i>Today's Schedule</h4>
+                <button class="btn btn-sm btn-outline" onclick="showDash('t','t-schedule',document.querySelector('#teacherSidebar button:nth-child(4)'))" style="font-size:11px;padding:4px 10px">Full →</button>
+              </div>
+              <div id="t-dash-schedule"><p style="color:var(--text-light);font-size:13px;text-align:center;padding:16px"><i class="fas fa-spinner fa-spin"></i> Loading…</p></div>
             </div>
             <div class="card" style="padding:24px">
-              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Recent Notices</h4>
-              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--danger);font-size:8px;margin-right:8px"></i>Exam timetable finalised – check admin board</div>
-              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--warning);font-size:8px;margin-right:8px"></i>PTM on 10th Sept – prepare progress cards</div>
-              <div class="chapter-item"><i class="fas fa-circle" style="color:var(--info);font-size:8px;margin-right:8px"></i>Staff meeting every Friday at 2:30 PM</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-bullhorn" style="margin-right:8px;color:var(--accent)"></i>Recent Notices</h4>
+                <button class="btn btn-sm btn-outline" onclick="showDash('t','t-notices',document.querySelector('#teacherSidebar button:nth-child(6)'))" style="font-size:11px;padding:4px 10px">All →</button>
+              </div>
+              <div id="t-dash-notices"><p style="color:var(--text-light);font-size:13px;text-align:center;padding:16px"><i class="fas fa-spinner fa-spin"></i> Loading…</p></div>
             </div>
           </div>
         </div>
@@ -1301,6 +1323,29 @@
             </div>
             <div class="table-wrap"><table><thead><tr><th>Date</th><th>Day</th><th>Present</th><th>Absent</th><th>Late</th><th>Total</th><th>%</th></tr></thead>
             <tbody id="t-att-history-tbody"><tr><td colspan="7" style="text-align:center;padding:14px;color:var(--text-light)">Click <strong>Refresh</strong> to load history.</td></tr></tbody></table></div>
+          </div>
+        </div>
+        <div id="t-schedule" class="dash-section">
+          <div class="card" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+              <div>
+                <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-clock" style="margin-right:8px;color:var(--accent)"></i>My Teaching Schedule</h4>
+                <p id="t-schedule-sub" style="font-size:13px;color:var(--text-light);margin:4px 0 0">Loading…</p>
+              </div>
+              <button class="btn btn-sm btn-outline" onclick="loadTeacherSchedule(true)"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
+            <div id="t-schedule-daypills" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="1">Day 1</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="2">Day 2</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="3">Day 3</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="4">Day 4</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="5">Day 5</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="6">Day 6</button>
+              <button class="btn btn-sm btn-outline routine-day-pill" data-day="7">Day 7</button>
+            </div>
+            <div id="t-schedule-body">
+              <p style="color:var(--text-light);font-size:13px;text-align:center;padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading schedule…</p>
+            </div>
           </div>
         </div>
         <div id="t-homework" class="dash-section">
@@ -1746,6 +1791,7 @@
             <div style="padding:28px">
               <div class="sf-section"><div class="sf-section-head" style="background:linear-gradient(90deg,#edf5ed,transparent);border-left-color:#5a8a5a"><i class="fas fa-chalkboard-teacher" style="color:#5a8a5a"></i> Identity</div><div class="sf-grid">
                 <div class="sf-field"><label>Teacher ID / Login ID *</label><input type="text" id="tf-teacherId" placeholder="e.g. SFST027"></div>
+                <div class="sf-field"><label>Routine Initials</label><input type="text" id="tf-routineInitials" placeholder="e.g. MP, JKD" maxlength="6" style="text-transform:uppercase"></div>
                 <div class="sf-field"><label>Title *</label><select id="tf-title"><option value="">— Select —</option><option value="Sir">Sir (Mr.)</option><option value="Miss">Miss / Mrs.</option><option value="Dr">Dr.</option></select></div>
                 <div class="sf-field sf-full"><label>Full Name *</label><input type="text" id="tf-name" placeholder="e.g. Michael Pamthet"></div>
                 <div class="sf-field"><label>Date of Birth</label><input type="date" id="tf-dob"></div>
@@ -1941,7 +1987,11 @@
                 <h4 style="color:var(--accent-dark);margin:0 0 4px"><i class="fas fa-user-tag" style="margin-right:8px;color:var(--accent)"></i>Teacher Assignments</h4>
                 <p style="font-size:13px;color:var(--text-light);margin:0">Assign roles, class teacher duties, and subject responsibilities.</p>
               </div>
-              <button class="btn btn-primary btn-sm" onclick="openAddTeacherForAssign()"><i class="fas fa-plus"></i> Add New Teacher</button>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-sm" onclick="openLoginCheckPanel()" style="background:#1a4a8a;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer"><i class="fas fa-shield-alt"></i> Check Logins</button>
+                <button class="btn btn-sm" onclick="openSyncDirectoryPanel()" style="background:#f59e0b;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer"><i class="fas fa-sync-alt"></i> Sync Teacher Directory</button>
+                <button class="btn btn-primary btn-sm" onclick="openAddTeacherForAssign()"><i class="fas fa-plus"></i> Add New Teacher</button>
+              </div>
             </div>
 
             <!-- Search bar -->
@@ -1950,6 +2000,49 @@
             <!-- Teacher cards list -->
             <div id="ta-teacher-list">
               <p style="text-align:center;color:var(--text-light);padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading teachers...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── LOGIN LINKAGE CHECK MODAL ── -->
+        <div id="login-check-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(44,31,14,0.55);backdrop-filter:blur(3px);overflow-y:auto;padding:24px 16px">
+          <div style="max-width:1040px;margin:0 auto;background:var(--white);border-radius:18px;box-shadow:0 24px 80px rgba(44,31,14,0.28);overflow:hidden">
+            <div style="background:linear-gradient(135deg,#1e3a8a,#3b82f6);padding:22px 28px;display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <h3 style="color:#fff;font-family:var(--font-head);margin:0;font-size:1.35rem"><i class="fas fa-shield-alt" style="margin-right:8px"></i>Teacher Login Linkage Check</h3>
+                <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:4px 0 0">Verifies the full chain: Firebase Auth → users/&#123;uid&#125; → teachers/&#123;initials&#125; for each of the 24 teachers.</p>
+              </div>
+              <button onclick="closeLoginCheckPanel()" style="background:rgba(255,255,255,0.18);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer">&#215;</button>
+            </div>
+            <div id="login-check-body" style="padding:24px 28px;max-height:65vh;overflow-y:auto">
+              <p style="text-align:center;color:var(--text-light);padding:32px"><i class="fas fa-spinner fa-spin"></i> Tracing login linkages…</p>
+            </div>
+            <div style="padding:18px 28px;background:#eff6ff;border-top:1.5px solid #c7d2fe;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+              <p id="login-check-summary" style="font-size:13px;color:var(--text-light);margin:0">—</p>
+              <button class="btn btn-outline btn-sm" onclick="closeLoginCheckPanel()"><i class="fas fa-times"></i> Close</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SYNC TEACHER DIRECTORY — PREVIEW MODAL ── -->
+        <div id="sync-dir-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(44,31,14,0.55);backdrop-filter:blur(3px);overflow-y:auto;padding:24px 16px">
+          <div style="max-width:960px;margin:0 auto;background:var(--white);border-radius:18px;box-shadow:0 24px 80px rgba(44,31,14,0.28);overflow:hidden">
+            <div style="background:linear-gradient(135deg,#b45309,#f59e0b);padding:22px 28px;display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <h3 style="color:#fff;font-family:var(--font-head);margin:0;font-size:1.35rem"><i class="fas fa-sync-alt" style="margin-right:8px"></i>Sync Teacher Directory</h3>
+                <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:4px 0 0">Preview every change before anything is written. Nothing happens until you click <strong>Apply</strong>.</p>
+              </div>
+              <button onclick="closeSyncDirectoryPanel()" style="background:rgba(255,255,255,0.18);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer">&#215;</button>
+            </div>
+            <div id="sync-dir-body" style="padding:24px 28px;max-height:65vh;overflow-y:auto">
+              <p style="text-align:center;color:var(--text-light);padding:32px"><i class="fas fa-spinner fa-spin"></i> Analyzing teacher records…</p>
+            </div>
+            <div id="sync-dir-footer" style="padding:18px 28px;background:#fff8f0;border-top:1.5px solid #f3d9b1;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+              <p id="sync-dir-summary" style="font-size:13px;color:var(--text-light);margin:0">—</p>
+              <div style="display:flex;gap:10px">
+                <button class="btn btn-outline btn-sm" onclick="closeSyncDirectoryPanel()"><i class="fas fa-times"></i> Cancel</button>
+                <button id="sync-dir-apply-btn" class="btn btn-sm" onclick="applySyncDirectory()" disabled style="background:#5a8a5a;color:#fff;padding:8px 20px;border-radius:8px;border:none;font-family:var(--font-body);font-weight:700;cursor:pointer;opacity:0.5"><i class="fas fa-check"></i> Apply Changes</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1965,6 +2058,25 @@
             <button onclick="closeTAPanel()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">&#215;</button>
           </div>
           <div class="admin-ta-panel-body">
+
+            <!-- SECTION ⓘ: Identity (Routine Bridge) -->
+            <div class="admin-ta-section" style="background:#f0f7ff;border-left:3px solid #1a4a8a;padding:12px 14px;border-radius:8px;margin-bottom:14px">
+              <div class="admin-ta-section-head" style="margin-bottom:8px"><span class="admin-ta-marker">▸</span> IDENTITY · Routine Link</div>
+              <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+                <div style="flex:1;min-width:140px">
+                  <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Routine Initials</label>
+                  <input type="text" id="ta-routineInitials" maxlength="6" placeholder="e.g. MP" style="width:100%;padding:8px 12px;border:1.5px solid var(--primary);border-radius:6px;font-family:var(--font-body);font-size:14px;text-transform:uppercase;font-weight:700;letter-spacing:1px;box-sizing:border-box">
+                </div>
+                <div style="flex:1;min-width:140px">
+                  <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Staff ID</label>
+                  <input type="text" id="ta-staffId" placeholder="e.g. SFST007" style="width:100%;padding:8px 12px;border:1.5px solid var(--primary);border-radius:6px;font-family:var(--font-body);font-size:14px;box-sizing:border-box">
+                </div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--accent-dark);padding-bottom:8px">
+                  <input type="checkbox" id="ta-isPartTime" style="width:14px;height:14px;cursor:pointer"> Part-time
+                </label>
+              </div>
+              <p style="font-size:11px;color:var(--text-light);margin:8px 0 0">Initials link this teacher to their schedule in the Routine-App. Editable; rewritten by the Sync tool.</p>
+            </div>
 
             <!-- SECTION A: Role -->
             <div class="admin-ta-section">

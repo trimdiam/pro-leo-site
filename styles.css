@@ -646,6 +646,21 @@ th { padding: 12px 16px; text-align: left; font-weight: 700; color: var(--accent
 td { padding: 12px 16px; border-bottom: 1px solid var(--bg); color: var(--text); white-space: nowrap; }
 tr:hover td { background: rgba(214,195,163,0.15); }
 
+/* Routine / Schedule (Routine-App bridge) */
+.routine-table { min-width: 520px; }
+.routine-table tbody tr.routine-row-active td {
+  background: linear-gradient(90deg, rgba(90,138,90,0.18), rgba(90,138,90,0.06));
+  border-left: 3px solid var(--success, #5a8a5a);
+  font-weight: 600;
+}
+.routine-table tbody tr.routine-row-active:hover td { background: rgba(90,138,90,0.22); }
+.routine-day-pill { min-width: 64px; transition: all 0.15s ease; }
+.routine-day-pill.active, .routine-day-pill.btn-primary {
+  background: var(--accent, #1a6b3c) !important;
+  color: #fff !important;
+  border-color: var(--accent, #1a6b3c) !important;
+}
+
 /* Profile Card */
 .profile-header-card {
   background: linear-gradient(135deg, var(--accent-dark), var(--accent));
