@@ -3570,7 +3570,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
 
   function _calcDays(from, to) {
     if (!from || !to) return 1;
-    return Math.max(1, Math.round((new Date(to+'T00:00:00') - new Date(from+'T00:00:00')) / 86400000) + 1);
+    return Math.max(1, Math.round((new Date(to+'T00:00:00') - new Date(from+'T00:00:00')) / 86400000));
   }
 
   async function loadLeaveSummary(uid) {
@@ -4688,25 +4688,43 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     if(!tbody) return;
     tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
     try{
-      const snap=await getDocs(query(collection(db,'teachers'),orderBy('teacherId')));
+      const [snap, classSnap] = await Promise.all([
+        getDocs(query(collection(db,'teachers'),orderBy('teacherId'))),
+        getDocs(collection(db,'classes'))
+      ]);
+      // Build map: teacherId/initials → class label from live classes collection
+      const classLabel={PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
+      const getL=c=>classLabel[c]||(c?'Class '+c:'—');
+      const ctMap={}; // routineInitials → class display label
+      classSnap.docs.forEach(cd=>{
+        const cls=cd.data();
+        const tid=(cls.classTeacherId||cls.classTeacherUid||'').trim();
+        // doc id format: "6-A", "SKG-A", "9-B" — take part before '-'
+        if(tid) ctMap[tid]=(cd.id||'').split('-')[0].trim();
+      });
       window._loadedTeacherDocs=snap.docs;
+      window._teacherClassMap=ctMap;
       if(countEl) countEl.textContent=`${snap.size} teacher${snap.size!==1?'s':''}`;
       if(snap.empty){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-light)">No teachers found.</td></tr>';return;}
-      renderTeacherRows(snap.docs);
+      renderTeacherRows(snap.docs, ctMap);
     }catch(e){tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;}
   };
 
-  function renderTeacherRows(docs){
+  function renderTeacherRows(docs, ctMap){
+    ctMap = ctMap || window._teacherClassMap || {};
     const tbody=document.getElementById('admin-teacher-tbody');
     const classLabel={PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
     const getL=c=>classLabel[c]||(c?'Class '+c:'—');
     tbody.innerHTML=docs.map(d=>{
       const t=d.data(); const bc=t.status==='Active'?'badge-success':t.status==='On Leave'?'badge-warning':'badge-danger';
-      const tName=JSON.stringify(t).replace(/"/g,"'");
+      // Class teacher: prefer live classes collection lookup, fall back to teachers doc field
+      const initials=(t.routineInitials||t.initials||'').toUpperCase();
+      const liveClass = initials && ctMap[initials] ? getL(ctMap[initials]) : null;
+      const classTeacherDisplay = liveClass || (t.classTeacher ? getL(t.classTeacher) : '—');
       return `<tr data-tname="${(t.name||'').toLowerCase()}">
         <td><strong style="font-family:monospace;color:var(--accent)">${t.teacherId||'—'}</strong></td>
         <td>${t.title||'—'}</td><td>${t.name||'—'}</td>
-        <td>${t.classTeacher?getL(t.classTeacher):'—'}</td>
+        <td>${classTeacherDisplay}</td>
         <td style="font-size:13px">${t.subjects||'—'}</td>
         <td style="font-size:12px">${t.whatsapp||'—'}</td>
         <td><span class="badge ${bc}">${t.status||'Active'}</span></td>
@@ -8110,7 +8128,7 @@ window.tpOpenMarkEntry = function(btn) {
   const classId    = btn.dataset.classId;
   const subjectKey = btn.dataset.subjectKey;
   const term       = btn.dataset.term || 'HY';
-  window.location.href = `../Sfs-report-card/markentry.html?classId=${classId}&subject=${subjectKey}&term=${term}`;
+  window.location.href = `/Sfs-report-card/markentry.html?classId=${classId}&subject=${subjectKey}&term=${term}&_t=${Date.now()}`;
 };
 
 function showTPLiveToast(msg) {

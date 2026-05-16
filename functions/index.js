@@ -93,6 +93,39 @@ exports.notifyNewNotice = onDocumentCreated(
   }
 );
 
+// ── TRIGGER 4: Leave application approved/rejected → notify teacher ───────
+exports.notifyLeaveDecision = onDocumentUpdated(
+  "leave_applications/{leaveId}",
+  async (event) => {
+    const before = event.data.before.data();
+    const after  = event.data.after.data();
+
+    // Only fire when status changes to Approved or Rejected
+    if (before.status === after.status) return;
+    const status = after.status;
+    if (!["Approved", "Rejected"].includes(status)) return;
+
+    const uid = after.uid;
+    if (!uid) return;
+
+    // Get FCM token from the teacher's users doc (keyed by Firebase Auth UID)
+    const userDoc = await db.collection("users").doc(uid).get();
+    if (!userDoc.exists) { console.warn("notifyLeaveDecision: no user doc for", uid); return; }
+    const token = userDoc.data().fcmToken;
+
+    const from = after.from || "";
+    const to   = after.to   || "";
+    const name = after.teacherName || "Teacher";
+    const icon = status === "Approved" ? "✅" : "❌";
+    const title = `${icon} Leave ${status}`;
+    const body  = status === "Approved"
+      ? `Your leave from ${from} to ${to} has been approved.`
+      : `Your leave from ${from} to ${to} has been rejected. Please contact the admin.`;
+
+    await sendPush(token, title, body, { type: "leave", status, leaveId: event.params.leaveId });
+  }
+);
+
 // ── TRIGGER 3: Student message sent → notify the student ─────────────────
 exports.notifyStudentMessage = onDocumentCreated(
   "student_messages/{msgId}",
