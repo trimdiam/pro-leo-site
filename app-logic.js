@@ -1120,7 +1120,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
             <div style="display:flex;gap:4px;flex-wrap:wrap">
               <button class="btn btn-sm" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="adminViewAdmission('${d.id}')"><i class="fas fa-edit"></i> View/Edit</button>
               <button class="btn btn-sm" style="background:#475569;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="adminPrintAdmission('${d.id}')"><i class="fas fa-print"></i> Print</button>
-              ${a.status!=='Admitted'?`<button class="btn btn-sm" style="background:#1a6b3c;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="openApproveModal('${d.id}','${(a.studentName||'').replace(/'/g,"\\'")}','${a.class||''}')"><i class="fas fa-check"></i> Approve</button>`:''}
+              ${(a.status!=='Admitted' && a.status!=='Rejected')?`<button class="btn btn-sm" style="background:#1a6b3c;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;white-space:nowrap" onclick="openApproveModal('${d.id}','${(a.studentName||'').replace(/'/g,"\\'")}','${a.class||''}')"><i class="fas fa-check"></i> Approve</button>`:''}
               ${a.status!=='Shortlisted'?`<button class="btn btn-sm" style="background:#1a4a8a;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px" onclick="updateAdmStatus('${d.id}','Shortlisted')">Shortlist</button>`:''}
               ${a.status!=='Rejected'?`<button class="btn btn-sm btn-danger" style="font-size:11px;padding:4px 8px" onclick="rejectAdmission('${d.id}','${(a.studentName||'').replace(/'/g,"\\'")}')"><i class="fas fa-times"></i> Reject</button>`:''}
             </div>
@@ -2484,6 +2484,23 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   //  Hands the assembled payload to NotificationCenter.render() so
   //  the Bento Grid renders real personalized data instead of mocks.
   // ================================================================
+
+  // Class names get stored inconsistently (Roman "I", number 1, string "1",
+  // play-group codes "PG/LKG/KG"). Returns up to ~6 plausible variants
+  // for use with a Firestore `where('class','in',[...])` query.
+  function _classVariants(cls) {
+    const R2N = { I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10 };
+    const N2R = { 1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII',9:'IX',10:'X' };
+    const raw = String(cls || '').trim();
+    if (!raw) return [''];
+    const out = new Set([raw, raw.toUpperCase(), raw.toLowerCase()]);
+    const asNum = parseInt(raw, 10);
+    if (!isNaN(asNum)) { out.add(asNum); out.add(String(asNum)); if (N2R[asNum]) out.add(N2R[asNum]); }
+    const upper = raw.toUpperCase();
+    if (R2N[upper]) { out.add(R2N[upper]); out.add(String(R2N[upper])); }
+    return Array.from(out).slice(0, 10);
+  }
+
   window.loadStudentNotificationCenter = async function(user) {
     if (!user || !user.uid || !window.NotificationCenter) return;
 
@@ -2495,25 +2512,31 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const sid = (window.getActiveStudentId && window.getActiveStudentId()) || u.studentId || window._studentId || '';
       const cls = window._studentClass || u.class || '';
 
-      // 2. ATTENDANCE — count present/absent for this student
+      // 2. ATTENDANCE — read attendance_daily for this student's class,
+      // then check the absent[]/late[] arrays for this student's id.
+      // Match is case/whitespace-insensitive so "SFS260101" === "sfs260101 ".
+      // Class field may be stored as Roman ("I"), number (1), or string ("1")
+      // depending on when/how the record was created — we query all variants.
       let present = 0, absent = 0, total = 0, todayStatus = 'present';
-      if (sid) {
+      console.log('[Attendance debug] sid=', sid, 'cls=', cls, 'variants=', _classVariants(cls));
+      if (sid && cls) {
+        const norm = v => String(v || '').trim().toUpperCase();
+        const sidN = norm(sid);
         const attSnap = await getDocs(query(
-          collection(db, 'attendance'),
-          where('studentId', '==', sid),
+          collection(db, 'attendance_daily'),
+          where('class', 'in', _classVariants(cls)),
           limit(200)
         ));
+        console.log('[Attendance debug] docs returned:', attSnap.size);
         const todayKey = new Date().toISOString().split('T')[0];
         attSnap.forEach(d => {
-          const a   = d.data();
-          const st  = (a.status || '').toString().toUpperCase();
+          const a = d.data();
+          const isAbsent = Array.isArray(a.absent) && a.absent.some(x => norm(x) === sidN);
+          const isLate   = Array.isArray(a.late)   && a.late.some(x => norm(x) === sidN);
           total++;
-          if (st === 'P' || st === 'PRESENT') present++;
-          else if (st === 'A' || st === 'ABSENT') absent++;
+          if (isAbsent) absent++; else present++;
           if (a.date === todayKey) {
-            todayStatus = (st === 'A' || st === 'ABSENT') ? 'absent'
-                        : (st === 'L' || st === 'LATE')   ? 'late'
-                        : 'present';
+            todayStatus = isAbsent ? 'absent' : isLate ? 'late' : 'present';
           }
         });
       }
@@ -2563,14 +2586,51 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         .filter(n => n.audience === 'all' || n.audience === 'students' || n.audience === 'both' || (cls && n.audience === cls.toLowerCase()))
         .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
+      // 4b. Holiday banner for student portal
+      _checkHolidayBanner('s-holiday-banner', 's-holiday-banner-msg');
+
+      // 4c. HOLIDAYS — inject upcoming holidays (next 30 days) into notices
+      try {
+        const today = new Date(); today.setHours(0,0,0,0);
+        const in30  = new Date(today); in30.setDate(today.getDate() + 30);
+        const todayStr = today.toISOString().split('T')[0];
+        const in30Str  = in30.toISOString().split('T')[0];
+        const holSnap = await getDocs(query(collection(db, 'holidays'), limit(50)));
+        holSnap.forEach(d => {
+          const h = d.data();
+          if (!h.date || h.date < todayStr || h.date > in30Str) return;
+          const fmt = new Date(h.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' });
+          const isToday    = h.date === todayStr;
+          const isTomorrow = h.date === new Date(today.getTime() + 86400000).toISOString().split('T')[0];
+          const prefix = isToday ? '🎉 Today — ' : isTomorrow ? '📅 Tomorrow — ' : `📅 ${fmt} — `;
+          notices.unshift({
+            audience: 'all',
+            message:  `${prefix}${h.reason} (${h.type || 'Holiday'})`,
+            isUrgent: isToday || isTomorrow,
+            tag:      'Holiday',
+            date:     h.date
+          });
+        });
+      } catch(e) { console.warn('[Holidays] fetch skipped:', e.message); }
+
       // 5. EXAMS — placeholder (no `exams` collection yet); wire when ready
       const exams = [];
 
       // 6. Update stat cards with real data
       const setEl = (id, v) => { countUp(document.getElementById(id), v); };
       setEl('s-stat-attendance', total > 0 ? percentage + '%' : '—');
-      // Fee due: use student doc feeBalance if available (more accurate than fees collection)
-      const stuSnap = sid ? await getDocs(query(collection(db,'students'), where('studentId','==',sid), limit(1))) : null;
+      // Fee due: try to read live feeBalance from the student's own doc.
+      // Wrapped in its own try/catch because the Firestore rule for `students`
+      // doesn't permit querying by the studentId field — only direct ID reads.
+      // A failure here must NOT abort the rest of the NotificationCenter render.
+      let stuSnap = null;
+      if (sid) {
+        try {
+          stuSnap = await getDocs(query(collection(db,'students'), where('studentId','==',sid), limit(1)));
+        } catch (e) {
+          console.warn('[NotificationCenter] student feeBalance lookup skipped:', e.message);
+        }
+      }
       if (stuSnap && !stuSnap.empty) {
         const bal = parseFloat(stuSnap.docs[0].data().feeBalance || 0);
         setEl('s-stat-fee-due', bal > 0 ? '₹' + bal.toLocaleString('en-IN') : '₹0');
@@ -2914,6 +2974,33 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     }
   }
 
+  // Checks today & tomorrow against holidays collection and shows the
+  // green banner at the top of whichever portal is active.
+  async function _checkHolidayBanner(bannerId, msgId) {
+    const banner = document.getElementById(bannerId);
+    const msgEl  = document.getElementById(msgId);
+    if (!banner || !msgEl) return;
+    try {
+      const today    = new Date(); today.setHours(0,0,0,0);
+      const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+      const todayStr    = today.toISOString().split('T')[0];
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      const snap = await getDocs(query(collection(db,'holidays'), limit(50)));
+      let match = null;
+      snap.forEach(d => {
+        const h = d.data();
+        if (h.date === todayStr)    match = { ...h, when: 'today' };
+        if (h.date === tomorrowStr && !match) match = { ...h, when: 'tomorrow' };
+      });
+      if (match) {
+        msgEl.textContent = match.when === 'today'
+          ? `Today is a holiday — ${match.reason} (${match.type || 'Holiday'}). No classes today.`
+          : `Tomorrow is a holiday — ${match.reason} (${match.type || 'Holiday'}). No classes tomorrow.`;
+        banner.style.display = 'flex';
+      }
+    } catch(e) { /* silently skip if holidays unreadable */ }
+  }
+
   window.loadTeacherDashWidgets = async function() {
     const ini = await _resolveTeacherInitials();
     const schedEl = document.getElementById('t-dash-schedule');
@@ -2923,6 +3010,44 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       await _renderDashScheduleRows('t-dash-schedule', ini, false, null);
     }
     await _loadRecentNotices('t-dash-notices', (aud) => aud === 'all' || aud === 'teachers' || aud === 'both');
+    _checkHolidayBanner('t-holiday-banner', 't-holiday-banner-msg');
+
+    // Upcoming holidays widget
+    const holEl = document.getElementById('t-dash-holidays');
+    if (holEl) {
+      try {
+        const today  = new Date(); today.setHours(0,0,0,0);
+        const in60   = new Date(today); in60.setDate(today.getDate() + 60);
+        const todayStr = today.toISOString().split('T')[0];
+        const in60Str  = in60.toISOString().split('T')[0];
+        const snap = await getDocs(query(collection(db,'holidays'), limit(50)));
+        const upcoming = [...snap.docs]
+          .map(d => d.data())
+          .filter(h => h.date && h.date >= todayStr && h.date <= in60Str)
+          .sort((a,b) => a.date.localeCompare(b.date));
+        if (!upcoming.length) {
+          holEl.innerHTML = `<p style="color:var(--text-light);font-size:13px;text-align:center;padding:8px">No upcoming holidays in the next 60 days.</p>`;
+        } else {
+          holEl.innerHTML = upcoming.map(h => {
+            const d    = new Date(h.date + 'T00:00:00');
+            const fmt  = d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+            const diff = Math.round((d - today) / 86400000);
+            const tag  = diff === 0 ? '<span style="background:#dc2626;color:#fff;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;margin-left:6px">TODAY</span>'
+                       : diff === 1 ? '<span style="background:#f59e0b;color:#fff;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;margin-left:6px">TOMORROW</span>'
+                       : `<span style="background:var(--accent);color:#fff;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;margin-left:6px">in ${diff} days</span>`;
+            return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--accent-dark)">${h.reason || '—'}${tag}</div>
+                <div style="font-size:11px;color:var(--text-light);margin-top:2px">${fmt} &nbsp;·&nbsp; ${h.type || 'Holiday'}</div>
+              </div>
+              <i class="fas fa-umbrella-beach" style="color:var(--accent);font-size:18px;opacity:0.6"></i>
+            </div>`;
+          }).join('');
+        }
+      } catch(e) {
+        holEl.innerHTML = `<p style="color:var(--text-light);font-size:13px;text-align:center;padding:8px">Could not load holidays.</p>`;
+      }
+    }
   };
 
   window.loadStudentDashWidgets = async function() {
@@ -2997,6 +3122,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   // ================================================================
   window.loadStudentAttendance = async function() {
     const sid = (window.getActiveStudentId && window.getActiveStudentId()) || window._studentId || '';
+    const cls = window._studentClass || '';
     if (!sid) return;
 
     // Summary card elements
@@ -3008,23 +3134,27 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     const tbody   = document.querySelector('#s-attendance .table-wrap tbody');
 
     try {
-      const snap = await getDocs(query(collection(db, 'attendance'), where('studentId', '==', sid), limit(300)));
+      if (!cls) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px">Class not set on your profile.</td></tr>';
+        return;
+      }
+      const snap = await getDocs(query(collection(db, 'attendance_daily'), where('class', 'in', _classVariants(cls)), limit(300)));
       let present = 0, absent = 0, total = 0;
       const byMonth = {};
+      const norm = v => String(v || '').trim().toUpperCase();
+      const sidN = norm(sid);
 
       snap.forEach(d => {
         const a = d.data();
-        const st = (a.status || '').toString().toUpperCase();
+        const isAbsent = Array.isArray(a.absent) && a.absent.some(x => norm(x) === sidN);
         total++;
-        if (st === 'P' || st === 'PRESENT') present++;
-        else if (st === 'A' || st === 'ABSENT') absent++;
+        if (isAbsent) absent++; else present++;
         // Group by month
         const month = (a.date || '').substring(0, 7); // 'YYYY-MM'
         if (month) {
           if (!byMonth[month]) byMonth[month] = { present: 0, absent: 0, total: 0 };
           byMonth[month].total++;
-          if (st === 'P' || st === 'PRESENT') byMonth[month].present++;
-          else if (st === 'A' || st === 'ABSENT') byMonth[month].absent++;
+          if (isAbsent) byMonth[month].absent++; else byMonth[month].present++;
         }
       });
 

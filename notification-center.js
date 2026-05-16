@@ -34,44 +34,15 @@ window.NotificationCenter = (() => {
      Mirrors real Firestore document shapes — swap for live
      onSnapshot() listeners whenever you are ready.
   ---------------------------------------------------------- */
+  // Empty defaults — shown only as a fallback when real auth-bound data
+  // is unavailable. No hardcoded numbers; everything reads "—" / 0.
   const _mock = {
     studentData: {
-      attendance: {
-        todayStatus: 'present',   // 'present' | 'absent' | 'late'
-        percentage:  87,
-        present:     116,
-        absent:      17,
-        total:       133
-      },
-      fees: {
-        isPaid:      false,
-        amount:      5100,
-        term:        'Term II — 2025–26',
-        dueDate:     '2026-05-15',
-        paidAmount:  0,
-        upiId:       'stfrancisschool@upi'
-      },
-      exams: [
-        { subject: 'Mathematics',    type: 'Unit Test I', date: '2026-05-03' },
-        { subject: 'Science',        type: 'Unit Test I', date: '2026-05-08' },
-        { subject: 'English',        type: 'Unit Test I', date: '2026-05-12' },
-        { subject: 'Social Studies', type: 'Unit Test I', date: '2026-05-15' }
-      ]
+      attendance: { todayStatus: 'present', percentage: 0, present: 0, absent: 0, total: 0 },
+      fees:       { isPaid: true, amount: 0, term: 'Current Term', dueDate: '', paidAmount: 0, upiId: 'stfrancisschool@upi' },
+      exams:      []
     },
-    notices: [
-      {
-        message:  'School will remain closed on 2nd May 2026 on account of Maharashtra Day.',
-        isUrgent: true,
-        tag:      'School Closure',
-        date:     '2026-04-29'
-      },
-      {
-        message:  'Annual Sports Day scheduled for 18th May 2026. Practice begins Monday.',
-        isUrgent: false,
-        tag:      'Event',
-        date:     '2026-04-28'
-      }
-    ]
+    notices: []
   };
 
   /* ----------------------------------------------------------

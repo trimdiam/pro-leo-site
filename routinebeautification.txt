@@ -1,0 +1,159 @@
+## TASK: Improve "Today's Schedule" UI (Visual Enhancement Only)
+
+### ⚠️ STRICT RULES
+
+* Do NOT modify backend logic
+* Do NOT change data structure
+* Do NOT break existing layout
+* Only enhance UI (CSS + minimal HTML tweaks)
+* Keep design clean, lightweight, and responsive
+
+---
+
+## 🎯 OBJECTIVE
+
+Upgrade the schedule card to feel:
+
+* modern
+* clean
+* slightly animated
+* visually structured
+
+WITHOUT redesigning the system.
+
+---
+
+## 🎨 DESIGN IMPROVEMENTS TO APPLY
+
+### 1. Convert Rows into Soft Cards
+
+Each schedule item should:
+
+* have rounded corners (8–12px)
+* light background (#f9f9f9 or similar)
+* spacing between items (8–12px)
+* no divider lines
+
+---
+
+### 2. Typography Hierarchy
+
+Apply:
+
+* Time → bold, slightly larger
+* Subject → medium weight
+* Class → smaller, lighter color (gray)
+
+Example layout:
+
+08:15   📘 English
+Class I
+
+---
+
+### 3. Add Subject Emojis (Minimal Use)
+
+Add ONE emoji before subject:
+
+Mapping:
+
+* English → 📘
+* Hindi → 📗
+* Maths → 📐
+* Science → 🔬
+* Computer → 💻
+* Free Period → ☕ or 💤
+
+Do NOT overuse emojis.
+
+---
+
+### 4. Style Free Period Differently
+
+* lighter text color
+* optional italic
+* slightly muted background
+
+---
+
+### 5. Add Hover / Touch Animation
+
+Each card:
+
+* slight lift on hover:
+  transform: translateY(-2px)
+
+* smooth transition:
+  transition: all 0.2s ease
+
+* subtle shadow increase on hover
+
+---
+
+### 6. Highlight Current Period (UI Only)
+
+If a row has "current" class:
+
+* soft highlight background (light gold or green tint)
+* slightly stronger shadow
+* optional badge: "Now"
+
+DO NOT implement time logic—only style if class exists.
+
+---
+
+### 7. Header Enhancement
+
+Improve header:
+
+* Add icon (📅) before title
+* Make title larger and bold
+* Style "Day 5 (Fri)" as a badge:
+
+  * small rounded background
+  * subtle border
+
+---
+
+### 8. Improve "Full →" Button
+
+* Add hover effect:
+  slight right movement
+* smooth transition
+
+---
+
+### 9. Spacing System
+
+* Increase vertical spacing between rows
+* Reduce clutter
+* Use whitespace instead of divider lines
+
+---
+
+## ⚙️ OUTPUT REQUIREMENTS
+
+* Provide:
+
+  1. Updated HTML (only necessary changes)
+  2. CSS styles (clean, modular)
+* Keep code minimal and readable
+* Do NOT include explanations
+
+---
+
+## 🚀 DESIGN STYLE
+
+* Soft UI (light shadows, rounded edges)
+* Neutral background tones
+* Minimal animations
+* Professional (not playful or childish)
+
+---
+
+## FINAL NOTE
+
+Focus on refinement, not redesign.
+
+The UI should feel:
+"simple, elegant, and slightly alive"

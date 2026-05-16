@@ -36,8 +36,11 @@ service cloud.firestore {
     }
 
     // ── Daily attendance (with month-locking guard) ───────────────────
+    // Any authenticated user can read (students need this to view their own
+    // attendance, which is computed client-side from the absent[]/late[] arrays).
+    // Only teachers/admins can write, and only if the month isn't locked.
     match /attendance_daily/{docId} {
-      allow read:  if isAnyStaff();
+      allow read:  if request.auth != null;
       allow write: if request.auth != null
         && (isRole('teacher') || isAdmin())
         && (isDailyWriteAllowed(database, docId) || isAdmin());
@@ -153,7 +156,8 @@ service cloud.firestore {
       allow read:   if isAnyStaff() ||
         (request.auth != null &&
          resource.data.to == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId);
-      allow create: if isAnyStaff();
+      // Any authenticated user may create (students contact admin, staff send notes)
+      allow create: if request.auth != null;
       allow update, delete: if isAnyStaff();
     }
 
@@ -193,6 +197,8 @@ service cloud.firestore {
 
   // ── Helper: is the daily doc's month unlocked? ───────────────────────
   // docId format: "{classNum}_{YYYY-MM-DD}"
+  // Uses exists() first to avoid touching .data when the monthly doc is absent,
+  // and .get('status','') so a missing status field doesn't throw.
   function isDailyWriteAllowed(database, docId) {
     let parts    = docId.split('_');
     let classNum = parts[0];
@@ -200,8 +206,8 @@ service cloud.firestore {
     let yyyy     = datePart.split('-')[0];
     let mm       = datePart.split('-')[1];
     let monthKey = classNum + '_' + yyyy + '_' + mm;
-    let monthDoc = get(/databases/$(database)/documents/attendance_monthly/$(monthKey));
-    return !monthDoc.exists() || monthDoc.data.status != 'locked';
+    let monthPath = /databases/$(database)/documents/attendance_monthly/$(monthKey);
+    return !exists(monthPath) || get(monthPath).data.get('status', '') != 'locked';
   }
 
   // ── Helper: monthly snapshot update rules ────────────────────────────
