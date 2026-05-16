@@ -1,6 +1,7 @@
   import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, createUserWithEmailAndPassword, updatePassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit, serverTimestamp, updateDoc, onSnapshot, getCountFromServer, deleteField, writeBatch } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging.js";
 // ================================================================
 // BLOCK 1 — MAIN APP LOGIC
 // ================================================================
@@ -18,6 +19,24 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
 
   const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
   const auth = getAuth(app);
+
+  // ── FCM: request permission and save token to users/{uid} ──────────────
+  async function _registerFCM(uid) {
+    try {
+      const messaging = getMessaging(app);
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+      const token = await getToken(messaging, {
+        vapidKey: 'BEtmfoNL9kNnmzpHG0lckLDQk_-RBGC2ajS3OEo0khvHvDLkXvA4ol54KU3pBVJu3EoQwwfjbc-ccwMzQhXCGhA'
+      });
+      if (token) {
+        await updateDoc(doc(db, 'users', uid), { fcmToken: token });
+        console.log('[FCM] token saved');
+      }
+    } catch(e) {
+      console.warn('[FCM] registration skipped:', e.message);
+    }
+  }
   const db   = getFirestore(app);
 
   window._firebaseApp     = app;
@@ -392,6 +411,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       try { await _handleAuthUser(user); } catch(e) { console.warn('Session restore:', e.message); }
+      _registerFCM(user.uid);
     } else {
       window._officePortalLoaded = false;
     }
