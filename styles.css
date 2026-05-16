@@ -1786,3 +1786,146 @@ tr:hover td { background: rgba(214,195,163,0.15); }
   .tp-assign-table td { display: flex; justify-content: space-between; border: none; padding: 4px 0; }
   .tp-assign-table td::before { content: attr(data-label); font-weight: 600; color: var(--text-light); font-size: 11px; }
 }
+
+/* ============================================================
+   ADMIN PORTAL — MOBILE POLISH
+   Additive rules only — does not modify any existing selectors.
+   Breakpoints: 640px (phones), 480px (small phones), 360px (tiny).
+============================================================ */
+
+/* ── ≤ 640px : general phone layout ── */
+@media (max-width: 640px) {
+  /* Reduce content padding so cards have more room */
+  #page-admin-dash .dash-content { padding: 12px; }
+
+  /* Cards in admin sections — slim the padding from 24px to 16px */
+  #page-admin-dash .dash-section .card { padding: 16px !important; }
+
+  /* Section header row (h4 + Add button): allow wrap, balance type */
+  #page-admin-dash .dash-section .card > div:first-child h4 { font-size: 0.95rem; line-height: 1.3; }
+  #page-admin-dash .dash-section .card > div:first-child .btn-sm { font-size: 12px; padding: 8px 12px; }
+
+  /* Class-filter row → horizontal scroll instead of wrapping into 4 rows */
+  #class-filter-btns {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    width: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) transparent;
+  }
+  #class-filter-btns::-webkit-scrollbar { height: 4px; }
+  #class-filter-btns::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+  #class-filter-btns .class-filter-btn { flex: 0 0 auto; white-space: nowrap; }
+
+  /* Search input + count: search fills row, count goes below */
+  #student-search { flex: 1 1 100%; min-width: 0; box-sizing: border-box; }
+  #student-count  { width: 100%; }
+
+  /* Generic search/filter rows across other admin sections */
+  #page-admin-dash .dash-section input[type="text"],
+  #page-admin-dash .dash-section input[type="search"],
+  #page-admin-dash .dash-section select { min-height: 38px; font-size: 13.5px; }
+
+  /* Inbox items — let long labels wrap above the badge */
+  #a-dashboard .chapter-item { flex-wrap: wrap; gap: 6px; align-items: center; }
+  #a-dashboard .chapter-item > span:first-child { flex: 1 1 70%; min-width: 0; }
+
+  /* Portal-shortcut cards (Office Portal, Fee Approvals) — stack vertically */
+  #a-dashboard .grid-2 > .card[style*="display:flex"] {
+    flex-direction: column !important;
+    text-align: center;
+    align-items: center !important;
+  }
+  #a-dashboard .grid-2 > .card[style*="display:flex"] > div[style*="flex:1"] { width: 100%; }
+
+  /* Tables inside admin cards: gentler typography */
+  #page-admin-dash .dash-section th,
+  #page-admin-dash .dash-section td { padding: 10px 12px; font-size: 12.5px; }
+
+  /* Student modal — major padding reduction so it fits 360px screens */
+  #student-modal-overlay { padding: 12px 8px !important; }
+  #student-modal-overlay > div { border-radius: 14px !important; }
+  /* Modal header (gradient bar) */
+  #student-modal-overlay > div > div:first-child {
+    padding: 16px 18px !important;
+    gap: 10px;
+  }
+  #student-modal-overlay #modal-title { font-size: 1.05rem !important; }
+  #student-modal-overlay > div > div:first-child p { font-size: 11px !important; }
+  /* Modal body */
+  #student-modal-overlay > div > div[style*="padding:28px"] { padding: 14px !important; }
+  /* Modal footer */
+  #student-modal-overlay > div > div[style*="padding:20px 28px"] {
+    padding: 14px !important;
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  #student-modal-overlay > div > div[style*="padding:20px 28px"] > div { width: 100%; justify-content: stretch; }
+  #student-modal-overlay > div > div[style*="padding:20px 28px"] .btn { flex: 1; justify-content: center; }
+
+  /* Section-head pills in modals */
+  .sf-section-head { padding: 8px 12px; font-size: 0.9rem; }
+  .sf-section { margin-bottom: 16px; }
+
+  /* Delete-confirm modal — comfortable padding */
+  #delete-confirm-overlay > div { padding: 22px !important; width: 92% !important; }
+}
+
+/* ── ≤ 480px : small phones ── */
+@media (max-width: 480px) {
+  /* Stat cards — keep 2 cols, shrink chrome */
+  .dash-stats { gap: 10px; margin-bottom: 18px; }
+  .dash-stat-card { padding: 12px; gap: 10px; }
+  .dash-stat-icon { width: 38px; height: 38px; font-size: 1.05rem; border-radius: 10px; }
+  .dash-stat-val { font-size: 1.15rem; }
+  .dash-stat-label { font-size: 10.5px; }
+
+  /* Sticky header — leaner */
+  #page-admin-dash .dash-header { padding: 8px 12px; }
+  #page-admin-dash .dash-header h2 { font-size: 0.95rem; max-width: 50vw; }
+  #page-admin-dash .dash-avatar { width: 34px; height: 34px; font-size: 12px; }
+
+  /* Sidebar — slightly narrower so backdrop has room */
+  #page-admin-dash .sidebar { width: 240px !important; }
+  #page-admin-dash .sidebar-nav button { padding: 10px 16px; font-size: 13px; }
+
+  /* Teacher Assignment slide-over: full screen with smaller paddings */
+  .admin-ta-panel-header { padding: 14px 16px; }
+  .admin-ta-panel-body   { padding: 14px 16px; gap: 14px; }
+  .admin-ta-section      { padding: 12px; }
+  .admin-ta-card         { padding: 12px; }
+
+  /* Admissions table — already hides cols 3 & 6 in theme-modular; also tighten */
+  #admin-admissions-tbody td { padding: 8px 10px; font-size: 12px; }
+
+  /* Long admin tables (leave/fees/monthly-att): font-size shrink + tap targets */
+  #page-admin-dash table { font-size: 12px; }
+  #page-admin-dash .btn-sm { padding: 6px 10px; font-size: 11.5px; min-height: 34px; }
+}
+
+/* ── ≤ 360px : tiny phones ── */
+@media (max-width: 360px) {
+  /* Stat cards stack to single column to avoid number truncation */
+  .dash-stats { grid-template-columns: 1fr; }
+  .dash-stat-card { padding: 12px 14px; }
+
+  /* Header — tighter still */
+  #page-admin-dash .dash-header h2 { font-size: 0.88rem; max-width: 42vw; }
+  #page-admin-dash .dash-header p { display: none; }
+
+  /* Sidebar should not eat the whole screen */
+  #page-admin-dash .sidebar { width: 220px !important; }
+
+  /* Card padding minimum */
+  #page-admin-dash .dash-section .card { padding: 12px !important; }
+}
+
+/* ── Accessibility: ensure touch targets across the admin portal ── */
+@media (max-width: 768px) {
+  #page-admin-dash .btn { min-height: 40px; }
+  #page-admin-dash .sidebar-nav button { min-height: 42px; }
+  #page-admin-dash select,
+  #page-admin-dash input { min-height: 38px; }
+}

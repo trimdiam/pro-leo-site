@@ -7764,6 +7764,119 @@ window.initTeacherAssignments = function(teacherDocId, teacherData) {
   );
 };
 
+// ───────────────────────────────────────────────────────────────────────
+// CT pending-review status — counts how many subjects subject-teachers
+// have submitted for the class teacher's class, per term, and highlights
+// "+N NEW" submissions arrived since the CT last clicked Review.
+// ───────────────────────────────────────────────────────────────────────
+async function loadCTPendingReviews(classId) {
+  if (!classId) return;
+  const card = document.getElementById('tp-class-card');
+  if (!card) return;
+
+  renderCTStatusRow(card, classId, null); // loading state
+
+  try {
+    const results = {};
+    for (const term of ['HY', 'FT']) {
+      const termKey = `${classId}_${term}`;
+      const snap    = await getDocs(query(
+        collection(db, 'marks', termKey, 'students'),
+        limit(100)
+      ));
+
+      const aggregate     = {};
+      const academicsKeys = new Set();
+      let isLocked = false;
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.status === 'locked') isLocked = true;
+        const sub = data.submittedSubjects || {};
+        for (const [k, v] of Object.entries(sub)) {
+          if (!aggregate[k] || (v?.status === 'submitted' && aggregate[k]?.status !== 'submitted')) {
+            aggregate[k] = v;
+          }
+        }
+        Object.keys(data.academics || {}).forEach(k => academicsKeys.add(k));
+      });
+      Object.keys(aggregate).forEach(k => academicsKeys.add(k));
+
+      results[term] = {
+        submitted: Object.values(aggregate).filter(v => v?.status === 'submitted').length,
+        total:     academicsKeys.size,
+        locked:    isLocked
+      };
+    }
+    renderCTStatusRow(card, classId, results);
+  } catch (err) {
+    console.warn('loadCTPendingReviews failed:', err.message);
+    renderCTStatusRow(card, classId, 'error');
+  }
+}
+
+function renderCTStatusRow(card, classId, results) {
+  const existing = document.getElementById('tp-ct-status-row');
+  if (existing) existing.remove();
+
+  const row = document.createElement('div');
+  row.id = 'tp-ct-status-row';
+  row.style.cssText =
+    'margin-top:14px;padding-top:12px;border-top:1px dashed var(--border,#e2d8c5);' +
+    'display:flex;gap:18px;flex-wrap:wrap;font-size:13px';
+
+  if (results === null) {
+    row.innerHTML = '<span style="color:var(--text-light)">' +
+      '<i class="fas fa-spinner fa-spin"></i> Checking pending reviews…</span>';
+  } else if (results === 'error') {
+    row.innerHTML = '<span style="color:var(--text-light)">Could not load pending reviews.</span>';
+  } else {
+    const lastSeenKey = `tp_ct_last_seen_${classId}`;
+    let lastSeen = {};
+    try { lastSeen = JSON.parse(localStorage.getItem(lastSeenKey) || '{}'); } catch (_) {}
+
+    ['HY', 'FT'].forEach(term => {
+      const r        = results[term];
+      const label    = term === 'HY' ? 'Half Yearly' : 'Final Term';
+      const newCount = Math.max(0, r.submitted - (lastSeen[term] || 0));
+      const totalStr = r.total > 0 ? r.total : '—';
+      const valColor = r.submitted > 0 ? '#16a34a' : 'var(--text-light)';
+
+      let badge = '';
+      if (r.locked) {
+        badge = ' <span style="background:#e0e0e0;color:#555;padding:2px 8px;' +
+                'border-radius:10px;font-size:10.5px;font-weight:700;letter-spacing:.3px">LOCKED</span>';
+      } else if (newCount > 0) {
+        badge = ` <span class="badge-new" style="margin-left:0">+${newCount} NEW</span>`;
+      }
+
+      row.innerHTML +=
+        '<div style="display:flex;align-items:center;gap:6px">' +
+          `<strong style="color:var(--accent-dark)">${label}:</strong>` +
+          `<span style="color:${valColor};font-weight:700">${r.submitted}</span>` +
+          `<span style="color:var(--text-light)">/${totalStr} submitted</span>` +
+          badge +
+        '</div>';
+    });
+
+    // Wire "last seen" update onto the Review button so the NEW badge clears
+    // after the CT actually opens the mark entry app.
+    const reviewBtn = card.querySelector('.tp-review-lock-btn');
+    if (reviewBtn && !reviewBtn._lastSeenWired) {
+      reviewBtn._lastSeenWired = true;
+      reviewBtn.addEventListener('click', () => {
+        try {
+          localStorage.setItem(lastSeenKey, JSON.stringify({
+            HY: results.HY.submitted,
+            FT: results.FT.submitted
+          }));
+        } catch (_) {}
+      });
+    }
+  }
+
+  card.appendChild(row);
+}
+
 function renderTPAssignments(data) {
   const role            = data.role || '';
   const classTeacherOf  = data.classTeacherOf || null;
@@ -7782,9 +7895,10 @@ function renderTPAssignments(data) {
         reviewBtn.style.cursor  = '';
         reviewBtn.removeAttribute('title');
         reviewBtn.onclick = () => {
-          window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classTeacherOf}&action=review`;
+          window.location.href = `../Sfs-report-card/markentry.html?classId=${classTeacherOf}&action=review`;
         };
       }
+      loadCTPendingReviews(classTeacherOf);
     } else {
       classCard.style.display = 'none';
     }
@@ -7846,7 +7960,7 @@ window.tpOpenMarkEntry = function(btn) {
   const classId    = btn.dataset.classId;
   const subjectKey = btn.dataset.subjectKey;
   const term       = btn.dataset.term || 'HY';
-  window.location.href = `../Report-card-2026/sfds-reportcard/markentry.html?classId=${classId}&subject=${subjectKey}&term=${term}`;
+  window.location.href = `../Sfs-report-card/markentry.html?classId=${classId}&subject=${subjectKey}&term=${term}`;
 };
 
 function showTPLiveToast(msg) {

@@ -125,6 +125,38 @@ service cloud.firestore {
       allow read:   if isAdmin();
     }
 
+    // ── Marks (mark entry system — subject & class teachers) ─────────
+    // Teachers write their own subject marks; class teachers can read all.
+    // Admin can read and write everything.
+    match /marks/{termDoc}/students/{studentId} {
+      allow read:  if isAnyStaff();
+      allow write: if isRole('teacher') || isAdmin();
+    }
+
+    // ── Routine / Timetable (Routine-App bridge) ─────────────────────
+    // Path: /routine/{day}/periods/{period}/slots/{slot}
+    // Students need to read their class schedule; teachers need theirs;
+    // staff for cross-referencing. Recursive wildcard covers all sub-levels.
+    match /routine/{document=**} {
+      allow read:  if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // ── Subjects (subject code → name map used by the routine view) ──
+    match /subjects/{docId} {
+      allow read:  if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // ── Student messages (notes/messages sent to a specific student) ─
+    match /student_messages/{docId} {
+      allow read:   if isAnyStaff() ||
+        (request.auth != null &&
+         resource.data.to == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId);
+      allow create: if isAnyStaff();
+      allow update, delete: if isAnyStaff();
+    }
+
     // ── Assessment sessions (academic intelligence module) ────────────
     match /assessment_sessions/{docId} {
       allow read:  if isAnyStaff();

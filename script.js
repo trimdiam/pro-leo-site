@@ -259,7 +259,9 @@ document.addEventListener('click', function(e) {
   ['studentSidebar', 'teacherSidebar', 'adminSidebar', 'officeSidebar'].forEach(id => {
     const sb = document.getElementById(id);
     if (sb && sb.classList.contains('open')) {
-      if (!sb.contains(e.target) && !e.target.classList.contains('sidebar-toggle')) {
+      // closest() — so clicks on the <i> icon inside the toggle button are not
+      // treated as "outside the sidebar" (would otherwise close it immediately).
+      if (!sb.contains(e.target) && !(e.target.closest && e.target.closest('.sidebar-toggle'))) {
         sb.classList.remove('open');
         if (bd) bd.classList.remove('visible');
       }
