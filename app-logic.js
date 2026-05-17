@@ -4809,7 +4809,11 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         getDocs(collection(db,'classes')),
       ]);
       const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
-      set('a-stat-students',    sSnap.size);
+      let totalBoys=0,totalGirls=0;
+      sSnap.docs.forEach(d=>{const g=d.data().gender;if(g==='M')totalBoys++;else if(g==='F')totalGirls++;});
+      set('a-stat-students', sSnap.size);
+      set('a-stat-boys',     totalBoys);
+      set('a-stat-girls',    totalGirls);
       set('a-stat-teachers',    tSnap.size);
       set('a-stat-office-staff',oSnap.size);
       set('a-stat-fee-pending', fSnap.size);
