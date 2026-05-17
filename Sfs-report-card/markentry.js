@@ -853,6 +853,12 @@ async function renderCTDashboard() {
 
       lockBtn.disabled = !isLocked && submittedCount < total;
       lockBtn.dataset.term = term;
+
+      // Show marksheet button only when FT is locked
+      if (term === 'FT' && isLocked) {
+        const msBtn = $('ctBtnMarksheet');
+        if (msBtn) msBtn.style.display = '';
+      }
     } catch (_) {
       tbody.innerHTML = '<tr><td colspan="3" class="me-empty">No data yet.</td></tr>';
       if (progEl) progEl.textContent = '0 of ' + enterableSubjects.length + ' subjects submitted';
@@ -1522,6 +1528,124 @@ async function openReportCard() {
 
   sessionStorage.setItem('sfds_studentData', JSON.stringify(data));
   window.location.href = 'reportcard.html';
+}
+
+// ─── GENERATE CLASS MARKSHEET ─────────────────────────────────────────────────
+async function generateClassMarksheet() {
+  const classId  = ME.ctClassId;
+  const classNum = ME.ctClassNum;
+  const cfg      = CONFIG[classNum];
+  if (!cfg || !classId) { alert('Class config not found.'); return; }
+
+  const btn = $('ctBtnMarksheet');
+  btn.disabled = true;
+  btn.textContent = 'Loading…';
+
+  try {
+    const [hySnap, ftSnap] = await Promise.all([
+      db.collection('marks').doc(`${classId}_HY`).collection('students').get(),
+      db.collection('marks').doc(`${classId}_FT`).collection('students').get()
+    ]);
+
+    const hyMap = {};
+    hySnap.forEach(d => { hyMap[d.id] = d.data(); });
+
+    const classList = [];
+    const passmark  = cfg.passmark || 40;
+
+    ftSnap.forEach(doc => {
+      const ftData = doc.data();
+      const hyData = hyMap[doc.id] || {};
+      if (ftData.status !== 'locked') return; // only include locked students
+
+      const hySubjects = {}, ftSubjects = {}, consolSubjects = {};
+      let hyGrand = 0, ftGrand = 0;
+      let result = 'PASS';
+
+      for (const subj of cfg.subjects) {
+        const hyA = hyData?.academics?.[subj.key] || {};
+        const ftA = ftData?.academics?.[subj.key] || {};
+        const hyTotal = hyA.total ?? 0;
+        const ftTotal = ftA.total ?? 0;
+
+        hySubjects[subj.key] = { ia: hyA.IA ?? 0, ut: hyA.UT ?? 0, exam: hyA.TE ?? 0, total: hyTotal };
+        ftSubjects[subj.key] = { ia: ftA.IA ?? 0, ut: ftA.UT ?? 0, exam: ftA.TE ?? 0, total: ftTotal };
+        consolSubjects[subj.key] = { term1: hyTotal, term2: ftTotal, total: hyTotal + ftTotal };
+
+        if (subj.countInTotal) {
+          hyGrand += hyTotal;
+          ftGrand += ftTotal;
+          if (hyTotal < passmark || ftTotal < passmark) result = 'FAIL';
+        }
+      }
+
+      const adminDecision = ftData?.adminDecision || '';
+      if (adminDecision === 'Promoted')              result = 'PROMOTED';
+      else if (adminDecision === 'Detained')          result = 'DETAINED';
+      else if (adminDecision === 'Promoted with Grace') result = 'PROMOTED WITH GRACE';
+
+      const maxMarks  = cfg.grandTotalMax || 0;
+      const hyPct     = maxMarks > 0 ? (hyGrand / maxMarks) * 100 : 0;
+      const ftPct     = maxMarks > 0 ? (ftGrand / maxMarks) * 100 : 0;
+      const overallPct= (maxMarks * 2) > 0 ? ((hyGrand + ftGrand) / (maxMarks * 2)) * 100 : 0;
+
+      const rank = ftData.rank || {};
+
+      classList.push({
+        class:      classNum,
+        schoolName: 'St. Francis De Sales Secondary School',
+        session:    '2026–2027',
+        student:    { name: ftData.studentName || doc.id, rollNo: ftData.rollNo || 0 },
+        halfYearly: {
+          subjects:      hySubjects,
+          grandTotal:    hyGrand,
+          percentage:    parseFloat((Math.round(hyPct * 10) / 10).toFixed(1)),
+          grade:         _gradeFromPct(hyPct),
+          rank:          rank.hyRank || 0,
+          totalStudents: rank.totalStudents || 0,
+          attendance:    { present: hyData?.attendance?.hyPresent || 0, total: hyData?.attendance?.hyTotal || 0 }
+        },
+        finalTerm: {
+          subjects:      ftSubjects,
+          grandTotal:    ftGrand,
+          percentage:    parseFloat((Math.round(ftPct * 10) / 10).toFixed(1)),
+          grade:         _gradeFromPct(ftPct),
+          rank:          rank.ftRank || 0,
+          totalStudents: rank.totalStudents || 0,
+          attendance:    { present: ftData?.attendance?.ftPresent || 0, total: ftData?.attendance?.ftTotal || 0 }
+        },
+        consolidated: {
+          subjects:   consolSubjects,
+          grandTotal: hyGrand + ftGrand,
+          percentage: parseFloat((Math.round(overallPct * 10) / 10).toFixed(1)),
+          grade:      _gradeFromPct(overallPct),
+          result
+        }
+      });
+    });
+
+    if (!classList.length) {
+      alert('No locked student records found. Lock the records first.');
+      return;
+    }
+
+    // Sort by roll number
+    classList.sort((a, b) => (a.student.rollNo || 999) - (b.student.rollNo || 999));
+
+    sessionStorage.setItem('sfds_classList', JSON.stringify(classList));
+    window.open('marksheet.html', '_blank');
+  } catch(e) {
+    alert('Error generating marksheet: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#128203; Generate A3 Class Marksheet';
+  }
+}
+
+function _gradeFromPct(p) {
+  if (p >= 90) return 'O'; if (p >= 80) return 'A+'; if (p >= 70) return 'A';
+  if (p >= 60) return 'B+'; if (p >= 50) return 'B'; if (p >= 40) return 'C';
+  if (p >= 33) return 'D'; return 'F';
 }
 
 // ─── ADMIN: VIEW REPORT CARD (from admin panel sessionStorage payload) ────────
