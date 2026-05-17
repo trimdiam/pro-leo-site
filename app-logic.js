@@ -2866,9 +2866,19 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
             teach = tt ? tt.fullName : (slot.teacherInitials || '');
           }
         }
-        return `<tr class="${isActive ? 'routine-row-active' : ''}"><td style="font-weight:700;padding:10px 12px">Period ${rom}${isActive?' <i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-left:4px" title="Now"></i>':''}</td><td style="padding:10px 12px;color:var(--text-light)">${tStr}</td><td style="padding:10px 12px">${subj}</td><td style="padding:10px 12px">${teach}</td></tr>`;
+        const isFree = !slot;
+        const rawSubj = isFree ? 'Free Period' : (slot.slotType === 'value-cate-split' ? 'Value Ed. / Catechism' : slot.slotType === 'dual-subject' ? 'English I / II' : _resolveSubject(slot.subjectCode, s.subjects));
+        const emoji = _scheduleEmoji(rawSubj);
+        return `
+          <div class="sched-card sched-card--full${isActive ? ' sched-card--active' : ''}${isFree ? ' sched-card--free' : ''}">
+            <div class="sched-period-num">P${idx+1}</div>
+            <div class="sched-time">${tStr}</div>
+            <div class="sched-subject">${emoji} ${subj}</div>
+            <div class="sched-teacher">${teach || (isFree ? '' : '—')}</div>
+            ${isActive ? '<span class="sched-now-badge">NOW</span>' : ''}
+          </div>`;
       }).join('');
-      body.innerHTML = `<div class="table-wrap"><table class="routine-table"><thead><tr><th style="padding:10px 12px">Period</th><th style="padding:10px 12px">Time</th><th style="padding:10px 12px">Subject</th><th style="padding:10px 12px">Teacher</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      body.innerHTML = rows;
     } catch (e) {
       body.innerHTML = `<p style="color:var(--danger);text-align:center;padding:24px"><i class="fas fa-exclamation-triangle"></i> Failed to load routine. ${e.message||''}</p>`;
       console.error(e);
@@ -2966,9 +2976,19 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
             subj = _resolveSubject(slot.subjectCode, s.subjects);
           }
         }
-        return `<tr class="${isActive ? 'routine-row-active' : ''}"><td style="font-weight:700;padding:10px 12px">Period ${rom}${isActive?' <i class="fas fa-circle" style="color:var(--success);font-size:8px;margin-left:4px" title="Now"></i>':''}</td><td style="padding:10px 12px;color:var(--text-light)">${tStr}</td><td style="padding:10px 12px">${cls}</td><td style="padding:10px 12px">${subj}</td></tr>`;
+        const isFree = !slot;
+        const rawSubj = isFree ? 'Free Period' : (subj || 'Free Period');
+        const emoji = _scheduleEmoji(rawSubj);
+        return `
+          <div class="sched-card sched-card--full${isActive ? ' sched-card--active' : ''}${isFree ? ' sched-card--free' : ''}">
+            <div class="sched-period-num">P${idx+1}</div>
+            <div class="sched-time">${tStr}</div>
+            <div class="sched-subject">${emoji} ${isFree ? '<span style="color:var(--text-light);font-style:italic">Free Period</span>' : subj}</div>
+            <div class="sched-teacher">${isFree ? '' : cls}</div>
+            ${isActive ? '<span class="sched-now-badge">NOW</span>' : ''}
+          </div>`;
       }).join('');
-      body.innerHTML = `<div class="table-wrap"><table class="routine-table"><thead><tr><th style="padding:10px 12px">Period</th><th style="padding:10px 12px">Time</th><th style="padding:10px 12px">Class</th><th style="padding:10px 12px">Subject</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      body.innerHTML = rows;
     } catch (e) {
       body.innerHTML = `<p style="color:var(--danger);text-align:center;padding:24px"><i class="fas fa-exclamation-triangle"></i> Failed to load schedule. ${e.message||''}</p>`;
       console.error(e);
