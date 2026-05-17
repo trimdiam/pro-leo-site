@@ -4826,9 +4826,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         const teacherMap={};
         tSnap.docs.forEach(d=>{
           const t=d.data();
-          // old field: numeric string "9"
-          if(t.classTeacher) teacherMap[String(t.classTeacher)]=t.name||'—';
-          // new field: Roman numeral "IX" — convert to integer key
+          // Only read classTeacherOf — set via admin Teacher Management portal
           if(t.classTeacherOf){
             const raw=String(t.classTeacherOf).split('-')[0].trim().toUpperCase();
             const num=_romanToInt[raw]||parseInt(raw)||null;
