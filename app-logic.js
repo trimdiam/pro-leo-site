@@ -1603,8 +1603,9 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
           <td style="font-size:12px;color:var(--text-light);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pur(c.message||'—')}</td>
           <td style="font-size:12px">${fmt}</td>
           <td><span class="badge ${bc}">${c.status||'Unread'}</span></td>
-          <td>
+          <td style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-sm btn-outline" onclick="markContactReplied('${d.id}')"><i class="fas fa-check"></i> Replied</button>
+            <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteContact('${d.id}')"><i class="fas fa-trash"></i></button>
           </td>
         </tr>`;
       }).join('');
@@ -1615,6 +1616,15 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     try {
       await setDoc(doc(db,'contacts',docId), { status:'Replied', updatedAt:new Date().toISOString() }, { merge:true });
       showToast('✅ Marked as replied.');
+      loadAdminContacts();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.deleteContact = async function(docId) {
+    if (!confirm('Delete this contact message? This cannot be undone.')) return;
+    try {
+      await deleteDoc(doc(db,'contacts',docId));
+      showToast('🗑️ Message deleted.');
       loadAdminContacts();
     } catch(e) { showToast('❌ ' + e.message); }
   };
