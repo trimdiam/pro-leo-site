@@ -2996,6 +2996,19 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     }
   }
 
+  function _scheduleEmoji(label) {
+    const l = label.toLowerCase();
+    if (l.includes('english'))  return '📘';
+    if (l.includes('hindi'))    return '📗';
+    if (l.includes('math'))     return '📐';
+    if (l.includes('science') || l.includes('physics') || l.includes('chemistry') || l.includes('biology')) return '🔬';
+    if (l.includes('computer')) return '💻';
+    if (l.includes('social') || l.includes('history') || l.includes('civics') || l.includes('geography')) return '🌍';
+    if (l.includes('free'))     return '☕';
+    if (l.includes('value') || l.includes('catechism')) return '✝️';
+    return '📖';
+  }
+
   async function _renderDashScheduleRows(elId, ini, isStudent, studentRoutineClass) {
     const el = document.getElementById(elId);
     if (!el) return;
@@ -3031,9 +3044,19 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
             label = isStudent ? subj : `${subj} · Class ${slot.className}`;
           }
         }
-        rows.push(`<div class="chapter-item" style="${isActive?'background:rgba(90,138,90,0.12);border-left:3px solid var(--success,#5a8a5a);padding-left:8px':''}"><strong>${tStr}</strong> – ${label}${isActive?' <span style="color:var(--success,#5a8a5a);font-size:10px;font-weight:700;margin-left:4px">● NOW</span>':''}</div>`);
+        const isFree = !slot;
+        const emoji = _scheduleEmoji(label);
+        const classLabel = slot ? (isStudent ? '' : `<span class="sched-class">${slot.className ? 'Class ' + slot.className : ''}</span>`) : '';
+        rows.push(`
+          <div class="sched-card${isActive ? ' sched-card--active' : ''}${isFree ? ' sched-card--free' : ''}">
+            <span class="sched-time">${tStr}</span>
+            <span class="sched-subject">${emoji} ${label}</span>
+            ${classLabel}
+            ${isActive ? '<span class="sched-now-badge">NOW</span>' : ''}
+          </div>`);
       }
-      el.innerHTML = `<p style="font-size:11px;color:var(--text-light);margin:0 0 6px"><i class="fas fa-info-circle"></i> ${window.routineDayLabel(day)}</p>` + rows.join('');
+      const dayBadge = `<div class="sched-day-badge"><i class="fas fa-calendar-day"></i> ${window.routineDayLabel(day)}</div>`;
+      el.innerHTML = dayBadge + rows.join('');
     } catch (e) {
       el.innerHTML = `<p style="color:var(--danger);font-size:13px;padding:12px">${e.message}</p>`;
     }

@@ -1929,3 +1929,69 @@ tr:hover td { background: rgba(214,195,163,0.15); }
   #page-admin-dash select,
   #page-admin-dash input { min-height: 38px; }
 }
+
+/* ============================================================
+   TODAY'S SCHEDULE — Soft Card UI
+============================================================ */
+.sched-day-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; color: var(--text-light);
+  background: #f3f0eb; border: 1px solid #e2d9cc;
+  border-radius: 20px; padding: 3px 10px;
+  margin-bottom: 10px;
+}
+
+.sched-card {
+  display: flex; align-items: center; gap: 10px;
+  background: #f9f7f4; border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  cursor: default;
+}
+.sched-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.09);
+  background: #f5f1ea;
+}
+.sched-card--active {
+  background: linear-gradient(135deg, #f0faf4, #e6f7ed);
+  border-left: 3px solid #16a34a;
+  box-shadow: 0 2px 8px rgba(22,163,74,0.12);
+}
+.sched-card--free {
+  background: #fafafa;
+  opacity: 0.75;
+}
+.sched-card--free .sched-subject {
+  font-style: italic;
+  color: var(--text-light);
+}
+
+.sched-time {
+  font-size: 13px; font-weight: 700;
+  color: var(--accent-dark); min-width: 44px;
+  flex-shrink: 0;
+}
+.sched-subject {
+  font-size: 13px; font-weight: 500;
+  color: var(--text); flex: 1;
+}
+.sched-class {
+  font-size: 11px; color: var(--text-light);
+  font-weight: 400; white-space: nowrap;
+}
+.sched-now-badge {
+  font-size: 10px; font-weight: 700; color: #16a34a;
+  background: #dcfce7; border-radius: 20px;
+  padding: 2px 8px; white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.sched-full-btn {
+  transition: all 0.2s ease;
+}
+.sched-full-btn:hover {
+  transform: translateX(3px);
+}
+
