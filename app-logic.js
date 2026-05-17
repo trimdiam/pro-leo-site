@@ -3681,10 +3681,19 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     if (!sel || sel.options.length > 1) return; // already loaded
     try {
       const snap = await getDocs(collection(db, 'classes'));
-      snap.forEach(d => {
+      // Deduplicate: prefer the shorter/simpler doc ID (e.g. "IX" over "IX-A")
+      const seen = new Set();
+      const entries = [];
+      snap.forEach(d => entries.push(d.id));
+      // Sort so shorter IDs come first (IX before IX-A)
+      entries.sort((a, b) => a.length - b.length || a.localeCompare(b));
+      entries.forEach(id => {
+        const base = id.split('-')[0].trim(); // "IX-A" → "IX"
+        if (seen.has(base)) return; // skip duplicate
+        seen.add(base);
         const opt = document.createElement('option');
-        opt.value = d.id.split('-')[0].trim(); // "IX-A" → "IX", "III-B" → "III"
-        opt.textContent = d.id;
+        opt.value = id;   // full doc ID used for Firestore query
+        opt.textContent = base; // display just the class number (no section)
         sel.appendChild(opt);
       });
     } catch(e) { console.warn('arcLoadClasses:', e.message); }
@@ -3692,7 +3701,9 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
 
   window.loadAdminReportCards = async function() {
     await arcLoadClasses();
-    const classId = document.getElementById('arc-class-select')?.value;
+    const rawId   = document.getElementById('arc-class-select')?.value;
+    // Use base class (strip section) as the marks collection key — "IX-A" → "IX"
+    const classId = rawId ? rawId.split('-')[0].trim() : '';
     const tbody   = document.getElementById('arc-tbody');
     const msg     = document.getElementById('arc-status-msg');
     const relBtn  = document.getElementById('arc-release-all-btn');
