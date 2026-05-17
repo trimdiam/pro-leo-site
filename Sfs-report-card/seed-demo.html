@@ -20,7 +20,7 @@
   <h2>🌱 Demo Data Seeder</h2>
   <p>Creates test marks for one student — fully locked and ready for View Report Card testing.</p>
 
-  <input id="classId"    placeholder="Class ID  e.g. IX-A" value="IX-A">
+  <input id="classId"    placeholder="Class ID  e.g. IX" value="IX">
   <input id="studentId"  placeholder="Student ID  e.g. SFS260101" value="SFS260101">
   <input id="studentName" placeholder="Student Name" value="Alvinson Mawrie">
   <input id="rollNo"     placeholder="Roll No" value="1" type="number">
@@ -46,39 +46,48 @@ const status = (m, ok=true) => {
   document.getElementById('status').style.color = ok ? '#6f6' : '#f66';
 };
 
-// Demo marks data — Class IX standard scheme (IA/10 UT/30 TE/60)
+// Demo marks data — Class IX SENIOR scheme (IA/20, TE/80, total 100)
 function buildMarks(studentId, studentName, rollNo) {
+  // HY marks — Half Yearly
+  const mk = (ia, te) => ({ IA: ia, UT: 0, TE: te, total: ia + te, singleMark: 0 });
   const subjects = {
-    mathematics:       { IA:8,  UT:24, TE:52, total:84, singleMark:0 },
-    science:           { IA:7,  UT:22, TE:48, total:77, singleMark:0 },
-    social_studies:    { IA:9,  UT:26, TE:55, total:90, singleMark:0 },
-    hindi:             { IA:6,  UT:20, TE:44, total:70, singleMark:0 },
-    english_i:         { IA:8,  UT:25, TE:50, total:83, singleMark:0 },
-    english_ii:        { IA:7,  UT:23, TE:47, total:77, singleMark:0 },
-    khasi_alt_english: { IA:9,  UT:27, TE:56, total:92, singleMark:0 },
-    history:           { IA:8,  UT:24, TE:51, total:83, singleMark:0 },
-    civics:            { IA:7,  UT:21, TE:45, total:73, singleMark:0 },
+    mathematics:       mk(17, 67),
+    physics:           mk(15, 60),
+    chemistry:         mk(16, 62),
+    biology:           mk(17, 65),
+    geography:         mk(18, 70),
+    civics:            mk(15, 58),
+    history:           mk(16, 64),
+    economics:         mk(14, 56),
+    english_i:         mk(17, 66),
+    english_ii:        mk(16, 63),
+    h_education:       mk(18, 72),
+    khasi_alt_english: mk(19, 74),
   };
+  // FT marks — Final Term (slightly higher)
   const subjectsFT = {
-    mathematics:       { IA:9,  UT:25, TE:54, total:88, singleMark:0 },
-    science:           { IA:8,  UT:24, TE:50, total:82, singleMark:0 },
-    social_studies:    { IA:9,  UT:27, TE:57, total:93, singleMark:0 },
-    hindi:             { IA:7,  UT:22, TE:46, total:75, singleMark:0 },
-    english_i:         { IA:8,  UT:26, TE:52, total:86, singleMark:0 },
-    english_ii:        { IA:7,  UT:24, TE:48, total:79, singleMark:0 },
-    khasi_alt_english: { IA:9,  UT:28, TE:58, total:95, singleMark:0 },
-    history:           { IA:8,  UT:25, TE:53, total:86, singleMark:0 },
-    civics:            { IA:8,  UT:23, TE:47, total:78, singleMark:0 },
+    mathematics:       mk(18, 70),
+    physics:           mk(16, 63),
+    chemistry:         mk(17, 65),
+    biology:           mk(18, 68),
+    geography:         mk(19, 72),
+    civics:            mk(16, 60),
+    history:           mk(17, 66),
+    economics:         mk(15, 58),
+    english_i:         mk(18, 68),
+    english_ii:        mk(17, 65),
+    h_education:       mk(19, 74),
+    khasi_alt_english: mk(20, 76),
   };
 
+  // Class IX co-scholastic keys from config
   const coScholastic = {
-    pe:         { T1:'A+', T2:'A+' },
-    singing:    { T1:'A',  T2:'A'  },
-    discipline: { T1:'A+', T2:'A+' },
-    gk:         { T1:'B+', T2:'A'  },
-    arts_craft: { T1:'A',  T2:'A+' },
-    neatness:   { T1:'A+', T2:'A+' },
-    val_edu:    { T1:'A',  T2:'A'  },
+    val_edu_catechism: { T1:'A',  T2:'A'  },
+    handwriting:       { T1:'A+', T2:'A+' },
+    singing:           { T1:'A',  T2:'A'  },
+    pe:                { T1:'A+', T2:'A+' },
+    discipline:        { T1:'A+', T2:'A+' },
+    supw:              { T1:'A',  T2:'A+' },
   };
 
   const attendance = { hyPresent:82, hyTotal:95, ftPresent:88, ftTotal:100 };
@@ -89,9 +98,16 @@ function buildMarks(studentId, studentName, rollNo) {
   };
   const rank = { hyRank:3, ftRank:2, totalStudents:28, autoComputed:true };
 
+  // Build submittedSubjects so dashboard shows each subject as submitted/locked
+  const submittedSubjects = {};
+  for (const k of Object.keys(subjects)) {
+    submittedSubjects[k] = { by: 'demo-seed', status: 'submitted', at: new Date().toISOString() };
+  }
+
   const base = {
     studentId, studentName, rollNo,
     coScholastic, attendance, remarks, rank,
+    submittedSubjects,
     status:        'locked',
     lastUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     lastUpdatedBy: 'seed-demo'

@@ -1083,6 +1083,15 @@
             </div>
           </div>
 
+          <!-- Report Card Access — shown only when admin has released it -->
+          <div id="s-reportcard-banner" style="display:none;background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:16px;padding:20px 24px;margin-bottom:20px;display:none;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div style="color:#fff;font-weight:700;font-size:1.05rem"><i class="fas fa-file-alt" style="margin-right:8px;color:#93c5fd"></i>Your Report Card is Ready!</div>
+              <div style="color:#bfdbfe;font-size:0.85rem;margin-top:4px">Your class teacher and principal have signed off. Click to view your full report card.</div>
+            </div>
+            <button onclick="studentViewReportCard()" style="background:#fff;color:#1e3a5f;border:none;border-radius:10px;padding:10px 22px;font-weight:700;font-size:0.95rem;cursor:pointer;white-space:nowrap"><i class="fas fa-eye" style="margin-right:6px"></i>View Report Card</button>
+          </div>
+
           <!-- Academic Intelligence Snapshot — populated by loadAcademicSnapshot() -->
           <div id="s-academic-snapshot" class="academic-snapshot-card">
             <div class="academic-snapshot-loading">
@@ -1570,6 +1579,7 @@
         <button onclick="showDash('a','a-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('a','a-contacts',this)"><i class="fas fa-envelope"></i> Contacts</button>
         <button onclick="showDash('a','a-holidays',this)"><i class="fas fa-calendar-times"></i> Holidays</button>
+        <button onclick="showDash('a','a-reportcards',this);loadAdminReportCards()"><i class="fas fa-file-alt"></i> Report Cards</button>
         <button onclick="showDash('a','a-leave',this);loadLeaveQuota();loadAdminLeave()"><i class="fas fa-calendar-check"></i> Leave Applications</button>
         <button onclick="showDash('a','a-monthly-att',this)"><i class="fas fa-chart-bar"></i> Monthly Attendance</button>
         <button onclick="showDash('a','a-student-records',this)"><i class="fas fa-database"></i> Student Records</button>
@@ -2977,6 +2987,40 @@
               </div>
             </div>
             <div class="table-wrap"><table><thead><tr><th>Teacher</th><th>Teacher ID</th><th>Class</th><th>Leave Type</th><th>From</th><th>To</th><th>Reason</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead><tbody id="a-leave-tbody"><tr><td colspan="10" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- ── REPORT CARDS ── -->
+        <div id="a-reportcards" class="dash-section">
+          <div class="card" style="padding:24px;margin-bottom:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+              <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent)"></i>Report Card Control Panel</h4>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <select id="arc-class-select" onchange="loadAdminReportCards()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
+                  <option value="">— Select Class —</option>
+                </select>
+                <button class="btn btn-sm btn-outline" onclick="loadAdminReportCards()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <button class="btn btn-sm" id="arc-release-all-btn" onclick="arcReleaseAll()" style="background:#16a34a;color:#fff;border:none;display:none"><i class="fas fa-unlock"></i> Release All (Fee Cleared)</button>
+              </div>
+            </div>
+            <p id="arc-status-msg" style="font-size:13px;color:var(--text-light);margin-bottom:16px">Select a class to view locked report cards.</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Roll</th>
+                    <th>Student Name</th>
+                    <th>HY Total</th>
+                    <th>FT Total</th>
+                    <th>Result</th>
+                    <th>Admin Decision</th>
+                    <th>Released</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="arc-tbody"><tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-light)">Select a class above.</td></tr></tbody>
+              </table>
+            </div>
           </div>
         </div>
 

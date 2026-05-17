@@ -198,6 +198,13 @@ async function loadTeacherAndRoute(uid) {
     const urlSubject  = params.get('subject');
     const urlTerm     = params.get('term') || 'HY';
     const urlAction   = params.get('action');
+    const urlAdminRC  = params.get('adminRC'); // "IX/SFS260101"
+
+    if (urlAdminRC) {
+      // Admin viewing a student's report card directly — read from sessionStorage
+      const payload = JSON.parse(sessionStorage.getItem('sfds_adminRC') || 'null');
+      if (payload) { await openReportCardFromAdmin(payload); return; }
+    }
 
     if (urlClassId && urlSubject) {
       // Deep-link: go directly to mark entry grid
@@ -1428,6 +1435,12 @@ async function openReportCard() {
     }
   }
 
+  // Override result with admin decision if set
+  const adminDecision = ftData?.adminDecision || '';
+  if (adminDecision === 'Promoted')             result = 'PROMOTED';
+  else if (adminDecision === 'Detained')         result = 'DETAINED';
+  else if (adminDecision === 'Promoted with Grace') result = 'PROMOTED WITH GRACE';
+
   const maxMarks  = cfg.grandTotalMax || 0;
   const hyPct     = maxMarks > 0 ? (hyGrand / maxMarks) * 100 : 0;
   const ftPct     = maxMarks > 0 ? (ftGrand / maxMarks) * 100 : 0;
@@ -1509,4 +1522,22 @@ async function openReportCard() {
 
   sessionStorage.setItem('sfds_studentData', JSON.stringify(data));
   window.location.href = 'reportcard.html';
+}
+
+// ─── ADMIN: VIEW REPORT CARD (from admin panel sessionStorage payload) ────────
+async function openReportCardFromAdmin(payload) {
+  const { hyData, ftData, classId } = payload;
+  const classNum = classNumFromId(classId);
+  const cfg      = CONFIG[classNum];
+  if (!cfg) { alert('Config not found for class ' + classId); return; }
+
+  // Reuse same assembly logic as openReportCard()
+  ME.activeStudent = {
+    studentId:   ftData.studentId   || '',
+    studentData: { name: ftData.studentName, rollNo: ftData.rollNo },
+    classId,
+    hyData,
+    ftData
+  };
+  await openReportCard();
 }

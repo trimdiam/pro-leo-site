@@ -2347,7 +2347,42 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       loadStudentHomework(); loadStudentNotices(); loadStudentFees();
       if (window.loadStudentDashWidgets) loadStudentDashWidgets();
       window.loadAcademicSnapshot(studentId); // non-blocking — Phase 5
+      checkStudentReportCardRelease(studentId, String(s.class||''), parseFloat(s.feeBalance??s.feeTotal??0)); // non-blocking
     } catch(e){ showToast('⚠️ Could not load profile: '+e.message); const _le=document.getElementById('s-portal-loader');if(_le){_le.classList.add('fade-out');setTimeout(()=>{_le.style.display='none';_le.classList.remove('fade-out');},380);} }
+  };
+
+  // ── STUDENT REPORT CARD RELEASE CHECK ───────────────────────────────────────
+  async function checkStudentReportCardRelease(studentId, classId, feeBalance) {
+    const banner = document.getElementById('s-reportcard-banner');
+    if (!banner || !studentId || !classId) return;
+    try {
+      const ftDoc = await getDoc(doc(db, 'marks', `${classId}_FT`, 'students', studentId));
+      if (!ftDoc.exists()) return;
+      const released = ftDoc.data()?.releasedToStudent === true;
+      const feesCleared = feeBalance <= 0;
+      if (released && feesCleared) {
+        banner.style.display = 'flex';
+        // Store data for when student clicks view
+        window._studentRCData = { hyClassId: `${classId}_HY`, ftClassId: `${classId}_FT`, studentId };
+      }
+    } catch(e) { console.warn('checkStudentReportCardRelease:', e.message); }
+  }
+
+  window.studentViewReportCard = async function() {
+    const rc = window._studentRCData;
+    if (!rc) return;
+    showToast('Loading your report card…');
+    try {
+      const [hyDoc, ftDoc] = await Promise.all([
+        getDoc(doc(db, 'marks', rc.hyClassId, 'students', rc.studentId)),
+        getDoc(doc(db, 'marks', rc.ftClassId, 'students', rc.studentId))
+      ]);
+      if (!ftDoc.exists()) { showToast('❌ Report card not found.'); return; }
+      const classId = rc.hyClassId.replace('_HY','');
+      const payload = { hyData: hyDoc.data()||{}, ftData: ftDoc.data()||{}, classId };
+      sessionStorage.setItem('sfds_adminRC', JSON.stringify(payload));
+      window.location.href = '/Sfs-report-card/markentry.html?adminRC=' + encodeURIComponent(classId + '/' + rc.studentId);
+    } catch(e) { showToast('❌ ' + e.message); }
   };
 
   // ================================================================
@@ -3636,6 +3671,182 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const inp = document.getElementById('a-leave-quota-input'); if(inp) inp.value=quota;
       const disp = document.getElementById('a-leave-quota-display'); if(disp) disp.textContent=quota+' days';
     } catch(e) { console.warn('loadLeaveQuota:',e.message); }
+  };
+
+  // ── ADMIN REPORT CARD CONTROL PANEL ─────────────────────────────────────────
+
+  // Populate class dropdown once from Firestore 'classes' collection
+  async function arcLoadClasses() {
+    const sel = document.getElementById('arc-class-select');
+    if (!sel || sel.options.length > 1) return; // already loaded
+    try {
+      const snap = await getDocs(collection(db, 'classes'));
+      snap.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id.split('-')[0].trim(); // "IX-A" → "IX", "III-B" → "III"
+        opt.textContent = d.id;
+        sel.appendChild(opt);
+      });
+    } catch(e) { console.warn('arcLoadClasses:', e.message); }
+  }
+
+  window.loadAdminReportCards = async function() {
+    await arcLoadClasses();
+    const classId = document.getElementById('arc-class-select')?.value;
+    const tbody   = document.getElementById('arc-tbody');
+    const msg     = document.getElementById('arc-status-msg');
+    const relBtn  = document.getElementById('arc-release-all-btn');
+    if (!tbody) return;
+    if (!classId) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-light)">Select a class above.</td></tr>';
+      if (msg) msg.textContent = 'Select a class to view locked report cards.';
+      if (relBtn) relBtn.style.display = 'none';
+      return;
+    }
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
+
+    try {
+      // Read FT docs (final term has the promotion decision)
+      const ftSnap = await getDocs(collection(db, 'marks', `${classId}_FT`, 'students'));
+      const hySnap = await getDocs(collection(db, 'marks', `${classId}_HY`, 'students'));
+      const hyMap  = {};
+      hySnap.forEach(d => { hyMap[d.id] = d.data(); });
+
+      if (ftSnap.empty) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-light)">No locked records found for this class.</td></tr>';
+        if (msg) msg.textContent = 'No data yet.';
+        if (relBtn) relBtn.style.display = 'none';
+        return;
+      }
+
+      // Sort by roll number
+      const rows = [];
+      ftSnap.forEach(d => rows.push({ id: d.id, ft: d.data(), hy: hyMap[d.id] || {} }));
+      rows.sort((a,b) => (a.ft.rollNo||999) - (b.ft.rollNo||999));
+
+      tbody.innerHTML = '';
+      let lockedCount = 0;
+
+      rows.forEach(({ id, ft, hy }) => {
+        if (ft.status !== 'locked') return; // only show locked
+        lockedCount++;
+        const hyTotal = _arcCalcTotal(hy.academics);
+        const ftTotal = _arcCalcTotal(ft.academics);
+        const autoPass = _arcAutoPass(ft.academics);
+        const decision = ft.adminDecision || '';
+        const released = ft.releasedToStudent === true;
+
+        const resultLabel = decision
+          ? `<span style="color:${decision==='Detained'?'#ef4444':'#16a34a'};font-weight:600">${decision}</span>`
+          : (autoPass
+              ? '<span style="color:#16a34a;font-weight:600">PASS</span>'
+              : '<span style="color:#ef4444;font-weight:600">FAIL</span>');
+
+        const decisionSelect = (!autoPass && !decision) || decision === 'Detained' || decision === 'Promoted with Grace'
+          ? `<select onchange="arcSetDecision('${id}','${classId}',this.value)" style="padding:4px 8px;border-radius:6px;border:1.5px solid #ccc;font-size:12px">
+               <option value="" ${!decision?'selected':''}>— Set Decision —</option>
+               <option value="Promoted with Grace" ${decision==='Promoted with Grace'?'selected':''}>Promoted with Grace</option>
+               <option value="Detained" ${decision==='Detained'?'selected':''}>Detained</option>
+             </select>`
+          : `<span style="color:#6b7280;font-size:12px">${decision || 'Auto-Promoted'}</span>`;
+
+        const relIcon = released
+          ? '<i class="fas fa-check-circle" style="color:#16a34a"></i> Yes'
+          : '<i class="fas fa-times-circle" style="color:#9ca3af"></i> No';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${ft.rollNo||'—'}</td>
+          <td>${ft.studentName||id}</td>
+          <td>${hyTotal !== null ? hyTotal : '—'}</td>
+          <td>${ftTotal !== null ? ftTotal : '—'}</td>
+          <td>${resultLabel}</td>
+          <td>${decisionSelect}</td>
+          <td>${relIcon}</td>
+          <td>
+            <button class="btn btn-sm btn-outline" style="font-size:11px" onclick="arcViewReportCard('${id}','${classId}')"><i class="fas fa-eye"></i> View</button>
+            ${!released ? `<button class="btn btn-sm" style="font-size:11px;background:#2563eb;color:#fff;border:none;margin-left:4px" onclick="arcReleaseOne('${id}','${classId}')"><i class="fas fa-unlock"></i> Release</button>` : ''}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      if (lockedCount === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-light)">No locked records yet. Class teacher must lock the records first.</td></tr>';
+      }
+      if (msg) msg.textContent = `${lockedCount} locked student record(s) for Class ${classId}.`;
+      if (relBtn) relBtn.style.display = lockedCount > 0 ? '' : 'none';
+      relBtn.dataset.classId = classId;
+
+    } catch(e) {
+      console.error('loadAdminReportCards:', e);
+      tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444;text-align:center;padding:18px">${e.message}</td></tr>`;
+    }
+  };
+
+  // Sum all subject totals from academics object
+  function _arcCalcTotal(academics) {
+    if (!academics) return null;
+    let sum = 0, found = false;
+    for (const v of Object.values(academics)) {
+      if (v && typeof v.total === 'number') { sum += v.total; found = true; }
+    }
+    return found ? sum : null;
+  }
+
+  // Auto-pass: true if every subject total >= passmark (30)
+  function _arcAutoPass(academics) {
+    if (!academics) return false;
+    return Object.values(academics).every(v => !v || v.total >= 30);
+  }
+
+  window.arcSetDecision = async function(studentId, classId, decision) {
+    if (!decision) return;
+    try {
+      const ref = doc(db, 'marks', `${classId}_FT`, 'students', studentId);
+      await setDoc(ref, { adminDecision: decision, adminDecisionAt: new Date().toISOString() }, { merge: true });
+      showToast('✅ Decision saved: ' + decision);
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.arcReleaseOne = async function(studentId, classId) {
+    try {
+      const ref = doc(db, 'marks', `${classId}_FT`, 'students', studentId);
+      await setDoc(ref, { releasedToStudent: true, releasedAt: new Date().toISOString() }, { merge: true });
+      showToast('✅ Report card released to student.');
+      loadAdminReportCards();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.arcReleaseAll = async function() {
+    const classId = document.getElementById('arc-release-all-btn')?.dataset.classId;
+    if (!classId) return;
+    if (!confirm(`Release ALL locked report cards for Class ${classId} to students? Only students with cleared fees will be able to view them.`)) return;
+    try {
+      const snap = await getDocs(collection(db, 'marks', `${classId}_FT`, 'students'));
+      const batch = writeBatch(db);
+      snap.forEach(d => {
+        if (d.data().status === 'locked') {
+          batch.set(d.ref, { releasedToStudent: true, releasedAt: new Date().toISOString() }, { merge: true });
+        }
+      });
+      await batch.commit();
+      showToast('✅ All report cards released.');
+      loadAdminReportCards();
+    } catch(e) { showToast('❌ ' + e.message); }
+  };
+
+  window.arcViewReportCard = async function(studentId, classId) {
+    showToast('Loading report card…');
+    try {
+      const hyDoc = await getDoc(doc(db, 'marks', `${classId}_HY`, 'students', studentId));
+      const ftDoc = await getDoc(doc(db, 'marks', `${classId}_FT`, 'students', studentId));
+      if (!ftDoc.exists()) { showToast('❌ No FT data found.'); return; }
+      // Store in sessionStorage and open reportcard.html
+      const payload = { hyData: hyDoc.data()||{}, ftData: ftDoc.data()||{}, classId };
+      sessionStorage.setItem('sfds_adminRC', JSON.stringify(payload));
+      window.open('/Sfs-report-card/markentry.html?adminRC=' + encodeURIComponent(classId + '/' + studentId), '_blank');
+    } catch(e) { showToast('❌ ' + e.message); }
   };
 
   window.loadAdminLeave = async function() {

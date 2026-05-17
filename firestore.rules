@@ -132,7 +132,10 @@ service cloud.firestore {
     // Teachers write their own subject marks; class teachers can read all.
     // Admin can read and write everything.
     match /marks/{termDoc}/students/{studentId} {
-      allow read:  if isAnyStaff();
+      allow read:  if isAnyStaff() ||
+        (request.auth != null &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId == studentId &&
+         resource.data.releasedToStudent == true);
       allow write: if isRole('teacher') || isAdmin();
     }
 
