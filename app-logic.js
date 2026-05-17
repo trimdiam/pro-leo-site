@@ -3042,9 +3042,6 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   // Checks today & tomorrow against holidays collection and shows the
   // green banner at the top of whichever portal is active.
   async function _checkHolidayBanner(bannerId, msgId) {
-    const banner = document.getElementById(bannerId);
-    const msgEl  = document.getElementById(msgId);
-    if (!banner || !msgEl) return;
     try {
       const today    = new Date(); today.setHours(0,0,0,0);
       const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
@@ -3057,13 +3054,27 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         if (h.date === todayStr)    match = { ...h, when: 'today' };
         if (h.date === tomorrowStr && !match) match = { ...h, when: 'tomorrow' };
       });
-      if (match) {
-        msgEl.textContent = match.when === 'today'
-          ? `Today is a holiday — ${match.reason} (${match.type || 'Holiday'}). No classes today.`
-          : `Tomorrow is a holiday — ${match.reason} (${match.type || 'Holiday'}). No classes tomorrow.`;
-        banner.style.display = 'flex';
-      }
-    } catch(e) { /* silently skip if holidays unreadable */ }
+      if (!match) return;
+
+      const msg = match.when === 'today'
+        ? `Today is a holiday — ${match.reason} (${match.type || 'Holiday'}). No classes today.`
+        : `Tomorrow is a holiday — ${match.reason} (${match.type || 'Holiday'}). No classes tomorrow.`;
+
+      // Remove any existing banner first
+      document.getElementById(bannerId)?.remove();
+
+      // Inject AFTER the dash-header so it sits inside the content area (never behind sidebar)
+      const portalPage = bannerId.startsWith('t-') ? 'teacher' : 'student';
+      const header = document.querySelector(`#page-${portalPage}-dash .dash-header`);
+      if (!header) return;
+
+      const bar = document.createElement('div');
+      bar.id = bannerId;
+      bar.style.cssText = 'background:linear-gradient(90deg,#059669,#047857);color:#fff;padding:10px 24px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:12px;';
+      bar.innerHTML = `<span><i class="fas fa-umbrella-beach" style="margin-right:8px"></i>${msg}</span>
+        <button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:6px;padding:3px 12px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap">✕ Dismiss</button>`;
+      header.insertAdjacentElement('afterend', bar);
+    } catch(e) { /* silently skip */ }
   }
 
   window.loadTeacherDashWidgets = async function() {
