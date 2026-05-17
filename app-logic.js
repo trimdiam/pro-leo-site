@@ -4822,8 +4822,19 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       if(tbody&&sSnap.size>0){
         const classMap={};
         sSnap.docs.forEach(d=>{const s=d.data();const c=s.class||'?';if(!classMap[c])classMap[c]={boys:0,girls:0};if(s.gender==='M')classMap[c].boys++;else classMap[c].girls++;});
+        const _romanToInt={I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10};
         const teacherMap={};
-        tSnap.docs.forEach(d=>{const t=d.data();if(t.classTeacher)teacherMap[t.classTeacher]=t.name||'—';});
+        tSnap.docs.forEach(d=>{
+          const t=d.data();
+          // old field: numeric string "9"
+          if(t.classTeacher) teacherMap[String(t.classTeacher)]=t.name||'—';
+          // new field: Roman numeral "IX" — convert to integer key
+          if(t.classTeacherOf){
+            const raw=String(t.classTeacherOf).split('-')[0].trim().toUpperCase();
+            const num=_romanToInt[raw]||parseInt(raw)||null;
+            if(num) teacherMap[String(num)]=t.name||'—';
+          }
+        });
         const order=['PLG','SKG','LKG','1','2','3','4','5','6','7','8','9','10'];
         const classLabel={PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
         const getL=c=>classLabel[c]||(c?'Class '+c:c);
