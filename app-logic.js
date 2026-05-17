@@ -4798,7 +4798,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   // ================================================================
   window.loadAdminDashboardStats = async function(){
     try{
-      const [sSnap,tSnap,oSnap,fSnap,aSnap,cSnap,lSnap]=await Promise.all([
+      const [sSnap,tSnap,oSnap,fSnap,aSnap,cSnap,lSnap,clSnap]=await Promise.all([
         getDocs(collection(db,'students')),
         getDocs(collection(db,'teachers')),
         getDocs(query(collection(db,'users'),where('role','==','office'))),
@@ -4806,6 +4806,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         getDocs(collection(db,'admissions')),
         getDocs(query(collection(db,'contacts'),where('status','==','Unread'),limit(200))),
         getDocs(query(collection(db,'leave_applications'),where('status','==','Pending'),limit(200))),
+        getDocs(collection(db,'classes')),
       ]);
       const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
       set('a-stat-students',    sSnap.size);
@@ -4822,16 +4823,17 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       if(tbody&&sSnap.size>0){
         const classMap={};
         sSnap.docs.forEach(d=>{const s=d.data();const c=s.class||'?';if(!classMap[c])classMap[c]={boys:0,girls:0};if(s.gender==='M')classMap[c].boys++;else classMap[c].girls++;});
-        const _romanToInt={I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10};
+        // Build teacher map from classes collection (set by Teacher Assignments panel)
+        const _romanToInt2={I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10};
         const teacherMap={};
-        tSnap.docs.forEach(d=>{
-          const t=d.data();
-          // Only read classTeacherOf — set via admin Teacher Management portal
-          if(t.classTeacherOf){
-            const raw=String(t.classTeacherOf).split('-')[0].trim().toUpperCase();
-            const num=_romanToInt[raw]||parseInt(raw)||null;
-            if(num) teacherMap[String(num)]=t.name||'—';
-          }
+        clSnap.docs.forEach(d=>{
+          const name=d.data().classTeacherName||'';
+          if(!name) return;
+          // doc id may be "IX", "9-A", "SKG" etc — extract base class
+          const raw=String(d.id).split('-')[0].trim().toUpperCase();
+          const num=_romanToInt2[raw]||parseInt(raw)||null;
+          if(num) teacherMap[String(num)]=name;
+          else teacherMap[raw]=name; // PLG, SKG, LKG
         });
         const order=['PLG','SKG','LKG','1','2','3','4','5','6','7','8','9','10'];
         const classLabel={PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
