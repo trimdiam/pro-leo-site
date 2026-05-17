@@ -962,11 +962,6 @@
      STUDENT DASHBOARD (unchanged structure, preserved fully)
 ================================================================ -->
 <div id="page-student-dash" class="page">
-  <!-- Holiday banner — shown by JS when today/tomorrow is a declared holiday -->
-  <div id="s-holiday-banner" style="display:none;background:linear-gradient(90deg,#059669,#047857);color:#fff;padding:10px 20px;font-size:13px;font-weight:600;display:none;align-items:center;justify-content:space-between;gap:12px;z-index:100;position:relative">
-    <span><i class="fas fa-umbrella-beach" style="margin-right:8px"></i><span id="s-holiday-banner-msg"></span></span>
-    <button onclick="document.getElementById('s-holiday-banner').style.display='none'" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;font-weight:700">✕ Dismiss</button>
-  </div>
   <div id="s-portal-loader">
     <div class="spl-spinner"></div>
     <span class="spl-text">Loading your portal…</span>
@@ -987,6 +982,11 @@
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
     </nav>
     <div class="dash-main">
+      <!-- Holiday banner — inside dash-main so it doesn't overlap the sidebar -->
+      <div id="s-holiday-banner" style="display:none;background:linear-gradient(90deg,#059669,#047857);color:#fff;padding:10px 20px;font-size:13px;font-weight:600;align-items:center;justify-content:space-between;gap:12px;">
+        <span><i class="fas fa-umbrella-beach" style="margin-right:8px"></i><span id="s-holiday-banner-msg"></span></span>
+        <button onclick="document.getElementById('s-holiday-banner').style.display='none'" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;font-weight:700">✕ Dismiss</button>
+      </div>
       <div class="dash-header">
         <div style="display:flex;align-items:center">
           <button class="sidebar-toggle" onclick="toggleSidebar('studentSidebar')"><i class="fas fa-bars"></i></button>
@@ -1229,11 +1229,6 @@
      TEACHER DASHBOARD (structure preserved)
 ================================================================ -->
 <div id="page-teacher-dash" class="page">
-  <!-- Holiday banner — shown by JS when today/tomorrow is a declared holiday -->
-  <div id="t-holiday-banner" style="display:none;background:linear-gradient(90deg,#059669,#047857);color:#fff;padding:10px 20px;font-size:13px;font-weight:600;align-items:center;justify-content:space-between;gap:12px;z-index:100;position:relative">
-    <span><i class="fas fa-umbrella-beach" style="margin-right:8px"></i><span id="t-holiday-banner-msg"></span></span>
-    <button onclick="document.getElementById('t-holiday-banner').style.display='none'" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;font-weight:700">✕ Dismiss</button>
-  </div>
   <div class="dash-shell">
     <nav class="sidebar" id="teacherSidebar">
       <div class="sidebar-brand"><img src="assets/images/logo.jpg" class="s-logo" alt="School Logo"><h4>St. Francis De Sales Sec. School</h4><p>Teacher Portal</p></div>
@@ -1252,6 +1247,11 @@
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
     </nav>
     <div class="dash-main">
+      <!-- Holiday banner — inside dash-main so it doesn't overlap the sidebar -->
+      <div id="t-holiday-banner" style="display:none;background:linear-gradient(90deg,#059669,#047857);color:#fff;padding:10px 20px;font-size:13px;font-weight:600;align-items:center;justify-content:space-between;gap:12px;">
+        <span><i class="fas fa-umbrella-beach" style="margin-right:8px"></i><span id="t-holiday-banner-msg"></span></span>
+        <button onclick="document.getElementById('t-holiday-banner').style.display='none'" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;font-weight:700">✕ Dismiss</button>
+      </div>
       <div class="dash-header">
         <div style="display:flex;align-items:center">
           <button class="sidebar-toggle" onclick="toggleSidebar('teacherSidebar')"><i class="fas fa-bars"></i></button>
