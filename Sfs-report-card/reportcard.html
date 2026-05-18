@@ -7,6 +7,14 @@
     <link rel="stylesheet" href="reportcard.css">
 </head>
 <body>
+
+<!-- ── TOOLBAR (screen only, hidden on print) ─────────────────────────── -->
+<div class="rc-toolbar no-print">
+  <button onclick="history.length>1?history.back():window.close()" class="rc-tb-btn rc-tb-back">&#8592; Back</button>
+  <span class="rc-tb-title" id="rcToolbarTitle">Report Card</span>
+  <button onclick="window.print()" class="rc-tb-btn rc-tb-download">&#128196; Download PDF</button>
+</div>
+
 <div class="report-card" id="reportCard" data-sfds-version="1.0">
 
     <!-- HEADER (full width) -->
@@ -175,9 +183,119 @@
     </div>
 </div>
 <script src="config.js"></script>
+<script>
+// Convert raw Firestore {hyData, ftData, classId} → sfds_studentData format
+(function() {
+  var raw = sessionStorage.getItem('sfds_adminRC');
+  if (!raw) return;
+  try {
+    var p = JSON.parse(raw);
+    var hyData = p.hyData || {}, ftData = p.ftData || {}, classId = p.classId || '';
+    var ROMAN = {I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10};
+    var base  = String(classId).split('-')[0].trim().toUpperCase();
+    var cn    = ROMAN[base] || parseInt(base) || null;
+    var cfg   = getClassConfig(cn);
+    if (!cfg) return;
+
+    var passmark = cfg.passmark || 40;
+    var maxMarks = cfg.grandTotalMax || 0;
+    var hyS = {}, ftS = {}, consolS = {};
+    var hyGrand = 0, ftGrand = 0, result = 'PASS';
+
+    cfg.subjects.forEach(function(subj) {
+      var hyA = (hyData.academics || {})[subj.key] || {};
+      var ftA = (ftData.academics || {})[subj.key] || {};
+      var hyT, ftT;
+      if (subj.isAggregate) {
+        var comps = subj.components || [];
+        hyT = comps.reduce(function(s,k){ return s + (((hyData.academics||{})[k]||{}).total||0); }, 0);
+        ftT = comps.reduce(function(s,k){ return s + (((ftData.academics||{})[k]||{}).total||0); }, 0);
+        hyS[subj.key] = {ia:0,ut:0,exam:0,total:hyT};
+        ftS[subj.key] = {ia:0,ut:0,exam:0,total:ftT};
+      } else {
+        hyT = hyA.total || 0; ftT = ftA.total || 0;
+        hyS[subj.key] = {ia:hyA.IA||0, ut:hyA.UT||0, exam:hyA.TE||hyA.singleMark||0, total:hyT};
+        ftS[subj.key] = {ia:ftA.IA||0, ut:ftA.UT||0, exam:ftA.TE||ftA.singleMark||0, total:ftT};
+        if (subj.countInTotal) {
+          hyGrand += hyT; ftGrand += ftT;
+          if (hyT < passmark || ftT < passmark) result = 'FAIL';
+        }
+      }
+      consolS[subj.key] = {term1:hyT, term2:ftT, total:hyT+ftT};
+    });
+
+    var ad = ftData.adminDecision || '';
+    if (ad === 'Promoted') result = 'PROMOTED';
+    else if (ad === 'Detained') result = 'DETAINED';
+    else if (ad === 'Promoted with Grace') result = 'PROMOTED WITH GRACE';
+
+    var hyPct = maxMarks > 0 ? (hyGrand/maxMarks)*100 : 0;
+    var ftPct = maxMarks > 0 ? (ftGrand/maxMarks)*100 : 0;
+    var ovPct = (maxMarks*2) > 0 ? ((hyGrand+ftGrand)/(maxMarks*2))*100 : 0;
+    function gfp(p){if(p>=90)return'O';if(p>=80)return'A+';if(p>=70)return'A';if(p>=60)return'B+';if(p>=50)return'B';if(p>=40)return'C';if(p>=33)return'D';return'F';}
+    function fmtp(p){return parseFloat((Math.round(p*10)/10).toFixed(1));}
+
+    var coSch = {}, csSrc = hyData.coScholastic || ftData.coScholastic || {};
+    (cfg.coScholastic || []).forEach(function(item){
+      var cs = csSrc[item.key] || {};
+      coSch[item.key] = {halfYearly: cs.T1||'', finalTerm: cs.T2||''};
+    });
+
+    var att  = Object.assign({}, hyData.attendance||{}, ftData.attendance||{});
+    var rank = hyData.rank || ftData.rank || {};
+    var rem  = hyData.remarks || ftData.remarks || {};
+
+    var data = {
+      schoolName:   cfg.schoolName || 'St. Francis De Sales School',
+      session:      '2026-2027',
+      class:        String(cn || classId),
+      section:      (classId.split('-')[1]||'').trim(),
+      classTeacher: '',
+      student: {
+        name:        ftData.studentName || hyData.studentName || '',
+        rollNo:      ftData.rollNo      || hyData.rollNo      || 0,
+        admissionNo: ftData.admissionNo || '',
+        dob:         ftData.dob         || '',
+        house:       ftData.house       || ''
+      },
+      halfYearly:  {subjects:hyS, grandTotal:hyGrand, percentage:fmtp(hyPct), grade:gfp(hyPct), rank:rank.hyRank||0, totalStudents:rank.totalStudents||0, attendance:{present:att.hyPresent||0, total:att.hyTotal||0}},
+      finalTerm:   {subjects:ftS, grandTotal:ftGrand, percentage:fmtp(ftPct), grade:gfp(ftPct), rank:rank.ftRank||0, totalStudents:rank.totalStudents||0, attendance:{present:att.ftPresent||0, total:att.ftTotal||0}},
+      consolidated:{subjects:consolS, grandTotal:hyGrand+ftGrand, percentage:fmtp(ovPct), grade:gfp(ovPct), result:result},
+      coScholastic: coSch,
+      remarks:     {halfYearly:rem.halfYearly||'', finalTerm:rem.finalTerm||'', principal:rem.principal||''}
+    };
+    sessionStorage.setItem('sfds_studentData', JSON.stringify(data));
+
+    // Update toolbar title
+    var tb = document.getElementById('rcToolbarTitle');
+    if (tb && data.student.name) tb.textContent = data.student.name + ' — Report Card';
+  } catch(e) { console.warn('adminRC convert:', e); }
+})();
+</script>
 <script src="render.js"></script>
 <script src="print.js"></script>
 <script>
+// Mobile scale-to-fit
+function rcScaleToFit() {
+  var card = document.getElementById('reportCard');
+  if (!card) return;
+  var vw   = window.innerWidth - 8;
+  var cardW = card.scrollWidth;
+  if (cardW > vw) {
+    var scale = vw / cardW;
+    card.style.transform       = 'scale(' + scale + ')';
+    card.style.transformOrigin = 'top left';
+    card.style.marginBottom    = ((card.scrollHeight * scale) - card.scrollHeight) + 'px';
+    document.body.style.width  = vw + 'px';
+  } else {
+    card.style.transform = '';
+    card.style.marginBottom = '';
+    document.body.style.width = '';
+  }
+}
+window.addEventListener('load',   rcScaleToFit);
+window.addEventListener('resize', rcScaleToFit);
+
 document.addEventListener('DOMContentLoaded', function () {
   setTimeout(function () {
     try {

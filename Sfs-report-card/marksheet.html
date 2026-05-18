@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Class Marksheet — St. Francis De Sales School</title>
+  <link rel="stylesheet" href="marksheet.css">
+</head>
+<body>
+
+  <!-- ── TOOLBAR (hidden on print) ─────────────────────────────────── -->
+  <div class="no-print" style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:#2C2C2C;color:#FAF8F3;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;margin-bottom:8px">
+    <button onclick="window.close()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#FAF8F3;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12px">← Close</button>
+    <span style="flex:1;color:#C9A84C;font-weight:700">Class Marksheet — <span id="msTerm">—</span></span>
+    <button onclick="window.print()" style="background:#C9A84C;border:none;color:#1A1A1A;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700">🖨 Print / Save PDF</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       PAGE 1 — ACADEMIC MARKS TABLE
+       ══════════════════════════════════════════════════════════════════ -->
+  <div class="marksheet-page">
+
+    <div class="ms-header">
+      <div class="ms-header-inner">
+        <img src="logo.png.png" alt="Logo" class="ms-logo" onerror="this.style.display='none'">
+        <div class="ms-header-text">
+          <h1 id="msSchoolName">St. Francis De Sales Secondary School</h1>
+          <p class="ms-meta">Laitkor, Shillong — Meghalaya</p>
+        </div>
+        <div class="ms-header-info">
+          <div><strong>CLASS:</strong> <span id="msClass">—</span></div>
+          <div><strong>SESSION:</strong> <span id="msSession">—</span></div>
+          <div><strong>DATE:</strong> <span id="msDate">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ms-section-title">ACADEMIC MARKS — <span class="ms-term-label" id="msTermLabel">—</span></div>
+
+    <div class="ms-table-wrap">
+      <table class="ms-table">
+        <thead id="msTableHead"></thead>
+        <tbody id="msTableBody">
+          <tr><td colspan="20" style="text-align:center;padding:20px;color:#666">Loading marksheet…</td></tr>
+        </tbody>
+        <tfoot id="msTableFoot"></tfoot>
+      </table>
+    </div>
+
+    <div class="ms-footer">
+      <div class="ms-footer-line">
+        <span>Class Teacher Signature: ___________________________</span>
+        <span>Principal Signature: ___________________________</span>
+        <span>Office Seal</span>
+      </div>
+      <p class="ms-footer-note">Computer-generated document &nbsp;|&nbsp; St. Francis De Sales Secondary School, Laitkor, Shillong &nbsp;|&nbsp; Page 1</p>
+    </div>
+
+  </div><!-- /PAGE 1 -->
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       PAGE 2 — CO-SCHOLASTIC, ATTENDANCE & REMARKS
+       ══════════════════════════════════════════════════════════════════ -->
+  <div class="marksheet-page">
+
+    <!-- Repeated header for page 2 -->
+    <div class="ms-header">
+      <div class="ms-header-inner">
+        <img src="logo.png.png" alt="Logo" class="ms-logo" onerror="this.style.display='none'">
+        <div class="ms-header-text">
+          <h1 class="ms-school-name-p2">St. Francis De Sales Secondary School</h1>
+          <p class="ms-meta">Laitkor, Shillong — Meghalaya</p>
+        </div>
+        <div class="ms-header-info">
+          <div><strong>CLASS:</strong> <span class="ms-class-p2">—</span></div>
+          <div><strong>SESSION:</strong> <span class="ms-session-p2">—</span></div>
+          <div><strong>DATE:</strong> <span class="ms-date-p2">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Co-Scholastic Section -->
+    <div class="ms-section-title">CO-SCHOLASTIC ACTIVITIES &amp; ATTENDANCE</div>
+    <div class="ms-table-wrap">
+      <table class="ms-table" id="msCoSchTable">
+        <thead id="msCoSchHead"></thead>
+        <tbody id="msCoSchBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Remarks Section -->
+    <div class="ms-section-title" style="margin-top:4mm">CLASS TEACHER REMARKS</div>
+    <div class="ms-table-wrap">
+      <table class="ms-table" id="msRemarksTable">
+        <thead>
+          <tr>
+            <th style="width:28px">Sl.</th>
+            <th style="width:38px">Roll</th>
+            <th class="ms-student-name" style="text-align:left;width:100px">Student Name</th>
+            <th style="width:42%">Half Yearly Remark</th>
+            <th style="width:42%">Final Term Remark</th>
+          </tr>
+        </thead>
+        <tbody id="msRemarksBody"></tbody>
+      </table>
+    </div>
+
+    <div class="ms-footer">
+      <div class="ms-footer-line">
+        <span>Class Teacher Signature: ___________________________</span>
+        <span>Principal Signature: ___________________________</span>
+        <span>Office Seal</span>
+      </div>
+      <p class="ms-footer-note">Computer-generated document &nbsp;|&nbsp; St. Francis De Sales Secondary School, Laitkor, Shillong &nbsp;|&nbsp; Page 2</p>
+    </div>
+
+  </div><!-- /PAGE 2 -->
+
+  <script src="config.js"></script>
+  <script src="marksheet.js"></script>
+</body>
+</html>

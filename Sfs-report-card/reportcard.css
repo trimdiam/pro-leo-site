@@ -42,13 +42,79 @@ body {
   background: #C8C4BC;
 }
 
-/* ── FLAW 9 FIX — screen body scroll ──────────────────────── */
+/* ── TOOLBAR ────────────────────────────────────────────────── */
+.rc-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #1A1A1A;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 12px;
+}
+
+.rc-tb-title {
+  flex: 1;
+  text-align: center;
+  color: #D4B84A;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-tb-btn {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 13px;
+  padding: 7px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  border: none;
+  font-weight: 600;
+}
+
+.rc-tb-back {
+  background: rgba(255,255,255,0.1);
+  color: #FAF8F0;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+}
+
+.rc-tb-download {
+  background: #D4B84A;
+  color: #1A1A1A;
+}
+
+@media print {
+  .no-print { display: none !important; }
+}
+
+/* ── SCREEN BODY SCROLL ─────────────────────────────────────── */
 @media screen {
   body {
-    padding: 14px;
+    padding: 0;
     background: #C8C4BC;
-    overflow-x: auto;
-    min-width: fit-content;
+    overflow-x: hidden;
+  }
+
+  .report-card {
+    margin: 10px auto;
+  }
+}
+
+/* ── MOBILE SCALE WRAPPER ───────────────────────────────────── */
+@media screen and (max-width: 900px) {
+  body {
+    padding: 0;
+    overflow-x: hidden;
+  }
+  /* JS handles transform scale — just prevent horizontal scroll */
+  .report-card {
+    margin: 6px 0;
   }
 }
 

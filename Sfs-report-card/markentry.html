@@ -201,7 +201,15 @@
           <h2 id="slTitle">Student Records</h2>
           <p id="slSubtitle"></p>
         </div>
-        <button class="btn btn-warn btn-sm" id="btnLockAll">&#128274; Lock All Records</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-sm" id="btnViewMarksheet" style="background:#1e3a1e;color:#d4af37;border:1px solid #d4af37">&#128203; Class Marksheet</button>
+          <select id="slStudentPicker" style="padding:4px 8px;border-radius:6px;border:1px solid var(--me-border);background:#2a2a2a;color:#FAF8F3;font-size:12px;max-width:180px">
+            <option value="">— Student Report Card —</option>
+          </select>
+          <button class="btn btn-sm btn-primary" id="btnOpenStudentRC">&#128196; View</button>
+          <button class="btn btn-warn btn-sm" id="btnLockAll">&#128274; Lock All</button>
+          <button class="btn btn-sm" id="btnPushAdmin" style="background:#1a2e4a;color:#7eb8f7;border:1px solid #7eb8f7;display:none">&#128228; Push to Admin</button>
+        </div>
       </div>
 
       <div class="me-card">
@@ -347,6 +355,20 @@
       <div class="me-modal-actions">
         <button class="btn btn-secondary" id="btnCancelLock">Cancel</button>
         <button class="btn btn-warn" id="btnConfirmLock">Confirm Lock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PUSH TO ADMIN MODAL
+  ════════════════════════════════════════════ -->
+  <div class="me-modal-backdrop hidden" id="pushAdminModal">
+    <div class="me-modal">
+      <h3>&#128228; Push to Admin — Final Confirmation</h3>
+      <p id="pushAdminMsg">Are you sure all records are correct and finalised? This will notify the admin that the class is ready for review. This action cannot be undone.</p>
+      <div class="me-modal-actions">
+        <button class="btn btn-secondary" id="btnCancelPush">Cancel</button>
+        <button class="btn btn-gold" id="btnConfirmPush">&#10003; Confirm &amp; Push</button>
       </div>
     </div>
   </div>

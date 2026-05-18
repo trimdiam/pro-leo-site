@@ -981,41 +981,74 @@ function renderStudentList(students, existingHY, existingFT, hyRanks, ftRanks, m
   const tbody = $('slTableBody');
   tbody.innerHTML = '';
 
-  // Update table header to show both terms
-  const thead = tbody.closest('table')?.querySelector('thead tr');
+  const cfg      = CONFIG[classNum];
+  const subjects = cfg ? cfg.subjects.filter(s => !s.isAggregate && s.countInTotal) : [];
+  const passmark = cfg?.passMarkPerSubject ?? 33;
+  const fmt      = v => (Math.round(v * 10) / 10).toFixed(1);
+
+  // ── Build header ──────────────────────────────────────────────────────────
+  const table = tbody.closest('table');
+  if (table) table.style.minWidth = `${400 + subjects.length * 110}px`;
+  const thead = table?.querySelector('thead');
   if (thead) {
-    thead.innerHTML = '<th>#</th><th>Student Name</th><th>HY Total</th><th>HY%</th><th>FT Total</th><th>FT%</th><th>Rank</th><th>Status</th><th>Action</th>';
+    // Two-row header: top row has subject group labels, bottom has HY/FT under each
+    const subjCols = subjects.map(s =>
+      `<th colspan="2" style="text-align:center;border-left:1px solid rgba(255,255,255,0.15);padding:6px 4px;font-size:11px">${s.label}</th>`
+    ).join('');
+    const subjSubCols = subjects.map(() =>
+      `<th style="text-align:center;font-size:10px;opacity:0.75;padding:3px 4px">HY</th><th style="text-align:center;font-size:10px;opacity:0.75;padding:3px 4px">FT</th>`
+    ).join('');
+    thead.innerHTML = `
+      <tr>
+        <th rowspan="2" style="min-width:32px">#</th>
+        <th rowspan="2" style="min-width:160px;text-align:left">Student Name</th>
+        ${subjCols}
+        <th colspan="2" style="text-align:center;border-left:1px solid rgba(255,255,255,0.15)">Total</th>
+        <th rowspan="2" style="text-align:center">Rank</th>
+        <th rowspan="2" style="text-align:center">Status</th>
+        <th rowspan="2" style="text-align:center">Action</th>
+      </tr>
+      <tr>
+        ${subjSubCols}
+        <th style="text-align:center;font-size:10px;opacity:0.75;padding:3px 4px">HY</th>
+        <th style="text-align:center;font-size:10px;opacity:0.75;padding:3px 4px">FT</th>
+      </tr>`;
   }
 
-  const fmt = v => (Math.round(v * 10) / 10).toFixed(1);
-
+  // ── Build rows ────────────────────────────────────────────────────────────
   students.forEach((student, idx) => {
     const hyData   = existingHY[student.id] || {};
     const ftData   = existingFT[student.id] || {};
     const termData = term === 'HY' ? hyData : ftData;
     const isLocked = termData.status === 'locked';
 
-    const hyTotal = calcStudentTotal(hyData, classNum);
-    const ftTotal = calcStudentTotal(ftData, classNum);
-    const hyPct   = (maxMarks > 0 && hyTotal !== null) ? fmt((hyTotal / maxMarks) * 100) + '%' : '—';
-    const ftPct   = (maxMarks > 0 && ftTotal !== null) ? fmt((ftTotal / maxMarks) * 100) + '%' : '—';
-    const hyRank  = hyRanks[student.id] || '—';
-    const ftRank  = ftRanks[student.id] || '—';
-    const rankDisplay = term === 'HY' ? hyRank : ftRank;
+    const hyTotal    = calcStudentTotal(hyData, classNum);
+    const ftTotal    = calcStudentTotal(ftData, classNum);
+    const rankDisplay = term === 'HY' ? (hyRanks[student.id] || '—') : (ftRanks[student.id] || '—');
+
+    const subjCells = subjects.map(subj => {
+      const hyMark = hyData.academics?.[subj.key]?.total ?? null;
+      const ftMark = ftData.academics?.[subj.key]?.total ?? null;
+      const hyFail = hyMark !== null && hyMark < passmark;
+      const ftFail = ftMark !== null && ftMark < passmark;
+      const hyColor = hyMark === null ? 'color:#aaa' : (hyFail ? 'color:#dc2626;font-weight:700' : 'color:#15803d;font-weight:600');
+      const ftColor = ftMark === null ? 'color:#aaa' : (ftFail ? 'color:#dc2626;font-weight:700' : 'color:#15803d;font-weight:600');
+      return `<td style="text-align:center;font-size:12px;${hyColor}">${hyMark !== null ? hyMark : '—'}</td>
+              <td style="text-align:center;font-size:12px;${ftColor}">${ftMark !== null ? ftMark : '—'}</td>`;
+    }).join('');
 
     const tr = el('tr');
     tr.innerHTML = `
       <td>${idx + 1}</td>
-      <td style="font-weight:500">${escHtml(student.name)}</td>
-      <td>${hyTotal !== null ? hyTotal : '—'}</td>
-      <td style="color:var(--me-primary);font-weight:600">${hyPct}</td>
-      <td>${ftTotal !== null ? ftTotal : '—'}</td>
-      <td style="color:var(--me-primary);font-weight:600">${ftPct}</td>
-      <td style="font-weight:700">${rankDisplay}</td>
-      <td>${isLocked
+      <td style="font-weight:500;white-space:nowrap">${escHtml(student.name)}</td>
+      ${subjCells}
+      <td style="text-align:center;font-weight:700;font-size:13px">${hyTotal !== null ? hyTotal : '—'}</td>
+      <td style="text-align:center;font-weight:700;font-size:13px;color:var(--me-primary)">${ftTotal !== null ? ftTotal : '—'}</td>
+      <td style="text-align:center;font-weight:700">${rankDisplay}</td>
+      <td style="text-align:center">${isLocked
         ? '<span class="status-badge status-locked">&#128274; Locked</span>'
         : '<span class="status-badge status-draft">&#128275; Open</span>'}</td>
-      <td>
+      <td style="text-align:center">
         <button class="btn btn-sm btn-primary ct-fill-btn" data-sid="${student.id}">
           ${isLocked ? '&#128274; View' : '&#9998; Fill &amp; Lock'}
         </button>
@@ -1033,7 +1066,169 @@ function renderStudentList(students, existingHY, existingFT, hyRanks, ftRanks, m
   const existing = term === 'HY' ? existingHY : existingFT;
   const allLocked = students.every(s => existing[s.id]?.status === 'locked');
   $('btnLockAll').disabled = allLocked;
-  $('btnLockAll').textContent = allLocked ? '&#128274; All Locked' : '&#128274; Lock All Records';
+  $('btnLockAll').innerHTML = allLocked ? '&#128274; All Locked' : '&#128274; Lock All';
+
+  // View Class Marksheet button
+  const msBtn = $('btnViewMarksheet');
+  if (msBtn) msBtn.onclick = () => viewCTMarksheet(students, existingHY, existingFT, classNum, term);
+
+  // Student picker — populate dropdown
+  const picker = $('slStudentPicker');
+  if (picker) {
+    picker.innerHTML = '<option value="">— Student Report Card —</option>';
+    students.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = `${s.rollNo || '?'} — ${s.name}`;
+      picker.appendChild(opt);
+    });
+  }
+
+  // Open individual report card from picker
+  const rcBtn = $('btnOpenStudentRC');
+  if (rcBtn) {
+    rcBtn.onclick = () => {
+      const sid = picker?.value;
+      if (!sid) { alert('Please select a student first.'); return; }
+      const student = students.find(s => s.id === sid);
+      if (!student) return;
+      openReportCardFromList(sid, student, existingHY[sid] || {}, existingFT[sid] || {}, ME.ctClassId, classNum);
+    };
+  }
+
+  // Push to Admin button — show only when all records are locked
+  const pushBtn = $('btnPushAdmin');
+  if (pushBtn) {
+    const allLocked = students.every(s => {
+      const d = term === 'HY' ? existingHY[s.id] : existingFT[s.id];
+      return d?.status === 'locked';
+    });
+    pushBtn.style.display = allLocked ? '' : 'none';
+    pushBtn.onclick = () => {
+      $('pushAdminMsg').textContent =
+        `Push Class ${ME.ctClassId} (${term === 'HY' ? 'Half Yearly' : 'Final Term'}) to admin? All ${students.length} student records are locked and ready for review.`;
+      $('pushAdminModal').classList.remove('hidden');
+      // store context for confirm handler
+      $('pushAdminModal').dataset.term    = term;
+      $('pushAdminModal').dataset.count   = students.length;
+    };
+  }
+}
+
+function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
+  const cfg = CONFIG[classNum];
+  if (!cfg) { alert('Class config not found.'); return; }
+
+  const passmark = cfg.passmark || 33;
+  const maxMarks = cfg.grandTotalMax || 0;
+  const classList = [];
+
+  students.forEach(student => {
+    const hyData  = existingHY[student.id] || {};
+    const ftData  = existingFT[student.id] || {};
+    const hyAcad  = hyData.academics || {};
+    const ftAcad  = ftData.academics || {};
+
+    const hySubjects = {}, ftSubjects = {}, consolSubjects = {};
+    let hyGrand = 0, ftGrand = 0;
+    let result = 'PASS';
+
+    for (const subj of cfg.subjects) {
+      let hyTotal = 0, ftTotal = 0;
+
+      if (subj.isAggregate) {
+        // Aggregate subjects have no own Firestore entry — compute from components
+        const comps = subj.components || [];
+        hyTotal = comps.reduce((s, k) => s + (hyAcad[k]?.total ?? 0), 0);
+        ftTotal = comps.reduce((s, k) => s + (ftAcad[k]?.total ?? 0), 0);
+        // No ia/ut keys → marksheet.js will show '—' for those columns
+        hySubjects[subj.key] = { total: hyTotal };
+        ftSubjects[subj.key] = { total: ftTotal };
+        if (subj.countInTotal) {
+          // Grand total uses component totals directly (matching calcStudentTotal)
+          comps.forEach(k => { hyGrand += hyAcad[k]?.total ?? 0; ftGrand += ftAcad[k]?.total ?? 0; });
+        }
+      } else {
+        const hyA = hyAcad[subj.key] || {};
+        const ftA = ftAcad[subj.key] || {};
+        hyTotal = hyA.total ?? 0;
+        ftTotal = ftA.total ?? 0;
+
+        // Convert UPPERCASE Firestore fields → lowercase for marksheet.js
+        const hyEntry = { exam: hyA.TE ?? 0, total: hyTotal };
+        if (hyA.IA !== undefined)              hyEntry.ia = hyA.IA;
+        else if (hyA.singleMark !== undefined) hyEntry.ia = hyA.singleMark;
+        if (hyA.UT !== undefined)              hyEntry.ut = hyA.UT;
+
+        const ftEntry = { exam: ftA.TE ?? 0, total: ftTotal };
+        if (ftA.IA !== undefined)              ftEntry.ia = ftA.IA;
+        else if (ftA.singleMark !== undefined) ftEntry.ia = ftA.singleMark;
+        if (ftA.UT !== undefined)              ftEntry.ut = ftA.UT;
+
+        hySubjects[subj.key] = hyEntry;
+        ftSubjects[subj.key] = ftEntry;
+
+        if (subj.countInTotal) {
+          hyGrand += hyTotal;
+          ftGrand += ftTotal;
+          if (hyTotal < passmark || ftTotal < passmark) result = 'FAIL';
+        }
+      }
+
+      consolSubjects[subj.key] = { term1: hyTotal, term2: ftTotal, total: hyTotal + ftTotal };
+    }
+
+    const adminDecision = ftData.adminDecision || '';
+    if (adminDecision === 'Promoted')                result = 'PROMOTED';
+    else if (adminDecision === 'Detained')            result = 'DETAINED';
+    else if (adminDecision === 'Promoted with Grace') result = 'PROMOTED WITH GRACE';
+
+    const hyPct      = maxMarks > 0 ? (hyGrand / maxMarks) * 100 : 0;
+    const ftPct      = maxMarks > 0 ? (ftGrand / maxMarks) * 100 : 0;
+    const overallPct = (maxMarks * 2) > 0 ? ((hyGrand + ftGrand) / (maxMarks * 2)) * 100 : 0;
+    const rank       = ftData.rank || hyData.rank || {};
+
+    // Supplementary report-card data
+    const hyAtt = hyData.attendance || {};
+    const ftAtt = ftData.attendance || {};
+
+    classList.push({
+      class:      classNum,
+      schoolName: 'St. Francis De Sales Secondary School',
+      session:    '2026–2027',
+      student:    { name: student.name, rollNo: student.rollNo || 0, admissionNo: student.admissionNo || '', house: student.house || '' },
+      attendance: {
+        hy: { present: hyAtt.hyPresent ?? hyAtt.present ?? 0, total: hyAtt.hyTotal ?? hyAtt.total ?? 0 },
+        ft: { present: ftAtt.ftPresent ?? ftAtt.present ?? 0, total: ftAtt.ftTotal ?? ftAtt.total ?? 0 }
+      },
+      coScholastic: hyData.coScholastic || ftData.coScholastic || {},
+      remarks: {
+        halfYearly: hyData.remarks?.halfYearly || '',
+        finalTerm:  ftData.remarks?.finalTerm   || ''
+      },
+      coScholasticConfig: cfg.coScholastic || [],
+      halfYearly: {
+        subjects: hySubjects, grandTotal: hyGrand,
+        percentage: parseFloat((Math.round(hyPct * 10) / 10).toFixed(1)),
+        grade: _gradeFromPct(hyPct), rank: rank.hyRank || 0, totalStudents: rank.totalStudents || 0
+      },
+      finalTerm: {
+        subjects: ftSubjects, grandTotal: ftGrand,
+        percentage: parseFloat((Math.round(ftPct * 10) / 10).toFixed(1)),
+        grade: _gradeFromPct(ftPct), rank: rank.ftRank || 0, totalStudents: rank.totalStudents || 0
+      },
+      consolidated: {
+        subjects: consolSubjects, grandTotal: hyGrand + ftGrand,
+        percentage: parseFloat((Math.round(overallPct * 10) / 10).toFixed(1)),
+        grade: _gradeFromPct(overallPct), result
+      }
+    });
+  });
+
+  classList.sort((a, b) => (a.student.rollNo || 999) - (b.student.rollNo || 999));
+  sessionStorage.setItem('sfds_classList', JSON.stringify(classList));
+  sessionStorage.setItem('sfds_marksheetTerm', term === 'HY' ? 'halfYearly' : 'finalTerm');
+  window.open('marksheet.html', '_blank');
 }
 
 $('btnBackToCTDash').addEventListener('click', async () => {
@@ -1529,6 +1724,120 @@ async function openReportCard() {
   sessionStorage.setItem('sfds_studentData', JSON.stringify(data));
   window.location.href = 'reportcard.html';
 }
+
+// ─── REPORT CARD FROM STUDENT LIST (no Firestore refetch) ────────────────────
+function openReportCardFromList(studentId, studentData, hyData, ftData, classId, classNum) {
+  const cfg = CONFIG[classNum];
+  if (!cfg) { alert('Class config not found.'); return; }
+
+  const passmark = cfg.passmark || 40;
+  const maxMarks = cfg.grandTotalMax || 0;
+  const hySubjects = {}, ftSubjects = {}, consolSubjects = {};
+  let hyGrand = 0, ftGrand = 0, result = 'PASS';
+
+  for (const subj of cfg.subjects) {
+    const hyA = hyData.academics?.[subj.key] || {};
+    const ftA = ftData.academics?.[subj.key] || {};
+    const hyTotal = hyA.total ?? 0;
+    const ftTotal = ftA.total ?? 0;
+
+    if (subj.isAggregate) {
+      const comps = subj.components || [];
+      const hyAgg = comps.reduce((s, k) => s + (hyData.academics?.[k]?.total ?? 0), 0);
+      const ftAgg = comps.reduce((s, k) => s + (ftData.academics?.[k]?.total ?? 0), 0);
+      hySubjects[subj.key] = { ia: 0, ut: 0, exam: 0, total: hyAgg };
+      ftSubjects[subj.key] = { ia: 0, ut: 0, exam: 0, total: ftAgg };
+      consolSubjects[subj.key] = { term1: hyAgg, term2: ftAgg, total: hyAgg + ftAgg };
+    } else {
+      hySubjects[subj.key] = { ia: hyA.IA ?? 0, ut: hyA.UT ?? 0, exam: hyA.TE ?? hyA.singleMark ?? 0, total: hyTotal };
+      ftSubjects[subj.key] = { ia: ftA.IA ?? 0, ut: ftA.UT ?? 0, exam: ftA.TE ?? ftA.singleMark ?? 0, total: ftTotal };
+      consolSubjects[subj.key] = { term1: hyTotal, term2: ftTotal, total: hyTotal + ftTotal };
+      if (subj.countInTotal) {
+        hyGrand += hyTotal; ftGrand += ftTotal;
+        if (hyTotal < passmark || ftTotal < passmark) result = 'FAIL';
+      }
+    }
+  }
+
+  const adminDecision = ftData.adminDecision || '';
+  if (adminDecision === 'Promoted')             result = 'PROMOTED';
+  else if (adminDecision === 'Detained')         result = 'DETAINED';
+  else if (adminDecision === 'Promoted with Grace') result = 'PROMOTED WITH GRACE';
+
+  const hyPct = maxMarks > 0 ? (hyGrand / maxMarks) * 100 : 0;
+  const ftPct = maxMarks > 0 ? (ftGrand / maxMarks) * 100 : 0;
+  const overallPct = (maxMarks * 2) > 0 ? ((hyGrand + ftGrand) / (maxMarks * 2)) * 100 : 0;
+  function gfp(p) {
+    if (p >= 90) return 'O'; if (p >= 80) return 'A+'; if (p >= 70) return 'A';
+    if (p >= 60) return 'B+'; if (p >= 50) return 'B'; if (p >= 40) return 'C';
+    if (p >= 33) return 'D'; return 'F';
+  }
+  function fmtp(p) { return parseFloat((Math.round(p * 10) / 10).toFixed(1)); }
+
+  const coScholastic = {};
+  const csSrc = hyData.coScholastic || ftData.coScholastic || {};
+  for (const item of (cfg.coScholastic || [])) {
+    const cs = csSrc[item.key] || {};
+    coScholastic[item.key] = { halfYearly: cs.T1 || '', finalTerm: cs.T2 || '' };
+  }
+
+  const att  = hyData.attendance || ftData.attendance || {};
+  const rank = hyData.rank || ftData.rank || {};
+  const rem  = hyData.remarks || ftData.remarks || {};
+  const sd   = studentData || {};
+
+  const data = {
+    schoolName:   cfg.schoolName || 'St. Francis De Sales School',
+    session:      '2026-2027',
+    class:        String(classNum),
+    section:      (classId.split('-')[1] || '').trim(),
+    classTeacher: ME.teacher?.name || '',
+    student: {
+      name:        sd.name         || sd.studentName || studentId,
+      rollNo:      sd.rollNo       || sd.roll        || 0,
+      admissionNo: sd.admissionNo  || sd.admNo       || '',
+      dob:         sd.dob          || '',
+      house:       sd.house        || ''
+    },
+    halfYearly:  { subjects: hySubjects, grandTotal: hyGrand, percentage: fmtp(hyPct), grade: gfp(hyPct), rank: rank.hyRank || 0, totalStudents: rank.totalStudents || 0, attendance: { present: att.hyPresent || 0, total: att.hyTotal || 0 } },
+    finalTerm:   { subjects: ftSubjects, grandTotal: ftGrand, percentage: fmtp(ftPct), grade: gfp(ftPct), rank: rank.ftRank || 0, totalStudents: rank.totalStudents || 0, attendance: { present: att.ftPresent || 0, total: att.ftTotal || 0 } },
+    consolidated:{ subjects: consolSubjects, grandTotal: hyGrand + ftGrand, percentage: fmtp(overallPct), grade: gfp(overallPct), result },
+    coScholastic,
+    remarks: { halfYearly: rem.halfYearly || '', finalTerm: rem.finalTerm || '', principal: rem.principal || '' }
+  };
+
+  sessionStorage.setItem('sfds_studentData', JSON.stringify(data));
+  window.open('reportcard.html', '_blank');
+}
+
+// ─── PUSH TO ADMIN MODAL HANDLERS ────────────────────────────────────────────
+$('btnCancelPush').addEventListener('click', () => $('pushAdminModal').classList.add('hidden'));
+
+$('btnConfirmPush').addEventListener('click', async () => {
+  const modal = $('pushAdminModal');
+  const btn   = $('btnConfirmPush');
+  btn.disabled = true;
+  btn.textContent = 'Pushing…';
+  try {
+    const term  = modal.dataset.term;
+    const count = parseInt(modal.dataset.count) || 0;
+    await db.collection('classSubmissions').doc(`${ME.ctClassId}_${term}`).set({
+      classId:       ME.ctClassId,
+      term:          term,
+      submittedBy:   ME.teacher?.name || ME.user?.email || 'Unknown',
+      submittedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+      studentCount:  count,
+      status:        'submitted'
+    });
+    modal.classList.add('hidden');
+    alert(`Class ${ME.ctClassId} (${term === 'HY' ? 'Half Yearly' : 'Final Term'}) successfully pushed to admin.`);
+  } catch (e) {
+    alert('Push failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#10003; Confirm &amp; Push';
+  }
+});
 
 // ─── GENERATE CLASS MARKSHEET ─────────────────────────────────────────────────
 async function generateClassMarksheet() {

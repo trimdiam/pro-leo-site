@@ -2206,7 +2206,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         <td style="text-align:center">${gender}</td>
         <td style="text-align:center"><span class="badge badge-info">${s.bloodGroup||'—'}</span></td>
         <td style="text-align:center">${s.house?(houseMap[s.house]||s.house):'—'}</td>
-        <td style="font-size:12px">${s.whatsapp||'—'}</td>
+        <td style="font-size:12px">${s.whatsapp||s.contact||'—'}</td>
         <td><div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-sm btn-outline" title="View" onclick='viewStudentDetails(${JSON.stringify(s)})'><i class="fas fa-eye"></i></button>
           <button class="btn btn-sm btn-outline" title="Edit" onclick='editStudent("${docId}",${JSON.stringify(s)})'><i class="fas fa-edit"></i></button>
@@ -2227,7 +2227,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
   window.closeStudentModal = function() { document.getElementById('student-modal-overlay').style.display='none'; document.body.style.overflow=''; };
   window.editStudent = function(docId, s) {
     document.getElementById('modal-title').textContent='Edit Student'; document.getElementById('sf-doc-id').value=docId;
-    const fields = {name:s.name,dob:s.dob,gender:s.gender,blood:s.bloodGroup,nationality:s.nationality,studentId:s.studentId,admNo:s.admissionNo,rollNo:s.rollNo,'class':s.class,'section-field':s.section,house:s.house,admYear:s.admissionYear,acadYear:s.academicYear,lastSchool:s.lastSchool,father:s.fatherName,fatherOcc:s.fatherOccupation,mother:s.motherName,motherOcc:s.motherOccupation,whatsapp:s.whatsapp,altContact:s.altContact,email:s.email,address:s.address,city:s.city,pin:s.pinCode,state:s.state,pen:s.penNumber,aadhaar:s.aadhaar,medical:s.medicalNotes,remarks:s.remarks};
+    const fields = {name:s.name,dob:s.dob,gender:s.gender,blood:s.bloodGroup,nationality:s.nationality,studentId:s.studentId,admNo:s.admissionNo,rollNo:s.rollNo,'class':s.class,'section-field':s.section,house:s.house,admYear:s.admissionYear,acadYear:s.academicYear,lastSchool:s.lastSchool,father:s.fatherName,fatherOcc:s.fatherOccupation,mother:s.motherName,motherOcc:s.motherOccupation,whatsapp:s.whatsapp||s.contact,altContact:s.altContact,email:s.email,address:s.address,city:s.city,pin:s.pinCode,state:s.state,pen:s.penNumber||s.pen,aadhaar:s.aadhaar,medical:s.medicalNotes,remarks:s.remarks};
     Object.entries(fields).forEach(([k,v])=>setVal('sf-'+k,v));
     document.getElementById('student-modal-overlay').style.display='block'; document.body.style.overflow='hidden';
   };
@@ -2235,7 +2235,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     const houseMap = {G:'Green',R:'Red',Y:'Yellow',B:'Blue'};
     const classLabel = {PLG:'Play Group',SKG:'SKG',LKG:'LKG'};
     const cls = classLabel[s.class]||(s.class?'Class '+s.class:'—');
-    const info = [['Student ID',s.studentId],['Name',s.name],['DOB',s.dob],['Gender',s.gender==='M'?'Male':s.gender==='F'?'Female':s.gender],['Blood Group',s.bloodGroup],['Class',cls],['Section',s.section],['Roll No.',s.rollNo],['House',houseMap[s.house]||s.house],['Father',s.fatherName],['Mother',s.motherName],['WhatsApp',s.whatsapp],['Address',s.address]].filter(([,v])=>v).map(([k,v])=>`<div style="display:flex;gap:12px;padding:7px 0;border-bottom:1px solid #f0ebe3"><span style="min-width:120px;font-size:12px;color:var(--text-light);font-weight:600">${k}</span><span style="font-size:13px">${v}</span></div>`).join('');
+    const info = [['Student ID',s.studentId],['Name',s.name],['DOB',s.dob],['Gender',s.gender==='M'?'Male':s.gender==='F'?'Female':s.gender],['Blood Group',s.bloodGroup],['Class',cls],['Section',s.section],['Roll No.',s.rollNo],['House',houseMap[s.house]||s.house],['Father',s.fatherName],['Mother',s.motherName],['Contact',s.whatsapp||s.contact],['Alt Contact',s.altContact],['Address',s.address],['PEN',s.penNumber||s.pen],['Aadhaar',s.aadhaar]].filter(([,v])=>v).map(([k,v])=>`<div style="display:flex;gap:12px;padding:7px 0;border-bottom:1px solid #f0ebe3"><span style="min-width:120px;font-size:12px;color:var(--text-light);font-weight:600">${k}</span><span style="font-size:13px">${v}</span></div>`).join('');
     const overlay=document.createElement('div'); overlay.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(44,31,14,0.6);backdrop-filter:blur(3px);overflow-y:auto;padding:24px 16px;display:flex;align-items:flex-start;justify-content:center';
     overlay.innerHTML=`<div style="background:var(--white);border-radius:18px;max-width:560px;width:100%;box-shadow:0 24px 80px rgba(44,31,14,0.28);overflow:hidden;margin:auto"><div style="background:linear-gradient(135deg,var(--accent-dark),var(--accent));padding:20px 24px;display:flex;justify-content:space-between;align-items:center"><div><h3 style="color:#fff;font-family:var(--font-head);margin:0">${s.name||'Student'}</h3><p style="color:rgba(255,255,255,0.75);font-size:13px;margin:4px 0 0">${cls}</p></div><button onclick="this.closest('div[style]').remove();document.body.style.overflow=''" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer">&#215;</button></div><div style="padding:20px 24px">${info}</div></div>`;
     document.body.appendChild(overlay); document.body.style.overflow='hidden';
@@ -2342,12 +2342,12 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       setTxt('s-card-blood', s.bloodGroup||'—');
       setTxt('s-card-gender', s.gender==='M'?'Male':s.gender==='F'?'Female':s.gender||'—');
       setTxt('s-card-nationality', s.nationality||'Indian');
-      setPhone('s-card-contact', s.whatsapp||'—');
+      setPhone('s-card-contact', s.whatsapp||s.contact||'—');
       setTxt('s-card-address', s.address||'—');
       setTxt('s-card-father', s.fatherName||'—');
       setTxt('s-card-mother', s.motherName||'—');
-      setPhone('s-card-parent-contact', s.whatsapp||s.altContact||'—');
-      setTxt('s-card-pen', s.penNumber||'—');
+      setPhone('s-card-parent-contact', s.whatsapp||s.contact||s.altContact||'—');
+      setTxt('s-card-pen', s.penNumber||s.pen||'—');
       setTxt('s-card-house', houseMap2[s.house]||s.house||'—');
       const bal = parseFloat(s.feeBalance ?? s.feeTotal ?? 0);
       const feeDueEl = document.getElementById('s-stat-fee-due');
@@ -2363,17 +2363,23 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
 
   // ── STUDENT REPORT CARD RELEASE CHECK ───────────────────────────────────────
   async function checkStudentReportCardRelease(studentId, classId, feeBalance) {
-    const banner = document.getElementById('s-reportcard-banner');
+    const banner     = document.getElementById('s-reportcard-banner');
+    const feeBanner  = document.getElementById('s-reportcard-feebanner');
     if (!banner || !studentId || !classId) return;
     try {
       const ftDoc = await getDoc(doc(db, 'marks', `${classId}_FT`, 'students', studentId));
       if (!ftDoc.exists()) return;
-      const released = ftDoc.data()?.releasedToStudent === true;
+      const data        = ftDoc.data();
+      const released    = data?.releasedToStudent === true;
+      const feeHeld     = data?.feeHold === true;
       const feesCleared = feeBalance <= 0;
+
       if (released && feesCleared) {
         banner.style.display = 'flex';
-        // Store data for when student clicks view
         window._studentRCData = { hyClassId: `${classId}_HY`, ftClassId: `${classId}_FT`, studentId };
+      } else if (feeHeld || (released && !feesCleared)) {
+        // Result ready but withheld due to fees
+        if (feeBanner) feeBanner.style.display = 'flex';
       }
     } catch(e) { console.warn('checkStudentReportCardRelease:', e.message); }
   }
@@ -2388,10 +2394,11 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         getDoc(doc(db, 'marks', rc.ftClassId, 'students', rc.studentId))
       ]);
       if (!ftDoc.exists()) { showToast('❌ Report card not found.'); return; }
-      const classId = rc.hyClassId.replace('_HY','');
-      const payload = { hyData: hyDoc.data()||{}, ftData: ftDoc.data()||{}, classId };
-      sessionStorage.setItem('sfds_adminRC', JSON.stringify(payload));
-      window.location.href = '/Sfs-report-card/markentry.html?adminRC=' + encodeURIComponent(classId + '/' + rc.studentId);
+      const classId = rc.hyClassId.replace('_HY', '');
+      sessionStorage.setItem('sfds_adminRC', JSON.stringify({
+        hyData: hyDoc.data() || {}, ftData: ftDoc.data() || {}, classId
+      }));
+      window.open('/Sfs-report-card/reportcard.html', '_blank');
     } catch(e) { showToast('❌ ' + e.message); }
   };
 
@@ -2922,12 +2929,106 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     return ini;
   }
 
+  function _syncSchedTabs(active) {
+    const mine   = document.getElementById('t-sched-tab-mine');
+    const school = document.getElementById('t-sched-tab-school');
+    const title  = document.getElementById('t-schedule-title');
+    if (!mine || !school) return;
+    if (active === 'school') {
+      mine.style.background   = 'transparent'; mine.style.color   = 'var(--text-light)';
+      school.style.background = 'var(--accent)'; school.style.color = '#fff';
+      if (title) title.innerHTML = '<i class="fas fa-school" style="margin-right:8px;color:var(--accent)"></i>School Day Schedule';
+    } else {
+      school.style.background = 'transparent'; school.style.color = 'var(--text-light)';
+      mine.style.background   = 'var(--accent)'; mine.style.color   = '#fff';
+      if (title) title.innerHTML = '<i class="fas fa-clock" style="margin-right:8px;color:var(--accent)"></i>My Teaching Schedule';
+    }
+  }
+
+  window.loadSchoolSchedule = async function() {
+    _syncSchedTabs('school');
+    const body = document.getElementById('t-schedule-body');
+    const sub  = document.getElementById('t-schedule-sub');
+    if (!body) return;
+    body.innerHTML = `<p style="color:var(--text-light);text-align:center;padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading school schedule…</p>`;
+    try {
+      await _routineEnsureSettings();
+      await _routineLoadSubjects();
+      await _routineLoadTeachers();
+      const s   = window._routineState;
+      const day = s.viewDay || s.currentDay || 1;
+      if (sub) sub.textContent = `All Classes · ${window.routineDayLabel(day)}${day === s.currentDay ? ' · TODAY' : ''}`;
+
+      document.querySelectorAll('#t-schedule-daypills .routine-day-pill').forEach(btn => {
+        const isSel = Number(btn.dataset.day) === day;
+        btn.classList.toggle('active', isSel);
+        btn.classList.toggle('btn-primary', isSel);
+        btn.classList.toggle('btn-outline', !isSel);
+        btn.onclick = () => { window._routineState.viewDay = Number(btn.dataset.day); window.loadSchoolSchedule(); };
+      });
+
+      const dayData = await _routineGetDay(day);
+      const active  = window.routineActivePeriodIndex(s.timings);
+      const isToday = (day === s.currentDay);
+
+      const cards = _ROMAN_PERIODS.map((rom, idx) => {
+        const slots = dayData[`period${idx+1}`] || [];
+        const t     = s.timings ? s.timings[`period${idx+1}`] : null;
+        const tStr  = window.routineFormatTiming(t);
+        const isAct = isToday && idx === active;
+
+        // Build rows — one per class slot
+        let rowsHtml = '';
+        if (!slots.length) {
+          rowsHtml = `<tr><td colspan="3" style="text-align:center;color:var(--text-light);font-style:italic;font-size:12px;padding:6px 0">No classes scheduled</td></tr>`;
+        } else {
+          const sorted = [...slots].sort((a, b) => (a.className || '').localeCompare(b.className || '', undefined, { numeric: true }));
+          sorted.forEach(slot => {
+            const cls     = slot.className || (slot.involvedClasses || []).join(' + ') || '—';
+            let subj = '';
+            if (slot.slotType === 'value-cate-split') subj = slot.track || 'Value Ed. / Catechism';
+            else if (slot.slotType === 'dual-subject') subj = 'English I / II';
+            else subj = _resolveSubject(slot.subjectCode, s.subjects);
+            const teacherRec = s.teachersByInitials[slot.teacherInitials || ''];
+            const teacherName = teacherRec ? teacherRec.fullName : (slot.teacherInitials || '');
+            const vacant = !slot.teacherInitials;
+            rowsHtml += `<tr style="${vacant ? 'background:rgba(245,158,11,0.08)' : ''}">
+              <td style="padding:5px 8px;font-size:12px;font-weight:600;color:var(--accent-dark);white-space:nowrap">Class ${cls}</td>
+              <td style="padding:5px 8px;font-size:12px;color:var(--text)">${_scheduleEmoji(subj)} ${subj || '—'}</td>
+              <td style="padding:5px 8px;font-size:12px;color:${vacant ? '#d97706' : 'var(--text-light)'};white-space:nowrap">${vacant ? '⚠️ Vacant' : teacherName}</td>
+            </tr>`;
+          });
+        }
+
+        return `<div class="sched-card${isAct ? ' sched-card--active' : ''}" style="display:block;padding:12px 16px;margin-bottom:10px;border-radius:10px;background:#f9f7f4">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="font-size:11px;font-weight:700;color:#fff;background:var(--accent-dark);border-radius:6px;padding:2px 7px;white-space:nowrap">P${idx+1}</span>
+            <span style="font-size:13px;font-weight:700;color:var(--accent-dark)">${tStr}</span>
+            ${isAct ? '<span class="sched-now-badge">NOW</span>' : ''}
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>
+              <th style="text-align:left;font-size:11px;color:var(--text-light);padding:0 8px 4px;font-weight:600">Class</th>
+              <th style="text-align:left;font-size:11px;color:var(--text-light);padding:0 8px 4px;font-weight:600">Subject</th>
+              <th style="text-align:left;font-size:11px;color:var(--text-light);padding:0 8px 4px;font-weight:600">Teacher</th>
+            </tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>`;
+      }).join('');
+      body.innerHTML = cards;
+    } catch(e) {
+      body.innerHTML = `<p style="color:var(--danger);text-align:center;padding:24px"><i class="fas fa-exclamation-triangle"></i> Failed to load. ${e.message||''}</p>`;
+    }
+  };
+
   window.loadTeacherSchedule = async function(forceReload) {
     const body = document.getElementById('t-schedule-body');
     const sub  = document.getElementById('t-schedule-sub');
     if (!body) return;
     if (forceReload) { window._routineState.subjects = null; window._routineState.teachersByInitials = null; window._routineState._settingsLoaded = false; window._teacherInitials = ''; }
 
+    _syncSchedTabs('mine');
     body.innerHTML = `<p style="color:var(--text-light);text-align:center;padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading schedule…</p>`;
     try {
       const ini = await _resolveTeacherInitials();
@@ -2937,7 +3038,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         return;
       }
       await _routineEnsureSettings();
-      _routineStartListeners('t', () => window.loadTeacherSchedule());
+      _routineStartListeners('t', () => window._schedView === 'school' ? window.loadSchoolSchedule() : window.loadTeacherSchedule());
       await _routineLoadSubjects();
       await _routineLoadTeachers();
       const s = window._routineState;
@@ -2950,7 +3051,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
         btn.classList.toggle('active', isSel);
         btn.classList.toggle('btn-primary', isSel);
         btn.classList.toggle('btn-outline', !isSel);
-        btn.onclick = () => { window._routineState.viewDay = Number(btn.dataset.day); window.loadTeacherSchedule(); };
+        btn.onclick = () => { window._routineState.viewDay = Number(btn.dataset.day); window._schedView === 'school' ? window.loadSchoolSchedule() : window.loadTeacherSchedule(); };
       });
 
       const dayData = await _routineGetDay(day);
@@ -3088,8 +3189,9 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     try {
       const today    = new Date(); today.setHours(0,0,0,0);
       const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-      const todayStr    = today.toISOString().split('T')[0];
-      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      const toLocalDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const todayStr    = toLocalDate(today);
+      const tomorrowStr = toLocalDate(tomorrow);
       const snap = await getDocs(query(collection(db,'holidays'), limit(50)));
       let match = null;
       snap.forEach(d => {
@@ -3893,22 +3995,135 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     } catch(e) { showToast('❌ ' + e.message); }
   };
 
+  // ── RELEASE MODAL STATE ──────────────────────────────────────────────────────
+  let _arcRMStudents = []; // [{ id, rollNo, name, feeHold, checked }]
+  let _arcRMClassId  = '';
+
   window.arcReleaseAll = async function() {
     const classId = document.getElementById('arc-release-all-btn')?.dataset.classId;
     if (!classId) return;
-    if (!confirm(`Release ALL locked report cards for Class ${classId} to students? Only students with cleared fees will be able to view them.`)) return;
+    _arcRMClassId = classId;
+
+    const modal = document.getElementById('arc-release-modal');
+    const tbody  = document.getElementById('arc-rm-tbody');
+    if (!modal || !tbody) return;
+
+    document.getElementById('arc-rm-class').textContent = 'Class ' + classId;
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#6b7280"><i class="fas fa-spinner fa-spin"></i> Loading students & fee data…</td></tr>';
+    modal.style.display = 'flex';
+
     try {
-      const snap = await getDocs(collection(db, 'marks', `${classId}_FT`, 'students'));
+      // Load locked FT students
+      const ftSnap = await getDocs(collection(db, 'marks', `${classId}_FT`, 'students'));
+      const locked = [];
+      ftSnap.forEach(d => { if (d.data().status === 'locked') locked.push({ id: d.id, ...d.data() }); });
+
+      if (!locked.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#6b7280">No locked students found.</td></tr>';
+        return;
+      }
+
+      // Load student fee balances from students collection
+      const feeMap = {};
+      try {
+        const sSnap = await getDocs(collection(db, 'students'));
+        sSnap.forEach(d => { feeMap[d.id] = parseFloat(d.data().feeBalance ?? d.data().feeTotal ?? 0); });
+      } catch(_) {}
+
+      // Build state array — fee defaulters auto-unchecked
+      _arcRMStudents = locked
+        .sort((a,b) => (a.rollNo||999) - (b.rollNo||999))
+        .map(s => ({
+          id:      s.id,
+          rollNo:  s.rollNo || '—',
+          name:    s.studentName || s.id,
+          feeHold: (feeMap[s.id] ?? 0) > 0,
+          checked: (feeMap[s.id] ?? 0) <= 0   // auto-uncheck if fee pending
+        }));
+
+      _arcRMRender();
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="4" style="color:#ef4444;text-align:center;padding:18px">${e.message}</td></tr>`;
+    }
+  };
+
+  function _arcRMRender() {
+    const tbody = document.getElementById('arc-rm-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = _arcRMStudents.map((s, i) => {
+      const feeLabel = s.feeHold
+        ? '<span style="color:#d97706;font-weight:600"><i class="fas fa-exclamation-triangle"></i> Fee Pending</span>'
+        : '<span style="color:#16a34a"><i class="fas fa-check-circle"></i> Cleared</span>';
+      const rowBg = s.feeHold ? 'background:#fffbeb' : '';
+      return `<tr style="${rowBg}">
+        <td style="text-align:center;padding:8px 16px">
+          <input type="checkbox" ${s.checked ? 'checked' : ''} onchange="arcRMToggle(${i},this.checked)"
+            style="width:16px;height:16px;cursor:pointer;accent-color:#2563eb">
+        </td>
+        <td style="text-align:center;padding:8px;color:#6b7280">${s.rollNo}</td>
+        <td style="padding:8px;font-weight:500">${s.name}</td>
+        <td style="text-align:center;padding:8px 16px">${feeLabel}</td>
+      </tr>`;
+    }).join('');
+
+    _arcRMUpdateSummary();
+  }
+
+  window.arcRMToggle = function(i, checked) {
+    if (_arcRMStudents[i]) _arcRMStudents[i].checked = checked;
+    _arcRMUpdateSummary();
+  };
+
+  window.arcRMSelectAll = function(checked) {
+    _arcRMStudents.forEach(s => s.checked = checked);
+    _arcRMRender();
+  };
+
+  function _arcRMUpdateSummary() {
+    const total    = _arcRMStudents.length;
+    const selected = _arcRMStudents.filter(s => s.checked).length;
+    const held     = _arcRMStudents.filter(s => s.feeHold && !s.checked).length;
+    const summaryEl = document.getElementById('arc-rm-summary');
+    const footerEl  = document.getElementById('arc-rm-footer-note');
+    const btnLabel  = document.getElementById('arc-rm-btn-label');
+    if (summaryEl) summaryEl.textContent = `${selected} of ${total} selected`;
+    if (footerEl)  footerEl.textContent  = held > 0 ? `${held} student(s) withheld — fee pending` : '';
+    if (btnLabel)  btnLabel.textContent  = `Release Selected (${selected})`;
+  }
+
+  window.arcRMConfirmRelease = async function() {
+    const toRelease = _arcRMStudents.filter(s => s.checked);
+    const toHold    = _arcRMStudents.filter(s => !s.checked);
+    if (!toRelease.length) { showToast('⚠️ No students selected.'); return; }
+
+    const btn = document.getElementById('arc-rm-confirm-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Releasing…';
+
+    try {
       const batch = writeBatch(db);
-      snap.forEach(d => {
-        if (d.data().status === 'locked') {
-          batch.set(d.ref, { releasedToStudent: true, releasedAt: new Date().toISOString() }, { merge: true });
-        }
+      const now   = new Date().toISOString();
+
+      toRelease.forEach(s => {
+        const ref = doc(db, 'marks', `${_arcRMClassId}_FT`, 'students', s.id);
+        batch.set(ref, { releasedToStudent: true, releasedAt: now, feeHold: false }, { merge: true });
       });
+      toHold.forEach(s => {
+        const ref = doc(db, 'marks', `${_arcRMClassId}_FT`, 'students', s.id);
+        batch.set(ref, { releasedToStudent: false, feeHold: true }, { merge: true });
+      });
+
       await batch.commit();
-      showToast('✅ All report cards released.');
+      document.getElementById('arc-release-modal').style.display = 'none';
+      showToast(`✅ ${toRelease.length} report card(s) released. ${toHold.length} withheld.`);
       loadAdminReportCards();
-    } catch(e) { showToast('❌ ' + e.message); }
+    } catch(e) {
+      showToast('❌ ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-unlock"></i> <span id="arc-rm-btn-label">Release Selected</span>';
+    }
   };
 
   window.arcViewReportCard = async function(studentId, classId) {
@@ -3918,9 +4133,10 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const ftDoc = await getDoc(doc(db, 'marks', `${classId}_FT`, 'students', studentId));
       if (!ftDoc.exists()) { showToast('❌ No FT data found.'); return; }
       // Store in sessionStorage and open reportcard.html
-      const payload = { hyData: hyDoc.data()||{}, ftData: ftDoc.data()||{}, classId };
-      sessionStorage.setItem('sfds_adminRC', JSON.stringify(payload));
-      window.open('/Sfs-report-card/markentry.html?adminRC=' + encodeURIComponent(classId + '/' + studentId), '_blank');
+      sessionStorage.setItem('sfds_adminRC', JSON.stringify({
+        hyData: hyDoc.data() || {}, ftData: ftDoc.data() || {}, classId
+      }));
+      window.open('/Sfs-report-card/reportcard.html', '_blank');
     } catch(e) { showToast('❌ ' + e.message); }
   };
 
@@ -3959,8 +4175,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     if(!docs||!docs.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-light)">No students found.</td></tr>';return;}
     tbody.innerHTML=docs.map(d=>{
       const s=d.data();
-      const waNum=(s.whatsapp||'').replace(/[^0-9]/g,'');
-      return `<tr><td>${s.rollNo||'—'}</td><td><strong>${s.name||'—'}</strong></td><td>${s.gender==='M'?'Male':s.gender==='F'?'Female':s.gender||'—'}</td><td><span class="badge badge-info">${s.bloodGroup||'—'}</span></td><td style="font-size:12px">${s.whatsapp||'—'}</td><td>${waNum?`<a href="https://wa.me/${waNum}" target="_blank" class="btn btn-sm btn-success" style="font-size:11px"><i class="fab fa-whatsapp"></i></a>`:'—'}</td></tr>`;
+      const waNum=(s.whatsapp||s.contact||'').replace(/[^0-9]/g,'');
+      return `<tr><td>${s.rollNo||'—'}</td><td><strong>${s.name||'—'}</strong></td><td>${s.gender==='M'?'Male':s.gender==='F'?'Female':s.gender||'—'}</td><td><span class="badge badge-info">${s.bloodGroup||'—'}</span></td><td style="font-size:12px">${s.whatsapp||s.contact||'—'}</td><td>${waNum?`<a href="https://wa.me/${waNum}" target="_blank" class="btn btn-sm btn-success" style="font-size:11px"><i class="fab fa-whatsapp"></i></a>`:'—'}</td></tr>`;
     }).join('');
   };
 
@@ -3970,7 +4186,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     const rows = [['Roll No', 'Name', 'Gender', 'Blood Group', 'WhatsApp', 'Class']];
     docs.forEach(d => {
       const s = d.data();
-      rows.push([s.rollNo||'', s.name||'', s.gender||'', s.bloodGroup||'', s.whatsapp||'', s.class||'']);
+      rows.push([s.rollNo||'', s.name||'', s.gender||'', s.bloodGroup||'', s.whatsapp||s.contact||'', s.class||'']);
     });
     const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -7078,7 +7294,7 @@ window.loadDuesList = async function() {
     for (let i = 0; i < uniqueIds.length; i += 30) {
       const batch = uniqueIds.slice(i, i + 30);
       const sSnap = await getDocs(query(collection(db2, 'students'), where('studentId', 'in', batch)));
-      sSnap.forEach(d => { const s = d.data(); if (s.studentId) waMap[s.studentId] = s.whatsapp || ''; });
+      sSnap.forEach(d => { const s = d.data(); if (s.studentId) waMap[s.studentId] = s.whatsapp || s.contact || ''; });
     }
 
     const totalDue = records.reduce((s, r) => s + (r.amount || 0), 0);

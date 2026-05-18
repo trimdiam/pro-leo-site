@@ -24,7 +24,15 @@
 
   .marksheet-page {
     page-break-after: always;
+    break-after: page;
     box-shadow: none !important;
+    width: 100% !important;
+    min-height: 0 !important;
+  }
+
+  .marksheet-page:last-child {
+    page-break-after: avoid;
+    break-after: avoid;
   }
 }
 
@@ -278,6 +286,25 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   SECTION TITLE BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ms-section-title {
+  background: var(--ms-dark);
+  color: var(--ms-gold);
+  padding: 3px 8px;
+  margin: 0 4mm 2mm;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-left: 3px solid var(--ms-gold);
+}
+
+.ms-term-label {
+  color: var(--ms-cream);
+  font-weight: 400;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    SCREEN STYLES
    ═══════════════════════════════════════════════════════════════════════════ */
 @media screen {
@@ -288,5 +315,6 @@ body {
 
   .marksheet-page {
     box-shadow: 0 0 0 1px var(--ms-border);
+    margin-bottom: 12px;
   }
 }

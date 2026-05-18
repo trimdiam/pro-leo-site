@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SFS — Student Data Import Tool</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1a2e;color:#e0e0e0;min-height:100vh;padding:20px}
+    h1{color:#d4af37;font-size:1.4rem;margin-bottom:4px}
+    h2{font-size:1rem;color:#d4af37;margin-bottom:14px}
+    .subtitle{color:#888;font-size:13px;margin-bottom:24px}
+    .card{background:#1e1e3a;border:1px solid #2e2e5a;border-radius:12px;padding:22px;margin-bottom:20px}
+    .hidden{display:none!important}
+    .upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+    @media(max-width:600px){.upload-grid{grid-template-columns:1fr}}
+    .upload-box{border:2px dashed #3a3a6a;border-radius:10px;padding:18px;text-align:center;transition:border-color .2s}
+    .upload-box.loaded{border-color:#16a34a;background:rgba(22,163,74,0.08)}
+    .upload-box label{display:block;font-size:13px;color:#9ca3af;margin-bottom:10px}
+    .upload-box input[type=file]{display:block;margin:0 auto 8px;font-size:12px;color:#ccc;width:100%}
+    .upload-box .file-name{font-size:12px;color:#d4af37;margin-top:6px;font-weight:600}
+    .upload-box .file-status{font-size:11px;margin-top:4px}
+    .file-status.ok{color:#4ade80}
+    .file-status.err{color:#f87171}
+    .btn{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s}
+    .btn:disabled{opacity:0.4;cursor:not-allowed}
+    .btn-gold{background:#d4af37;color:#1a1a2e}
+    .btn-green{background:#16a34a;color:#fff}
+    .btn-red{background:#dc2626;color:#fff}
+    .summary-chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+    .chip{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700}
+    .chip-green{background:rgba(22,163,74,0.2);color:#4ade80;border:1px solid #16a34a}
+    .chip-yellow{background:rgba(234,179,8,0.2);color:#fde047;border:1px solid #ca8a04}
+    .chip-red{background:rgba(220,38,38,0.2);color:#f87171;border:1px solid #dc2626}
+    .chip-blue{background:rgba(37,99,235,0.2);color:#93c5fd;border:1px solid #2563eb}
+    .table-wrap{overflow-x:auto;max-height:420px;overflow-y:auto;border-radius:8px;border:1px solid #2e2e5a}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    thead th{background:#12122a;color:#d4af37;padding:8px 10px;text-align:left;position:sticky;top:0;white-space:nowrap}
+    tbody tr:nth-child(even){background:rgba(255,255,255,0.03)}
+    tbody td{padding:6px 10px;border-bottom:1px solid #2e2e5a;vertical-align:middle;white-space:nowrap}
+    .row-match{border-left:3px solid #16a34a}
+    .row-partial{border-left:3px solid #ca8a04}
+    .row-noid{border-left:3px solid #dc2626}
+    .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+    .badge-green{background:#166534;color:#4ade80}
+    .badge-yellow{background:#713f12;color:#fde047}
+    .badge-red{background:#7f1d1d;color:#f87171}
+    .progress-bar{background:#2e2e5a;border-radius:6px;height:10px;margin:12px 0;overflow:hidden}
+    .progress-fill{height:100%;background:#d4af37;transition:width .3s;width:0%}
+    #log{font-size:12px;color:#9ca3af;max-height:200px;overflow-y:auto;margin-top:12px;line-height:1.8}
+    .log-ok{color:#4ade80}
+    .log-skip{color:#9ca3af}
+    .log-err{color:#f87171}
+    #result-summary{margin-top:16px;font-size:14px;font-weight:600}
+  </style>
+</head>
+<body>
+
+<div style="max-width:1100px;margin:0 auto">
+  <h1>SFS Connect — Student Data Import Tool</h1>
+  <p class="subtitle">Matches Excel records against Firestore and fills in missing student profile fields.</p>
+
+  <!-- ── STEP 1: UPLOAD ── -->
+  <div class="card" id="step1">
+    <h2>Step 1 — Upload Both Files</h2>
+    <div class="upload-grid">
+      <div class="upload-box" id="box-id">
+        <label>student-records.xlsx<br><small style="color:#666">(Student IDs + Class + Roll)</small></label>
+        <input type="file" id="file-id" accept=".xlsx,.xls">
+        <div class="file-name" id="name-id">No file selected</div>
+        <div class="file-status" id="status-id">—</div>
+      </div>
+      <div class="upload-box" id="box-details">
+        <label>SFS DETAILS 2026-27.xlsx<br><small style="color:#666">(DOB, Blood Group, Parents, Contact…)</small></label>
+        <input type="file" id="file-details" accept=".xlsx,.xls">
+        <div class="file-name" id="name-details">No file selected</div>
+        <div class="file-status" id="status-details">—</div>
+      </div>
+    </div>
+    <button class="btn btn-gold" id="btn-process" disabled>Process &amp; Preview →</button>
+    <div id="loading-msg" style="display:none;margin-top:16px;color:#d4af37;font-size:13px">
+      <span id="loading-spinner" style="display:inline-block;animation:spin 1s linear infinite;margin-right:8px">⟳</span>
+      <span id="loading-text">Parsing files…</span>
+    </div>
+  </div>
+  <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
+
+  <!-- ── STEP 2: PREVIEW ── -->
+  <div class="card hidden" id="step2">
+    <h2>Step 2 — Review Matches</h2>
+    <div class="summary-chips" id="summary-chips"></div>
+    <div class="table-wrap" id="preview-table"></div>
+    <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-green" id="btn-update">Run Update (0 students)</button>
+      <button class="btn btn-red" id="btn-reset" onclick="location.reload()">Start Over</button>
+      <span style="font-size:12px;color:#888">Only matched students with a valid Firestore ID will be updated.</span>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: PROGRESS ── -->
+  <div class="card hidden" id="step3">
+    <h2>Updating Firestore…</h2>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div id="progress-text" style="font-size:13px;color:#9ca3af"></div>
+    <div id="log"></div>
+    <div id="result-summary"></div>
+  </div>
+</div>
+
+<script>
+// ── FIREBASE INIT ─────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            'AIzaSyBXq3fe0uY8UB7-uLGzGIIvZOQf8YjNqaM',
+  authDomain:        'st-francis-school-a3e7e.firebaseapp.com',
+  projectId:         'st-francis-school-a3e7e',
+  storageBucket:     'st-francis-school-a3e7e.firebasestorage.app',
+  messagingSenderId: '180123372524',
+  appId:             '1:180123372524:web:caed0f2a44d35f19d90ec9'
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let wbId = null, wbDetails = null, mergedStudents = [];
+
+// ── FILE INPUT HANDLERS ───────────────────────────────────────────────────────
+document.getElementById('file-id').addEventListener('change', function(e) {
+  const f = e.target.files[0]; if (!f) return;
+  document.getElementById('name-id').textContent = f.name;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      wbId = XLSX.read(ev.target.result, { type: 'array' });
+      document.getElementById('status-id').textContent = '✓ Loaded';
+      document.getElementById('status-id').className = 'file-status ok';
+      document.getElementById('box-id').classList.add('loaded');
+    } catch(err) {
+      document.getElementById('status-id').textContent = '✗ ' + err.message;
+      document.getElementById('status-id').className = 'file-status err';
+    }
+    checkReady();
+  };
+  reader.readAsArrayBuffer(f);
+});
+
+document.getElementById('file-details').addEventListener('change', function(e) {
+  const f = e.target.files[0]; if (!f) return;
+  document.getElementById('name-details').textContent = f.name;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      wbDetails = XLSX.read(ev.target.result, { type: 'array' });
+      document.getElementById('status-details').textContent = '✓ Loaded (' + wbDetails.SheetNames.length + ' sheets)';
+      document.getElementById('status-details').className = 'file-status ok';
+      document.getElementById('box-details').classList.add('loaded');
+    } catch(err) {
+      document.getElementById('status-details').textContent = '✗ ' + err.message;
+      document.getElementById('status-details').className = 'file-status err';
+    }
+    checkReady();
+  };
+  reader.readAsArrayBuffer(f);
+});
+
+function checkReady() {
+  document.getElementById('btn-process').disabled = !(wbId && wbDetails);
+}
+
+// event listeners wired after functions are defined below
+</script>
+
+<script>
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function norm(s) {
+  return String(s || '').toUpperCase().trim().replace(/\s+/g, ' ');
+}
+
+function cleanVal(v) {
+  const s = String(v || '').trim();
+  if (!s || s === '—' || s.toLowerCase() === 'na' || s.toLowerCase() === 'a/f'
+      || s === '-' || s === 'N/A' || s === '0') return '';
+  return s;
+}
+
+function excelSerialToDate(v) {
+  const s = String(v || '').trim();
+  if (!s || s === '—') return '';
+  const n = parseFloat(s);
+  if (!isNaN(n) && n > 1000) {
+    // Excel serial date → JS date
+    const d = new Date(Math.round((n - 25569) * 86400 * 1000));
+    const y = d.getUTCFullYear(), m = d.getUTCMonth() + 1, day = d.getUTCDate();
+    return `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  }
+  // Try text formats: DD.MM.YYYY, DD-MM-YYYY, DD-Mon-YYYY, YYYY-MM-DD
+  const fmts = [
+    /^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})$/,  // DD.MM.YYYY
+    /^(\d{4})-(\d{2})-(\d{2})$/                     // YYYY-MM-DD
+  ];
+  for (const re of fmts) {
+    const m = s.match(re);
+    if (m) {
+      const [, a, b, c] = m;
+      const y = c.length === 4 ? c : a;
+      const mo = c.length === 4 ? b : b;
+      const d2 = c.length === 4 ? a : c;
+      return `${y}-${String(mo).padStart(2,'0')}-${String(d2).padStart(2,'0')}`;
+    }
+  }
+  // Try JS Date for formats like "14-Mar-2010"
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    return d.toISOString().split('T')[0];
+  }
+  return s; // return as-is if can't parse
+}
+
+function detectCols(headerRow) {
+  const map = {};
+  headerRow.forEach((cell, i) => {
+    const h = String(cell || '').toLowerCase().trim().replace(/\s+/g,' ');
+    if (/name of|^name$/.test(h))       map.name    = i;
+    if (/pen/.test(h))                  map.pen     = i;
+    if (/house/.test(h))                map.house   = i;
+    if (/gender/.test(h))               map.gender  = i;
+    if (/birth|d\.o\.b|^dob$/.test(h)) map.dob     = i;
+    if (/b\.g|b-g|blood/.test(h))       map.blood   = i;
+    if (/mother/.test(h))               map.mother  = i;
+    if (/father/.test(h))               map.father  = i;
+    if (/address/.test(h))              map.address = i;
+    if (/^alt/.test(h))                 map.alt     = i;
+    if (/^contact/.test(h))             map.contact = i;
+    if (/adhaar|aadhaar|aadhar/.test(h))map.aadhaar = i;
+    if (/roll\.no|^roll no$/.test(h))   map.roll    = i;
+    if (/^class$/.test(h))              map.class   = i;
+  });
+  return map;
+}
+
+// ── PARSE student-records.xlsx ────────────────────────────────────────────────
+function parseIdFile(wb) {
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+  const records = {}; // normName → record
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const id   = cleanVal(r[0]);
+    const name = cleanVal(r[1]);
+    if (!name) continue;
+    records[norm(name)] = {
+      studentId: id,
+      name:      name,
+      class:     cleanVal(r[2]),
+      section:   cleanVal(r[3]),
+      rollNo:    cleanVal(r[4]),
+      gender:    cleanVal(r[5]),
+      dob:       excelSerialToDate(cleanVal(r[6]))
+    };
+  }
+  return records;
+}
+
+// ── PARSE SFS DETAILS 2026-27.xlsx (all 13 sheets) ───────────────────────────
+function parseDetailsFile(wb) {
+  const records = {}; // normName → detail record
+  for (const sheetName of wb.SheetNames) {
+    const sheet = wb.Sheets[sheetName];
+    const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (rows.length < 2) continue;
+    const cols = detectCols(rows[0]);
+    for (let i = 1; i < rows.length; i++) {
+      const r    = rows[i];
+      const nameIdx = cols.name !== undefined ? cols.name : 1;
+      const name = cleanVal(r[nameIdx]);
+      if (!name) continue;
+      const key = norm(name);
+      records[key] = {
+        name:       name,
+        house:      cleanVal(cols.house   !== undefined ? r[cols.house]   : ''),
+        pen:        cleanVal(cols.pen     !== undefined ? r[cols.pen]     : ''),
+        dob:        excelSerialToDate(cleanVal(cols.dob !== undefined ? r[cols.dob] : '')),
+        bloodGroup: cleanVal(cols.blood   !== undefined ? r[cols.blood]   : ''),
+        motherName: cleanVal(cols.mother  !== undefined ? r[cols.mother]  : ''),
+        fatherName: cleanVal(cols.father  !== undefined ? r[cols.father]  : ''),
+        address:    cleanVal(cols.address !== undefined ? r[cols.address] : ''),
+        contact:    cleanVal(cols.contact !== undefined ? r[cols.contact] : ''),
+        altContact: cleanVal(cols.alt     !== undefined ? r[cols.alt]     : ''),
+        aadhaar:    cleanVal(cols.aadhaar !== undefined ? r[cols.aadhaar] : '')
+      };
+    }
+  }
+  return records;
+}
+
+// ── PROCESS FILES → MERGE → PREVIEW ──────────────────────────────────────────
+function setLoading(msg) {
+  document.getElementById('loading-msg').style.display = msg ? 'block' : 'none';
+  document.getElementById('loading-text').textContent  = msg || '';
+}
+
+async function processFiles() {
+  document.getElementById('btn-process').disabled = true;
+  document.getElementById('btn-process').textContent = 'Processing…';
+  setLoading('Step 1 of 3 — Parsing student-records.xlsx…');
+  try {
+    const idRecs  = parseIdFile(wbId);
+    const idCount = Object.keys(idRecs).length;
+    console.log('ID file parsed:', idCount, 'students');
+    setLoading(`Step 2 of 3 — Parsed ${idCount} students from ID file. Parsing SFS DETAILS…`);
+    await new Promise(r => setTimeout(r, 80));
+
+    const detRecs  = parseDetailsFile(wbDetails);
+    const detCount = Object.keys(detRecs).length;
+    console.log('Details file parsed:', detCount, 'students');
+    setLoading(`Step 3 of 3 — Parsed ${detCount} detail records. Fetching Firestore… (may take 5–10 seconds)`);
+    await new Promise(r => setTimeout(r, 80));
+
+    // Try to fetch Firestore — if rules block it, continue without it
+    const fsMap = {};
+    try {
+      const snap = await db.collection('students').get();
+      snap.forEach(d => { fsMap[d.id] = d.data(); });
+      console.log('Firestore students fetched:', Object.keys(fsMap).length);
+      setLoading(`Firestore: ${Object.keys(fsMap).length} existing records loaded. Building preview…`);
+    } catch(fsErr) {
+      console.warn('Firestore fetch blocked (likely auth rules) — continuing without FS check:', fsErr.message);
+      setLoading('⚠ Firestore pre-check skipped (auth required). Will still update by Student ID. Building preview…');
+    }
+    await new Promise(r => setTimeout(r, 80));
+
+    mergedStudents = [];
+    const detKeys = Object.keys(detRecs);
+
+    for (const [normName, idRec] of Object.entries(idRecs)) {
+      const det    = detRecs[normName] || null;
+      const fsData = idRec.studentId ? (fsMap[idRec.studentId] || null) : null;
+      mergedStudents.push({
+        ...idRec,
+        det,
+        fsData,
+        matchStatus: det ? (fsData ? 'full' : 'no-fs') : 'no-det'
+      });
+    }
+    // Flag detail records with no ID match
+    for (const key of detKeys) {
+      if (!idRecs[key]) {
+        mergedStudents.push({
+          studentId: '', name: detRecs[key].name, class: '', rollNo: '',
+          det: detRecs[key], fsData: null, matchStatus: 'no-id'
+        });
+      }
+    }
+
+    renderPreview();
+  } catch(e) {
+    console.error('processFiles error:', e);
+    setLoading('');
+    document.getElementById('loading-msg').style.display = 'block';
+    document.getElementById('loading-text').style.color  = '#f87171';
+    document.getElementById('loading-text').textContent  = '✗ Error: ' + e.message + ' — Open browser Console (F12) for details.';
+    document.getElementById('btn-process').disabled = false;
+    document.getElementById('btn-process').textContent = 'Retry →';
+  }
+}
+
+function renderPreview() {
+  const full    = mergedStudents.filter(s => s.matchStatus === 'full');
+  const noFs    = mergedStudents.filter(s => s.matchStatus === 'no-fs');
+  const noDet   = mergedStudents.filter(s => s.matchStatus === 'no-det');
+  const noId    = mergedStudents.filter(s => s.matchStatus === 'no-id');
+
+  document.getElementById('summary-chips').innerHTML = `
+    <span class="chip chip-green">✓ ${full.length} fully matched (will update)</span>
+    <span class="chip chip-yellow">⚠ ${noDet.length} ID only — no details found</span>
+    <span class="chip chip-red">✗ ${noId.length} details only — no Student ID</span>
+    <span class="chip chip-blue">⊘ ${noFs.length} not yet in Firestore</span>
+  `;
+
+  document.getElementById('btn-update').textContent = `Run Update (${full.length} students)`;
+
+  let html = `<table>
+    <thead><tr>
+      <th>Status</th><th>Student ID</th><th>Name</th><th>Class</th>
+      <th>Roll</th><th>House</th><th>DOB</th><th>Blood</th>
+      <th>Mother</th><th>Father</th><th>Contact</th>
+    </tr></thead><tbody>`;
+
+  const all = [...full, ...noDet, ...noId, ...noFs];
+  for (const s of all) {
+    const d = s.det || {};
+    let badge, rowCls;
+    if (s.matchStatus === 'full')   { badge = '<span class="badge badge-green">MATCH</span>';   rowCls = 'row-match'; }
+    else if (s.matchStatus === 'no-det') { badge = '<span class="badge badge-yellow">NO DET</span>'; rowCls = 'row-partial'; }
+    else if (s.matchStatus === 'no-id')  { badge = '<span class="badge badge-red">NO ID</span>';     rowCls = 'row-noid'; }
+    else                                  { badge = '<span class="badge badge-yellow">NEW</span>';    rowCls = 'row-partial'; }
+
+    html += `<tr class="${rowCls}">
+      <td>${badge}</td>
+      <td>${s.studentId || '—'}</td>
+      <td>${s.name}</td>
+      <td>${s.class || '—'}</td>
+      <td>${s.rollNo || '—'}</td>
+      <td>${d.house || '—'}</td>
+      <td>${d.dob || s.dob || '—'}</td>
+      <td>${d.bloodGroup || '—'}</td>
+      <td>${d.motherName || '—'}</td>
+      <td>${d.fatherName || '—'}</td>
+      <td>${d.contact || '—'}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('preview-table').innerHTML = html;
+  document.getElementById('step1').classList.add('hidden');
+  document.getElementById('step2').classList.remove('hidden');
+}
+
+// ── RUN FIRESTORE UPDATE ──────────────────────────────────────────────────────
+async function runUpdate() {
+  const toUpdate = mergedStudents.filter(s => s.matchStatus === 'full' && s.studentId);
+  if (!toUpdate.length) { alert('No fully matched students to update.'); return; }
+  if (!confirm(`Update ${toUpdate.length} student records in Firestore?\nOnly missing fields will be filled. Existing data is never overwritten.`)) return;
+
+  document.getElementById('step2').classList.add('hidden');
+  document.getElementById('step3').classList.remove('hidden');
+
+  const log = document.getElementById('log');
+  let done = 0, skipped = 0, errors = 0;
+
+  for (const s of toUpdate) {
+    const d   = s.det;
+    const fs  = s.fsData || {};
+    const upd = {};
+
+    // Only write field if Firestore currently empty AND Excel has real value
+    function maybe(fsField, val) { if (!fs[fsField] && val) upd[fsField] = val; }
+
+    maybe('rollNo',     s.rollNo);
+    maybe('class',      s.class);
+    maybe('section',    s.section);
+    maybe('gender',     s.gender);
+    maybe('dob',        d.dob || s.dob);
+    maybe('bloodGroup', d.bloodGroup);
+    maybe('house',      d.house);
+    maybe('pen',        d.pen);
+    maybe('motherName', d.motherName);
+    maybe('fatherName', d.fatherName);
+    maybe('address',    d.address);
+    maybe('contact',    d.contact);
+    maybe('altContact', d.altContact);
+    maybe('aadhaar',    d.aadhaar);
+
+    if (!Object.keys(upd).length) {
+      skipped++;
+      log.innerHTML += `<div class="log-skip">SKIP ${s.studentId} — ${s.name} (nothing new to add)</div>`;
+      done++;
+      updateProgress(done, toUpdate.length);
+      continue;
+    }
+
+    try {
+      await db.collection('students').doc(s.studentId).set(upd, { merge: true });
+      log.innerHTML += `<div class="log-ok">✓ ${s.studentId} — ${s.name} (${Object.keys(upd).join(', ')})</div>`;
+    } catch(e) {
+      errors++;
+      log.innerHTML += `<div class="log-err">✗ ${s.studentId} — ${s.name}: ${e.message}</div>`;
+    }
+    done++;
+    log.scrollTop = log.scrollHeight;
+    updateProgress(done, toUpdate.length);
+    // Small delay to avoid Firestore rate limits
+    await new Promise(r => setTimeout(r, 30));
+  }
+
+  document.getElementById('result-summary').innerHTML = `
+    <span style="color:#4ade80">✓ ${done - skipped - errors} updated</span> &nbsp;|&nbsp;
+    <span style="color:#9ca3af">${skipped} skipped (already complete)</span> &nbsp;|&nbsp;
+    <span style="color:#f87171">${errors} errors</span>
+    <br><br><button class="btn btn-gold" onclick="location.reload()">Done — Start Over</button>
+  `;
+  document.getElementById('progress-text').textContent = 'Finished.';
+}
+
+function updateProgress(done, total) {
+  const pct = Math.round((done / total) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = `${done} / ${total} (${pct}%)`;
+}
+
+// Wire buttons here — after all functions are defined
+document.getElementById('btn-process').addEventListener('click', processFiles);
+document.getElementById('btn-update').addEventListener('click', runUpdate);
+</script>
+</body>
+</html>
