@@ -4,18 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>St. Francis De Sales Sec. School, Laitkor</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Preconnect to font/CDN origins to speed up handshakes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+  <!-- Critical fonts (non-blocking) -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Nunito:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Nunito:wght@300;400;600;700&display=swap"></noscript>
+
+  <!-- FontAwesome — non-blocking load (icons appear once CSS arrives) -->
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+
+  <!-- Critical CSS — blocking for layout -->
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="notification-center.css">
-  <link rel="stylesheet" href="theme-modular.css">
-  <!-- Chart.js for academic performance charts -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <!-- PDF / Excel export libraries -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+
+  <!-- Non-critical CSS — loaded async to avoid render-blocking -->
+  <link rel="preload" href="notification-center.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="notification-center.css"></noscript>
+  <link rel="preload" href="theme-modular.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="theme-modular.css"></noscript>
+
 </head>
 <body>
 
@@ -25,7 +37,7 @@
 <nav id="public-nav">
   <div class="nav-inner">
     <div class="nav-brand" onclick="showPage('home')">
-      <img src="assets/images/logo.jpg" class="nav-logo-img" alt="School Logo">
+      <img src="assets/images/logo.webp" class="nav-logo-img" alt="School Logo">
       <div class="nav-brand-text">
         <strong>St. Francis De Sales Sec. School</strong>
         <span>Laitkor, Shillong</span>
@@ -753,21 +765,10 @@
   <div class="page-header"><h1>Who Is Who</h1><p>Meet the dedicated team behind St. Francis De Sales Sec. School</p></div>
   <div class="section">
 
-    <!-- Leadership — always shown, pinned at top -->
+    <!-- Leadership — loaded from Firestore (SFST001, SFST002) -->
     <h3 style="font-family:var(--font-head);color:var(--accent-dark);margin-bottom:20px;font-size:1.3rem"><i class="fas fa-star" style="color:var(--accent);margin-right:8px"></i>Leadership</h3>
-    <div class="staff-grid" style="margin-bottom:40px">
-      <div class="staff-card">
-        <div class="staff-avatar"><i class="fas fa-user-tie"></i></div>
-        <div class="staff-name">Sr. Emilia Lyngdoh Nongbri (OCV)</div>
-        <div class="staff-role">Principal</div>
-        <div class="staff-desc">Dedicated to holistic education and the Franciscan spirit. Leading St. Francis De Sales Sec. School with faith, vision, and love for every child.</div>
-      </div>
-      <div class="staff-card">
-        <div class="staff-avatar"><i class="fas fa-user-tie"></i></div>
-        <div class="staff-name">Miss Asha Mary Nongkhlaw</div>
-        <div class="staff-role">Head Mistress</div>
-        <div class="staff-desc">MA, B.Ed. Overseeing academics and student welfare. Khasi teacher with deep commitment to the school community. Joined 2005.</div>
-      </div>
+    <div class="staff-grid" id="leadership-grid" style="margin-bottom:40px">
+      <div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--text-light)"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem"></i></div>
     </div>
 
     <!-- Teachers — loaded dynamically from Firestore -->
@@ -875,7 +876,7 @@
     <div class="login-box">
       <button class="login-back-btn" onclick="showPage('home')"><i class="fas fa-arrow-left"></i> Back to Website</button>
       <div class="login-logo">
-        <img src="assets/images/logo.jpg" class="logo-circle" alt="School Logo">
+        <img src="assets/images/logo.webp" class="logo-circle" alt="School Logo">
         <h2>St. Francis De Sales Sec. School</h2>
         <p>Laitkor, Shillong</p>
       </div>
@@ -968,7 +969,7 @@
   </div>
   <div class="dash-shell">
     <nav class="sidebar" id="studentSidebar">
-      <div class="sidebar-brand"><img src="assets/images/logo.jpg" class="s-logo" alt="School Logo"><h4>St. Francis De Sales Sec. School</h4><p>Student Portal</p></div>
+      <div class="sidebar-brand"><img src="assets/images/logo.webp" class="s-logo" alt="School Logo"><h4>St. Francis De Sales Sec. School</h4><p>Student Portal</p></div>
       <div class="sidebar-nav">
         <button class="active" onclick="showDash('s','s-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
         <button onclick="showDash('s','s-profile',this)"><i class="fas fa-user"></i> My Profile</button>
@@ -1243,7 +1244,7 @@
 <div id="page-teacher-dash" class="page">
   <div class="dash-shell">
     <nav class="sidebar" id="teacherSidebar">
-      <div class="sidebar-brand"><img src="assets/images/logo.jpg" class="s-logo" alt="School Logo"><h4>St. Francis De Sales Sec. School</h4><p>Teacher Portal</p></div>
+      <div class="sidebar-brand"><img src="assets/images/logo.webp" class="s-logo" alt="School Logo"><h4>St. Francis De Sales Sec. School</h4><p>Teacher Portal</p></div>
       <div class="sidebar-nav">
         <button class="active" onclick="showDash('t','t-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
         <button onclick="showDash('t','t-students',this)"><i class="fas fa-users"></i> Students</button>
@@ -1270,8 +1271,8 @@
           <div><h2 id="t-dash-title">Dashboard</h2><p id="t-dash-subtitle">Session 2026–2027</p></div>
         </div>
         <div class="dash-user">
-          <div><div class="dash-username" style="text-align:right">Ms. Lyngdoh Mary</div><div class="dash-role">Teacher · English · Grade 9A</div></div>
-          <div class="dash-avatar">LM</div>
+          <div><div class="dash-username" style="text-align:right" id="t-header-name">—</div><div class="dash-role" id="t-header-role">Teacher</div></div>
+          <div class="dash-avatar" id="t-header-avatar">T</div>
         </div>
       </div>
       <div class="dash-content">
@@ -1577,7 +1578,7 @@
 <div id="page-admin-dash" class="page">
   <div class="dash-shell">
     <nav class="sidebar" id="adminSidebar">
-      <div class="sidebar-brand"><img src="assets/images/logo.jpg" class="s-logo" alt="School Logo"><h4>St. Francis De Sales Sec. School</h4><p>Admin Portal</p></div>
+      <div class="sidebar-brand"><img src="assets/images/logo.webp" class="s-logo" alt="School Logo"><h4>St. Francis De Sales Sec. School</h4><p>Admin Portal</p></div>
       <div class="sidebar-nav">
         <button class="active" onclick="showDash('a','a-dashboard',this)"><i class="fas fa-th-large"></i> Dashboard</button>
         <button onclick="showDash('a','a-students',this)"><i class="fas fa-user-graduate"></i> Students</button>
@@ -1901,6 +1902,20 @@
                 <div class="sf-field"><label>Employee ID (School)</label><input type="text" id="tf-empId" placeholder="e.g. SFS-EMP-001"></div>
                 <div class="sf-field"><label>Status</label><select id="tf-status"><option value="Active">Active</option><option value="On Leave">On Leave</option><option value="Resigned">Resigned</option><option value="Retired">Retired</option></select></div>
                 <div class="sf-field sf-full"><label>Remarks</label><textarea id="tf-remarks" rows="2" placeholder="Any additional notes..."></textarea></div>
+                <div class="sf-field sf-full">
+                  <label>Profile Photo <span style="font-weight:400;color:var(--text-light)">(shown on Who's Who page)</span></label>
+                  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:4px">
+                    <img id="tf-photo-preview" src="" alt="" style="display:none;width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--accent)">
+                    <div id="tf-photo-placeholder" style="width:72px;height:72px;border-radius:50%;background:var(--primary);border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:var(--accent)"><i class="fas fa-user"></i></div>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <label for="tf-photo-file" class="btn btn-outline btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="fas fa-camera"></i> Choose Photo</label>
+                      <input type="file" id="tf-photo-file" accept="image/*" style="display:none" onchange="previewTeacherPhoto(this)">
+                      <button type="button" class="btn btn-sm" id="tf-photo-upload-btn" onclick="uploadTeacherPhoto()" style="display:none;background:#5a8a5a;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-family:var(--font-body);font-weight:700;cursor:pointer"><i class="fas fa-upload"></i> Upload</button>
+                      <span id="tf-photo-upload-status" style="font-size:12px;color:var(--text-light)"></span>
+                    </div>
+                  </div>
+                  <input type="hidden" id="tf-photoURL">
+                </div>
               </div></div>
             </div>
             <div style="padding:20px 28px;background:#f5faf5;border-top:1.5px solid #d4e8d4;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
@@ -3207,7 +3222,7 @@
   <div class="dash-shell">
     <nav class="sidebar" id="officeSidebar">
       <div class="sidebar-brand">
-        <img src="assets/images/logo.jpg" class="s-logo" alt="School Logo">
+        <img src="assets/images/logo.webp" class="s-logo" alt="School Logo">
         <h4>St. Francis De Sales Sec. School</h4>
         <p>Office Portal</p>
       </div>
@@ -3232,7 +3247,7 @@
         </div>
         <div class="dash-user">
           <div><div class="dash-username" style="text-align:right" id="o-header-name">Office Staff</div><div class="dash-role">Fee Collection · Office</div></div>
-          <img src="assets/images/logo.jpg" id="o-header-avatar" class="dash-avatar" alt="School Logo" style="object-fit:cover;border-radius:50%;">
+          <img src="assets/images/logo.webp" id="o-header-avatar" class="dash-avatar" alt="School Logo" style="object-fit:cover;border-radius:50%;">
         </div>
       </div>
 
@@ -3897,9 +3912,9 @@
 </div>
 
 
-<script src="config.js"></script>
-<script src="script.js"></script>
-<script type="module" src="app-logic.js?v=9"></script>
+<script defer src="config.js"></script>
+<script defer src="script.js"></script>
+<script type="module" src="app-logic.js?v=13"></script>
 <script>
   (function () {
     var el = document.getElementById('login-module-error');

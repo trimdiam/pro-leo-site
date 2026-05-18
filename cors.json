@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://st-francis-school-a3e7e.web.app", "http://localhost"],
+    "method": ["GET", "PUT", "POST", "DELETE", "HEAD", "OPTIONS"],
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length", "X-Requested-With"],
+    "maxAgeSeconds": 3600
+  }
+]
