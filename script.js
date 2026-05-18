@@ -9,6 +9,37 @@ let isLoggedIn    = false;
 let currentUserRole = null;
 
 // ================================================================
+//  SESSION PERSISTENCE — prevent home-page flash on refresh
+// ================================================================
+(function() {
+  const savedRole = localStorage.getItem('sf_session_role');
+  if (!savedRole) return;
+  // User was logged in — show an overlay immediately so home page never flashes
+  const overlay = document.createElement('div');
+  overlay.id = 'auth-restore-overlay';
+  overlay.style.cssText = [
+    'position:fixed','inset:0','z-index:99999',
+    'background:#3b2a14',
+    'display:flex','flex-direction:column',
+    'align-items:center','justify-content:center','gap:16px'
+  ].join(';');
+  overlay.innerHTML = `
+    <img src="images/logo.png" alt="SFS" style="width:72px;height:72px;border-radius:50%;object-fit:cover;opacity:0.9" onerror="this.style.display='none'">
+    <div style="width:40px;height:40px;border:3px solid rgba(212,175,55,0.3);border-top-color:#d4af37;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+    <p style="color:rgba(255,255,255,0.6);font-size:13px;margin:0;font-family:sans-serif">Restoring your session…</p>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
+  document.body.appendChild(overlay);
+})();
+
+window._hideAuthOverlay = function() {
+  const ov = document.getElementById('auth-restore-overlay');
+  if (!ov) return;
+  ov.style.transition = 'opacity 0.3s';
+  ov.style.opacity = '0';
+  setTimeout(() => ov.remove(), 320);
+};
+
+// ================================================================
 //  showPage() — central router with auth guard
 // ================================================================
 function showPage(name) {
@@ -152,6 +183,7 @@ function loginAs(role) {
   isLoggedIn      = true;
   currentUserRole = cleanRole;
   currentRole     = cleanRole;
+  try { localStorage.setItem('sf_session_role', cleanRole); } catch(e) {}
   const loginPage = document.getElementById('page-login');
   if (loginPage) loginPage.classList.remove('active');
   if (cleanRole === 'student') {
@@ -171,6 +203,7 @@ function logout() {
   isLoggedIn      = false;
   currentUserRole = null;
   currentRole     = 'student';
+  try { localStorage.removeItem('sf_session_role'); } catch(e) {}
   if (window._officeStatsUnsub) { window._officeStatsUnsub(); window._officeStatsUnsub = null; }
   if (window._hwUnsubscribe)    { window._hwUnsubscribe();    window._hwUnsubscribe    = null; }
   if (window._firebaseAuth) {

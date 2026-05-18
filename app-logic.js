@@ -370,6 +370,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
     setTimeout(async () => {
       loginAs(role);
       window._currentUserRole = role;
+      if (window._hideAuthOverlay) window._hideAuthOverlay();
       if (role === 'student') {
         await loadStudentProfile(user);
         // Sibling linking system — load linked students after profile
@@ -414,6 +415,8 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       _registerFCM(user.uid);
     } else {
       window._officePortalLoaded = false;
+      try { localStorage.removeItem('sf_session_role'); } catch(e) {}
+      if (window._hideAuthOverlay) window._hideAuthOverlay();
     }
   });
 
@@ -1461,8 +1464,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
       const data = snap.exists() ? snap.data() : {};
       const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = (v == null ? '' : v); };
 
-      // Hero
-      set('wm-hero-headline', data.hero?.headline);
+      // Hero (headline is fixed in HTML — only subheadline is editable)
       set('wm-hero-sub',      data.hero?.subheadline);
 
       // Stats (4 slots)
@@ -1498,7 +1500,6 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
 
     const payload = {
       hero: {
-        headline:    get('wm-hero-headline'),
         subheadline: get('wm-hero-sub')
       },
       stats: [
@@ -7121,10 +7122,7 @@ const pur = s => (window.DOMPurify ? DOMPurify.sanitize(s || '') : (s || '').rep
 
   // ── Hero ──────────────────────────────────────────────────────
   function applyHero(hero = {}) {
-    if (hero.headline) {
-      const h = document.getElementById('home-hero-headline');
-      if (h) h.textContent = hero.headline;
-    }
+    // headline is fixed in HTML (school name) — only subheadline is CMS-controlled
     if (hero.subheadline) {
       const s = document.getElementById('home-hero-sub');
       if (s) s.textContent = hero.subheadline;
