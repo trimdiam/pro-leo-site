@@ -1,4 +1,6 @@
 node_modules/
 .env
 build/
-dist/serviceAccountKey.json
+dist/
+serviceAccountKey.json
+*.json.key
