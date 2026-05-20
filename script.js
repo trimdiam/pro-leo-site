@@ -30,14 +30,27 @@ function _showUpdateBanner(newSW) {
     'position:fixed','top:0','left:0','right:0','z-index:99999',
     'background:#2d6a4f','color:#fff','display:flex',
     'align-items:center','justify-content:space-between',
-    'padding:10px 16px','font-size:13px','font-weight:600',
+    'padding:10px 14px','font-size:13px','font-weight:600',
     'font-family:sans-serif','box-shadow:0 2px 10px rgba(0,0,0,0.3)',
-    'gap:12px'
+    'gap:10px'
   ].join(';');
-  bar.innerHTML = '<span>🔄 New version available — tap to update</span>'
-    + '<div style="display:flex;gap:8px;align-items:center">'
-    + '<button onclick="location.reload(true)" style="background:#fff;color:#2d6a4f;border:none;border-radius:6px;padding:6px 14px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap">Update now</button>'
-    + '<button onclick="document.getElementById(\'sw-update-banner\').remove()" style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer;font-size:14px;line-height:1">✕</button>'
-    + '</div>';
+  const msg = document.createElement('span');
+  msg.textContent = 'New version available';
+  msg.style.cssText = 'flex:1;min-width:0';
+  const btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:8px;flex-shrink:0';
+  const updateBtn = document.createElement('button');
+  updateBtn.textContent = 'Update';
+  updateBtn.style.cssText = 'background:#fff;color:#2d6a4f;border:none;border-radius:6px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap';
+  updateBtn.addEventListener('click', () => { bar.remove(); location.reload(true); });
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕';
+  closeBtn.setAttribute('aria-label', 'Dismiss');
+  closeBtn.style.cssText = 'background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-weight:700;cursor:pointer;font-size:14px;line-height:1';
+  closeBtn.addEventListener('click', () => bar.remove());
+  btns.appendChild(updateBtn);
+  btns.appendChild(closeBtn);
+  bar.appendChild(msg);
+  bar.appendChild(btns);
   document.body.prepend(bar);
 }

@@ -1,4 +1,4 @@
-const CACHE = 'sfs-v15';
+const CACHE = 'sfs-v17';
 const SHELL = [
   '/',
   '/index.html',
