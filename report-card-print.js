@@ -501,7 +501,7 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   const classLabel  = section ? `${esc(info.className)} — ${esc(section)}` : esc(info.className);
   const academicYear = hy1Card?.academicYear || hy2Card?.academicYear || '2025–2026';
 
-  const logoUrl = opts.logoUrl || '';
+  const logoUrl = opts.logoUrl || 'assets/images/logo.webp';
   const crestHTML = logoUrl
     ? `<div class="crest-wrap"><img src="${esc(logoUrl)}" alt="School crest" /></div>`
     : `<div class="crest-wrap"><div class="no-img">SFDS<br>CREST</div></div>`;
