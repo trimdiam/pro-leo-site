@@ -1,71 +1,7 @@
 // ── Report Card Print Engine ──────────────────────────────────────────────────
-// Self-contained e-book HTML builder. No Firebase, no imports.
-// Receives plain data objects and returns a full HTML string ready for printing.
-// Addendum C: 4-page structure — Cover | HY1 | HY2 | Annual Summary.
-
-/**
- * Computes annual summary by averaging HY1 and HY2 subject/criterion scores.
- * @param {object} hy1Card
- * @param {object} hy2Card
- * @returns {object} annualSummary
- */
-export function computeAnnualSummary(hy1Card, hy2Card) {
-  const subjectMap = {};
-
-  function addCard(card, termKey) {
-    if (!card || !card.subjects) return;
-    card.subjects.forEach(subj => {
-      if (!subjectMap[subj.subject_id]) {
-        subjectMap[subj.subject_id] = { subject_id: subj.subject_id, subject_name: subj.subject_name, hy1: null, hy2: null };
-      }
-      subjectMap[subj.subject_id][termKey] = subj.subjectAverage ?? null;
-    });
-  }
-
-  addCard(hy1Card, 'hy1');
-  addCard(hy2Card, 'hy2');
-
-  const subjects = Object.values(subjectMap).map(s => {
-    const scores = [s.hy1, s.hy2].filter(v => v !== null);
-    const annualAvg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
-    return {
-      subject_id:   s.subject_id,
-      subject_name: s.subject_name,
-      hy1Grade:     hy1Card?.subjects?.find(x => x.subject_id === s.subject_id)?.subjectGrade || 'Ex',
-      hy2Grade:     hy2Card?.subjects?.find(x => x.subject_id === s.subject_id)?.subjectGrade || 'Ex',
-      annualAvg:    annualAvg !== null ? Math.round(annualAvg * 100) / 100 : null,
-      annualGrade:  gradeCode(annualAvg)
-    };
-  });
-
-  const hy1Avg = hy1Card?.overallAverageScore ?? null;
-  const hy2Avg = hy2Card?.overallAverageScore ?? null;
-  const avgs = [hy1Avg, hy2Avg].filter(v => v !== null);
-  const annualOverallAvg = avgs.length > 0 ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
-
-  // Detect most improved: compare hy1 → hy2 subject averages
-  let mostImproved = null;
-  let bestDelta = -Infinity;
-  subjects.forEach(s => {
-    const d1 = hy1Card?.subjects?.find(x => x.subject_id === s.subject_id)?.subjectAverage ?? null;
-    const d2 = hy2Card?.subjects?.find(x => x.subject_id === s.subject_id)?.subjectAverage ?? null;
-    if (d1 !== null && d2 !== null) {
-      const delta = d2 - d1;
-      if (delta > bestDelta) { bestDelta = delta; mostImproved = s.subject_name; }
-    }
-  });
-
-  return {
-    subjects,
-    annualOverallAvg:  annualOverallAvg !== null ? Math.round(annualOverallAvg * 100) / 100 : null,
-    annualOverallGrade: gradeCode(annualOverallAvg),
-    annualOverallLabel: gradeWord(annualOverallAvg),
-    hy1OverallLabel:   hy1Card?.overallLabel || '—',
-    hy2OverallLabel:   hy2Card?.overallLabel || '—',
-    mostImprovedArea:  mostImproved,
-    promotedToClass:   hy2Card?.promotedToClass || null
-  };
-}
+// Self-contained HTML builder. No Firebase, no imports.
+// Outputs a single legal-landscape page with both half-yearly terms + annual summary.
+// Design: "Cow Dung · Cream White · Black Edge" — Inter font, professional layout.
 
 // ── Grade helpers (inline — no imports) ──────────────────────────────────────
 
@@ -83,298 +19,633 @@ function gradeWord(avg) {
   return map[gradeCode(avg)] || 'Exempt';
 }
 
-function gradeBg(code) {
-  const map = {
-    Adv:  '#d4f5e2', Prof: '#d6eaf8', Dev: '#fef3d0',
-    Beg:  '#fde8d8', NY:   '#f0f0f0', Ex:  '#f5f5f5'
-  };
-  return map[code] || '#f5f5f5';
+function achClass(codeOrAvg) {
+  const code = typeof codeOrAvg === 'string' ? codeOrAvg : gradeCode(codeOrAvg);
+  const map = { Adv: 'adv', Prof: 'prof', Dev: 'dev', Beg: 'beg', NY: 'ny', Ex: 'ex' };
+  return map[code] || 'ex';
 }
 
-function gradeFg(code) {
-  const map = {
-    Adv:  '#0a6e3a', Prof: '#1a5fb4', Dev: '#b87600',
-    Beg:  '#cc5500', NY:   '#666',    Ex:  '#999'
-  };
-  return map[code] || '#999';
+function ach(codeOrAvg) {
+  const code = typeof codeOrAvg === 'string' ? codeOrAvg : gradeCode(codeOrAvg);
+  return `<span class="ach ${achClass(code)}">${code}</span>`;
 }
-
-function gradeBadge(code) {
-  const bg = gradeBg(code);
-  const fg = gradeFg(code);
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;background:${bg};color:${fg}">${code}</span>`;
-}
-
-// ── CSS string ────────────────────────────────────────────────────────────────
-
-const INLINE_CSS = `
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Georgia', serif; font-size: 13px; color: #2C1F0E; background: #fff; }
-  .ebook-page { width: 210mm; min-height: 297mm; padding: 15mm 18mm; background: #fff; }
-  .cover { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 297mm; text-align: center; }
-  .cover-crest { font-size: 48px; font-weight: 900; color: #8B6F47; letter-spacing: 4px; margin-bottom: 12px; }
-  .cover-school { font-size: 22px; font-weight: 700; color: #2C1F0E; margin-bottom: 4px; }
-  .cover-location { font-size: 14px; color: #5A4A35; margin-bottom: 24px; }
-  .cover-divider { width: 60mm; height: 2px; background: #8B6F47; margin: 16px auto; }
-  .cover-doc-title { font-size: 18px; font-weight: 600; color: #2C1F0E; margin-bottom: 4px; }
-  .cover-year { font-size: 15px; color: #5A4A35; margin-bottom: 24px; }
-  .cover-student-name { font-size: 20px; font-weight: 700; color: #8B6F47; margin-bottom: 4px; }
-  .cover-student-meta { font-size: 13px; color: #5A4A35; margin-bottom: 4px; }
-  .cover-footer { font-size: 11px; color: #888; margin-top: 24px; max-width: 130mm; line-height: 1.5; }
-  .card-header { text-align: center; border-bottom: 2px solid #8B6F47; padding-bottom: 10px; margin-bottom: 14px; }
-  .card-header h1 { font-size: 16px; color: #2C1F0E; }
-  .card-header h2 { font-size: 13px; color: #5A4A35; font-weight: 400; }
-  .card-meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 14px; padding: 8px; background: #f9f6f0; border-radius: 4px; }
-  .card-meta span { color: #2C1F0E; }
-  .subject-block { margin-bottom: 14px; page-break-inside: avoid; }
-  .subject-name { font-size: 13px; font-weight: 700; color: #8B6F47; border-bottom: 1px solid #D6C3A3; padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { background: #f5efe4; text-align: left; padding: 5px 8px; font-weight: 600; color: #5A4A35; }
-  td { padding: 4px 8px; border-bottom: 1px solid #ede4d6; }
-  .overall-bar { display: flex; justify-content: space-between; align-items: center; background: #f9f6f0; padding: 8px 12px; border-radius: 4px; margin: 10px 0; font-size: 13px; }
-  .remark-box { border: 1px solid #D6C3A3; border-radius: 4px; padding: 10px 12px; margin: 10px 0; font-size: 12px; color: #2C1F0E; line-height: 1.6; font-style: italic; }
-  .attendance-row { display: flex; gap: 24px; font-size: 12px; margin: 8px 0; }
-  .sig-row { display: flex; justify-content: space-between; margin-top: 20px; font-size: 12px; }
-  .sig-block { text-align: center; min-width: 60mm; }
-  .sig-line { border-top: 1px solid #888; margin-top: 24px; padding-top: 4px; color: #5A4A35; }
-  .pending-page { display: flex; align-items: center; justify-content: center; min-height: 200px; color: #888; font-style: italic; font-size: 13px; }
-  .annual-table th, .annual-table td { padding: 5px 10px; }
-  .print-bar { text-align: center; padding: 16px; background: #f5efe4; }
-  .print-btn { padding: 10px 28px; background: #8B6F47; color: #fff; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; margin-right: 10px; }
-  .print-hint { font-size: 12px; color: #888; }
-  @media print {
-    .print-bar { display: none !important; }
-    .ebook-page { page-break-after: always; }
-    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  }
-`;
-
-// ── Page builders ─────────────────────────────────────────────────────────────
-
-function buildCoverPage(studentInfo, academicYear) {
-  const yr = academicYear || '2025–2026';
-  return `
-    <div class="ebook-page cover">
-      <div class="cover-crest">SFDS</div>
-      <div class="cover-school">St. Francis de Sales School</div>
-      <div class="cover-location">Laitkor, Shillong — Meghalaya</div>
-      <div class="cover-divider"></div>
-      <div class="cover-doc-title">Academic Progress Report</div>
-      <div class="cover-year">${yr}</div>
-      <div class="cover-divider"></div>
-      <div class="cover-student-name">${esc(studentInfo.studentName)}</div>
-      <div class="cover-student-meta">Class: ${esc(studentInfo.className)} &nbsp;|&nbsp; Roll No: ${esc(studentInfo.rollNo)}</div>
-      <div class="cover-student-meta">Student ID: ${esc(studentInfo.studentId)}</div>
-      <div class="cover-footer">
-        This document contains the First Half-Yearly and Second Half-Yearly Progress Reports for the academic year ${yr}.
-      </div>
-    </div>`;
-}
-
-function buildSubjectsHTML(subjects) {
-  if (!subjects || subjects.length === 0) return '<p style="color:#888;font-style:italic">No subjects found.</p>';
-
-  return subjects.map(subj => {
-    if (subj.pending) {
-      return `<div class="subject-block">
-        <div class="subject-name">${esc(subj.subject_name)}</div>
-        <p style="color:#888;font-style:italic;font-size:12px">Criteria for this subject are being finalised for this class.</p>
-      </div>`;
-    }
-
-    const criteriaRows = (subj.criteria || []).map(c => {
-      const code = c.grade || 'Ex';
-      return `<tr>
-        <td>${esc(c.criterion_name)}</td>
-        <td style="text-align:center">${c.averageScore !== null ? c.averageScore.toFixed(2) : '—'}</td>
-        <td style="text-align:center">${gradeBadge(code)}</td>
-      </tr>`;
-    }).join('');
-
-    const subjectCode = subj.subjectGrade || 'Ex';
-    return `<div class="subject-block">
-      <div class="subject-name">
-        <span>${esc(subj.subject_name)}</span>
-        ${gradeBadge(subjectCode)}
-      </div>
-      <table>
-        <thead><tr><th>Criterion</th><th style="text-align:center">Average</th><th style="text-align:center">Grade</th></tr></thead>
-        <tbody>${criteriaRows}</tbody>
-      </table>
-    </div>`;
-  }).join('');
-}
-
-function buildTermPage(card, termHeader) {
-  if (!card) {
-    return `<div class="ebook-page">
-      <div class="card-header"><h1>St. Francis de Sales School, Laitkor</h1><h2>${termHeader}</h2></div>
-      <div class="pending-page">Results for this term will be published when available.</div>
-    </div>`;
-  }
-
-  const overallCode = card.overallGrade || 'Ex';
-  const presentDays = card.attendancePresentDays !== null ? card.attendancePresentDays : '___';
-  const workingDays = card.attendanceWorkingDays !== null ? card.attendanceWorkingDays : '___';
-
-  return `<div class="ebook-page">
-    <div class="card-header">
-      <h1>St. Francis de Sales School, Laitkor</h1>
-      <h2>${termHeader}</h2>
-    </div>
-    <div class="card-meta">
-      <span><strong>Name:</strong> ${esc(card.studentName)}</span>
-      <span><strong>Class:</strong> ${esc(card.className)}</span>
-      <span><strong>Roll No:</strong> ${esc(card.rollNo)}</span>
-    </div>
-
-    <div style="font-weight:700;font-size:12px;color:#8B6F47;margin-bottom:8px">SCHOLASTIC ASSESSMENT</div>
-    ${buildSubjectsHTML(card.subjects)}
-
-    <div class="overall-bar">
-      <span><strong>Overall Performance:</strong> ${gradeBadge(overallCode)} ${esc(card.overallLabel || '')}</span>
-      ${card.overallAverageScore !== null ? `<span>Avg: ${card.overallAverageScore.toFixed(2)} / 5</span>` : ''}
-    </div>
-
-    <div style="margin:8px 0;font-size:12px;color:#5A4A35">
-      <strong>Trend:</strong> ${esc(card.trendDirection || 'Stable')}
-    </div>
-
-    <div style="font-weight:700;font-size:12px;color:#8B6F47;margin-top:10px;margin-bottom:4px">TEACHER'S REMARK</div>
-    <div class="remark-box">${esc(card.teacherRemark || '')}</div>
-
-    <div class="attendance-row">
-      <span><strong>Attendance:</strong> Present: ${presentDays} / Working Days: ${workingDays}</span>
-    </div>
-
-    <div class="sig-row">
-      <div class="sig-block"><div class="sig-line">Class Teacher</div></div>
-      <div class="sig-block"><div class="sig-line">Principal</div></div>
-    </div>
-  </div>`;
-}
-
-function buildAnnualPage(hy1Card, hy2Card) {
-  if (!hy1Card || !hy2Card) {
-    return `<div class="ebook-page">
-      <div class="card-header"><h1>St. Francis de Sales School, Laitkor</h1><h2>Annual Academic Summary</h2></div>
-      <div class="pending-page">Annual summary will be generated once both terms are complete.</div>
-    </div>`;
-  }
-
-  const summary = computeAnnualSummary(hy1Card, hy2Card);
-  const totalPresent = (hy1Card.attendancePresentDays || 0) + (hy2Card.attendancePresentDays || 0);
-  const totalWorking = (hy1Card.attendanceWorkingDays || 0) + (hy2Card.attendanceWorkingDays || 0);
-  const attendancePct = totalWorking > 0 ? Math.round((totalPresent / totalWorking) * 100) : null;
-
-  const subjectRows = summary.subjects.map(s => `
-    <tr>
-      <td>${esc(s.subject_name)}</td>
-      <td style="text-align:center">${gradeBadge(s.hy1Grade)}</td>
-      <td style="text-align:center">${gradeBadge(s.hy2Grade)}</td>
-      <td style="text-align:center">${gradeBadge(s.annualGrade)}</td>
-    </tr>`).join('');
-
-  const promotionLine = summary.promotedToClass
-    ? `<strong>Promoted to:</strong> ${esc(summary.promotedToClass)}`
-    : '<strong>Promotion:</strong> Pending';
-
-  const attendanceLine = totalWorking > 0
-    ? `Total Attendance: ${totalPresent} / ${totalWorking} days${attendancePct !== null ? ` (${attendancePct}%)` : ''}`
-    : 'Attendance: —';
-
-  return `<div class="ebook-page">
-    <div class="card-header">
-      <h1>St. Francis de Sales School, Laitkor</h1>
-      <h2>Annual Academic Summary — 2025–2026</h2>
-    </div>
-    <div class="card-meta">
-      <span><strong>Name:</strong> ${esc(hy1Card.studentName)}</span>
-      <span><strong>Class:</strong> ${esc(hy1Card.className)}</span>
-    </div>
-
-    <table class="annual-table" style="margin-bottom:14px">
-      <thead>
-        <tr>
-          <th>Subject</th>
-          <th style="text-align:center">HY1 Grade</th>
-          <th style="text-align:center">HY2 Grade</th>
-          <th style="text-align:center">Annual</th>
-        </tr>
-      </thead>
-      <tbody>${subjectRows}</tbody>
-    </table>
-
-    <div class="overall-bar" style="flex-direction:column;align-items:flex-start;gap:4px">
-      <span><strong>Overall HY1:</strong> ${esc(summary.hy1OverallLabel)}</span>
-      <span><strong>Overall HY2:</strong> ${esc(summary.hy2OverallLabel)}</span>
-      <span><strong>Annual Standing:</strong> ${gradeBadge(summary.annualOverallGrade)} ${esc(summary.annualOverallLabel)}</span>
-    </div>
-
-    ${summary.mostImprovedArea ? `<div style="font-size:12px;margin:8px 0"><strong>Most Improved Area:</strong> ${esc(summary.mostImprovedArea)}</div>` : ''}
-    <div style="font-size:12px;margin:8px 0">${attendanceLine}</div>
-    <div style="font-size:12px;margin:8px 0">${promotionLine}</div>
-
-    <div class="sig-row">
-      <div class="sig-block"><div class="sig-line">Class Teacher</div></div>
-      <div class="sig-block"><div class="sig-line">Principal</div></div>
-    </div>
-  </div>`;
-}
-
-// ── HTML escape ───────────────────────────────────────────────────────────────
 
 function esc(str) {
   return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Annual summary computation ────────────────────────────────────────────────
+
+export function computeAnnualSummary(hy1Card, hy2Card) {
+  const subjectMap = {};
+
+  function addCard(card, termKey) {
+    if (!card || !card.subjects) return;
+    card.subjects.forEach(subj => {
+      if (!subjectMap[subj.subject_id]) {
+        subjectMap[subj.subject_id] = {
+          subject_id: subj.subject_id,
+          subject_name: subj.subject_name,
+          criteria: subj.criteria || [],
+          hy1SubjAvg: null, hy2SubjAvg: null,
+          hy1Grade: 'Ex', hy2Grade: 'Ex'
+        };
+      }
+      subjectMap[subj.subject_id][termKey + 'SubjAvg'] = subj.subjectAverage ?? null;
+      subjectMap[subj.subject_id][termKey + 'Grade']   = subj.subjectGrade || 'Ex';
+      if (termKey === 'hy1') subjectMap[subj.subject_id].criteria = subj.criteria || [];
+    });
+  }
+
+  addCard(hy1Card, 'hy1');
+  addCard(hy2Card, 'hy2');
+
+  let mostImproved = null, bestDelta = -Infinity;
+
+  const subjects = Object.values(subjectMap).map(s => {
+    const avgs = [s.hy1SubjAvg, s.hy2SubjAvg].filter(v => v !== null);
+    const annualAvg = avgs.length ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
+    if (s.hy1SubjAvg !== null && s.hy2SubjAvg !== null) {
+      const delta = s.hy2SubjAvg - s.hy1SubjAvg;
+      if (delta > bestDelta) { bestDelta = delta; mostImproved = s.subject_name; }
+    }
+
+    // Build per-criterion annual average
+    const criteriaMap = {};
+    (hy1Card?.subjects?.find(x => x.subject_id === s.subject_id)?.criteria || []).forEach(c => {
+      criteriaMap[c.criterion_id] = { name: c.criterion_name, hy1: c.averageScore ?? null, hy2: null };
+    });
+    (hy2Card?.subjects?.find(x => x.subject_id === s.subject_id)?.criteria || []).forEach(c => {
+      if (!criteriaMap[c.criterion_id]) criteriaMap[c.criterion_id] = { name: c.criterion_name, hy1: null, hy2: null };
+      criteriaMap[c.criterion_id].hy2 = c.averageScore ?? null;
+    });
+    const criteria = Object.values(criteriaMap).map(c => {
+      const ca = [c.hy1, c.hy2].filter(v => v !== null);
+      const ann = ca.length ? ca.reduce((a, b) => a + b, 0) / ca.length : null;
+      return { name: c.name, hy1Score: c.hy1, hy2Score: c.hy2, annualAvg: ann };
+    });
+
+    return {
+      subject_id:   s.subject_id,
+      subject_name: s.subject_name,
+      hy1Grade:     s.hy1Grade,
+      hy2Grade:     s.hy2Grade,
+      annualAvg:    annualAvg !== null ? Math.round(annualAvg * 100) / 100 : null,
+      annualGrade:  gradeCode(annualAvg),
+      criteria
+    };
+  });
+
+  const hy1Avg = hy1Card?.overallAverageScore ?? null;
+  const hy2Avg = hy2Card?.overallAverageScore ?? null;
+  const overallAvgs = [hy1Avg, hy2Avg].filter(v => v !== null);
+  const annualOverallAvg = overallAvgs.length ? overallAvgs.reduce((a, b) => a + b, 0) / overallAvgs.length : null;
+
+  return {
+    subjects,
+    annualOverallAvg:   annualOverallAvg !== null ? Math.round(annualOverallAvg * 100) / 100 : null,
+    annualOverallGrade: gradeCode(annualOverallAvg),
+    annualOverallLabel: gradeWord(annualOverallAvg),
+    hy1OverallLabel:    hy1Card?.overallLabel || '—',
+    hy2OverallLabel:    hy2Card?.overallLabel || '—',
+    hy1OverallGrade:    hy1Card?.overallGrade || 'Ex',
+    hy2OverallGrade:    hy2Card?.overallGrade || 'Ex',
+    hy1Avg,
+    hy2Avg,
+    mostImprovedArea:   mostImproved,
+    promotedToClass:    hy2Card?.promotedToClass || null
+  };
+}
+
+// ── Inline CSS ────────────────────────────────────────────────────────────────
+
+const INLINE_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  @page { size: legal landscape; margin: 0; }
+
+  :root {
+    --cd-900:#2B270A; --cd-700:#4E471A; --cd-500:#7A7030;
+    --cd-400:#A09448; --cd-200:#CEBF7A; --cd-100:#E0D49A; --cd-050:#F0EBCA;
+    --cream:#FFFCF0; --cream-2:#FAF4DC; --cream-3:#FAF8F0;
+    --edge:#0C0C0C;
+    --txt:#18140A; --txt-mid:#4A4228; --txt-dim:#6E6745;
+    --adv-c:#1D6A3A; --adv-bg:#E4F4E8;
+    --prof-c:#154360; --prof-bg:#E1ECF6;
+    --dev-c:#784212; --dev-bg:#FCE9CE;
+    --beg-c:#6E2C00; --beg-bg:#F8DCBE;
+    --ny-c:#7B241C; --ny-bg:#FADBD8;
+    --ex-c:#555; --ex-bg:#f0f0f0;
+    --pass:#145A32;
+    --font-sans:'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    font-family: var(--font-sans);
+    color: var(--txt);
+    background: #fff;
+    -webkit-font-smoothing: antialiased;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body { display: flex; flex-direction: column; align-items: center; padding: 0; }
+
+  .print-bar {
+    width: 100%; padding: 10px 24px;
+    background: var(--cd-900); color: var(--cream);
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  }
+  .print-bar span { font-size: 12px; color: var(--cd-200); flex: 1; }
+  .print-btn {
+    padding: 7px 18px; background: var(--cd-400); color: var(--cream);
+    border: none; border-radius: 4px; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: var(--font-sans);
+  }
+
+  .rc {
+    width: 14in; height: 8.5in;
+    background: var(--cream);
+    border: 3px solid var(--edge);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    color: var(--txt);
+    margin: 20px;
+  }
+
+  /* Header */
+  .hdr {
+    background: var(--cd-900); border-bottom: 2px solid var(--edge);
+    display: flex; align-items: center; padding: 7px 22px; gap: 16px;
+    color: var(--cream); flex-shrink: 0;
+  }
+  .crest-wrap {
+    width:52px; height:52px; border-radius:50%;
+    background:var(--cream); border:1.5px solid var(--cd-400);
+    padding:2px; flex-shrink:0; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .crest-wrap img { width:100%; height:100%; object-fit:contain; border-radius:50%; }
+  .crest-wrap .no-img {
+    font-size:8px; font-weight:800; color:var(--cd-700);
+    text-align:center; line-height:1.2; letter-spacing:0.3px;
+  }
+  .hdr-school { flex:1; display:flex; flex-direction:column; gap:3px; line-height:1.1; }
+  .hdr-name { font-size:22px; font-weight:900; letter-spacing:1.4px; text-transform:uppercase; }
+  .hdr-loc  { font-size:10.5px; font-weight:500; color:var(--cd-100); letter-spacing:0.6px; }
+  .hdr-meta { font-size:9px; font-weight:500; color:var(--cd-200); letter-spacing:0.4px; margin-top:2px; }
+  .hdr-right { text-align:right; display:flex; flex-direction:column; gap:3px; line-height:1.15; }
+  .hdr-title { font-size:14px; font-weight:800; letter-spacing:2.2px; text-transform:uppercase; }
+  .hdr-year  { font-size:10px; font-weight:500; color:var(--cd-100); letter-spacing:0.8px; }
+  .hdr-class { font-size:9px; font-weight:600; color:var(--cd-200); letter-spacing:1.4px; text-transform:uppercase; margin-top:2px; }
+
+  /* Info strip */
+  .info-strip {
+    display:grid; grid-template-columns:1.6fr 0.9fr 0.7fr 1fr 1fr 1fr 1fr;
+    border-bottom:2px solid var(--edge); background:var(--cream-3); flex-shrink:0;
+  }
+  .info-cell { padding:5px 12px 6px; border-right:1px solid var(--cd-200); display:flex; flex-direction:column; gap:2px; }
+  .info-cell:last-child { border-right:none; }
+  .info-eyebrow { font-size:7.5px; font-weight:700; letter-spacing:1.4px; color:var(--cd-500); text-transform:uppercase; }
+  .info-value   { font-size:11.5px; font-weight:700; color:var(--txt); }
+  .info-value .sl { color:var(--cd-400); margin:0 3px; font-weight:500; }
+  .info-value .dim { font-size:9.5px; color:var(--txt-dim); font-weight:500; }
+
+  /* Body */
+  .body { flex:1; display:grid; grid-template-columns:1fr 4.2in; min-height:0; }
+
+  /* Marks table */
+  .marks { border-right:2px solid var(--edge); display:flex; flex-direction:column; overflow:hidden; }
+  table.marks-tbl { width:100%; border-collapse:collapse; table-layout:fixed; font-size:10px; }
+  .marks-tbl thead .term-head th {
+    background:var(--cd-700); color:var(--cream);
+    font-size:8.5px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
+    padding:4px 8px; border-right:1px solid var(--cd-400); border-bottom:1px solid var(--edge); text-align:center;
+  }
+  .marks-tbl thead .term-head th:first-child { background:var(--cd-900); text-align:left; }
+  .marks-tbl thead .term-head th:last-child  { border-right:none; }
+  .marks-tbl thead .col-head th {
+    background:var(--cd-200); color:var(--cd-900);
+    font-size:8px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase;
+    padding:2.5px 6px; border-right:1px solid var(--cd-400); border-bottom:1.5px solid var(--edge); text-align:center;
+  }
+  .marks-tbl thead .col-head th.col-sub { background:var(--cd-100); text-align:left; padding-left:10px; }
+  .marks-tbl thead .col-head th:last-child { border-right:none; }
+  .marks-tbl td {
+    padding:1px 8px; border-bottom:1px solid var(--cd-100); border-right:1px solid var(--cd-100);
+    font-size:10px; text-align:center; color:var(--txt); background:var(--cream); line-height:1.1;
+  }
+  .marks-tbl td:last-child  { border-right:none; }
+  .marks-tbl td.subj-col   { text-align:left; padding-left:18px; color:var(--txt-mid); }
+  .marks-tbl tr.subj-head td {
+    background:var(--cream-2); border-bottom:1px solid var(--cd-200); border-top:1px solid var(--cd-200);
+    font-weight:800; color:var(--cd-900); font-size:10px; letter-spacing:1.2px; text-transform:uppercase; padding:1px 8px;
+  }
+  .marks-tbl tr.subj-head td.subj-col { padding-left:10px; }
+  .score { font-weight:700; color:var(--txt); font-variant-numeric:tabular-nums; }
+
+  /* Achievement pill */
+  .ach {
+    display:inline-block; font-size:9px; font-weight:800;
+    padding:0.5px 7px; border-radius:3px; letter-spacing:0.4px; line-height:1.3; min-width:36px; text-align:center;
+  }
+  .ach.adv  { color:var(--adv-c);  background:var(--adv-bg);  }
+  .ach.prof { color:var(--prof-c); background:var(--prof-bg); }
+  .ach.dev  { color:var(--dev-c);  background:var(--dev-bg);  }
+  .ach.beg  { color:var(--beg-c);  background:var(--beg-bg);  }
+  .ach.ny   { color:var(--ny-c);   background:var(--ny-bg);   }
+  .ach.ex   { color:var(--ex-c);   background:var(--ex-bg);   }
+
+  /* Right summary panels */
+  .summary { display:flex; flex-direction:column; background:var(--cream); }
+  .panel + .panel { border-top:2px solid var(--edge); }
+  .panel { display:flex; flex-direction:column; }
+  .panel-bar {
+    background:var(--cd-700); color:var(--cream);
+    font-size:9px; font-weight:800; letter-spacing:2px; text-transform:uppercase;
+    padding:5px 12px; border-bottom:1px solid var(--edge); display:flex; align-items:center; gap:6px;
+  }
+  .panel-bar::before { content:'▸'; color:var(--cd-200); font-size:10px; }
+  .panel-bar.annual  { background:var(--cd-900); }
+  .panel-body { padding:7px 12px 9px; background:var(--cream); display:flex; flex-direction:column; gap:6px; flex:1; }
+  .stat-row { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .stat { background:var(--cd-050); border:1px solid var(--cd-200); border-radius:3px; padding:5px 8px; display:flex; flex-direction:column; gap:2px; }
+  .stat .eyebrow { font-size:7.5px; font-weight:700; letter-spacing:1.2px; color:var(--cd-500); text-transform:uppercase; }
+  .stat .value   { font-size:12px; font-weight:800; color:var(--txt); line-height:1.15; display:flex; align-items:baseline; gap:4px; }
+  .stat .value .ach { font-size:9.5px; padding:1.5px 6px; }
+  .arrow    { color:var(--adv-c); font-weight:800; }
+  .arrow.dn { color:var(--ny-c); }
+  .remark {
+    font-size:9.5px; font-style:italic; color:var(--cd-900); line-height:1.5;
+    border-top:1px dashed var(--cd-200); padding-top:6px; text-wrap:pretty;
+  }
+  .remark::before { content:'“'; color:var(--cd-400); font-weight:800; font-size:14px; line-height:0; vertical-align:-2px; margin-right:1px; }
+  .remark::after  { content:'”'; color:var(--cd-400); font-weight:800; font-size:14px; line-height:0; vertical-align:-4px; margin-left:1px; }
+
+  /* Footer */
+  .footer { border-top:2px solid var(--edge); background:var(--cream-3); flex-shrink:0; display:flex; flex-direction:column; }
+  .scale-row { padding:6px 22px 7px; display:flex; align-items:center; gap:18px; border-bottom:1px solid var(--cd-200); }
+  .scale-label { font-size:8.5px; font-weight:800; color:var(--cd-700); letter-spacing:1.4px; text-transform:uppercase; white-space:nowrap; }
+  .scale-items { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .scale-item  { display:inline-flex; align-items:baseline; gap:5px; font-size:9.5px; color:var(--txt-mid); }
+  .scale-item .ach   { font-size:8.5px; padding:1px 6px; }
+  .scale-item .sname { font-weight:700; color:var(--txt); }
+  .scale-item .range { color:var(--txt-dim); font-variant-numeric:tabular-nums; }
+  .sign-row  { padding:18px 32px 16px; display:grid; grid-template-columns:repeat(3,1fr); gap:48px; }
+  .sign      { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:8px; min-height:36px; }
+  .sign-line { width:100%; border-top:1px solid var(--edge); }
+  .sign-label { font-size:9px; font-weight:700; color:var(--cd-700); text-transform:uppercase; letter-spacing:1.4px; }
+  .disclaimer { padding:0 22px 8px; font-size:7.5px; color:var(--txt-dim); letter-spacing:0.4px; text-align:center; font-weight:500; }
+
+  @media print {
+    html, body { background:#fff !important; padding:0; display:block; }
+    .print-bar { display:none !important; }
+    .rc { box-shadow:none !important; margin:0; width:14in; height:8.5in; }
+  }
+`;
+
+// ── Table row builders ────────────────────────────────────────────────────────
+
+function buildTableRows(hy1Card, hy2Card) {
+  // Build merged subject list from both cards
+  const subjectMap = new Map();
+  const addSubjects = (card) => {
+    if (!card?.subjects) return;
+    card.subjects.forEach(s => {
+      if (!subjectMap.has(s.subject_id)) {
+        subjectMap.set(s.subject_id, { name: s.subject_name, criteria: [] });
+        // Gather criterion names
+        (s.criteria || []).forEach(c => {
+          subjectMap.get(s.subject_id).criteria.push(c.criterion_id);
+        });
+      }
+    });
+  };
+  addSubjects(hy1Card);
+  addSubjects(hy2Card);
+
+  let rows = '';
+
+  subjectMap.forEach((subj, subjId) => {
+    const hy1Subj = hy1Card?.subjects?.find(x => x.subject_id === subjId);
+    const hy2Subj = hy2Card?.subjects?.find(x => x.subject_id === subjId);
+
+    const hy1SCode = hy1Subj?.subjectGrade || (hy1Card ? 'Ex' : null);
+    const hy2SCode = hy2Subj?.subjectGrade || (hy2Card ? 'Ex' : null);
+
+    // Compute annual subject grade
+    const avgs = [hy1Subj?.subjectAverage, hy2Subj?.subjectAverage].filter(v => v != null);
+    const annAvg = avgs.length ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
+    const annSCode = gradeCode(annAvg);
+
+    rows += `<tr class="subj-head">
+      <td class="subj-col" colspan="3">${esc(subj.name)}</td>
+      <td></td><td></td>
+      <td>${ach(annSCode)}</td>
+    </tr>`;
+
+    // Criteria rows
+    const criteriaMap = new Map();
+    (hy1Subj?.criteria || []).forEach(c => criteriaMap.set(c.criterion_id, { name: c.criterion_name, hy1Score: c.averageScore ?? null, hy1Grade: c.grade || gradeCode(c.averageScore), hy2Score: null, hy2Grade: null }));
+    (hy2Subj?.criteria || []).forEach(c => {
+      if (!criteriaMap.has(c.criterion_id)) criteriaMap.set(c.criterion_id, { name: c.criterion_name, hy1Score: null, hy1Grade: null, hy2Score: null, hy2Grade: null });
+      criteriaMap.get(c.criterion_id).hy2Score = c.averageScore ?? null;
+      criteriaMap.get(c.criterion_id).hy2Grade = c.grade || gradeCode(c.averageScore);
+    });
+
+    criteriaMap.forEach(c => {
+      const ca = [c.hy1Score, c.hy2Score].filter(v => v !== null);
+      const annCAvg = ca.length ? ca.reduce((a, b) => a + b, 0) / ca.length : null;
+      const annCCode = gradeCode(annCAvg);
+
+      const hy1ScoreCell = c.hy1Score !== null ? `<td class="score">${c.hy1Score.toFixed(1)}</td><td>${ach(c.hy1Grade || 'Ex')}</td>` : `<td>—</td><td>${ach('Ex')}</td>`;
+      const hy2ScoreCell = c.hy2Score !== null ? `<td class="score">${c.hy2Score.toFixed(1)}</td><td>${ach(c.hy2Grade || 'Ex')}</td>` : `<td>—</td><td>${ach('Ex')}</td>`;
+
+      rows += `<tr>
+        <td class="subj-col">${esc(c.name)}</td>
+        ${hy1ScoreCell}
+        ${hy2ScoreCell}
+        <td>${ach(annCCode)}</td>
+      </tr>`;
+    });
+  });
+
+  return rows || `<tr><td colspan="6" style="color:#888;font-style:italic;padding:12px">No assessment data found.</td></tr>`;
+}
+
+// ── Right summary panels ──────────────────────────────────────────────────────
+
+function buildPanel(card, term, label, dateRange, isAnnual = false) {
+  const barClass = isAnnual ? 'panel-bar annual' : 'panel-bar';
+  if (!card) {
+    return `<section class="panel">
+      <div class="${barClass}">${esc(label)} · ${esc(dateRange)}</div>
+      <div class="panel-body" style="align-items:center;justify-content:center">
+        <div style="font-size:9.5px;color:var(--txt-dim);font-style:italic">Results not yet released.</div>
+      </div>
+    </section>`;
+  }
+
+  const overallCode = card.overallGrade || gradeCode(card.overallAverageScore);
+  const overallWord = card.overallLabel  || gradeWord(card.overallAverageScore);
+  const avg = card.overallAverageScore;
+
+  const strongest = card.strongestSubject || '—';
+  const weakest   = card.improvementAreas?.[0] || card.weakestSubject || null;
+  const mostImproved = card.mostImprovedSubject || null;
+
+  const stat3Label = term === 'HY2' && mostImproved ? 'Most Improved' : 'Strongest Subject';
+  const stat3Value = term === 'HY2' && mostImproved
+    ? `${esc(mostImproved)} <span class="arrow">↑</span>`
+    : `<span style="font-size:11px">${esc(strongest)}</span>`;
+
+  const stat4Label = weakest ? 'Needs Attention' : 'Trend';
+  const stat4Value = weakest
+    ? `<span style="font-size:11px;color:var(--ny-c)">${esc(weakest)}</span>`
+    : `<span style="font-size:11px"><span class="arrow">↑</span> ${esc(card.trendDirection || 'Stable')}</span>`;
+
+  return `<section class="panel">
+    <div class="${barClass}">${esc(label)} · ${esc(dateRange)}</div>
+    <div class="panel-body">
+      <div class="stat-row">
+        <div class="stat">
+          <div class="eyebrow">Overall Level</div>
+          <div class="value">${ach(overallCode)} ${esc(overallWord)}</div>
+        </div>
+        <div class="stat">
+          <div class="eyebrow">Average Score</div>
+          <div class="value">${avg !== null ? avg.toFixed(2) : '—'} <span style="font-size:9px;color:var(--txt-dim);font-weight:600">/ 5.0</span></div>
+        </div>
+        <div class="stat">
+          <div class="eyebrow">${stat3Label}</div>
+          <div class="value">${stat3Value}</div>
+        </div>
+        <div class="stat">
+          <div class="eyebrow">${stat4Label}</div>
+          <div class="value">${stat4Value}</div>
+        </div>
+      </div>
+      <div class="remark">${esc(card.teacherRemark || '')}</div>
+    </div>
+  </section>`;
+}
+
+function buildAnnualPanel(hy1Card, hy2Card) {
+  if (!hy1Card && !hy2Card) {
+    return `<section class="panel">
+      <div class="panel-bar annual">Annual Standing</div>
+      <div class="panel-body" style="align-items:center;justify-content:center">
+        <div style="font-size:9.5px;color:var(--txt-dim);font-style:italic">Available when both terms are released.</div>
+      </div>
+    </section>`;
+  }
+
+  const summary = computeAnnualSummary(hy1Card, hy2Card);
+  const promoted = summary.promotedToClass;
+  const trend = (summary.hy1Avg !== null && summary.hy2Avg !== null)
+    ? (summary.hy2Avg >= summary.hy1Avg ? '↑ Improving' : '↓ Declining')
+    : 'In Progress';
+
+  const yearRange = `${hy1Card?.academicYear || hy2Card?.academicYear || '2025–2026'}`;
+
+  return `<section class="panel">
+    <div class="panel-bar annual">Annual Standing · ${yearRange}</div>
+    <div class="panel-body">
+      <div class="stat-row">
+        <div class="stat">
+          <div class="eyebrow">Annual Level</div>
+          <div class="value">${ach(summary.annualOverallGrade)} ${esc(summary.annualOverallLabel)}</div>
+        </div>
+        <div class="stat">
+          <div class="eyebrow">Year Average</div>
+          <div class="value">${summary.annualOverallAvg !== null ? summary.annualOverallAvg.toFixed(2) : '—'} <span style="font-size:9px;color:var(--txt-dim);font-weight:600">/ 5.0</span></div>
+        </div>
+        <div class="stat">
+          <div class="eyebrow">Year Trend</div>
+          <div class="value" style="font-size:11px">${esc(trend)}</div>
+        </div>
+        <div class="stat">
+          <div class="eyebrow">Promoted To</div>
+          <div class="value" style="font-size:11px;color:var(--pass)">${promoted ? esc(promoted) + ' ✓' : 'Pending'}</div>
+        </div>
+      </div>
+      <div class="remark">${esc(hy2Card?.annualRemark || hy1Card?.annualRemark || 'Annual remarks will appear here once both terms are finalised.')}</div>
+    </div>
+  </section>`;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Builds a self-contained, printable A4 e-book HTML document.
- * All CSS inline. No Firebase calls. No external dependencies.
+ * Builds a self-contained, printable legal-landscape HTML document.
+ * Single page containing both half-yearly terms and annual summary.
+ * All CSS inline. No Firebase. No external dependencies (except Google Fonts via CDN).
  *
- * @param {object|null} hy1Card     - HY1 report card doc, or null if not released
- * @param {object|null} hy2Card     - HY2 report card doc, or null if not released
- * @param {object} studentInfo      - { studentName, className, rollNo, studentId }
+ * @param {object|null} hy1Card     - HY1 report card Firestore doc, or null
+ * @param {object|null} hy2Card     - HY2 report card Firestore doc, or null
+ * @param {object}      studentInfo - { studentName, className, rollNo, studentId, section?, phone? }
+ * @param {object}      [opts]      - { logoUrl? }
  * @returns {string}                - Full self-contained HTML
  */
-export function buildPrintableHTML(hy1Card, hy2Card, studentInfo) {
+export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   const info = studentInfo || {
     studentName: hy1Card?.studentName || hy2Card?.studentName || '—',
     className:   hy1Card?.className   || hy2Card?.className   || '—',
     rollNo:      hy1Card?.rollNo      || hy2Card?.rollNo      || '—',
-    studentId:   hy1Card?.studentId   || hy2Card?.studentId   || '—'
+    studentId:   hy1Card?.studentId   || hy2Card?.studentId   || '—',
   };
 
+  const section     = info.section || '';
+  const classLabel  = section ? `${esc(info.className)} — ${esc(section)}` : esc(info.className);
   const academicYear = hy1Card?.academicYear || hy2Card?.academicYear || '2025–2026';
 
-  const cover   = buildCoverPage(info, academicYear);
-  const hy1Page = buildTermPage(hy1Card, 'First Half-Yearly Progress Report | April – September');
-  const hy2Page = buildTermPage(hy2Card, 'Second Half-Yearly Progress Report | October – March');
-  const annualPage = buildAnnualPage(hy1Card, hy2Card);
+  const logoUrl = opts.logoUrl || '';
+  const crestHTML = logoUrl
+    ? `<div class="crest-wrap"><img src="${esc(logoUrl)}" alt="School crest" /></div>`
+    : `<div class="crest-wrap"><div class="no-img">SFDS<br>CREST</div></div>`;
+
+  // Attendance values
+  const hy1Present = hy1Card?.attendancePresentDays ?? null;
+  const hy1Working = hy1Card?.attendanceWorkingDays ?? null;
+  const hy2Present = hy2Card?.attendancePresentDays ?? null;
+  const hy2Working = hy2Card?.attendanceWorkingDays ?? null;
+
+  const totalPresent = (hy1Present ?? 0) + (hy2Present ?? 0);
+  const totalWorking = (hy1Working ?? 0) + (hy2Working ?? 0);
+
+  function attCell(present, working) {
+    if (present === null || working === null) return `___ <span class="sl">/</span> ___ <span class="dim">days</span>`;
+    return `${present}<span class="sl">/</span>${working} <span class="dim">days</span>`;
+  }
+
+  const tableRows = buildTableRows(hy1Card, hy2Card);
+
+  // Term date ranges
+  const hy1Range = hy1Card?.dateFrom ? `${hy1Card.dateFrom} – ${hy1Card.dateTo}` : 'Apr – Sep';
+  const hy2Range = hy2Card?.dateFrom ? `${hy2Card.dateFrom} – ${hy2Card.dateTo}` : 'Oct – Mar';
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Report Card — ${esc(info.studentName)}</title>
+  <meta charset="UTF-8" />
+  <title>Annual Progress Report — ${esc(info.studentName)}</title>
   <style>${INLINE_CSS}</style>
 </head>
 <body>
-  <div class="print-bar">
-    <button class="print-btn" onclick="window.print()">🖨 Print / Download Report Card</button>
-    <span class="print-hint">To save as PDF: choose "Save as PDF" in your browser's print dialog.</span>
+
+<div class="print-bar">
+  <span>Annual Progress Report &nbsp;·&nbsp; ${esc(info.studentName)} &nbsp;·&nbsp; ${classLabel}</span>
+  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+</div>
+
+<div style="padding:20px;display:flex;justify-content:center">
+<main class="rc">
+
+  <header class="hdr">
+    ${crestHTML}
+    <div class="hdr-school">
+      <div class="hdr-name">St. Francis De Sales School</div>
+      <div class="hdr-loc">Laitkor, Shillong — Meghalaya · Affiliated to CBSE</div>
+      <div class="hdr-meta">Ph: 9612946550</div>
+    </div>
+    <div class="hdr-right">
+      <div class="hdr-title">Annual Progress Report</div>
+      <div class="hdr-year">Academic Year ${esc(academicYear)}</div>
+      <div class="hdr-class">Primary Section · ${esc(info.className)}</div>
+    </div>
+  </header>
+
+  <section class="info-strip">
+    <div class="info-cell">
+      <div class="info-eyebrow">Student Name</div>
+      <div class="info-value">${esc(info.studentName)}</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-eyebrow">Class &amp; Section</div>
+      <div class="info-value">${classLabel}</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-eyebrow">Roll No.</div>
+      <div class="info-value">${esc(info.rollNo)}</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-eyebrow">Student ID</div>
+      <div class="info-value">${esc(info.studentId)}</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-eyebrow">HY1 Attendance</div>
+      <div class="info-value">${attCell(hy1Present, hy1Working)}</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-eyebrow">HY2 Attendance</div>
+      <div class="info-value">${attCell(hy2Present, hy2Working)}</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-eyebrow">Total Attendance</div>
+      <div class="info-value">${totalWorking > 0 ? attCell(totalPresent, totalWorking) : '___ <span class="sl">/</span> ___ <span class="dim">days</span>'}</div>
+    </div>
+  </section>
+
+  <div class="body">
+
+    <section class="marks">
+      <table class="marks-tbl">
+        <colgroup>
+          <col style="width:32%" />
+          <col style="width:13%" />
+          <col style="width:13%" />
+          <col style="width:13%" />
+          <col style="width:13%" />
+          <col style="width:16%" />
+        </colgroup>
+        <thead>
+          <tr class="term-head">
+            <th rowspan="2">Subject &amp; Criterion</th>
+            <th colspan="2">First Half-Yearly</th>
+            <th colspan="2">Second Half-Yearly</th>
+            <th rowspan="2">Annual<br/><span style="font-weight:500;letter-spacing:0.5px;font-size:7.5px;opacity:0.7">overall</span></th>
+          </tr>
+          <tr class="col-head">
+            <th>Score</th><th>Level</th>
+            <th>Score</th><th>Level</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </section>
+
+    <aside class="summary">
+      ${buildPanel(hy1Card, 'HY1', 'First Half-Yearly', hy1Range)}
+      ${buildPanel(hy2Card, 'HY2', 'Second Half-Yearly', hy2Range)}
+      ${buildAnnualPanel(hy1Card, hy2Card)}
+    </aside>
+
   </div>
-  ${cover}
-  ${hy1Page}
-  ${hy2Page}
-  ${annualPage}
+
+  <footer class="footer">
+    <div class="scale-row">
+      <div class="scale-label">Achievement Scale</div>
+      <div class="scale-items">
+        <div class="scale-item"><span class="ach adv">Adv</span><span class="sname">Advanced</span><span class="range">4.5 – 5.0</span></div>
+        <div class="scale-item"><span class="ach prof">Prof</span><span class="sname">Proficient</span><span class="range">3.5 – 4.4</span></div>
+        <div class="scale-item"><span class="ach dev">Dev</span><span class="sname">Developing</span><span class="range">2.5 – 3.4</span></div>
+        <div class="scale-item"><span class="ach beg">Beg</span><span class="sname">Beginning</span><span class="range">1.5 – 2.4</span></div>
+        <div class="scale-item"><span class="ach ny">NY</span><span class="sname">Not Yet</span><span class="range">0 – 1.4</span></div>
+      </div>
+    </div>
+    <div class="sign-row">
+      <div class="sign"><div class="sign-line"></div><div class="sign-label">Class Teacher</div></div>
+      <div class="sign"><div class="sign-line"></div><div class="sign-label">Parent / Guardian</div></div>
+      <div class="sign"><div class="sign-line"></div><div class="sign-label">Principal</div></div>
+    </div>
+    <div class="disclaimer">Computer-generated document &nbsp;|&nbsp; Verify with school records &nbsp;|&nbsp; No signature required for validity</div>
+  </footer>
+
+</main>
+</div>
+
 </body>
 </html>`;
 }
