@@ -36,9 +36,6 @@ service cloud.firestore {
     }
 
     // ── Daily attendance (with month-locking guard) ───────────────────
-    // Any authenticated user can read (students need this to view their own
-    // attendance, which is computed client-side from the absent[]/late[] arrays).
-    // Only teachers/admins can write, and only if the month isn't locked.
     match /attendance_daily/{docId} {
       allow read:  if request.auth != null;
       allow write: if request.auth != null
@@ -55,7 +52,6 @@ service cloud.firestore {
     }
 
     // ── Fee transactions ─────────────────────────────────────────────
-    // Students can read their own records via the studentId field.
     match /fee_transactions/{docId} {
       allow read: if isAnyStaff() ||
         (request.auth != null &&
@@ -129,8 +125,6 @@ service cloud.firestore {
     }
 
     // ── Marks (mark entry system — subject & class teachers) ─────────
-    // Teachers write their own subject marks; class teachers can read all.
-    // Admin can read and write everything.
     match /marks/{termDoc}/students/{studentId} {
       allow read:  if isAnyStaff() ||
         (request.auth != null &&
@@ -139,52 +133,46 @@ service cloud.firestore {
       allow write: if isRole('teacher') || isAdmin();
     }
 
-    // ── Routine / Timetable (Routine-App bridge) ─────────────────────
-    // Path: /routine/{day}/periods/{period}/slots/{slot}
-    // Students need to read their class schedule; teachers need theirs;
-    // staff for cross-referencing. Recursive wildcard covers all sub-levels.
+    // ── Routine / Timetable ──────────────────────────────────────────
     match /routine/{document=**} {
       allow read:  if request.auth != null;
       allow write: if isAdmin();
     }
 
-    // ── Subjects (subject code → name map used by the routine view) ──
+    // ── Subjects ─────────────────────────────────────────────────────
     match /subjects/{docId} {
       allow read:  if request.auth != null;
       allow write: if isAdmin();
     }
 
-    // ── Student messages (notes/messages sent to a specific student) ─
+    // ── Student messages ─────────────────────────────────────────────
     match /student_messages/{docId} {
       allow read:   if isAnyStaff() ||
         (request.auth != null &&
          resource.data.to == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId);
-      // Any authenticated user may create (students contact admin, staff send notes)
       allow create: if request.auth != null;
       allow update, delete: if isAnyStaff();
     }
 
-    // ── Assessment sessions (academic intelligence module) ────────────
+    // ── Assessment sessions ───────────────────────────────────────────
     match /assessment_sessions/{docId} {
       allow read:  if isAnyStaff();
       allow write: if isRole('teacher') || isAdmin();
     }
 
-    // ── Monthly analytics (computed by assessment-app, read by portal) ─
+    // ── Monthly analytics ─────────────────────────────────────────────
     match /monthly_analytics/{docId} {
       allow read:  if isAnyStaff();
       allow write: if isRole('teacher') || isAdmin();
     }
 
-    // ── Weak student flags (computed by assessment-app) ───────────────
+    // ── Weak student flags ────────────────────────────────────────────
     match /weak_students/{docId} {
       allow read:  if isAnyStaff();
       allow write: if isRole('teacher') || isAdmin();
     }
 
-    // ── Student academic profiles (written by assessment-app) ─────────
-    // Staff can read all; a student can read their own profile document.
-    // Document IDs are the sanitized studentId (slashes replaced by underscores).
+    // ── Student academic profiles ─────────────────────────────────────
     match /student_profiles/{docId} {
       allow read:  if isAnyStaff() ||
         (request.auth != null &&
@@ -196,12 +184,22 @@ service cloud.firestore {
     match /admin_notifications/{docId} {
       allow read, write: if isAdmin() || isOffice();
     }
+
+    // ── Report Cards ──────────────────────────────────────────────────
+    match /report_cards/{docId} {
+      allow read, write: if isAdmin();
+      allow read:        if isAnyStaff();
+      allow read:        if request.auth != null
+        && isRole('student')
+        && resource.data.studentId ==
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId
+        && resource.data.status == 'released';
+    }
+
   }
 
   // ── Helper: is the daily doc's month unlocked? ───────────────────────
   // docId format: "{classNum}_{YYYY-MM-DD}"
-  // Uses exists() first to avoid touching .data when the monthly doc is absent,
-  // and .get('status','') so a missing status field doesn't throw.
   function isDailyWriteAllowed(database, docId) {
     let parts    = docId.split('_');
     let classNum = parts[0];
