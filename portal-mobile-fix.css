@@ -65,10 +65,70 @@
     font-size: 13px !important;
   }
 
-  /* Hamburger toggle — make sure it's always visible */
+  /* ── Hamburger toggle — bigger, easier to tap ── */
   .sidebar-toggle {
     flex-shrink: 0 !important;
-    margin-right: 4px;
+    margin-right: 2px !important;
+    padding: 10px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    font-size: 1.4rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+    background: rgba(139, 111, 71, 0.08) !important;
+    color: var(--accent-dark) !important;
+    transition: background 0.15s ease !important;
+  }
+
+  .sidebar-toggle:active {
+    background: rgba(139, 111, 71, 0.2) !important;
+  }
+
+  /* ── Sibling / Profile switcher button — bigger tap target ── */
+  #sibling-switcher-btn {
+    padding: 8px 14px !important;
+    font-size: 14px !important;
+    min-height: 42px !important;
+    border-radius: 22px !important;
+    border: 2px solid var(--accent) !important;
+    background: #fff !important;
+    color: var(--accent-dark) !important;
+    font-weight: 700 !important;
+    gap: 8px !important;
+    box-shadow: 0 2px 8px rgba(139, 111, 71, 0.15) !important;
+  }
+
+  #sibling-switcher-btn:active {
+    background: #f5f0e8 !important;
+    transform: scale(0.97);
+  }
+
+  /* Avatar inside the switcher button — bigger */
+  #sibling-switcher-btn > span:first-child {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+  }
+
+  /* Dropdown — full width on mobile, better spacing */
+  #sibling-dropdown {
+    left: auto !important;
+    right: 0 !important;
+    min-width: 240px !important;
+    max-width: 90vw !important;
+    border-radius: 14px !important;
+  }
+
+  /* Each student row in dropdown — bigger tap target */
+  .sibling-option {
+    padding: 14px 16px !important;
+    min-height: 56px !important;
+  }
+
+  #sibling-switcher-wrap {
+    margin-left: 4px !important;
   }
 
   /* Cards inside dash get a clean white surface on the warm bg */
