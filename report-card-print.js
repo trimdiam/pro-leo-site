@@ -304,6 +304,90 @@ const INLINE_CSS = `
     .print-bar { display:none !important; }
     .rc { box-shadow:none !important; margin:0; width:14in; height:8.5in; }
   }
+
+  /* ── Mobile ebook view ───────────────────────────────── */
+  @media (max-width: 900px) {
+    body { background: #2B270A; padding: 0; }
+
+    .print-bar {
+      position: sticky; top: 0; z-index: 100;
+      padding: 10px 16px; gap: 8px;
+    }
+    .print-bar span { font-size: 11px; }
+    .print-btn { padding: 6px 14px; font-size: 12px; white-space: nowrap; }
+
+    /* Card becomes full-width vertical scroll */
+    body > div { padding: 0 !important; display: block !important; }
+    .rc {
+      width: 100% !important; height: auto !important;
+      margin: 0 !important; border: none !important;
+      border-radius: 0; box-shadow: none !important;
+      overflow: visible !important;
+    }
+
+    /* Header stacks */
+    .hdr { padding: 12px 14px; gap: 12px; }
+    .crest-wrap { width: 44px; height: 44px; }
+    .hdr-name { font-size: 14px; letter-spacing: 0.6px; }
+    .hdr-loc  { font-size: 9px; }
+    .hdr-meta { font-size: 8px; }
+    .hdr-title { font-size: 11px; letter-spacing: 1px; }
+    .hdr-year  { font-size: 9px; }
+    .hdr-class { font-size: 8px; }
+
+    /* Info strip: 2 columns */
+    .info-strip {
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 2px solid var(--edge);
+    }
+    .info-cell { padding: 7px 10px; }
+    .info-eyebrow { font-size: 8px; }
+    .info-value   { font-size: 13px; }
+
+    /* Body: single column — table above, panels below */
+    .body {
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: unset !important;
+    }
+
+    /* Marks table: horizontal scroll */
+    .marks {
+      border-right: none !important;
+      border-bottom: 2px solid var(--edge);
+      overflow-x: auto !important;
+    }
+    table.marks-tbl {
+      font-size: 11px;
+      min-width: 520px;
+    }
+    .marks-tbl thead .term-head th { font-size: 9px; padding: 5px 8px; }
+    .marks-tbl thead .col-head  th { font-size: 8.5px; padding: 3px 6px; }
+    .marks-tbl td    { font-size: 11px; padding: 3px 8px; }
+    .marks-tbl td.subj-col { padding-left: 14px; }
+    .marks-tbl tr.subj-head td { font-size: 10px; padding: 3px 8px; }
+    .marks-tbl tr.subj-head td.subj-col { padding-left: 10px; }
+    .ach { font-size: 10px; padding: 1px 7px; min-width: 38px; }
+
+    /* Summary panels: full width, stacked */
+    .summary { border-top: none; }
+    .panel-bar { font-size: 10px; padding: 8px 14px; letter-spacing: 1.2px; }
+    .panel-body { padding: 12px 14px; gap: 10px; }
+    .stat-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat { padding: 8px 10px; }
+    .stat .eyebrow { font-size: 8.5px; }
+    .stat .value   { font-size: 14px; }
+    .remark { font-size: 11px; line-height: 1.6; padding-top: 10px; }
+
+    /* Footer */
+    .scale-row { flex-wrap: wrap; padding: 10px 14px; gap: 10px; }
+    .scale-label { font-size: 9px; }
+    .scale-items { gap: 8px; flex-wrap: wrap; }
+    .scale-item  { font-size: 10px; }
+    .sign-row { padding: 20px 20px 16px; gap: 20px; grid-template-columns: repeat(3,1fr); }
+    .sign-label { font-size: 9px; letter-spacing: 0.8px; }
+    .disclaimer { font-size: 8px; padding: 0 14px 10px; }
+  }
 `;
 
 // ── Table row builders ────────────────────────────────────────────────────────
