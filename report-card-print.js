@@ -351,22 +351,34 @@ const INLINE_CSS = `
       min-height: unset !important;
     }
 
-    /* Marks table: horizontal scroll */
+    /* Marks table: horizontal scroll with sticky first column */
     .marks {
       border-right: none !important;
       border-bottom: 2px solid var(--edge);
       overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch;
     }
-    table.marks-tbl {
-      font-size: 11px;
-      min-width: 520px;
+    table.marks-tbl { font-size: 11px; min-width: 460px; table-layout: auto !important; }
+
+    /* Sticky subject/criterion column */
+    .marks-tbl thead .term-head th:first-child,
+    .marks-tbl thead .col-head th.col-sub,
+    .marks-tbl td.subj-col {
+      position: sticky; left: 0; z-index: 2;
+      min-width: 130px; max-width: 130px;
+      white-space: normal; word-break: break-word;
     }
+    .marks-tbl thead .term-head th:first-child { background: var(--cd-900) !important; }
+    .marks-tbl thead .col-head th.col-sub      { background: var(--cd-100) !important; }
+    .marks-tbl td.subj-col                     { background: var(--cream) !important; }
+    .marks-tbl tr.subj-head td.subj-col        { background: var(--cream-2) !important; }
+
     .marks-tbl thead .term-head th { font-size: 9px; padding: 5px 8px; }
     .marks-tbl thead .col-head  th { font-size: 8.5px; padding: 3px 6px; }
     .marks-tbl td    { font-size: 11px; padding: 3px 8px; }
-    .marks-tbl td.subj-col { padding-left: 14px; }
+    .marks-tbl td.subj-col { padding-left: 10px; font-size: 10.5px; }
     .marks-tbl tr.subj-head td { font-size: 10px; padding: 3px 8px; }
-    .marks-tbl tr.subj-head td.subj-col { padding-left: 10px; }
+    .marks-tbl tr.subj-head td.subj-col { padding-left: 8px; }
     .ach { font-size: 10px; padding: 1px 7px; min-width: 38px; }
 
     /* Summary panels: full width, stacked */
