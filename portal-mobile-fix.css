@@ -1,0 +1,85 @@
+/* portal-mobile-fix.css — mobile portal header + background fixes only */
+
+@media (max-width: 768px) {
+
+  /* ── Off-white background instead of harsh white ── */
+  .dash-main {
+    background: #f5f0e8 !important; /* warm off-white matching the school palette */
+  }
+
+  /* ── Dashboard section backgrounds ── */
+  .dash-content,
+  .dash-section {
+    background: transparent;
+  }
+
+  /* ── Header — fix cramped/cut-off layout ── */
+  .dash-header {
+    padding: 10px 14px 10px 14px !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-height: 56px;
+    border-bottom: 1px solid #e2d5c0;
+    background: #faf6ef !important; /* slightly lighter than body for contrast */
+  }
+
+  /* Title area — allow it to shrink but not overflow */
+  .dash-header h2,
+  .dash-title,
+  #s-dash-title,
+  #t-dash-title,
+  #a-dash-title,
+  #o-dash-title {
+    font-size: 1rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  /* User info area — keep it compact but visible */
+  .dash-user {
+    flex-shrink: 0 !important;
+    gap: 6px !important;
+    align-items: center !important;
+  }
+
+  /* Avatar — consistent size */
+  .dash-avatar {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 13px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Username — truncate if too long */
+  .dash-username,
+  .s-user-name,
+  .t-user-name {
+    max-width: 110px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px !important;
+  }
+
+  /* Hamburger toggle — make sure it's always visible */
+  .sidebar-toggle {
+    flex-shrink: 0 !important;
+    margin-right: 4px;
+  }
+
+  /* Cards inside dash get a clean white surface on the warm bg */
+  .card,
+  .dash-card,
+  .attendance-card,
+  .hw-card,
+  .fee-card,
+  .notice-item {
+    background: #ffffff !important;
+    border: 1px solid #e8ddd0 !important;
+  }
+
+}
