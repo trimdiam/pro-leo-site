@@ -26,7 +26,8 @@
       "unmatched-report.js",
       "package-lock.json",
       "package.json",
-      "Sfs-report-card/**",
+
+      "Sfs-report-card/seed-demo.html",
       "FEES/**",
       "RP/**",
       "routine-app/.git/**",
@@ -37,7 +38,6 @@
       "assessment-app/*.md",
       "assessment-app/demo-report-card.html",
       "assessment-app/demo-report-card-legal.html",
-      "assessment-app/data/**",
       "serviceAccountKey.json",
       "*.txt",
       "session-summary-*.txt",
@@ -45,10 +45,6 @@
       "fix-hero.html"
     ],
     "rewrites": [
-      {
-        "source": "!routine-app/**",
-        "destination": "/index.html"
-      },
       {
         "source": "**",
         "destination": "/index.html"

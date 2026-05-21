@@ -1,5 +1,6 @@
 const { setGlobalOptions } = require("firebase-functions");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -142,5 +143,111 @@ exports.notifyStudentMessage = onDocumentCreated(
       preview || "You have a new message from the administration.",
       { type: "message", msgId: event.params.msgId }
     );
+  }
+);
+
+// ── SCHEDULED: Period-end reminder for teachers ───────────────────────────
+// Runs every minute (IST). When a period ends, each teacher assigned to the
+// NEXT period receives a push: "Period X ended — Class Y: Subject next".
+exports.periodEndReminder = onSchedule(
+  { schedule: "every 1 minutes", timeZone: "Asia/Kolkata", region: "asia-south1" },
+  async () => {
+    // Current time in IST
+    const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const currentMinutes = nowIST.getHours() * 60 + nowIST.getMinutes();
+
+    // Fetch period timings
+    const timingsSnap = await db.collection("settings").doc("periodTimings").get();
+    if (!timingsSnap.exists) return;
+    const timings = timingsSnap.data();
+
+    // Find which period just ended at this exact minute
+    let endedPeriod = null;
+    for (let p = 1; p <= 6; p++) {
+      const t = timings[`period${p}`];
+      if (!t || !t.end) continue;
+      const [eh, em] = t.end.split(":").map(Number);
+      if (currentMinutes === eh * 60 + em) { endedPeriod = p; break; }
+    }
+    if (endedPeriod === null) return;
+
+    const nextPeriod = endedPeriod + 1;
+    if (nextPeriod > 6) return; // Last period — no next class
+
+    // Get current school day
+    const daySnap = await db.collection("settings").doc("schoolDay").get();
+    if (!daySnap.exists) return;
+    const currentDay = daySnap.data().currentDay;
+
+    // Get slots for next period
+    const slotsSnap = await db
+      .collection("routine").doc(String(currentDay))
+      .collection("periods").doc(String(nextPeriod))
+      .collection("slots").get();
+    if (slotsSnap.empty) return;
+
+    // Get subjects map
+    const subjectsSnap = await db.collection("subjects").get();
+    const subjects = {};
+    subjectsSnap.docs.forEach(d => { subjects[d.data().code] = d.data().name; });
+
+    // Map teacher initials → { subject, className }
+    const teacherMap = {};
+    slotsSnap.docs.forEach(doc => {
+      const s = doc.data();
+      if (s.type === "value-cate-split") {
+        const classes = (s.involvedClasses || []).join(" & ");
+        if (s.valueTeacher) teacherMap[s.valueTeacher] = { subject: "Value Education", className: classes };
+        if (s.cateTeacher)  teacherMap[s.cateTeacher]  = { subject: "Catechism",        className: classes };
+      } else {
+        const subjectName = Array.isArray(s.subjectCodes)
+          ? s.subjectCodes.map(c => subjects[c] || `Subj ${c}`).join(" / ")
+          : (subjects[s.subjectCode] || "Class");
+        if (s.teacherInitials) teacherMap[s.teacherInitials] = { subject: subjectName, className: s.className || "" };
+      }
+    });
+
+    const initials = Object.keys(teacherMap);
+    if (initials.length === 0) return;
+
+    // Resolve initials → staffId via teachers collection (batch by 30 for Firestore in-query limit)
+    const staffIdToInitials = {};
+    const staffIds = [];
+    const teacherDocs = await Promise.all(initials.map(i => db.collection("teachers").doc(i).get()));
+    teacherDocs.forEach(snap => {
+      if (!snap.exists) return;
+      const { initials: ini, staffId } = snap.data();
+      if (staffId) { staffIdToInitials[staffId] = ini; staffIds.push(staffId); }
+    });
+    if (staffIds.length === 0) return;
+
+    // Find users with matching staffId (chunk into 30s for in-query limit)
+    const messages = [];
+    const chunks = [];
+    for (let i = 0; i < staffIds.length; i += 30) chunks.push(staffIds.slice(i, i + 30));
+
+    await Promise.all(chunks.map(async chunk => {
+      const usersSnap = await db.collection("users").where("staffId", "in", chunk).get();
+      usersSnap.docs.forEach(uDoc => {
+        const { fcmToken, staffId } = uDoc.data();
+        if (!fcmToken || !staffId) return;
+        const ini  = staffIdToInitials[staffId];
+        const info = ini ? teacherMap[ini] : null;
+        if (!info) return;
+        messages.push({
+          token: fcmToken,
+          notification: {
+            title: `⏰ Period ${endedPeriod} ended`,
+            body: `Next: ${info.subject} — Class ${info.className}`,
+          },
+          android: { priority: "high", notification: { channelId: "period_reminders", sound: "default" } },
+          data: { type: "period_reminder", nextPeriod: String(nextPeriod), className: info.className },
+        });
+      });
+    }));
+
+    if (messages.length === 0) return;
+    const result = await fcm.sendEach(messages);
+    console.log(`Period ${endedPeriod} ended — sent ${result.successCount} reminders, ${result.failureCount} failed`);
   }
 );

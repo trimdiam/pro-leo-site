@@ -632,7 +632,7 @@ function renderGalleryGrid(items) {
                 .map(({ t: t, role: role, titleOverride: titleOverride }) =>
                   (function (t, role, titleOverride) {
                     return `<div class="staff-card">${t.photoURL ? `<img src="${t.photoURL}" alt="${t.name}" class="staff-avatar-photo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="staff-avatar" style="display:none"><i class="fas fa-user"></i></div>` : '<div class="staff-avatar"><i class="fas fa-user-tie"></i></div>'}<div class="staff-name">${titleOverride ? titleOverride + " " : t.title && "Sir" !== t.title ? t.title + " " : "M" === t.gender ? "Mr. " : "Ms. "}${t.name}</div><div class="staff-role">${role}</div><div class="staff-desc">${t.qualification || ""} ${t.experience ? "· " + t.experience + " years exp." : ""}</div></div>`;
-                  })(t, role),
+                  })(t, role, titleOverride),
                 )
                 .join("")
             : '<div style="grid-column:1/-1;text-align:center;padding:12px;color:var(--text-light)">No leadership data.</div>'),

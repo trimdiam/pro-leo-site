@@ -643,7 +643,10 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
 
 <div class="print-bar">
   <span>Annual Progress Report &nbsp;·&nbsp; ${esc(info.studentName)} &nbsp;·&nbsp; ${classLabel}</span>
-  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="print-btn" onclick="if(window.opener){window.opener.focus();window.close();}else{window.location.href='/';}" style="background:#4b5563;">← Back to Portal</button>
+    <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+  </div>
 </div>
 
 <div style="padding:20px;display:flex;justify-content:center">

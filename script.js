@@ -28,10 +28,20 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') window.closeNoticeModal && window.closeNoticeModal();
 });
 
-// Service Worker registration + update banner
+// Service Worker registration + auto-reload on update
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data?.type !== 'SW_UPDATED' || window.Capacitor) return;
+    // Show a non-intrusive update banner instead of auto-reloading
+    if (document.getElementById('sw-update-bar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'sw-update-bar';
+    bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#1a1a1a;color:#d4af37;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;font-size:0.85rem;font-family:sans-serif;box-shadow:0 -2px 8px rgba(0,0,0,0.4);';
+    bar.innerHTML = '<span>🔄 A new version is available.</span><div style="display:flex;gap:8px"><button onclick="window.location.reload()" style="background:#d4af37;color:#1a1a1a;border:none;border-radius:6px;padding:6px 14px;font-weight:700;cursor:pointer;font-size:0.82rem;">Reload</button><button onclick="this.closest(\'#sw-update-bar\').remove()" style="background:transparent;color:#aaa;border:1px solid #444;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:0.82rem;">Later</button></div>';
+    document.body.appendChild(bar);
   });
 }
 
