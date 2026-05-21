@@ -1,37 +1,18 @@
-/* page-transitions.js — buttery smooth page navigation */
+/* page-transitions.js — CSS-class-driven transitions (no stuck inline styles on mobile) */
 (function () {
-  const DURATION = 280; // ms — fast enough to feel snappy, slow enough to feel smooth
-  let _transitioning = false;
 
-  function animatePageOut(el, done) {
-    el.style.transition = `opacity ${DURATION}ms ease, transform ${DURATION}ms ease`;
-    el.style.opacity = "0";
-    el.style.transform = "translateY(12px)";
-    setTimeout(() => {
-      el.classList.remove("active");
-      el.style.transition = "";
-      el.style.opacity = "";
-      el.style.transform = "";
-      done();
-    }, DURATION);
-  }
-
-  function animatePageIn(el) {
-    el.style.opacity = "0";
-    el.style.transform = "translateY(16px)";
-    el.classList.add("active");
-    // force reflow so the browser registers the start state
-    void el.offsetHeight;
-    el.style.transition = `opacity ${DURATION}ms ease, transform ${DURATION}ms ease`;
-    el.style.opacity = "1";
-    el.style.transform = "translateY(0)";
-    setTimeout(() => {
-      el.style.transition = "";
-      el.style.opacity = "";
-      el.style.transform = "";
-      _transitioning = false;
-    }, DURATION);
-  }
+  // Inject the animation CSS once
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes _sfPageIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .sf-page-entering {
+      animation: _sfPageIn 240ms ease forwards;
+    }
+  `;
+  document.head.appendChild(style);
 
   function patchShowPage() {
     if (typeof window.showPage !== "function") {
@@ -42,26 +23,20 @@
     const _orig = window.showPage;
 
     window.showPage = function (name) {
-      if (_transitioning) return;
+      // Always call the original — it handles nav, scroll, auth guards, body classes
+      _orig(name);
 
-      const current = document.querySelector(".page.active");
+      // After orig sets up the new page, apply the enter animation
       const next = document.getElementById("page-" + name);
+      if (!next) return;
 
-      // If no current page or same page, just call original
-      if (!current || !next || current === next) {
-        _orig(name);
-        return;
-      }
+      // Remove any leftover animation class, then re-add to retrigger
+      next.classList.remove("sf-page-entering");
+      void next.offsetHeight; // force reflow
+      next.classList.add("sf-page-entering");
 
-      _transitioning = true;
-
-      animatePageOut(current, () => {
-        // Let the original function handle nav visibility, scroll, body classes etc.
-        _orig(name);
-        // Then animate the new page in (orig already added .active)
-        animatePageIn(next);
-        window.scrollTo({ top: 0, behavior: "instant" });
-      });
+      // Clean up class after animation so it doesn't interfere later
+      setTimeout(() => next.classList.remove("sf-page-entering"), 260);
     };
   }
 
