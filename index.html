@@ -55,6 +55,7 @@
       <li><button onclick="showPage('gallery')">Gallery</button></li>
       <li><button onclick="showPage('notices')">Notices</button></li>
       <li><button onclick="showPage('events')">Events</button></li>
+      <li><a href="holiday.html" target="_blank" style="background:none;border:none;font-family:inherit;font-size:inherit;cursor:pointer;color:inherit;text-decoration:none;padding:0">Calendar</a></li>
       <li><button onclick="showPage('contact')">Contact</button></li>
       <li><button onclick="showPage('admission')" class="btn btn-outline btn-sm" style="margin-left:4px">Apply</button></li>
       <li class="nav-cta"><button onclick="showPage('login')" class="btn btn-primary btn-sm">Login Portal</button></li>
@@ -986,6 +987,7 @@
         <button onclick="showDash('s','s-homework',this)"><i class="fas fa-book-open"></i> Homework</button>
         <button onclick="showDash('s','s-notices',this)"><i class="fas fa-bullhorn"></i> Notices</button>
         <button onclick="showDash('s','s-fees',this)"><i class="fas fa-money-bill-wave"></i> Fees</button>
+        <button onclick="showDash('s','s-exams',this);window._loadStudentExamSchedule&&window._loadStudentExamSchedule()"><i class="fas fa-calendar-check"></i> Exam Schedule</button>
         <button onclick="showDash('s','s-reportcards',this);loadStudentReportCards()"><i class="fas fa-file-alt"></i> Report Card</button>
         <button onclick="showDash('s','s-contact',this)"><i class="fas fa-envelope"></i> Contact</button>
       </div>
@@ -1167,6 +1169,13 @@
             </div>
           </div>
         </div>
+        <div id="s-exams" class="dash-section">
+          <div class="card" style="padding:20px" id="s-exam-schedule-wrap">
+            <p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">
+              <i class="fas fa-spinner fa-spin"></i> Loading exam schedule…
+            </p>
+          </div>
+        </div>
         <div id="s-homework" class="dash-section">
           <div class="card" style="padding:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px">
@@ -1269,6 +1278,7 @@
         <button onclick="showDash('t','t-leave',this)"><i class="fas fa-calendar-times"></i> Leave</button>
         <button onclick="showDash('t','t-my-subjects',this)"><i class="fas fa-book-open"></i> My Subjects</button>
         <button onclick="showDash('t','t-profile',this)"><i class="fas fa-user-circle"></i> My Profile</button>
+        <button onclick="window.open('assessment-app/index.html','_blank')"><i class="fas fa-chart-line"></i> Assessment</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
     </nav>
@@ -1467,26 +1477,10 @@
           </div>
         </div>
         <div id="t-exams" class="dash-section">
-          <div class="grid-2">
-            <div class="card" style="padding:24px">
-              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-book" style="margin-right:8px;color:var(--accent)"></i>Half-Yearly Syllabus – English (Grade 9)</h4>
-              <div class="chapter-item"><span class="chapter-no">Ch 1</span> Prose: The Road Not Taken – Comprehension &amp; Analysis</div>
-              <div class="chapter-item"><span class="chapter-no">Ch 2</span> Grammar: Tenses, Voice, Narration</div>
-              <div class="chapter-item"><span class="chapter-no">Ch 3</span> Writing: Letter Writing – Formal &amp; Informal</div>
-              <div class="chapter-item"><span class="chapter-no">Ch 4</span> Literature: Poem – Ozymandias (Analysis)</div>
-              <div class="chapter-item"><span class="chapter-no">Ch 5</span> Composition: Essay &amp; Paragraph Writing</div>
-            </div>
-            <div class="card" style="padding:24px">
-              <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-calendar-alt" style="margin-right:8px;color:var(--accent)"></i>Exam Schedule – Grade 9A</h4>
-              <div class="table-wrap"><table class="schedule-table"><thead><tr><th>Date</th><th>Subject</th><th>Time</th></tr></thead><tbody>
-                <tr><td>20 Sept</td><td>English</td><td>9:00–11:30</td></tr>
-                <tr><td>21 Sept</td><td>Mathematics</td><td>9:00–11:30</td></tr>
-                <tr><td>23 Sept</td><td>Science</td><td>9:00–11:30</td></tr>
-                <tr><td>24 Sept</td><td>Social Studies</td><td>9:00–11:30</td></tr>
-                <tr><td>25 Sept</td><td>Hindi</td><td>9:00–11:30</td></tr>
-                <tr><td>26 Sept</td><td>Computer</td><td>9:00–10:30</td></tr>
-              </tbody></table></div>
-            </div>
+          <div class="card" style="padding:20px" id="t-exam-schedule-wrap">
+            <p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">
+              <i class="fas fa-spinner fa-spin"></i> Loading exam schedule…
+            </p>
           </div>
         </div>
         <div id="t-leave" class="dash-section">
@@ -1611,6 +1605,7 @@
         <button onclick="showDash('a','a-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('a','a-contacts',this)"><i class="fas fa-envelope"></i> Contacts</button>
         <button onclick="showDash('a','a-holidays',this)"><i class="fas fa-calendar-times"></i> Holidays</button>
+        <button onclick="showDash('a','a-exams',this)"><i class="fas fa-calendar-check"></i> Exam Schedule</button>
         <button onclick="showDash('a','a-reportcards',this);loadAdminReportCards()"><i class="fas fa-file-alt"></i> Report Cards</button>
         <button onclick="showDash('a','a-leave',this);loadLeaveQuota();loadAdminLeave()"><i class="fas fa-calendar-check"></i> Leave Applications</button>
         <button onclick="showDash('a','a-monthly-att',this)"><i class="fas fa-chart-bar"></i> Monthly Attendance</button>
@@ -1618,6 +1613,7 @@
         <button onclick="showDash('a','a-family-mgmt',this)"><i class="fas fa-users"></i> Family / Sibling</button>
         <button onclick="showDash('a','a-teacher-assign',this);loadTeacherAssignList()"><i class="fas fa-user-tag"></i> Teacher Assignments</button>
         <button onclick="window.open('routine-app/index.html','_blank')"><i class="fas fa-clock"></i> Routine Manager</button>
+        <button onclick="window.open('assessment-app/index.html','_blank')"><i class="fas fa-chart-line"></i> Assessment</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
     </nav>
@@ -2958,6 +2954,9 @@
 
         <!-- ── HOLIDAYS ── -->
         <div id="a-holidays" class="dash-section">
+          <div style="margin-bottom:16px">
+            <a href="holiday.html" target="_blank" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none"><i class="fas fa-calendar-alt"></i> View Holiday &amp; Events Calendar Card</a>
+          </div>
           <div class="grid-2">
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-calendar-plus" style="margin-right:8px;color:var(--accent)"></i>Declare a Holiday</h4>
@@ -3008,6 +3007,13 @@
         </div>
 
         <!-- ── REPORT CARDS ── -->
+        <div id="a-exams" class="dash-section">
+          <div class="card" style="padding:20px" id="a-exam-schedule-wrap">
+            <p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">
+              <i class="fas fa-spinner fa-spin"></i> Loading exam schedule…
+            </p>
+          </div>
+        </div>
         <div id="a-reportcards" class="dash-section" data-rc-admin-init="false">
           <div class="card" style="padding:24px;margin-bottom:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
@@ -3904,48 +3910,11 @@
 
 <script defer src="config.js"></script>
 <script defer src="script.js"></script>
-<script>
-/* Android back-button fix: wire showPage() into the History API so pressing
-   the hardware/gesture back button navigates within the app instead of exiting. */
-(function () {
-  function patchHistory() {
-    if (typeof showPage !== 'function') {
-      // script.js hasn't finished yet — retry after a tick
-      setTimeout(patchHistory, 50);
-      return;
-    }
-
-    var _origShowPage = showPage;
-    var _navigatingViaPopstate = false;
-
-    // Replace global showPage so every call also records a history entry
-    window.showPage = function (name) {
-      _origShowPage(name);
-      if (!_navigatingViaPopstate) {
-        history.pushState({ sfPage: name }, '', '#' + name);
-      }
-    };
-
-    // Seed the initial history entry so there is always a "home" to go back to
-    if (!history.state || !history.state.sfPage) {
-      history.replaceState({ sfPage: 'home' }, '', '#home');
-    }
-
-    // Handle hardware/gesture back (and forward) button
-    window.addEventListener('popstate', function (e) {
-      var page = (e.state && e.state.sfPage) ? e.state.sfPage : 'home';
-      _navigatingViaPopstate = true;
-      _origShowPage(page);
-      _navigatingViaPopstate = false;
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', patchHistory);
-})();
-</script>
-<script type="module" src="app-logic.js?v=18"></script>
+<script type="module" src="app-logic.js?v=17"></script>
 <script type="module" src="report-card-admin-init.js"></script>
 <script type="module" src="report-card-student-init.js"></script>
+<script defer src="back-button.js"></script>
+<script type="module" src="exam-schedule.js"></script>
 <script>
   (function () {
     var el = document.getElementById('login-module-error');

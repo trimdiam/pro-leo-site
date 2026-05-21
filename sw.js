@@ -1,4 +1,4 @@
-const CACHE = 'sfs-v18';
+const CACHE = 'sfs-v19';
 const SHELL = [
   '/',
   '/index.html',
@@ -11,7 +11,8 @@ const SHELL = [
   '/config.js',
   '/sibling-system.js',
   '/notification-center.js',
-  '/assets/images/logo.webp'
+  '/assets/images/logo.webp',
+  '/back-button.js'
 ];
 
 // Install — pre-cache the app shell

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>School Calendar — St. Francis De Sales Sec. School</title>
+  <link rel="stylesheet" href="holiday.css" />
+</head>
+<body>
+
+  <!-- ── Page Header ── -->
+  <header class="cal-header no-print">
+    <div class="cal-header-brand">
+      <img src="assets/images/logo.webp" alt="SFS Logo" class="cal-logo" onerror="this.style.display='none'" />
+      <div>
+        <h1>St. Francis De Sales Sec. School</h1>
+        <p>Academic Calendar &amp; Holiday List</p>
+      </div>
+    </div>
+    <div class="cal-header-controls">
+      <div class="cal-search-wrap">
+        <input type="text" id="cal-search" placeholder="Search events…" autocomplete="off" />
+      </div>
+      <div class="cal-toggle-wrap">
+        <button class="cal-toggle-btn active" id="btn-all"    onclick="setFilter('all')">All Events</button>
+        <button class="cal-toggle-btn"        id="btn-holiday" onclick="setFilter('holiday')">Holidays Only</button>
+      </div>
+      <button class="cal-action-btn" onclick="window.print()">🖨️ Print</button>
+      <a href="index.html" class="cal-action-btn cal-back-btn">← Portal</a>
+    </div>
+  </header>
+
+  <!-- ── Print Header (visible only when printing) ── -->
+  <div class="print-header print-only">
+    <h1>St. Francis De Sales Secondary School, Laitkor</h1>
+    <h2>Academic Calendar &amp; Holiday List — 2026</h2>
+  </div>
+
+  <!-- ── Status / Error ── -->
+  <div id="cal-status" class="cal-status"></div>
+
+  <!-- ── Calendar Grid ── -->
+  <main id="cal-grid" class="cal-grid"></main>
+
+  <!-- ── Legend ── -->
+  <footer class="cal-legend no-print">
+    <span class="legend-holiday">🎉 Holiday</span>
+    <span class="legend-event">📅 Event</span>
+  </footer>
+
+  <script type="module" src="holiday.js"></script>
+</body>
+</html>

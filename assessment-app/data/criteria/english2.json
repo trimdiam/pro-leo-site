@@ -1,0 +1,12 @@
+{
+  "subject_id": "ENG2",
+  "subject_name": "English II",
+  "classes": ["LKG", "SKG", "Class I", "Class II"],
+  "criteria": [
+    { "criterion_id": "ENG2_C1", "criterion_name": "Comprehension", "max_marks": 5 },
+    { "criterion_id": "ENG2_C2", "criterion_name": "Vocabulary", "max_marks": 5 },
+    { "criterion_id": "ENG2_C3", "criterion_name": "Grammar", "max_marks": 5 },
+    { "criterion_id": "ENG2_C4", "criterion_name": "Sentence Formation", "max_marks": 5 },
+    { "criterion_id": "ENG2_C5", "criterion_name": "Handwriting", "max_marks": 5 }
+  ]
+}

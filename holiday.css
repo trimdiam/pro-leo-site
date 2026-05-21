@@ -1,0 +1,406 @@
+/* holiday.css — School Calendar / Holiday Card Module
+   Print-first design, A4 compatible, responsive grid */
+
+/* ── Variables (matches school palette) ── */
+:root {
+  --cal-bg:          #f5f0e8;
+  --cal-surface:     #ffffff;
+  --cal-border:      #e2d5c0;
+  --cal-accent:      #8b6f47;
+  --cal-accent-dark: #5c3d1e;
+  --cal-holiday:     #c0392b;
+  --cal-holiday-bg:  #fff5f5;
+  --cal-text:        #2c1a0e;
+  --cal-text-light:  #7a6652;
+  --cal-header-bg:   #3b2a14;
+  --cal-header-text: #f5f0e8;
+  --cal-radius:      12px;
+  --cal-shadow:      0 2px 12px rgba(59,42,20,0.10);
+  --font-main:       'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-main);
+  background: var(--cal-bg);
+  color: var(--cal-text);
+  min-height: 100vh;
+  padding-bottom: 40px;
+}
+
+/* ── Page Header ── */
+.cal-header {
+  background: var(--cal-header-bg);
+  color: var(--cal-header-text);
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+
+.cal-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cal-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(212,175,55,0.5);
+}
+
+.cal-header-brand h1 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f5f0e8;
+}
+
+.cal-header-brand p {
+  font-size: 0.78rem;
+  color: rgba(245,240,232,0.65);
+  margin-top: 2px;
+}
+
+.cal-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Search ── */
+.cal-search-wrap input {
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(212,175,55,0.4);
+  background: rgba(255,255,255,0.1);
+  color: #f5f0e8;
+  font-size: 13px;
+  font-family: var(--font-main);
+  outline: none;
+  width: 180px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.cal-search-wrap input::placeholder { color: rgba(245,240,232,0.5); }
+.cal-search-wrap input:focus {
+  border-color: rgba(212,175,55,0.8);
+  background: rgba(255,255,255,0.15);
+}
+
+/* ── Toggle Buttons ── */
+.cal-toggle-wrap {
+  display: flex;
+  background: rgba(255,255,255,0.1);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(212,175,55,0.3);
+}
+
+.cal-toggle-btn {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-main);
+  background: transparent;
+  color: rgba(245,240,232,0.7);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.cal-toggle-btn.active {
+  background: #d4af37;
+  color: #3b2a14;
+}
+
+.cal-toggle-btn:not(.active):hover {
+  background: rgba(255,255,255,0.1);
+  color: #f5f0e8;
+}
+
+/* ── Action Buttons ── */
+.cal-action-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(212,175,55,0.5);
+  background: transparent;
+  color: #f5f0e8;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-main);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cal-action-btn:hover {
+  background: rgba(212,175,55,0.2);
+  border-color: #d4af37;
+}
+
+/* ── Status Message ── */
+.cal-status {
+  text-align: center;
+  padding: 12px 20px;
+  font-size: 13px;
+  color: var(--cal-text-light);
+  display: none;
+}
+
+.cal-status.visible { display: block; }
+.cal-status.error   { color: var(--cal-holiday); }
+
+/* ── Calendar Grid ── */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  padding: 28px;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+/* ── Month Card ── */
+.month-card {
+  background: var(--cal-surface);
+  border: 1px solid var(--cal-border);
+  border-radius: var(--cal-radius);
+  box-shadow: var(--cal-shadow);
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+  break-inside: avoid;
+}
+
+.month-card:hover {
+  box-shadow: 0 6px 24px rgba(139,111,71,0.18);
+  transform: translateY(-2px);
+}
+
+.month-card-header {
+  background: var(--cal-accent-dark);
+  color: #f5f0e8;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.month-count {
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.2);
+  padding: 2px 8px;
+  border-radius: 10px;
+  opacity: 0.85;
+}
+
+.month-card-body {
+  padding: 10px 0;
+}
+
+/* ── Event Rows ── */
+.event-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 14px;
+  border-bottom: 1px solid #f0ebe3;
+  transition: background 0.15s;
+}
+
+.event-row:last-child { border-bottom: none; }
+
+.event-row:hover { background: #faf7f3; }
+
+.event-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.event-body { flex: 1; min-width: 0; }
+
+.event-date {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cal-accent);
+  margin-bottom: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.event-name {
+  font-size: 12.5px;
+  color: var(--cal-text);
+  line-height: 1.4;
+}
+
+/* Holiday styling */
+.event-row.is-holiday {
+  background: var(--cal-holiday-bg);
+}
+
+.event-row.is-holiday .event-date {
+  color: var(--cal-holiday);
+}
+
+.event-row.is-holiday .event-name {
+  color: #8b1a10;
+  font-weight: 600;
+}
+
+.event-row.is-holiday:hover { background: #ffeded; }
+
+/* Empty month card */
+.month-empty {
+  padding: 18px 14px;
+  font-size: 12px;
+  color: var(--cal-text-light);
+  text-align: center;
+  font-style: italic;
+}
+
+/* ── Legend ── */
+.cal-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px;
+  font-size: 13px;
+}
+
+.legend-holiday {
+  color: var(--cal-holiday);
+  font-weight: 600;
+}
+
+.legend-event {
+  color: var(--cal-accent);
+  font-weight: 600;
+}
+
+/* ── Print Header ── */
+.print-header {
+  text-align: center;
+  padding: 20px 0 10px;
+  border-bottom: 2px solid #333;
+  margin-bottom: 16px;
+}
+
+.print-header h1 { font-size: 16px; font-weight: 700; }
+.print-header h2 { font-size: 13px; font-weight: 500; margin-top: 4px; color: #444; }
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .cal-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .cal-grid { grid-template-columns: repeat(2, 1fr); padding: 16px; gap: 12px; }
+  .cal-header { padding: 12px 16px; }
+  .cal-header-brand h1 { font-size: 0.9rem; }
+  .cal-search-wrap input { width: 140px; }
+}
+
+@media (max-width: 480px) {
+  .cal-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Hidden helpers ── */
+.hidden { display: none !important; }
+.no-print {}
+.print-only { display: none; }
+
+/* ═══════════════════════════════════════════════
+   PRINT STYLES — A4, clean B&W compatible
+════════════════════════════════════════════════ */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm 10mm;
+  }
+
+  body {
+    background: #fff;
+    padding-bottom: 0;
+    font-size: 10px;
+  }
+
+  .no-print      { display: none !important; }
+  .print-only    { display: block !important; }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 0;
+    max-width: 100%;
+  }
+
+  .month-card {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: none;
+    break-inside: avoid;
+    transform: none !important;
+  }
+
+  .month-card:hover {
+    box-shadow: none;
+    transform: none;
+  }
+
+  .month-card-header {
+    background: #333 !important;
+    color: #fff !important;
+    padding: 6px 10px;
+    font-size: 9px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .event-row {
+    padding: 4px 8px;
+    border-bottom: 1px solid #eee;
+  }
+
+  .event-date  { font-size: 8px; }
+  .event-name  { font-size: 8.5px; }
+  .event-icon  { font-size: 9px; }
+
+  .event-row.is-holiday .event-name {
+    font-weight: 700;
+    color: #000 !important;
+  }
+
+  .event-row.is-holiday {
+    background: #f5f5f5 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .cal-status, .cal-legend { display: none !important; }
+
+  .print-header {
+    display: block !important;
+    page-break-after: avoid;
+  }
+}

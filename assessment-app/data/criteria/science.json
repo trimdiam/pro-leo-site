@@ -1,0 +1,11 @@
+{
+  "subject_id": "SCI",
+  "subject_name": "Science",
+  "classes": ["LKG", "SKG", "Class I", "Class II"],
+  "criteria": [
+    { "criterion_id": "SCI_C1", "criterion_name": "Observation", "max_marks": 5 },
+    { "criterion_id": "SCI_C2", "criterion_name": "Participation", "max_marks": 5 },
+    { "criterion_id": "SCI_C3", "criterion_name": "Understanding", "max_marks": 5 },
+    { "criterion_id": "SCI_C4", "criterion_name": "Activity Work", "max_marks": 5 }
+  ]
+}
