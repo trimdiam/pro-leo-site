@@ -307,65 +307,72 @@ const INLINE_CSS = `
 
   /* ── Mobile ebook view ───────────────────────────────── */
   @media (max-width: 900px) {
-    body { background: #2B270A; padding: 0; }
+    html { overflow-x: hidden; }
+    body { background: #2B270A; padding: 0; overflow-x: hidden; }
 
-    .print-bar {
-      position: sticky; top: 0; z-index: 100;
-      padding: 10px 16px; gap: 8px;
-    }
+    /* Sticky top bar */
+    .print-bar { position: sticky; top: 0; z-index: 100; padding: 8px 14px; gap: 8px; }
     .print-bar span { font-size: 11px; }
     .print-btn { padding: 6px 14px; font-size: 12px; white-space: nowrap; }
 
-    /* Card becomes full-width vertical scroll */
+    /* Card: full viewport width, auto height, no overflow clipping */
     body > div { padding: 0 !important; display: block !important; }
     .rc {
-      width: 100% !important; height: auto !important;
-      margin: 0 !important; border: none !important;
-      border-radius: 0; box-shadow: none !important;
-      overflow: visible !important;
+      width: 100vw !important; max-width: 100vw !important;
+      height: auto !important; margin: 0 !important;
+      border-left: none !important; border-right: none !important;
+      box-shadow: none !important; overflow: hidden !important;
     }
 
-    /* Header stacks */
-    .hdr { padding: 12px 14px; gap: 12px; }
-    .crest-wrap { width: 44px; height: 44px; }
-    .hdr-name { font-size: 14px; letter-spacing: 0.6px; }
-    .hdr-loc  { font-size: 9px; }
+    /* Header: stack vertically */
+    .hdr {
+      flex-wrap: wrap; padding: 10px 12px; gap: 8px; align-items: flex-start;
+    }
+    .crest-wrap { width: 40px; height: 40px; flex-shrink: 0; }
+    .hdr-school { flex: 1; min-width: 0; }
+    .hdr-name { font-size: 13px; letter-spacing: 0.4px; line-height: 1.3; white-space: normal; }
+    .hdr-loc  { font-size: 9px; white-space: normal; }
     .hdr-meta { font-size: 8px; }
-    .hdr-title { font-size: 11px; letter-spacing: 1px; }
-    .hdr-year  { font-size: 9px; }
-    .hdr-class { font-size: 8px; }
+    /* Right side drops below on very small screens */
+    .hdr-right {
+      width: 100%; text-align: left; border-top: 1px solid rgba(255,255,255,0.15);
+      padding-top: 6px; margin-top: 2px;
+      display: flex; flex-direction: row; gap: 12px; align-items: baseline; flex-wrap: wrap;
+    }
+    .hdr-title { font-size: 11px; letter-spacing: 0.8px; }
+    .hdr-year  { font-size: 10px; }
+    .hdr-class { font-size: 9px; letter-spacing: 0.6px; margin-top: 0; }
 
-    /* Info strip: 2 columns */
+    /* Info strip: 2-column grid, all cells visible */
     .info-strip {
-      grid-template-columns: 1fr 1fr;
-      border-bottom: 2px solid var(--edge);
+      grid-template-columns: 1fr 1fr !important;
+      width: 100%; overflow: hidden;
     }
-    .info-cell { padding: 7px 10px; }
-    .info-eyebrow { font-size: 8px; }
-    .info-value   { font-size: 13px; }
+    .info-cell { padding: 6px 10px; border-right: 1px solid var(--cd-200); overflow: hidden; }
+    .info-cell:last-child { border-right: none; }
+    .info-eyebrow { font-size: 7.5px; letter-spacing: 0.8px; }
+    .info-value   { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* Body: single column — table above, panels below */
-    .body {
-      display: flex !important;
-      flex-direction: column !important;
-      min-height: unset !important;
-    }
+    /* Body: single column stack */
+    .body { display: flex !important; flex-direction: column !important; min-height: unset !important; }
 
-    /* Marks table: horizontal scroll with sticky first column */
+    /* Marks section: scroll only inside this box */
     .marks {
       border-right: none !important;
       border-bottom: 2px solid var(--edge);
       overflow-x: auto !important;
+      overflow-y: visible !important;
       -webkit-overflow-scrolling: touch;
+      width: 100%;
     }
-    table.marks-tbl { font-size: 11px; min-width: 460px; table-layout: auto !important; }
+    table.marks-tbl { table-layout: auto !important; min-width: 380px; font-size: 11px; }
 
-    /* Sticky subject/criterion column */
+    /* Sticky first column — subject/criterion stays pinned */
     .marks-tbl thead .term-head th:first-child,
     .marks-tbl thead .col-head th.col-sub,
     .marks-tbl td.subj-col {
       position: sticky; left: 0; z-index: 2;
-      min-width: 130px; max-width: 130px;
+      width: 120px; min-width: 120px; max-width: 120px;
       white-space: normal; word-break: break-word;
     }
     .marks-tbl thead .term-head th:first-child { background: var(--cd-900) !important; }
@@ -373,32 +380,34 @@ const INLINE_CSS = `
     .marks-tbl td.subj-col                     { background: var(--cream) !important; }
     .marks-tbl tr.subj-head td.subj-col        { background: var(--cream-2) !important; }
 
-    .marks-tbl thead .term-head th { font-size: 9px; padding: 5px 8px; }
-    .marks-tbl thead .col-head  th { font-size: 8.5px; padding: 3px 6px; }
-    .marks-tbl td    { font-size: 11px; padding: 3px 8px; }
-    .marks-tbl td.subj-col { padding-left: 10px; font-size: 10.5px; }
-    .marks-tbl tr.subj-head td { font-size: 10px; padding: 3px 8px; }
-    .marks-tbl tr.subj-head td.subj-col { padding-left: 8px; }
-    .ach { font-size: 10px; padding: 1px 7px; min-width: 38px; }
+    .marks-tbl thead .term-head th { font-size: 8.5px; padding: 4px 6px; }
+    .marks-tbl thead .col-head  th { font-size: 8px; padding: 3px 5px; }
+    .marks-tbl td    { font-size: 10.5px; padding: 3px 7px; }
+    .marks-tbl td.subj-col { padding-left: 8px; font-size: 10px; }
+    .marks-tbl tr.subj-head td { font-size: 9.5px; padding: 3px 6px; letter-spacing: 0.6px; }
+    .marks-tbl tr.subj-head td.subj-col { padding-left: 7px; }
+    .ach { font-size: 9.5px; padding: 1px 5px; min-width: 34px; }
 
-    /* Summary panels: full width, stacked */
+    /* Summary panels: full width stacked */
     .summary { border-top: none; }
-    .panel-bar { font-size: 10px; padding: 8px 14px; letter-spacing: 1.2px; }
-    .panel-body { padding: 12px 14px; gap: 10px; }
-    .stat-row { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .stat { padding: 8px 10px; }
-    .stat .eyebrow { font-size: 8.5px; }
-    .stat .value   { font-size: 14px; }
-    .remark { font-size: 11px; line-height: 1.6; padding-top: 10px; }
+    .panel + .panel { border-top: 2px solid var(--edge); }
+    .panel-bar  { font-size: 10px; padding: 8px 12px; letter-spacing: 1px; }
+    .panel-body { padding: 10px 12px; gap: 8px; }
+    .stat-row   { grid-template-columns: 1fr 1fr; gap: 7px; }
+    .stat { padding: 7px 9px; }
+    .stat .eyebrow { font-size: 8px; }
+    .stat .value   { font-size: 13px; }
+    .remark { font-size: 11px; line-height: 1.6; padding-top: 8px; }
 
     /* Footer */
-    .scale-row { flex-wrap: wrap; padding: 10px 14px; gap: 10px; }
-    .scale-label { font-size: 9px; }
-    .scale-items { gap: 8px; flex-wrap: wrap; }
-    .scale-item  { font-size: 10px; }
-    .sign-row { padding: 20px 20px 16px; gap: 20px; grid-template-columns: repeat(3,1fr); }
-    .sign-label { font-size: 9px; letter-spacing: 0.8px; }
-    .disclaimer { font-size: 8px; padding: 0 14px 10px; }
+    .footer { width: 100%; }
+    .scale-row  { flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+    .scale-label { font-size: 8.5px; }
+    .scale-items { gap: 7px; flex-wrap: wrap; }
+    .scale-item  { font-size: 9.5px; }
+    .sign-row   { padding: 16px 16px 12px; gap: 12px; grid-template-columns: repeat(3,1fr); }
+    .sign-label { font-size: 8.5px; letter-spacing: 0.7px; }
+    .disclaimer { font-size: 7.5px; padding: 0 12px 8px; }
   }
 `;
 
@@ -626,6 +635,7 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Annual Progress Report — ${esc(info.studentName)}</title>
   <style>${INLINE_CSS}</style>
 </head>
