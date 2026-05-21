@@ -3902,6 +3902,45 @@
 
 <script defer src="config.js"></script>
 <script defer src="script.js"></script>
+<script>
+/* Android back-button fix: wire showPage() into the History API so pressing
+   the hardware/gesture back button navigates within the app instead of exiting. */
+(function () {
+  function patchHistory() {
+    if (typeof showPage !== 'function') {
+      // script.js hasn't finished yet — retry after a tick
+      setTimeout(patchHistory, 50);
+      return;
+    }
+
+    var _origShowPage = showPage;
+    var _navigatingViaPopstate = false;
+
+    // Replace global showPage so every call also records a history entry
+    window.showPage = function (name) {
+      _origShowPage(name);
+      if (!_navigatingViaPopstate) {
+        history.pushState({ sfPage: name }, '', '#' + name);
+      }
+    };
+
+    // Seed the initial history entry so there is always a "home" to go back to
+    if (!history.state || !history.state.sfPage) {
+      history.replaceState({ sfPage: 'home' }, '', '#home');
+    }
+
+    // Handle hardware/gesture back (and forward) button
+    window.addEventListener('popstate', function (e) {
+      var page = (e.state && e.state.sfPage) ? e.state.sfPage : 'home';
+      _navigatingViaPopstate = true;
+      _origShowPage(page);
+      _navigatingViaPopstate = false;
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', patchHistory);
+})();
+</script>
 <script type="module" src="app-logic.js?v=17"></script>
 <script type="module" src="report-card-admin-init.js"></script>
 <script type="module" src="report-card-student-init.js"></script>
