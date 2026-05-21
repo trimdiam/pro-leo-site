@@ -31,54 +31,9 @@ document.addEventListener('keydown', function(e) {
 // Service Worker registration + update banner
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(reg => {
-      // New SW waiting — show update banner
-      reg.addEventListener('updatefound', () => {
-        const newSW = reg.installing;
-        newSW.addEventListener('statechange', () => {
-          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            _showUpdateBanner(newSW);
-          }
-        });
-      });
-    }).catch(() => {});
-
-    // SW sent SW_UPDATED message after activating
-    navigator.serviceWorker.addEventListener('message', e => {
-      if (e.data?.type === 'SW_UPDATED') _showUpdateBanner(null);
-    });
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+};
   });
 }
 
-function _showUpdateBanner(newSW) {
-  if (document.getElementById('sw-update-banner')) return;
-  const bar = document.createElement('div');
-  bar.id = 'sw-update-banner';
-  bar.style.cssText = [
-    'position:fixed','top:0','left:0','right:0','z-index:99999',
-    'background:#2d6a4f','color:#fff','display:flex',
-    'align-items:center','justify-content:space-between',
-    'padding:10px 14px','font-size:13px','font-weight:600',
-    'font-family:sans-serif','box-shadow:0 2px 10px rgba(0,0,0,0.3)',
-    'gap:10px'
-  ].join(';');
-  const msg = document.createElement('span');
-  msg.textContent = 'New version available';
-  msg.style.cssText = 'flex:1;min-width:0';
-  const btns = document.createElement('div');
-  btns.style.cssText = 'display:flex;gap:8px;flex-shrink:0';
-  const updateBtn = document.createElement('button');
-  updateBtn.textContent = 'Update';
-  updateBtn.style.cssText = 'background:#fff;color:#2d6a4f;border:none;border-radius:6px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap';
-  updateBtn.addEventListener('click', () => { bar.remove(); location.reload(true); });
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = '✕';
-  closeBtn.setAttribute('aria-label', 'Dismiss');
-  closeBtn.style.cssText = 'background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-weight:700;cursor:pointer;font-size:14px;line-height:1';
-  closeBtn.addEventListener('click', () => bar.remove());
-  btns.appendChild(updateBtn);
-  btns.appendChild(closeBtn);
-  bar.appendChild(msg);
-  bar.appendChild(btns);
-  document.body.prepend(bar);
-}
