@@ -1,12 +1,10 @@
+// ── Always-needed imports ─────────────────────────────────────────────────
 import { createSessionSetup } from './components/session-setup.js';
 import { createAssessmentCard, updateTotal } from './components/assessment-card.js';
 import { createSessionToolbar } from './components/session-toolbar.js';
 import { createStickySaveToolbar } from './components/sticky-save-toolbar.js';
 import { createSessionList } from './components/session-list.js';
 import { createSessionReview } from './components/session-review.js';
-import { createMonthlySummary } from './components/monthly-summary.js';
-import { createWeakStudentList } from './components/weak-student-list.js';
-import { createAnalyticsDashboard } from './components/analytics-dashboard.js';
 import { createLoginForm } from './components/login-form.js';
 import { createStudentProfile } from './components/student-profile.js';
 import { createQuickEntryGrid } from './components/quick-entry-grid.js';
@@ -17,15 +15,32 @@ import { createSession, validateMark } from './services/assessment-engine.js';
 import { initializeMarksWithDefault } from './services/fast-entry-engine.js';
 import { calculateSessionProgress } from './services/totals-engine.js';
 import { saveSession, getSession, getAllSessions, syncSessionsFromFirestore } from './services/session-storage.js';
-import {
-  updateSessionStatus,
-  loadFullSessionData,
-  SESSION_STATUS
-} from './services/session-review-engine.js';
+import { updateSessionStatus, loadFullSessionData, SESSION_STATUS } from './services/session-review-engine.js';
 import { aggregateByMonth, extractYearMonth, clearAggregationCache } from './services/aggregation-engine.js';
 import { getCurrentUser, isTeacher, isAdmin, isLoggedIn, resolveAuthSession } from './services/auth-service.js';
-import { generateDemoData, clearDemoData, generateWeeklyMathDemo } from './services/demo-data-generator.js';
-import { createReportCardGeneratorUI } from './components/report-card-generator-ui.js';
+
+// ── Heavy admin-only components — lazy loaded on first admin view ─────────
+let _adminLazy = null;
+async function getAdminComponents() {
+  if (_adminLazy) return _adminLazy;
+  const [ms, wsl, ad, rcu, demo] = await Promise.all([
+    import('./components/monthly-summary.js'),
+    import('./components/weak-student-list.js'),
+    import('./components/analytics-dashboard.js'),
+    import('./components/report-card-generator-ui.js'),
+    import('./services/demo-data-generator.js'),
+  ]);
+  _adminLazy = {
+    createMonthlySummary:       ms.createMonthlySummary,
+    createWeakStudentList:      wsl.createWeakStudentList,
+    createAnalyticsDashboard:   ad.createAnalyticsDashboard,
+    createReportCardGeneratorUI: rcu.createReportCardGeneratorUI,
+    generateDemoData:           demo.generateDemoData,
+    clearDemoData:              demo.clearDemoData,
+    generateWeeklyMathDemo:     demo.generateWeeklyMathDemo,
+  };
+  return _adminLazy;
+}
 
 const classes = ['LKG', 'SKG', 'Class I', 'Class II'];
 
@@ -82,30 +97,28 @@ let autosaveTimer = null;
 const _deepLinkStudentId = new URLSearchParams(window.location.search).get('student') || '';
 
 async function init() {
-  try {
-    state.allSubjects = await loadSubjects();
-  } catch (error) {
-    console.error(error);
+  // Run subjects load and auth resolution in parallel — saves one full round-trip
+  const [subjectsResult] = await Promise.allSettled([
+    loadSubjects(),
+    resolveAuthSession()
+  ]);
+
+  if (subjectsResult.status === 'fulfilled') {
+    state.allSubjects = subjectsResult.value;
+  } else {
     state.errorMessage = 'Failed to load subjects';
   }
 
-  // Wait for Firebase Auth to resolve — auto-populates localStorage if the
-  // user is already signed in via pro-leo-site (shared Firebase session).
-  await resolveAuthSession();
-
-  // Auto-fill teacher name from persisted login session
   const currentUser = getCurrentUser();
   if (currentUser?.name) state.teacherName = currentUser.name;
 
-  // Pull latest sessions from Firestore into local cache, then render
   if (isLoggedIn()) {
-    syncSessionsFromFirestore().finally(() => {
-      applyDeepLink();
-      render();
-    });
+    // Render immediately from local cache — don't block on Firestore sync
+    applyDeepLink();
+    render();
+    // Sync in background; re-render silently when done
+    syncSessionsFromFirestore().finally(() => render());
   } else {
-    // If Firebase has a session but resolveAuthSession blocked it (e.g. student role),
-    // show a clear access-denied message instead of the login form.
     import('./services/firebase-config.js').then(({ auth }) => {
       if (auth.currentUser) {
         assessmentRoot.replaceChildren();
@@ -142,6 +155,14 @@ function render() {
     return;
   }
 
+  // Force correct landing mode based on role
+  if (state.mode === 'setup' && isAdmin() && !isTeacher()) {
+    state.mode = 'admin';
+  }
+  if (state.mode === 'admin' && !isAdmin()) {
+    state.mode = 'setup';
+  }
+
   renderNav();
 
   if (state.mode === 'setup') {
@@ -162,16 +183,16 @@ function renderLogin() {
   assessmentRoot.append(createLoginForm({
     onLogin: (user) => {
       if (user?.name) state.teacherName = user.name;
-      syncSessionsFromFirestore().finally(() => {
-        applyDeepLink();
-        render();
-      });
+      applyDeepLink();
+      render();
+      syncSessionsFromFirestore().finally(() => render());
     },
     onLogout: () => render(),
-    onGenerateDemo: generateDemoData,
-    onClearDemo: clearDemoData,
+    onGenerateDemo: async () => { const a = await getAdminComponents(); a.generateDemoData(); },
+    onClearDemo:    async () => { const a = await getAdminComponents(); a.clearDemoData(); },
     onGenerateWeeklyMathDemo: async () => {
-      const n = await generateWeeklyMathDemo();
+      const a = await getAdminComponents();
+      const n = await a.generateWeeklyMathDemo();
       alert(`Weekly Maths demo loaded: ${n} sessions for Class I. Profiles updated.`);
       syncSessionsFromFirestore().finally(() => render());
     }
@@ -190,10 +211,11 @@ function renderNav() {
 
   const user = getCurrentUser();
 
+  // Teachers see only assessment entry; admins see only the admin dashboard
   if (isTeacher()) {
     const setupBtn = document.createElement('button');
     setupBtn.type = 'button';
-    setupBtn.className = `nav-btn ${state.mode === 'setup' ? 'active' : ''}`;
+    setupBtn.className = `nav-btn ${state.mode === 'setup' || state.mode === 'assessment' ? 'active' : ''}`;
     setupBtn.textContent = 'New Assessment';
     setupBtn.addEventListener('click', () => switchMode('setup'));
     nav.append(setupBtn);
@@ -203,12 +225,18 @@ function renderNav() {
     const adminBtn = document.createElement('button');
     adminBtn.type = 'button';
     adminBtn.className = `nav-btn ${state.mode === 'admin' ? 'active' : ''}`;
-    adminBtn.textContent = 'Admin';
+    adminBtn.textContent = 'Admin Dashboard';
     adminBtn.addEventListener('click', () => switchMode('admin'));
     nav.append(adminBtn);
   }
 
   if (user) {
+    // Role chip
+    const roleChip = document.createElement('span');
+    roleChip.style.cssText = 'font-size:11px;padding:3px 10px;border-radius:20px;background:var(--accent-bg,#f3ece3);color:var(--accent,#8B6F47);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-left:auto';
+    roleChip.textContent = isAdmin() ? 'Admin' : (user.role || 'Teacher').replace(/_/g, ' ');
+    nav.append(roleChip);
+
     const logoutBtn = document.createElement('button');
     logoutBtn.type = 'button';
     logoutBtn.className = 'nav-btn btn-secondary';
@@ -245,6 +273,8 @@ function switchMode(mode) {
 
 function renderSetup() {
   if (!isTeacher()) {
+    // Admins land on admin dashboard, not setup
+    if (isAdmin()) { state.mode = 'admin'; render(); return; }
     assessmentRoot.replaceChildren(createStatus('Access denied: teacher role required.'));
     return;
   }
@@ -484,15 +514,17 @@ function renderAdmin() {
   }
 }
 
-function renderAdminReportCards() {
-  assessmentRoot.append(createReportCardGeneratorUI({
+async function renderAdminReportCards() {
+  const a = await getAdminComponents();
+  assessmentRoot.append(a.createReportCardGeneratorUI({
     classes,
     currentUser: getCurrentUser()
   }));
 }
 
-function renderAdminAnalytics() {
-  assessmentRoot.append(createAnalyticsDashboard({
+async function renderAdminAnalytics() {
+  const a = await getAdminComponents();
+  assessmentRoot.append(a.createAnalyticsDashboard({
     classes,
     view: state.analyticsView,
     selectedClass: state.analyticsClass,
@@ -602,8 +634,9 @@ async function renderAdminReview() {
 }
 
 async function renderAdminSummary() {
+  const a = await getAdminComponents();
   try {
-    assessmentRoot.append(createMonthlySummary({
+    assessmentRoot.append(a.createMonthlySummary({
       classes,
       yearMonth: state.summaryYearMonth,
       className: state.summaryClass,
@@ -643,8 +676,9 @@ async function renderAdminSummary() {
   }
 }
 
-function renderAdminWeak() {
-  assessmentRoot.append(createWeakStudentList({
+async function renderAdminWeak() {
+  const a = await getAdminComponents();
+  assessmentRoot.append(a.createWeakStudentList({
     classes,
     yearMonth: state.weakYearMonth,
     selectedClass: state.weakClass,

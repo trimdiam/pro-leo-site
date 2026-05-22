@@ -37,7 +37,7 @@ service cloud.firestore {
 
     // ── Daily attendance (with month-locking guard) ───────────────────
     match /attendance_daily/{docId} {
-      allow read:  if request.auth != null;
+      allow read:  if isAnyStaff() || request.auth != null;
       allow write: if request.auth != null
         && (isRole('teacher') || isAdmin())
         && (isDailyWriteAllowed(database, docId) || isAdmin());
@@ -62,7 +62,10 @@ service cloud.firestore {
 
     // ── Fees (older collection — student notification center reads) ───
     match /fees/{docId} {
-      allow read:  if request.auth != null;
+      allow read:  if isAnyStaff() ||
+        (request.auth != null &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId ==
+         resource.data.studentId);
       allow write: if isAdmin() || isOffice();
     }
 
@@ -176,7 +179,7 @@ service cloud.firestore {
     match /student_profiles/{docId} {
       allow read:  if isAnyStaff() ||
         (request.auth != null &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId != null);
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId == docId);
       allow write: if isRole('teacher') || isAdmin();
     }
 

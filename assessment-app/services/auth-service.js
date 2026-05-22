@@ -8,42 +8,49 @@ import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase
 
 const AUTH_KEY = 'sfds_auth_user';
 
-// Converts a staff ID to its Firebase Auth email (must match main app logic exactly)
+// Roles the main portal assigns to teachers
+const TEACHER_ROLES = ['teacher', 'class_teacher', 'subject_teacher'];
+const ADMIN_ROLES   = ['admin', 'super_admin'];
+const ALLOWED_ROLES = [...TEACHER_ROLES, ...ADMIN_ROLES];
+
 function idToEmail(id) {
-  if (id.includes('@')) return id; // admin uses real email e.g. admin@test.com
+  if (id.includes('@')) return id;
   return id.trim().toLowerCase().replace(/[^a-z0-9]/g, '_') + '@stfrancis.school';
 }
 
+async function buildAuthUser(uid, email, data, loginId) {
+  const rawRole = (data.role || '').toLowerCase();
+  const role    = rawRole; // keep original role — isTeacher/isAdmin use it
+
+  let name = data.name || email;
+  const teacherId = (loginId || data.teacherId || data.loginId || data.staffId || '').toUpperCase();
+
+  if (TEACHER_ROLES.includes(rawRole) && teacherId) {
+    try {
+      const tDoc = await getDoc(doc(db, 'teachers', teacherId));
+      if (tDoc.exists()) {
+        const t = tDoc.data();
+        name = (t.title ? t.title + ' ' : '') + (t.name || name);
+      }
+    } catch (e) { /* use fallback */ }
+  }
+
+  return { uid, email, name: name.trim(), role, teacherId };
+}
+
 export async function login(loginId, password) {
-  const email = idToEmail(loginId);
+  const email      = idToEmail(loginId);
   const credential = await signInWithEmailAndPassword(auth, email, password);
-  const uid = credential.user.uid;
+  const uid        = credential.user.uid;
 
-  // 1. Get role from users collection
   const userDoc = await getDoc(doc(db, 'users', uid));
-  const role = userDoc.exists() ? (userDoc.data().role || 'teacher') : 'teacher';
+  if (!userDoc.exists()) throw new Error('Your account is not set up. Contact admin.');
 
-  // 2. Get name — for teachers, look up from teachers collection by teacherId
-  //    For admin, fall back to users collection name or email
-  let name = '';
-  let teacherId = '';
+  const data    = userDoc.data();
+  const rawRole = (data.role || '').toLowerCase();
+  if (!ALLOWED_ROLES.includes(rawRole)) throw new Error('Access denied. This app is for teachers and administrators only.');
 
-  if (role === 'teacher' || role === 'staff') {
-    // The loginId IS the teacher's staff ID (e.g. SFST007)
-    teacherId = loginId.trim().toUpperCase();
-    const teacherDoc = await getDoc(doc(db, 'teachers', teacherId));
-    if (teacherDoc.exists()) {
-      const t = teacherDoc.data();
-      name = (t.title ? t.title + ' ' : '') + (t.name || '');
-    }
-  }
-
-  if (!name) {
-    // Fallback: use name from users collection or the email itself
-    name = userDoc.exists() ? (userDoc.data().name || loginId) : loginId;
-  }
-
-  const authUser = { uid, email, name: name.trim(), role, teacherId };
+  const authUser = await buildAuthUser(uid, credential.user.email, data, loginId);
   localStorage.setItem(AUTH_KEY, JSON.stringify(authUser));
   return authUser;
 }
@@ -66,69 +73,47 @@ export function isLoggedIn() {
   return !!getCurrentUser();
 }
 
+// True for teachers (any teacher role) — NOT admins
 export function isTeacher() {
-  const role = getCurrentUser()?.role;
-  return role === 'teacher' || role === 'admin' || role === 'super_admin';
+  const role = getCurrentUser()?.role || '';
+  return TEACHER_ROLES.includes(role);
 }
 
+// True only for admins
 export function isAdmin() {
-  const role = getCurrentUser()?.role;
-  return role === 'admin' || role === 'super_admin';
+  const role = getCurrentUser()?.role || '';
+  return ADMIN_ROLES.includes(role);
 }
 
 export function requireAuth() {
   if (!isLoggedIn()) throw new Error('Authentication required');
 }
 
-export function requireRole(role) {
-  const user = getCurrentUser();
-  if (!user || user.role !== role) {
-    throw new Error(`Access denied: ${role} role required`);
-  }
-}
-
 export function onAuthChange(callback) {
   return onAuthStateChanged(auth, callback);
 }
 
-// Detects an existing Firebase Auth session (e.g. logged in via pro-leo-site)
-// and auto-populates the assessment-app localStorage session without re-login.
-// Only teacher / admin roles are allowed into the assessment-app.
+// Auto-populates localStorage from an existing Firebase Auth session (SSO from main portal).
+// Refreshes the stored session if the role has changed since last login.
 export function resolveAuthSession() {
   return new Promise(resolve => {
     const unsub = onAuthStateChanged(auth, async firebaseUser => {
       unsub();
       if (!firebaseUser) { resolve(); return; }
-      // Already have a valid local session — nothing to do
-      if (getCurrentUser()) { resolve(); return; }
+
       try {
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         if (!userDoc.exists()) { resolve(); return; }
-        const data = userDoc.data();
-        const role = data.role || '';
-        // Students and office staff are not allowed in the assessment-app
-        if (!['teacher', 'admin', 'super_admin'].includes(role)) { resolve(); return; }
-        let name = data.name || firebaseUser.email;
-        const teacherId = (data.teacherId || data.loginId || '').toUpperCase();
-        if ((role === 'teacher') && teacherId) {
-          try {
-            const tDoc = await getDoc(doc(db, 'teachers', teacherId));
-            if (tDoc.exists()) {
-              const t = tDoc.data();
-              name = (t.title ? t.title + ' ' : '') + (t.name || name);
-            }
-          } catch (e) { /* use fallback name */ }
-        }
-        const authUser = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          name: name.trim(),
-          role,
-          teacherId
-        };
+
+        const data    = userDoc.data();
+        const rawRole = (data.role || '').toLowerCase();
+        if (!ALLOWED_ROLES.includes(rawRole)) { resolve(); return; }
+
+        // Always refresh — role may have changed since the cached session was written
+        const authUser = await buildAuthUser(firebaseUser.uid, firebaseUser.email, data, '');
         localStorage.setItem(AUTH_KEY, JSON.stringify(authUser));
       } catch (e) {
-        console.warn('[auth] Auto-login from shared Firebase session failed:', e.message);
+        console.warn('[auth] SSO session resolve failed:', e.message);
       }
       resolve();
     });

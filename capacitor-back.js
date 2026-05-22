@@ -10,6 +10,10 @@
   var _backPressedOnce = false;
   var _backPressTimer = null;
 
+  // Portal pages — navigating TO one of these always clears the back stack
+  // so "home" is never kept as a back destination for a logged-in user.
+  var PORTAL_PAGES = ['teacher-dash', 'admin-dash', 'student-dash', 'office-dash'];
+
   // Hook into showPage so every navigation is tracked
   var _originalShowPage = null;
   function hookShowPage() {
@@ -20,10 +24,15 @@
     _originalShowPage = window.showPage;
     window.showPage = function (name) {
       var current = _getCurrentPage();
-      if (current && current !== name) {
-        // Don't stack duplicates; also don't stack 'home' over 'home'
+      if (PORTAL_PAGES.indexOf(name) !== -1) {
+        // Arriving at a portal clears any pre-login pages from the stack
+        _navStack = _navStack.filter(function (p) {
+          return PORTAL_PAGES.indexOf(p) !== -1;
+        });
+      } else if (current && current !== name) {
+        // Normal intra-portal navigation: push current so back works
         _navStack.push(current);
-        if (_navStack.length > 20) _navStack.shift(); // cap stack size
+        if (_navStack.length > 20) _navStack.shift();
       }
       _originalShowPage(name);
     };

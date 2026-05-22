@@ -6,12 +6,26 @@
 
 'use strict';
 
-// ─── ROMAN NUMERAL → INTEGER ─────────────────────────────────────────────────
+// ─── ROMAN NUMERAL ↔ INTEGER ──────────────────────────────────────────────────
 const ROMAN_TO_INT = { I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10 };
+const INT_TO_ROMAN = { 1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII',9:'IX',10:'X' };
+
 function classNumFromId(classId) {
-  // "IX-A" → 9, "3-A" → 3, "III" → 3
+  // "IX" → 9, "IX-A" → 9, "3" → 3, "III" → 3
   const raw = String(classId).split('-')[0].trim().toUpperCase();
   return ROMAN_TO_INT[raw] || parseInt(raw) || null;
+}
+
+// Convert any class identifier to a plain Roman-numeral string — NO section suffix.
+// Source of truth is teacher.classTeacher (admin form, Arabic numerals 1-10).
+// "1" → "I",  "9" → "IX",  "III" → "III",  "IX-A" → "IX"
+function toRomanClassId(raw) {
+  if (!raw) return null;
+  const base = String(raw).split('-')[0].trim().toUpperCase();
+  const num  = parseInt(base);
+  if (!isNaN(num) && INT_TO_ROMAN[num]) return INT_TO_ROMAN[num];
+  // Already Roman or unknown — return as-is (strip section if present)
+  return base;
 }
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -19,7 +33,7 @@ const ME = {
   user:         null,
   teacher:      null,      // full teacher document data
   isClassTeacher: false,
-  ctClassId:    null,      // e.g. "III-A"
+  ctClassId:    null,      // e.g. "III" (Roman, no section)
   ctClassNum:   null,      // e.g. 3
   activeClass:  null,      // subject teacher grid context
   activeStudent: null,     // { studentId, studentData, hyData, ftData }
@@ -182,13 +196,12 @@ async function loadTeacherAndRoute(uid) {
                         !!ME.teacher.classTeacherOf ||
                         !!ME.teacher.classTeacher;
 
-    // Determine CT's classId ("III-A" format)
+    // Source of truth: teacher.classTeacher (set by admin form, Arabic 1-10).
+    // classTeacherOf is legacy — fall back to it only if classTeacher is absent.
+    // No sections — classId is plain Roman numeral: "I", "IX", not "I-A".
     if (ME.isClassTeacher) {
-      if (ME.teacher.classTeacherOf) {
-        ME.ctClassId = ME.teacher.classTeacherOf;          // "III-A"
-      } else if (ME.teacher.classTeacher) {
-        ME.ctClassId = ME.teacher.classTeacher + '-A';     // "III" → "III-A"
-      }
+      const raw = ME.teacher.classTeacher || ME.teacher.classTeacherOf || '';
+      ME.ctClassId  = toRomanClassId(raw);
       ME.ctClassNum = ME.ctClassId ? classNumFromId(ME.ctClassId) : null;
     }
 
@@ -208,11 +221,11 @@ async function loadTeacherAndRoute(uid) {
 
     if (urlClassId && urlSubject) {
       // Deep-link: go directly to mark entry grid
-      const classNumInt = classNumFromId(urlClassId);
-      const section     = urlClassId.split('-')[1] || 'A';
+      const normClassId = toRomanClassId(urlClassId);
+      const classNumInt = classNumFromId(normClassId);
       const subjectCfg  = CONFIG[classNumInt]?.subjects.find(s => s.key === urlSubject);
       const subjectLbl  = subjectCfg?.label || urlSubject;
-      await openGrid(urlClassId, classNumInt, section, subjectLbl, urlSubject, urlTerm);
+      await openGrid(normClassId, classNumInt, null, subjectLbl, urlSubject, urlTerm);
       return;
     }
 

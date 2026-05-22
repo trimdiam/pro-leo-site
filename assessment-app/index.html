@@ -4,8 +4,45 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SFDS Assessment App</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- DNS + TLS warmup for every external origin we'll hit -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+
+    <!-- Start fetching main module immediately -->
+    <link rel="modulepreload" href="main.js">
+    <link rel="modulepreload" href="services/auth-service.js">
+    <link rel="modulepreload" href="services/firebase-config.js">
+    <link rel="modulepreload" href="components/login-form.js">
+
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Inline critical loading shell so screen is never blank -->
+    <style>
+      #app-boot-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 60vh;
+        gap: 14px;
+        font-family: sans-serif;
+      }
+      .boot-spinner {
+        width: 36px; height: 36px;
+        border: 3px solid rgba(139,111,71,.2);
+        border-top-color: #8B6F47;
+        border-radius: 50%;
+        animation: boot-spin .7s linear infinite;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      .boot-label { font-size: 13px; color: #8B6F47; font-weight: 600; }
+    </style>
+
+    <!-- Chart.js — deferred, only needed for analytics view -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   </head>
   <body>
     <main class="app-shell">
@@ -14,7 +51,13 @@
         <h1>Assessment Entry</h1>
       </header>
       <div id="session-setup-root"></div>
-      <div id="assessment-root"></div>
+      <div id="assessment-root">
+        <!-- Visible immediately while JS loads -->
+        <div id="app-boot-loader">
+          <div class="boot-spinner"></div>
+          <span class="boot-label">Loading…</span>
+        </div>
+      </div>
     </main>
     <script type="module" src="main.js"></script>
   </body>

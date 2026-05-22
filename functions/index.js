@@ -1,6 +1,7 @@
 const { setGlobalOptions } = require("firebase-functions");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -249,5 +250,87 @@ exports.periodEndReminder = onSchedule(
     if (messages.length === 0) return;
     const result = await fcm.sendEach(messages);
     console.log(`Period ${endedPeriod} ended — sent ${result.successCount} reminders, ${result.failureCount} failed`);
+  }
+);
+
+// ── CALLABLE: Manual period-end reminder trigger (admin only) ─────────────
+exports.triggerPeriodReminder = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    const endedPeriod = Number(request.data.period);
+    if (!endedPeriod || endedPeriod < 1 || endedPeriod > 6) {
+      throw new HttpsError("invalid-argument", "period must be 1–6");
+    }
+    const nextPeriod = endedPeriod + 1;
+    if (nextPeriod > 6) throw new HttpsError("invalid-argument", "No next period after period 6");
+
+    const daySnap = await db.collection("settings").doc("schoolDay").get();
+    if (!daySnap.exists) throw new HttpsError("not-found", "schoolDay not set");
+    const currentDay = daySnap.data().currentDay;
+
+    const slotsSnap = await db
+      .collection("routine").doc(String(currentDay))
+      .collection("periods").doc(String(nextPeriod))
+      .collection("slots").get();
+    if (slotsSnap.empty) throw new HttpsError("not-found", `No slots for Day ${currentDay} Period ${nextPeriod}`);
+
+    const subjectsSnap = await db.collection("subjects").get();
+    const subjects = {};
+    subjectsSnap.docs.forEach(d => { subjects[d.data().code] = d.data().name; });
+
+    const teacherMap = {};
+    slotsSnap.docs.forEach(doc => {
+      const s = doc.data();
+      if (s.type === "value-cate-split") {
+        const classes = (s.involvedClasses || []).join(" & ");
+        if (s.valueTeacher) teacherMap[s.valueTeacher] = { subject: "Value Education", className: classes };
+        if (s.cateTeacher)  teacherMap[s.cateTeacher]  = { subject: "Catechism",        className: classes };
+      } else {
+        const subjectName = Array.isArray(s.subjectCodes)
+          ? s.subjectCodes.map(c => subjects[c] || `Subj ${c}`).join(" / ")
+          : (subjects[s.subjectCode] || "Class");
+        if (s.teacherInitials) teacherMap[s.teacherInitials] = { subject: subjectName, className: s.className || "" };
+      }
+    });
+
+    const initials = Object.keys(teacherMap);
+    if (initials.length === 0) throw new HttpsError("not-found", "No teachers found for that period");
+
+    const staffIdToInitials = {};
+    const staffIds = [];
+    const teacherDocs = await Promise.all(initials.map(i => db.collection("teachers").doc(i).get()));
+    teacherDocs.forEach(snap => {
+      if (!snap.exists) return;
+      const { initials: ini, staffId } = snap.data();
+      if (staffId) { staffIdToInitials[staffId] = ini; staffIds.push(staffId); }
+    });
+    if (staffIds.length === 0) throw new HttpsError("not-found", "No staffIds resolved");
+
+    const messages = [];
+    const chunks = [];
+    for (let i = 0; i < staffIds.length; i += 30) chunks.push(staffIds.slice(i, i + 30));
+    await Promise.all(chunks.map(async chunk => {
+      const usersSnap = await db.collection("users").where("staffId", "in", chunk).get();
+      usersSnap.docs.forEach(uDoc => {
+        const { fcmToken, staffId } = uDoc.data();
+        if (!fcmToken || !staffId) return;
+        const ini  = staffIdToInitials[staffId];
+        const info = ini ? teacherMap[ini] : null;
+        if (!info) return;
+        messages.push({
+          token: fcmToken,
+          notification: {
+            title: `⏰ Period ${endedPeriod} ended`,
+            body: `Next: ${info.subject} — Class ${info.className}`,
+          },
+          android: { priority: "high", notification: { channelId: "period_reminders", sound: "default" } },
+          data: { type: "period_reminder", nextPeriod: String(nextPeriod), className: info.className },
+        });
+      });
+    }));
+
+    if (messages.length === 0) throw new HttpsError("not-found", "No FCM tokens found for teachers");
+    const result = await fcm.sendEach(messages);
+    return { sent: result.successCount, failed: result.failureCount, total: messages.length };
   }
 );

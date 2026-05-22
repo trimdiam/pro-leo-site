@@ -263,8 +263,15 @@ export async function initReportCardAdmin() {
   root.innerHTML = '';
   root.className = 'rc-admin-panel';
 
-  const heading = el('h2', '', '📋 Report Card Administration');
-  root.append(heading);
+  const heading = el('h2', '', '📋 SKG – Class II Report Cards');
+
+  const sourceLabel = el('p', '');
+  sourceLabel.style.cssText = 'font-size:12px;color:#6b7280;margin:2px 0 16px';
+  sourceLabel.innerHTML = 'Data source: <strong>Assessment App</strong> &nbsp;·&nbsp; '
+    + '<a href="../assessment-app/" target="_blank" style="color:#8B6F47;font-weight:600;text-decoration:none">'
+    + '<i class="fas fa-external-link-alt" style="font-size:10px"></i> Open Assessment App</a>';
+
+  root.append(heading, sourceLabel);
 
   // ── Filter bar ──
   const filterBar = el('div', 'rc-filter-bar');

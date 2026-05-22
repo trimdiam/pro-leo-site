@@ -12,12 +12,14 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
 
   <!-- Critical fonts (non-blocking) -->
-  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Nunito:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Nunito:wght@300;400;600;700&display=swap"></noscript>
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap"></noscript>
 
   <!-- FontAwesome — non-blocking load (icons appear once CSS arrives) -->
-  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/solid.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/solid.min.css"></noscript>
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/fontawesome.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/fontawesome.min.css"></noscript>
 
   <!-- Inlined critical CSS for nav + hero + ticker -->
   <style>:root{--primary:#D6C3A3;--bg:#E5D3B3;--accent:#8B6F47;--accent-dark:#6B5030;--white:#FFFFFF;--text:#2C1F0E;--text-light:#5A4A35;--success:#28a745;--warning:#ffc107;--danger:#dc3545;--info:#17a2b8;--card-shadow:0 4px 24px rgba(139,111,71,0.13);--card-shadow-hover:0 10px 36px rgba(139,111,71,0.22);--radius:12px;--font-head:'Playfair Display',serif;--font-body:'Nunito',sans-serif;--transition:0.28s ease}*,::after,::before{box-sizing:border-box;margin:0;padding:0}body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}h1,h2,h3,h4,h5{font-family:var(--font-head)}a{text-decoration:none;color:inherit}img{max-width:100%}.hidden{display:none!important}.text-accent{color:#f0c96a;text-shadow:0 2px 10px rgba(0,0,0,.55)}.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;border-radius:8px;border:none;font-family:var(--font-body);font-weight:700;font-size:14px;cursor:pointer;transition:all var(--transition);letter-spacing:.2px}.btn:hover{transform:translateY(-2px)}.btn-primary{background:var(--accent);color:var(--white);box-shadow:0 4px 14px rgba(139,111,71,.3)}.btn-primary:hover{background:var(--accent-dark);box-shadow:0 6px 20px rgba(107,80,48,.38)}.btn-outline{background:0 0;color:var(--accent);border:2px solid var(--accent)}.btn-outline:hover{background:var(--accent);color:var(--white);box-shadow:0 4px 14px rgba(139,11.page{display:none!important}.page.active{display:block!important}#public-nav{position:sticky;top:0;z-index:1000;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 2px 20px rgba(0,0,0,.18);border-bottom:1px solid rgba(255,255,255,.08);animation:20s ease-in-out infinite nav-bg-shift;transition:box-shadow var(--transition)}@keyframes nav-bg-shift{0%,100%{background:rgba(18,10,4,.92);border-bottom-color:rgba(212,175,55,.15)}25%{background:rgba(10,16,30,.93);border-bottom-color:rgba(100,140,200,.15)}50%{background:rgba(30,15,5,.92);border-bottom-color:rgba(212,175,55,.2)}75%{background:rgba(15,10,20,.93);border-bottom-color:rgba(180,120,60,.15)}}.nav-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:64px}.nav-brand{display:flex;align-items:center;gap:12px;cursor:pointer;transition:opacity var(--transition)}.nav-brand:hover{opacity:.85}.nav-logo-img{height:36px;width:36px;object-fit:contain;border-radius:50%}.nav-brand-text{line-height:1.2}.nav-brand-text strong{display:block;font-family:var(--font-head);color:#f0d882;font-size:1rem;text-shadow:0 1px 6px rgba(0,0,0,.5)}.nav-brand-text span{font-size:.7rem;color:rgba(255,255,255,.55)}.nav-links{display:flex;align-items:center;gap:2px;list-style:none}.nav-links li{position:relative}.nav-links li a,.nav-links li button{position:relative;padding:7px 13px;border-radius:7px;font-size:13px;font-weight:600;color:rgba(255,255,255,.82);border:none;background:0 0;cursor:pointer;font-family:var(--font-body);transition:color var(--transition),background var(--transition),transform var(--transition);display:inline-block}.nav-links li a::after,.nav-links li button::after{content:'';position:absolute;bottom:2px;left:50%;width:0;height:2px;background:#f0d882;border-radius:2px;transition:width var(--transition),left var(--transition)}.nav-links li a:hover,.nav-links li button:hover{color:#f0d882;background:rgba(255,255,255,.08);transform:translateY(-1px)}.nav-links li a:hover::after,.nav-links li button:hover::after{width:calc(100% - 26px);left:13px}.nav-cta{margin-left:10px}.nav-cta button::after{display:none}.nav-cta button{background:linear-gradient(135deg,#d4af37,#a07c20)!important;color:#1a0e05!important;font-weight:700!important;border:none!important;box-shadow:0 2px 10px rgba(212,175,55,.3);transition:box-shadow .2s,transform .2s,opacity .2s!important}.nav-cta button:hover{opacity:.9;transform:translateY(-1px)!important;box-shadow:0 4px 16px rgba(212,175,55,.45)!important;background:linear-gradient(135deg,#e0c040,#b08a28)!important}.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:0 0;border:none;padding:4px}.nav-hamburger span{width:24px;height:2px;background:var(--accent-dark);display:block;border-radius:2px;transition:.3s}.mobile-menu{display:none;flex-direction:column;gap:4px;background:rgba(255,255,255,.97);padding:12px 24px;border-top:1px solid var(--primary);backdrop-filter:blur(10px)}.mobile-menu.open{display:flex}.mobile-menu button{padding:10px 8px;border-bottom:1px solid var(--bg);font-weight:600;color:var(--text);background:0 0;border-left:none;border-right:none;border-top:none;text-align:left;font-family:var(--font-body);cursor:pointer;font-size:14px;transition:color var(--transition)}.mobile-menu button:hover{color:var(--accent)}@media (max-width:900px){.nav-links{display:none}.nav-hamburger{display:flex}}.hero{min-height:85vh;display:flex;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;background:#1a0e05;animation:18s ease-in-out infinite hero-color-shift}@keyframes hero-color-shift{0%,100%{background:linear-gradient(160deg,#0d0804 0,#3b1f0a 50%,#1a0e05 100%)}20%{background:linear-gradient(200deg,#0a1020 0,#2a1505 40%,#4a2c08 100%)}40%{background:linear-gradient(140deg,#1a0e05 0,#5c3410 45%,#2a1000 100%)}60%{background:linear-gradient(180deg,#0f0c08 0,#3d2508 50%,#6b3d12 100%)}80%{background:linear-gradient(150deg,#12080a 0,#2e1508 40%,#1a0e05 100%)}}.hero::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 55% at 20% 40%,rgba(212,175,55,.13) 0,transparent 70%),radial-gradient(ellipse 50% 45% at 80% 60%,rgba(139,90,43,.18) 0,transparent 65%),url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%238B6F47' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");animation:12s ease-in-out infinite alternate hero-orb-drift}@keyframes hero-orb-drift{0%{opacity:1;transform:scale(1) translateX(0) translateY(0)}33%{opacity:.8;transform:scale(1.05) translateX(20px) translateY(-15px)}66%{opacity:1;transform:scale(.97) translateX(-15px) translateY(10px)}100%{opacity:.9;transform:scale(1.03) translateX(10px) translateY(-8px)}}.hero::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 80% 50% at 50% 0,rgba(212,175,55,.07) 0,transparent 60%)}.hero-content{position:relative;z-index:2;max-width:740px;padding:40px 24px}.hero-badge{display:inline-block;background:rgba(255,255,255,.15);color:rgba(255,255,255,.92);padding:6px 20px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:22px;border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(4px)}.hero h1{font-size:clamp(2.2rem, 5vw, 3.8rem);line-height:1.15;color:#fff;text-shadow:0 3px 16px rgba(0,0,0,.6);margin-bottom:18px}.hero-motto{font-style:italic;color:rgba(255,255,255,.82);font-size:1.1rem;margin-bottom:36px;line-height:1.7;text-shadow:0 1px 6px rgba(0,0,0,.4)}.hero-buttons{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}.hero-scroll{position:absolute;bottom:44px;left:50%;transform:translateX(-50%);animation:1.5s ease-in-out infinite hero-bounce;will-change:transform;cursor:pointer}.hero-scroll i{color:rgba(255,255,255,.75);font-size:1.5rem}@keyframes hero-bounce{0%,100%{transform:translateX(-50%) translateY(0);opacity:.85}50%{transform:translateX(-50%) translateY(12px);opacity:.4}}.ticker{background:var(--accent);color:var(--white);display:flex;align-items:center;overflow:hidden;font-size:14px;font-weight:600}.ticker-label{background:var(--accent-dark);padding:10px 18px;white-space:nowrap;display:flex;align-items:center;gap:8px;letter-spacing:.5px}.ticker-wrap{overflow:hidden;flex:1}</style>
@@ -55,7 +57,7 @@
       <li><button onclick="showPage('gallery')">Gallery</button></li>
       <li><button onclick="showPage('notices')">Notices</button></li>
       <li><button onclick="showPage('events')">Events</button></li>
-      <li><a href="holiday.html" target="_blank" style="background:none;border:none;font-family:inherit;font-size:inherit;cursor:pointer;color:inherit;text-decoration:none;padding:0">Calendar</a></li>
+      <li><a href="holiday.html" target="_blank" style="text-decoration:none">Calendar</a></li>
       <li><button onclick="showPage('contact')">Contact</button></li>
       <li><button onclick="showPage('admission')" class="btn btn-outline btn-sm" style="margin-left:4px">Apply</button></li>
       <li class="nav-cta"><button onclick="showPage('login')" class="btn btn-primary btn-sm">Login Portal</button></li>
@@ -94,7 +96,7 @@
         <button class="btn btn-outline" onclick="showPage('login')"><i class="fas fa-sign-in-alt"></i> Login Portal</button>
       </div>
     </div>
-    <div class="hero-scroll"><i class="fas fa-chevron-down"></i></div>
+    <div class="hero-scroll" onclick="document.querySelector('.ticker')?.scrollIntoView({behavior:'smooth'})"><i class="fas fa-chevron-down"></i></div>
   </section>
 
   <!-- Featured Announcement (CMS-driven, hidden until populated) -->
@@ -220,22 +222,22 @@
       <h2 class="section-title">Upcoming Events</h2>
       <div class="divider"></div>
       <div class="grid-2" id="home-events-grid" style="margin-bottom:24px">
-        <!-- Fallback static events shown until Firestore loads -->
+        <!-- Fallback static events — matches real school calendar -->
         <div class="event-card">
-          <div class="event-date-box"><div class="event-day">15</div><div class="event-month">FEB</div></div>
-          <div class="event-info"><h4>Annual Sports Day</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM — School Ground</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Celebrate athletic talent with track &amp; field events, team sports, and prize distribution.</p></div>
+          <div class="event-date-box"><div class="event-day">18</div><div class="event-month">MAR</div></div>
+          <div class="event-info"><h4>Annual Sports Meet 2026</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> School Ground &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Track &amp; field events, team sports, relay races, and prize distribution. All students and parents are welcome.</p><p style="margin-top:8px"><span class="badge badge-warning">Upcoming</span></p></div>
         </div>
         <div class="event-card">
-          <div class="event-date-box"><div class="event-day">23</div><div class="event-month">DEC</div></div>
-          <div class="event-info"><h4>Christmas Celebration</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 10:00 AM — School Auditorium</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Cultural performances, carol singing, and a special message from our Principal. Parents welcome.</p></div>
+          <div class="event-date-box"><div class="event-day">18</div><div class="event-month">JUN</div></div>
+          <div class="event-info"><h4>Half-Yearly Examinations Begin</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> All Classrooms &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Half-yearly exams for all classes (I–X). Timetable to be distributed separately. No late entry permitted.</p><p style="margin-top:8px"><span class="badge badge-danger">Important</span></p></div>
         </div>
         <div class="event-card">
-          <div class="event-date-box"><div class="event-day">20</div><div class="event-month">SEP</div></div>
-          <div class="event-info"><h4>Half-Yearly Examinations</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM — All Classrooms</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">All classes from Grade 1–10. Admit cards distributed one week prior. No late entry.</p></div>
+          <div class="event-date-box"><div class="event-day">15</div><div class="event-month">AUG</div></div>
+          <div class="event-info"><h4>Independence Day Celebration</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> School Ground &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 8:00 AM</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Flag hoisting, national anthem, march past, and patriotic performances by students. All are invited.</p><p style="margin-top:8px"><span class="badge badge-info">National Holiday</span></p></div>
         </div>
         <div class="event-card">
-          <div class="event-date-box"><div class="event-day">05</div><div class="event-month">MAR</div></div>
-          <div class="event-info"><h4>Science &amp; Cultural Fair</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM — School Hall</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Students showcase projects, cultural dances, and art. Open to parents and guests.</p></div>
+          <div class="event-date-box"><div class="event-day">05</div><div class="event-month">SEP</div></div>
+          <div class="event-info"><h4>Teacher's Day Celebration</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> School Auditorium &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 10:00 AM</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Students honour their teachers with cultural programmes, speeches, and special performances.</p><p style="margin-top:8px"><span class="badge badge-success">Open to All</span></p></div>
         </div>
       </div>
       <button class="btn btn-outline" onclick="showPage('events')">View All Events <i class="fas fa-arrow-right"></i></button>
@@ -321,9 +323,9 @@
         <h3>St. Francis De Sales Sec. School</h3>
         <p>"Learning to know, to grow, to love, to care and to serve"<br>A school rooted in Franciscan values, committed to shaping future leaders with compassion and integrity.</p>
         <div class="footer-social" style="margin-top:16px">
-          <a href="#" title="Facebook"><i class="fab fa-facebook-f"></i></a>
-          <a href="#" title="Instagram"><i class="fab fa-instagram"></i></a>
-          <a href="#" title="YouTube"><i class="fab fa-youtube"></i></a>
+          <a href="#" title="Facebook"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+          <a href="#" title="Instagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+          <a href="#" title="YouTube"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a>
         </div>
       </div>
       <div class="footer-col">
@@ -360,41 +362,81 @@
     <div class="breadcrumb">Home <span>›</span> About</div>
   </div>
 
-  <div style="background:var(--white);border-bottom:2px solid var(--bg);">
-    <div style="max-width:1200px;margin:0 auto;padding:0 24px;display:flex;gap:0;">
-      <button class="sub-nav-btn active" onclick="showSubPage('about-main')" style="padding:16px 20px;font-weight:700;font-size:13px;border:none;background:none;cursor:pointer;font-family:var(--font-body);color:var(--accent);border-bottom:3px solid var(--accent)">About School</button>
-      <button class="sub-nav-btn" onclick="showSubPage('principal')" style="padding:16px 20px;font-weight:600;font-size:13px;border:none;background:none;cursor:pointer;font-family:var(--font-body);color:var(--text-light);border-bottom:3px solid transparent">Principal's Message</button>
-      <button class="sub-nav-btn" onclick="showSubPage('mission')" style="padding:16px 20px;font-weight:600;font-size:13px;border:none;background:none;cursor:pointer;font-family:var(--font-body);color:var(--text-light);border-bottom:3px solid transparent">Mission &amp; Vision</button>
-      <button class="sub-nav-btn" onclick="showSubPage('parents')" style="padding:16px 20px;font-weight:600;font-size:13px;border:none;background:none;cursor:pointer;font-family:var(--font-body);color:var(--text-light);border-bottom:3px solid transparent">Notes to Parents</button>
-      <button class="sub-nav-btn" onclick="showSubPage('rules')" style="padding:16px 20px;font-weight:600;font-size:13px;border:none;background:none;cursor:pointer;font-family:var(--font-body);color:var(--text-light);border-bottom:3px solid transparent">Rules &amp; Regulations</button>
+  <div style="background:var(--white);border-bottom:1px solid rgba(139,111,71,.15);position:sticky;top:0;z-index:10;box-shadow:0 2px 12px rgba(0,0,0,.06);">
+    <div style="max-width:1200px;margin:0 auto;padding:0 24px;display:flex;gap:0;overflow-x:auto;">
+      <button class="sub-nav-btn active" onclick="showSubPage('about-main')" style="padding:14px 20px;font-weight:700;font-size:13px;border:none;background:none;cursor:pointer;font-family:var(--font-body);color:var(--accent);border-bottom:3px solid var(--accent);white-space:nowrap;transition:all .2s"><i class="fas fa-school" style="margin-right:6px;font-size:11px"></i>About School</button>
+      <button class="sub-nav-btn" onclick="showSubPage('principal')" style="padding:14px 20px;font-weight:600;font-size:13px;border:none;background:none;cursor:pointer;font-family:var(--font-body);color:var(--text-light);border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s"><i class="fas fa-user-tie" style="margin-right:6px;font-size:11px"></i>Principal's Message</button>
+      <button class="sub-nav-btn" onclick="showSubPage('mission')" style="padding:14px 20px;font-weight:600;font-size:13px;border:none;background:none;cursor:pointer;font-family:var(--font-body);color:var(--text-light);border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s"><i class="fas fa-bullseye" style="margin-right:6px;font-size:11px"></i>Mission &amp; Vision</button>
+      <button class="sub-nav-btn" onclick="showSubPage('parents')" style="padding:14px 20px;font-weight:600;font-size:13px;border:none;background:none;cursor:pointer;font-family:var(--font-body);color:var(--text-light);border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s"><i class="fas fa-hands-helping" style="margin-right:6px;font-size:11px"></i>Notes to Parents</button>
+      <button class="sub-nav-btn" onclick="showSubPage('rules')" style="padding:14px 20px;font-weight:600;font-size:13px;border:none;background:none;cursor:pointer;font-family:var(--font-body);color:var(--text-light);border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s"><i class="fas fa-gavel" style="margin-right:6px;font-size:11px"></i>Rules &amp; Regulations</button>
     </div>
   </div>
 
   <!-- About Main -->
   <div id="subpage-about-main" class="subpage active">
+
+    <!-- Stats Strip -->
+    <div style="background:linear-gradient(135deg,var(--primary) 0%,var(--accent-dark) 100%);padding:32px 24px;">
+      <div style="max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:24px;text-align:center;">
+        <div>
+          <div style="font-size:2rem;font-weight:800;color:#fff;font-family:var(--font-head)">20+</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.08em;margin-top:4px">Years of Excellence</div>
+        </div>
+        <div>
+          <div style="font-size:2rem;font-weight:800;color:#fff;font-family:var(--font-head)">LKG–X</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.08em;margin-top:4px">Classes Offered</div>
+        </div>
+        <div>
+          <div style="font-size:2rem;font-weight:800;color:#fff;font-family:var(--font-head)">English</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.08em;margin-top:4px">Medium of Instruction</div>
+        </div>
+        <div>
+          <div style="font-size:2rem;font-weight:800;color:#fff;font-family:var(--font-head)">2005</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.08em;margin-top:4px">Year Founded</div>
+        </div>
+      </div>
+    </div>
+
     <div class="section">
       <div class="grid-2">
         <div>
           <p class="section-sub">Our Story</p>
           <h2 class="section-title">Established 1st March, 2005</h2>
           <div class="divider"></div>
-          <p id="dynamic-about-text" style="color:var(--text-light);line-height:1.8;margin-bottom:16px;">St. Francis De Sales School was established on <strong>1st March, 2005</strong>. Inspired by the maxim of St. Francis De Sales — <em>"Everything by love and not by force"</em> — the school has grown into a nurturing institution that shapes young hearts through faith, discipline, and genuine care.</p>
-          <p style="color:var(--text-light);line-height:1.8;margin-bottom:16px;">Our motto, <em>"Learning to know, to grow, to love, to care and to serve"</em>, is not merely words — it is the spirit that guides every teacher, student, and decision within our school. The staff follow the Franciscan maxim: force that is applied is only the discipline given to what is already loved.</p>
-          <p style="color:var(--text-light);line-height:1.8;margin-bottom:24px;">The school offers classes from LKG through Grade X in English medium, committed to academic excellence alongside the formation of well-rounded, compassionate individuals ready for life.</p>
-          <button class="btn btn-primary" onclick="handleApplyClick()"><i class="fas fa-file-alt"></i> Apply for Admission</button>
+          <p id="dynamic-about-text" style="color:var(--text-light);line-height:1.9;margin-bottom:16px;font-size:15px;">St. Francis De Sales Secondary School was established on <strong>1st March, 2005</strong>, in Laitkor, Shillong. Inspired by the timeless maxim of St. Francis De Sales — <em>"Everything by love and not by force"</em> — the school has grown into a nurturing institution that shapes young hearts through faith, discipline, and genuine care.</p>
+          <p style="color:var(--text-light);line-height:1.9;margin-bottom:16px;font-size:15px;">Our motto, <em>"Learning to know, to grow, to love, to care and to serve"</em>, is not merely words — it is the living spirit that guides every teacher, every student, and every decision within our school community.</p>
+          <p style="color:var(--text-light);line-height:1.9;margin-bottom:28px;font-size:15px;">Offering classes from LKG through Grade X in English medium, we are committed to academic excellence alongside the holistic formation of well-rounded, compassionate individuals ready for life.</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="handleApplyClick()"><i class="fas fa-file-alt" style="margin-right:6px"></i>Apply for Admission</button>
+            <button class="btn btn-outline" onclick="showSubPage('principal')"><i class="fas fa-user-tie" style="margin-right:6px"></i>Meet Our Principal</button>
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:16px;">
-          <div class="card" style="padding:20px;">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:40px;height:40px;background:rgba(139,111,71,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--accent)"><i class="fas fa-calendar-alt"></i></div><strong style="color:var(--accent-dark)">Founded</strong></div>
-            <p style="font-size:14px;color:var(--text-light)">1st March, 2005<br>St. Francis De Sales Secondary School, Laitkor</p>
+          <div class="card" style="padding:22px;border-left:4px solid var(--accent);border-radius:12px;">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+              <div style="width:44px;height:44px;background:rgba(139,111,71,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:1.1rem"><i class="fas fa-calendar-alt"></i></div>
+              <strong style="color:var(--accent-dark);font-size:15px">Founded</strong>
+            </div>
+            <p style="font-size:14px;color:var(--text-light);line-height:1.7;margin:0">1st March, 2005<br><span style="color:var(--accent-dark);font-weight:600">St. Francis De Sales Secondary School</span><br>Laitkor, Shillong, Meghalaya</p>
           </div>
-          <div class="card" style="padding:20px;">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:40px;height:40px;background:rgba(139,111,71,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--accent)"><i class="fas fa-book"></i></div><strong style="color:var(--accent-dark)">Curriculum</strong></div>
-            <p style="font-size:14px;color:var(--text-light)">LKG to Grade X &nbsp;|&nbsp; English Medium<br>School timing: 8:45 AM – 3:00 PM (Cl. I–X)<br>8:45 AM – 12:00 PM (LKG &amp; KG)</p>
+          <div class="card" style="padding:22px;border-left:4px solid var(--accent);border-radius:12px;">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+              <div style="width:44px;height:44px;background:rgba(139,111,71,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:1.1rem"><i class="fas fa-book-open"></i></div>
+              <strong style="color:var(--accent-dark);font-size:15px">Curriculum &amp; Timings</strong>
+            </div>
+            <p style="font-size:14px;color:var(--text-light);line-height:1.8;margin:0">
+              <span style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><i class="fas fa-check" style="color:var(--accent);font-size:11px"></i> LKG to Grade X &nbsp;·&nbsp; English Medium</span>
+              <span style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><i class="fas fa-clock" style="color:var(--accent);font-size:11px"></i> Class I–X: 8:45 AM – 3:00 PM</span>
+              <span style="display:flex;align-items:center;gap:6px"><i class="fas fa-clock" style="color:var(--accent);font-size:11px"></i> LKG &amp; KG: 8:45 AM – 12:00 PM</span>
+            </p>
           </div>
-          <div class="card" style="padding:20px;">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:40px;height:40px;background:rgba(139,111,71,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--accent)"><i class="fas fa-cross"></i></div><strong style="color:var(--accent-dark)">Our Maxim</strong></div>
-            <p style="font-size:14px;color:var(--text-light);font-style:italic">"Everything by love and not by force."<br><span style="font-style:normal">— St. Francis De Sales</span></p>
+          <div class="card" style="padding:22px;border-left:4px solid var(--accent);border-radius:12px;background:linear-gradient(135deg,rgba(139,111,71,.06),rgba(139,111,71,.02))">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+              <div style="width:44px;height:44px;background:rgba(139,111,71,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:1.1rem"><i class="fas fa-cross"></i></div>
+              <strong style="color:var(--accent-dark);font-size:15px">Our Maxim</strong>
+            </div>
+            <p style="font-size:15px;color:var(--accent-dark);font-style:italic;font-family:var(--font-head);line-height:1.7;margin:0">"Everything by love and not by force."</p>
+            <p style="font-size:13px;color:var(--text-light);margin-top:6px;margin-bottom:0">— St. Francis De Sales</p>
           </div>
         </div>
       </div>
@@ -637,7 +679,7 @@
 
   <footer class="site-footer" style="margin-top:60px">
     <div class="footer-inner">
-      <div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong, Meghalaya</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div>
+      <div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong, Meghalaya</p><div class="footer-social"><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a></div></div>
       <div class="footer-col"><h4>Contact</h4><ul><li>Laitkor, Shillong – 793010</li><li style="margin-top:6px">+91 98000 00000</li><li style="margin-top:6px">info@stfrancislaitkor.edu.in</li></ul></div>
     </div>
     <div class="footer-bottom">© 2025 St. Francis De Sales Sec. School, Laitkor</div>
@@ -682,7 +724,7 @@
     </div>
     <p style="text-align:center;margin-top:24px;font-size:13px;color:var(--text-light)"><i class="fas fa-info-circle" style="margin-right:6px"></i>Gallery images are managed by the school admin. New photos appear here automatically.</p>
   </div>
-  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div></div><div class="footer-bottom">© 2025 St. Francis De Sales Sec. School, Laitkor</div></footer>
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong</p><div class="footer-social"><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a></div></div></div><div class="footer-bottom">© 2025 St. Francis De Sales Sec. School, Laitkor</div></footer>
 </div>
 
 <!-- ================================================================
@@ -707,7 +749,7 @@
       <div class="notice-card"><div class="notice-icon"><i class="fas fa-info-circle"></i></div><div><div class="notice-title">Admission Open – Academic Year 2025–26</div><div class="notice-date">📅 Posted: 01 Mar 2025 &nbsp;|&nbsp; <span class="badge badge-success">Active</span></div><div class="notice-body">Admissions for KG to Grade 9 are now open for the academic year 2025–26. Interested parents may visit the school office between 9:00 AM and 1:00 PM on working days.</div></div></div>
     </div>
   </div>
-  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div></div><div class="footer-bottom">© 2025 St. Francis De Sales Sec. School, Laitkor</div></footer>
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong</p><div class="footer-social"><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a></div></div></div><div class="footer-bottom">© 2025 St. Francis De Sales Sec. School, Laitkor</div></footer>
 </div>
 
 <!-- ================================================================
@@ -726,15 +768,21 @@
     <div class="divider"></div>
     <div class="grid-2" id="public-events-grid">
       <!-- Fallback static events -->
-      <div class="event-card"><div class="event-date-box"><div class="event-day">15</div><div class="event-month">FEB</div></div><div class="event-info"><h4>Annual Sports Day</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM — School Ground</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Track &amp; field events, team sports, tug-of-war, relay races. Prize distribution by Chief Guest.</p><p style="margin-top:8px"><span class="badge badge-warning">Upcoming</span></p></div></div>
-      <div class="event-card"><div class="event-date-box"><div class="event-day">23</div><div class="event-month">DEC</div></div><div class="event-info"><h4>Christmas Celebration</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 10:00 AM — Auditorium</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Carol singing, nativity play, cultural performances, and gift distribution. All parents invited.</p><p style="margin-top:8px"><span class="badge badge-info">Annual</span></p></div></div>
-      <div class="event-card"><div class="event-date-box"><div class="event-day">20</div><div class="event-month">SEP</div></div><div class="event-info"><h4>Half-Yearly Examinations</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM onwards</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">All grades Grade 1–10. Duration: 2.5 hours per paper. Timetable attached separately.</p><p style="margin-top:8px"><span class="badge badge-danger">Important</span></p></div></div>
-      <div class="event-card"><div class="event-date-box"><div class="event-day">05</div><div class="event-month">MAR</div></div><div class="event-info"><h4>Science &amp; Cultural Fair</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM — School Hall</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Student science projects, cultural performances, and art display. Open to parents and guests.</p><p style="margin-top:8px"><span class="badge badge-success">Open to All</span></p></div></div>
-      <div class="event-card"><div class="event-date-box"><div class="event-day">10</div><div class="event-month">SEP</div></div><div class="event-info"><h4>Parent-Teacher Meeting</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 10:00 AM – 1:00 PM</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Grade 6–10 parents. Discuss academic progress, attendance, and behaviour with class teachers.</p><p style="margin-top:8px"><span class="badge badge-warning">Upcoming</span></p></div></div>
-      <div class="event-card"><div class="event-date-box"><div class="event-day">15</div><div class="event-month">AUG</div></div><div class="event-info"><h4>Independence Day Celebration</h4><p><i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 8:00 AM — Ground</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Flag hoisting, national anthem, march past, and patriotic performances by students.</p><p style="margin-top:8px"><span class="badge badge-info">National Holiday</span></p></div></div>
+      <!-- Real events from school calendar 2026 -->
+      <div class="event-card"><div class="event-date-box"><div class="event-day">19</div><div class="event-month">FEB</div></div><div class="event-info"><h4>Investiture Ceremony</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> School Auditorium &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 10:00 AM</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Installation of the Student Council members for the academic year 2025–26. Parents and staff invited.</p><p style="margin-top:8px"><span class="badge badge-info">Annual</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">18</div><div class="event-month">MAR</div></div><div class="event-info"><h4>Annual Sports Meet 2026</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> School Ground &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM (18–19 Mar)</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Two-day sports event featuring track &amp; field, team games, relay races, and prize distribution by Chief Guest.</p><p style="margin-top:8px"><span class="badge badge-warning">Upcoming</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">14</div><div class="event-month">MAY</div></div><div class="event-info"><h4>Literary Days</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> School Hall &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM (14–15 May)</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Debates, elocution, essay writing, and creative writing competitions for all classes. Open to students only.</p><p style="margin-top:8px"><span class="badge badge-success">Student Event</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">18</div><div class="event-month">JUN</div></div><div class="event-info"><h4>Half-Yearly Examinations Begin</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> All Classrooms &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Half-yearly examinations for all classes I–X. Detailed timetable distributed separately. No late entry.</p><p style="margin-top:8px"><span class="badge badge-danger">Important</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">15</div><div class="event-month">AUG</div></div><div class="event-info"><h4>Independence Day Celebration</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> School Ground &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 8:00 AM</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Flag hoisting, national anthem, march past, and patriotic performances by students. All are invited.</p><p style="margin-top:8px"><span class="badge badge-info">National Holiday</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">05</div><div class="event-month">SEP</div></div><div class="event-info"><h4>Teacher's Day Celebration</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> School Auditorium &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 10:00 AM</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Students honour their teachers with cultural programmes, speeches, and heartfelt performances.</p><p style="margin-top:8px"><span class="badge badge-success">Open to All</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">12</div><div class="event-month">NOV</div></div><div class="event-info"><h4>Pre-Children's Day Celebration</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> School Auditorium &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 10:00 AM</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Fun-filled celebration for all students with games, cultural activities, and special treats.</p><p style="margin-top:8px"><span class="badge badge-success">Open to All</span></p></div></div>
+      <div class="event-card"><div class="event-date-box"><div class="event-day">16</div><div class="event-month">NOV</div></div><div class="event-info"><h4>Final Examinations Begin</h4><p><i class="fas fa-map-marker-alt" style="color:var(--accent);font-size:12px"></i> All Classrooms &nbsp;·&nbsp; <i class="fas fa-clock" style="color:var(--accent);font-size:12px"></i> 9:00 AM (16–28 Nov)</p><p style="margin-top:6px;font-size:13px;color:var(--text-light)">Annual final examinations for all classes I–X. Duration: two weeks. Detailed timetable to follow.</p><p style="margin-top:8px"><span class="badge badge-danger">Important</span></p></div></div>
+    </div>
+    <div style="text-align:center;margin-top:32px">
+      <a href="holiday.html" target="_blank" class="btn btn-outline"><i class="fas fa-calendar-alt" style="margin-right:8px"></i>View Full School Calendar</a>
     </div>
   </div>
-  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div></div><div class="footer-bottom">© 2025 St. Francis De Sales Sec. School, Laitkor</div></footer>
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong</p><div class="footer-social"><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a></div></div></div><div class="footer-bottom">© 2025 St. Francis De Sales Sec. School, Laitkor</div></footer>
 </div>
 
 <!-- ================================================================
@@ -750,7 +798,7 @@
         <div class="contact-item"><i class="fas fa-phone-alt"></i><p>+91 98000 00000<br>+91 0364 000000</p></div>
         <div class="contact-item"><i class="fas fa-envelope"></i><p>info@stfrancislaitkor.edu.in<br>admissions@stfrancislaitkor.edu.in</p></div>
         <div class="contact-item"><i class="fas fa-clock"></i><p>Monday – Friday: 8:00 AM – 3:30 PM<br>Saturday: 8:00 AM – 12:00 PM<br>Sunday: Closed</p></div>
-        <div style="margin-top:24px;"><p style="font-size:13px;opacity:.8;margin-bottom:12px;">Follow us on social media:</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div>
+        <div style="margin-top:24px;"><p style="font-size:13px;opacity:.8;margin-bottom:12px;">Follow us on social media:</p><div class="footer-social"><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a></div></div>
       </div>
       <div class="contact-form">
         <h3>Send Us a Message</h3>
@@ -764,7 +812,7 @@
       </div>
     </div>
   </div>
-  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div></div><div class="footer-bottom">© 2025 St. Francis De Sales Sec. School, Laitkor</div></footer>
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong</p><div class="footer-social"><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a></div></div></div><div class="footer-bottom">© 2025 St. Francis De Sales Sec. School, Laitkor</div></footer>
 </div>
 
 <!-- ================================================================
@@ -790,7 +838,7 @@
     </div>
 
   </div>
-  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-youtube"></i></a></div></div></div><div class="footer-bottom">© 2025 St. Francis De Sales Sec. School, Laitkor</div></footer>
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><h3>St. Francis De Sales Sec. School</h3><p>Laitkor, Shillong</p><div class="footer-social"><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a></div></div></div><div class="footer-bottom">© 2025 St. Francis De Sales Sec. School, Laitkor</div></footer>
 </div>
 
 <!-- ================================================================
@@ -1547,6 +1595,12 @@
               </div>
             </div>
             <div class="card" style="padding:24px">
+              <h4 style="color:var(--accent-dark);margin-bottom:8px"><i class="fas fa-bell" style="margin-right:8px;color:var(--accent)"></i>Push Notifications</h4>
+              <p style="font-size:12px;color:var(--text-light);margin:0 0 14px">Enable period-end reminders on this device. Only works inside the SFS Care app.</p>
+              <button onclick="window.reRegisterPushNotifications(document.getElementById('t-push-status'))" style="padding:9px 20px;background:var(--primary);color:var(--text);border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer"><i class="fas fa-bell" style="margin-right:6px"></i>Enable Notifications</button>
+              <p id="t-push-status" style="margin:10px 0 0;font-size:12px;min-height:16px"></p>
+            </div>
+            <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-key" style="margin-right:8px;color:var(--accent)"></i>Change Password</h4>
               <div class="form-group"><label>Current Password</label><input type="password" id="t-pwd-current" placeholder="Enter current password"></div>
               <div class="form-group"><label>New Password</label><input type="password" id="t-pwd-new" placeholder="Min. 6 characters"></div>
@@ -1640,6 +1694,7 @@
             <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-money-bill-wave"></i></div><div><div class="dash-stat-val" id="a-stat-fee-pending"><i class="fas fa-spinner fa-spin" style="font-size:14px"></i></div><div class="dash-stat-label">Fee Pending</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-building"></i></div><div><div class="dash-stat-val" id="a-stat-office-staff">—</div><div class="dash-stat-label">Office Staff</div></div></div>
           </div>
+          <div id="routine-push-test-ui" style="margin-bottom:18px"></div>
           <div class="grid-2">
             <div class="card" style="padding:24px">
               <h4 style="color:var(--accent-dark);margin-bottom:16px"><i class="fas fa-chart-bar" style="margin-right:8px;color:var(--accent)"></i>Class-wise Enrollment</h4>
@@ -3017,7 +3072,12 @@
         <div id="a-reportcards" class="dash-section" data-rc-admin-init="false">
           <div class="card" style="padding:24px;margin-bottom:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
-              <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent)"></i>Report Card Control Panel</h4>
+              <div>
+                <h4 style="color:var(--accent-dark);margin:0 0 4px"><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent)"></i>Class III – X Report Cards</h4>
+                <span style="font-size:11px;color:var(--text-light)">Data source: <strong>SFS Mark Entry App</strong> &nbsp;·&nbsp;
+                  <a href="/Sfs-report-card/markentry.js" onclick="event.preventDefault();window.open('/Sfs-report-card/','_blank')" style="color:var(--accent);font-weight:600;text-decoration:none"><i class="fas fa-external-link-alt" style="font-size:10px"></i> Open Mark Entry App</a>
+                </span>
+              </div>
               <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
                 <select id="arc-class-select" onchange="loadAdminReportCards()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
                   <option value="">— Select Class —</option>
@@ -3044,6 +3104,13 @@
                 <tbody id="arc-tbody"><tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-light)">Select a class above.</td></tr></tbody>
               </table>
             </div>
+          </div>
+
+          <!-- ── Divider ── -->
+          <div style="display:flex;align-items:center;gap:12px;margin:8px 0 24px">
+            <div style="flex:1;height:1px;background:var(--border)"></div>
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.8px;color:var(--text-light);text-transform:uppercase;white-space:nowrap">SKG – Class II</span>
+            <div style="flex:1;height:1px;background:var(--border)"></div>
           </div>
 
           <!-- ── New Report Card Admin Panel (Project LEO) ── -->
@@ -3868,7 +3935,7 @@
         <div id="fts-user-name"  style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Student</div>
         <div id="fts-user-email" style="font-size:12px;color:var(--text-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">email@example.com</div>
       </div>
-      <i class="fab fa-google" style="color:#4285F4;font-size:1.1rem"></i>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
     </div>
 
     <!-- Student ID input -->
@@ -3911,7 +3978,11 @@
 <script defer src="config.js"></script>
 <script defer src="script.js"></script>
 <script defer src="capacitor-push.js"></script>
-<script defer src="capacitor-back.js"></script>
+<script defer src="routine-push-test.js"></script>
+<script defer src="teacher-attendance-guard.js"></script>
+    <script defer src="rc-class-guard.js"></script>
+    <script defer src="homepage-content-fix.js"></script>
+    <script defer src="capacitor-back.js"></script>
 <script type="module" src="app-logic.js?v=17"></script>
 <script type="module" src="report-card-admin-init.js"></script>
 <script type="module" src="report-card-student-init.js"></script>
