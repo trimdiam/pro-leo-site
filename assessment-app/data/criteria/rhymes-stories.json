@@ -1,0 +1,28 @@
+{
+  "subject_id": "RHST",
+  "subject_name": "Rhymes & Stories",
+  "classes": ["LKG", "SKG"],
+  "criteria": [
+    { "criterion_id": "RHST_C01", "criterion_name": "Active Participation (Rhymes)", "max_marks": 5 },
+    { "criterion_id": "RHST_C02", "criterion_name": "Listens Attentively (Rhymes)", "max_marks": 5 },
+    { "criterion_id": "RHST_C03", "criterion_name": "Follows Instructions (Rhymes)", "max_marks": 5 },
+    { "criterion_id": "RHST_C04", "criterion_name": "Confidence in Performing", "max_marks": 5 },
+    { "criterion_id": "RHST_C05", "criterion_name": "Co-operation in Group Activities", "max_marks": 5 },
+    { "criterion_id": "RHST_C06", "criterion_name": "Shows Interest While Learning Rhymes", "max_marks": 5 },
+    { "criterion_id": "RHST_C07", "criterion_name": "Recites Rhymes Without Help", "max_marks": 5 },
+    { "criterion_id": "RHST_C08", "criterion_name": "Pronounces Words Clearly", "max_marks": 5 },
+    { "criterion_id": "RHST_C09", "criterion_name": "Listens Carefully When Teacher Sings or Recites", "max_marks": 5 },
+    { "criterion_id": "RHST_C10", "criterion_name": "Recites in Front of Others", "max_marks": 5 },
+    { "criterion_id": "RHST_C11", "criterion_name": "Actively Joins Rhymes Activities", "max_marks": 5 },
+    { "criterion_id": "RHST_C12", "criterion_name": "Pays Attention and Focus (Stories)", "max_marks": 5 },
+    { "criterion_id": "RHST_C13", "criterion_name": "Shows Interest and Enjoyment (Stories)", "max_marks": 5 },
+    { "criterion_id": "RHST_C14", "criterion_name": "Listening Behaviour (Stories)", "max_marks": 5 },
+    { "criterion_id": "RHST_C15", "criterion_name": "Responds to Questions", "max_marks": 5 },
+    { "criterion_id": "RHST_C16", "criterion_name": "Shows Interest and Engagement", "max_marks": 5 },
+    { "criterion_id": "RHST_C17", "criterion_name": "Memory", "max_marks": 5 },
+    { "criterion_id": "RHST_C18", "criterion_name": "Imagination and Creativity", "max_marks": 5 },
+    { "criterion_id": "RHST_C19", "criterion_name": "Moral Values / Life Lessons", "max_marks": 5 },
+    { "criterion_id": "RHST_C20", "criterion_name": "Critical Thinking", "max_marks": 5 },
+    { "criterion_id": "RHST_C21", "criterion_name": "Bonding and Coordination", "max_marks": 5 }
+  ]
+}

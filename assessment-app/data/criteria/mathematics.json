@@ -1,12 +1,35 @@
 {
   "subject_id": "MATH",
   "subject_name": "Mathematics",
-  "classes": ["LKG", "SKG", "Class I", "Class II"],
+  "classes": [
+    "Class I",
+    "Class II"
+  ],
   "criteria": [
-    { "criterion_id": "MATH_C1", "criterion_name": "Number Recognition", "max_marks": 5 },
-    { "criterion_id": "MATH_C2", "criterion_name": "Counting", "max_marks": 5 },
-    { "criterion_id": "MATH_C3", "criterion_name": "Shapes", "max_marks": 5 },
-    { "criterion_id": "MATH_C4", "criterion_name": "Patterns", "max_marks": 5 },
-    { "criterion_id": "MATH_C5", "criterion_name": "Activity Participation", "max_marks": 5 }
+    {
+      "criterion_id": "MATH_C1",
+      "criterion_name": "Number Recognition",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "MATH_C2",
+      "criterion_name": "Counting",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "MATH_C3",
+      "criterion_name": "Shapes",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "MATH_C4",
+      "criterion_name": "Patterns",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "MATH_C5",
+      "criterion_name": "Activity Participation",
+      "max_marks": 5
+    }
   ]
 }
