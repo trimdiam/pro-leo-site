@@ -5996,7 +5996,7 @@ function updateAttSummary() {
       (btn.disabled = !0));
     try {
       (await setDoc(doc(db, "attendance_daily", `${classNum}_${date}`), {
-        class: classNum,
+        class: String(classNum),
         date: date,
         absent: absent,
         late: late,
@@ -6210,6 +6210,7 @@ function updateAttSummary() {
       try {
         const result = await (async function (classNum, yyyy, mm) {
           const monthPrefix = `${yyyy}-${mm}-`,
+            classVariants = [String(classNum), ...(!isNaN(Number(classNum)) && classNum !== "" ? [Number(classNum)] : [])],
             [studSnap, dailySnap] = await Promise.all([
               getDocs(
                 query(
@@ -6221,7 +6222,7 @@ function updateAttSummary() {
               getDocs(
                 query(
                   collection(db, "attendance_daily"),
-                  where("class", "==", String(classNum)),
+                  where("class", "in", classVariants),
                 ),
               ),
             ]),
