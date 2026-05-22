@@ -42,7 +42,7 @@ async function getAdminComponents() {
   return _adminLazy;
 }
 
-const classes = ['LKG', 'SKG', 'Class I', 'Class II'];
+const classes = ['LKG', 'SKG', 'Class I', 'Class II', 'Class 9'];
 
 const state = {
   allSubjects: [],

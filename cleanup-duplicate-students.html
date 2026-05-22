@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cleanup Duplicate Students — SFS Admin</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+    h2 { color: #5c4a1e; }
+    .card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    button { background: #7c5c1e; color: #fff; border: none; padding: 10px 22px; border-radius: 8px; font-size: 14px; cursor: pointer; margin-right: 10px; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.danger { background: #c0392b; }
+    input[type=email], input[type=password] { width: 100%; padding: 9px 12px; border: 1.5px solid #ccc; border-radius: 8px; font-size: 14px; margin-bottom: 10px; box-sizing: border-box; }
+    #log { background: #1e1e1e; color: #d4d4d4; font-family: monospace; font-size: 13px; padding: 16px; border-radius: 8px; height: 350px; overflow-y: auto; white-space: pre-wrap; }
+    .green  { color: #6fcf97; }
+    .red    { color: #eb5757; }
+    .yellow { color: #f2c94c; }
+    .summary { font-size: 14px; color: #555; margin-top: 10px; }
+    #toolCard { display: none; }
+    #loginStatus { font-size: 13px; color: #27ae60; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h2>🧹 Cleanup Duplicate Students</h2>
+
+  <!-- LOGIN CARD -->
+  <div class="card" id="loginCard">
+    <p style="margin:0 0 14px;color:#555;font-size:14px">Sign in with your <strong>Admin</strong> account to continue.</p>
+    <input type="email"    id="emailInp"    placeholder="Admin email" />
+    <input type="password" id="passwordInp" placeholder="Password" />
+    <button id="loginBtn" onclick="doLogin()">🔐 Sign In</button>
+    <p id="loginErr" style="color:#c0392b;font-size:13px;margin-top:8px"></p>
+  </div>
+
+  <!-- TOOL CARD (shown after login) -->
+  <div class="card" id="toolCard">
+    <p style="margin:0 0 6px;color:#555;font-size:14px">
+      Scans <strong>students</strong> collection for duplicate roll numbers per class,
+      keeps <strong>mixed-case</strong> name, deletes the UPPERCASE duplicate.
+    </p>
+    <p id="loginStatus"></p>
+    <div style="margin-top:12px">
+      <button id="scanBtn"   onclick="scan()">🔍 Scan for Duplicates</button>
+      <button id="deleteBtn" class="danger" onclick="deleteAll()" disabled>🗑️ Delete All Duplicates</button>
+      <button onclick="clearLog()">Clear Log</button>
+      <button onclick="doLogout()" style="background:#888;margin-left:6px">Logout</button>
+    </div>
+    <p class="summary" id="summary"></p>
+  </div>
+
+  <div id="log" style="display:none"></div>
+
+  <script type="module">
+    import { initializeApp, getApps, getApp }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { getFirestore, collection, getDocs, deleteDoc, doc, query, orderBy }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyBXq3fe0uY8UB7-uLGzGIIvZOQf8YjNqaM",
+      authDomain:        "st-francis-school-a3e7e.firebaseapp.com",
+      projectId:         "st-francis-school-a3e7e",
+      storageBucket:     "st-francis-school-a3e7e.firebasestorage.app",
+      messagingSenderId: "180123372524",
+      appId:             "1:180123372524:web:caed0f2a44d35f19d90ec9"
+    };
+
+    const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    const logEl    = document.getElementById("log");
+    const summary  = document.getElementById("summary");
+    let   toDelete = [];
+
+    // ── Auth state ───────────────────────────────────────────────────────────
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        document.getElementById("loginCard").style.display  = "none";
+        document.getElementById("toolCard").style.display   = "block";
+        logEl.style.display = "block";
+        document.getElementById("loginStatus").textContent  = `✅ Signed in as ${user.email}`;
+        logEl.innerHTML = "Ready. Click \"Scan for Duplicates\" to begin.\n";
+      } else {
+        document.getElementById("loginCard").style.display  = "block";
+        document.getElementById("toolCard").style.display   = "none";
+        logEl.style.display = "none";
+      }
+    });
+
+    window.doLogin = async function () {
+      const email    = document.getElementById("emailInp").value.trim();
+      const password = document.getElementById("passwordInp").value;
+      const errEl    = document.getElementById("loginErr");
+      const btn      = document.getElementById("loginBtn");
+      errEl.textContent = "";
+      btn.disabled = true;
+      btn.textContent  = "Signing in…";
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (e) {
+        errEl.textContent = "❌ " + e.message;
+        btn.disabled = false;
+        btn.textContent = "🔐 Sign In";
+      }
+    };
+
+    window.doLogout = () => signOut(auth);
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function log(msg, cls = "") {
+      const line = cls ? `<span class="${cls}">${msg}</span>\n` : msg + "\n";
+      logEl.innerHTML += line;
+      logEl.scrollTop  = logEl.scrollHeight;
+    }
+
+    window.clearLog = () => {
+      logEl.innerHTML = "";
+      toDelete = [];
+      summary.textContent = "";
+      document.getElementById("deleteBtn").disabled = true;
+    };
+
+    // ── Scan ─────────────────────────────────────────────────────────────────
+    window.scan = async function () {
+      toDelete = [];
+      logEl.innerHTML = "";
+      summary.textContent = "";
+      document.getElementById("scanBtn").disabled   = true;
+      document.getElementById("deleteBtn").disabled = true;
+      log("⏳ Fetching all students from Firestore...");
+
+      try {
+        const snap = await getDocs(query(collection(db, "students"), orderBy("rollNo")));
+        log(`📦 Total documents fetched: ${snap.size}`);
+
+        // Group by class + rollNo
+        const groups = {};
+        snap.docs.forEach(d => {
+          const s   = d.data();
+          const key = `${s.class}_${s.rollNo}`;
+          if (!groups[key]) groups[key] = [];
+          groups[key].push({ id: d.id, data: s });
+        });
+
+        let dupGroups = 0;
+        Object.entries(groups).forEach(([key, docs]) => {
+          if (docs.length < 2) return;
+          dupGroups++;
+          log(`\n⚠️  Duplicate — Class ${docs[0].data.class}, Roll ${docs[0].data.rollNo}`, "yellow");
+          docs.forEach((d, i) => log(`   [${i+1}] ID: ${d.id}  Name: "${d.data.name}"`));
+
+          // Keep mixed-case; delete ALL-CAPS
+          const keeper  = docs.find(d => d.data.name !== d.data.name.toUpperCase()) || docs[0];
+          const delDocs = docs.filter(d => d.id !== keeper.id);
+
+          log(`   ✅ KEEP   → "${keeper.data.name}"  (${keeper.id})`, "green");
+          delDocs.forEach(d => {
+            log(`   🗑️  DELETE → "${d.data.name}"  (${d.id})`, "red");
+            toDelete.push(d.id);
+          });
+        });
+
+        if (dupGroups === 0) {
+          log("\n✅ No duplicates found — collection is clean.", "green");
+          summary.textContent = "No duplicates found.";
+        } else {
+          log(`\n📋 ${dupGroups} duplicate group(s) — ${toDelete.length} document(s) queued for deletion.`, "yellow");
+          summary.textContent = `Found ${toDelete.length} duplicate document(s). Click "Delete All Duplicates" to proceed.`;
+          document.getElementById("deleteBtn").disabled = false;
+        }
+      } catch (e) {
+        log("❌ Error: " + e.message, "red");
+      }
+      document.getElementById("scanBtn").disabled = false;
+    };
+
+    // ── Delete ────────────────────────────────────────────────────────────────
+    window.deleteAll = async function () {
+      if (!toDelete.length) return;
+      if (!confirm(`Permanently delete ${toDelete.length} duplicate document(s)? This cannot be undone.`)) return;
+
+      document.getElementById("deleteBtn").disabled = true;
+      document.getElementById("scanBtn").disabled   = true;
+      log(`\n🗑️  Deleting ${toDelete.length} document(s)...`);
+
+      let deleted = 0, failed = 0;
+      for (const id of toDelete) {
+        try {
+          await deleteDoc(doc(db, "students", id));
+          log(`   ✅ Deleted: ${id}`, "green");
+          deleted++;
+        } catch (e) {
+          log(`   ❌ Failed:  ${id} — ${e.message}`, "red");
+          failed++;
+        }
+      }
+
+      log(`\n🎉 Done! Deleted: ${deleted}   Failed: ${failed}`, deleted > 0 ? "green" : "red");
+      summary.textContent = `Cleanup complete — ${deleted} deleted, ${failed} failed.`;
+      toDelete = [];
+      document.getElementById("scanBtn").disabled = false;
+    };
+  </script>
+</body>
+</html>

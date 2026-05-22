@@ -1858,6 +1858,20 @@
             <div class="sr-card girls"><span id="sr-girls">—</span><label>Girls</label></div>
             <div class="sr-card classes"><span id="sr-classes">—</span><label>Classes</label></div>
           </div>
+          <!-- Duplicate Cleanup Tool -->
+          <div class="card" style="padding:18px;margin-bottom:20px;border:1.5px solid #f2c94c;background:#fffdf0">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <span style="font-size:1.2rem">🧹</span>
+              <strong style="color:#5c4a1e">Cleanup Duplicate Students</strong>
+            </div>
+            <p style="font-size:13px;color:#666;margin:0 0 12px">Scans for students with the same roll number in the same class (UPPERCASE duplicates) and removes them.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-outline btn-sm" onclick="window.scanDuplicates()"><i class="fas fa-search"></i> Scan</button>
+              <button class="btn btn-sm" id="dup-delete-btn" onclick="window.deleteDuplicates()" disabled style="background:#c0392b;color:#fff;display:none"><i class="fas fa-trash"></i> Delete Duplicates</button>
+            </div>
+            <div id="dup-log" style="margin-top:12px;font-size:13px;font-family:monospace;background:#1e1e1e;color:#d4d4d4;border-radius:8px;padding:12px;max-height:220px;overflow-y:auto;white-space:pre-wrap;display:none"></div>
+          </div>
+
           <div class="sr-controls">
             <input type="text" id="sr-search" placeholder="🔍 Search by name or ID..." oninput="window.srFilter()">
             <select id="sr-filter-class" onchange="window.srFilter()">
@@ -3257,6 +3271,7 @@
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                 <span id="am-detail-status-badge"></span>
                 <button id="am-lock-btn" class="btn btn-success btn-sm" onclick="lockMonthlyRecord()" style="display:none"><i class="fas fa-lock"></i> Approve &amp; Lock Records</button>
+                <button id="am-unlock-btn" class="btn btn-sm" onclick="unlockMonthlyRecord()" style="display:none;background:#e67e22;color:#fff"><i class="fas fa-lock-open"></i> Unlock Records</button>
                 <button class="btn btn-sm btn-outline att-export-btn" onclick="pdfExportAttendance()"><i class="fas fa-file-pdf"></i> PDF</button>
                 <button class="btn btn-sm btn-outline att-export-btn" onclick="excelExportAttendance()"><i class="fas fa-file-excel"></i> Excel</button>
                 <button class="btn btn-sm btn-outline att-export-btn" onclick="printAttendance()"><i class="fas fa-print"></i> Print</button>
@@ -3977,7 +3992,7 @@
 
 <script defer src="config.js"></script>
 <script defer src="script.js"></script>
-<script defer src="capacitor-push.js"></script>
+<script defer src="capacitor-push.js?v=2026-05-23"></script>
 <script defer src="routine-push-test.js"></script>
 <script defer src="teacher-attendance-guard.js"></script>
     <script defer src="rc-class-guard.js"></script>
