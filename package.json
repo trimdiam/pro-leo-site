@@ -1,6 +1,7 @@
 {
   "devDependencies": {
     "firebase-admin": "^13.10.0",
+    "sharp": "^0.34.5",
     "xlsx": "^0.18.5"
   }
 }

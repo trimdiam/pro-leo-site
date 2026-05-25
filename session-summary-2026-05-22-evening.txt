@@ -1,0 +1,146 @@
+SESSION SUMMARY — 2026-05-22 (Evening)
+========================================
+
+USER: htcdesirex09@gmail.com
+PROJECT: St. Francis De Sales Secondary School Web App
+REPO: github.com/trimdiam/pro-leo-site
+COMMIT: 066023c
+
+----------------------------------------------------------------
+WORK COMPLETED
+----------------------------------------------------------------
+
+1. PERFORMANCE / LIGHTHOUSE FIXES
+   - Removed reference to stale Cloudinary JPG (305KB) — already gone
+   - Dropped unused Nunito font weight 300 from Google Fonts URL
+   - Replaced 4 fa-brands icons (Facebook, Instagram, YouTube, Google)
+     with inline SVGs and swapped FontAwesome `all.min.css` for
+     `solid.min.css + fontawesome.min.css` → saves 106KB on first load
+   - CPU/TBT issue noted but accepted (app-logic.js init cost, would
+     require refactor)
+
+2. SECURITY — FIRESTORE RULES (deployed)
+   - FIXED: student_profiles read rule (any student could read all
+     profiles via `studentId != null` check) → now own-profile only
+   - FIXED: fees collection (`request.auth != null` → student own only)
+   - REVIEWED but kept: attendance_daily (per-class doc structure, can't
+     restrict to single student record without restructuring data)
+   - ADDED: house_points + house_points/{name}/monthly_entries rules
+     (public read, admin write) — fixes "missing information" error
+   - VERIFIED via Rules Playground:
+     * Test 1: Unauth read students → DENIED ✓
+     * Test 2: Student reads other student's profile → DENIED ✓
+     * Test 4: Teacher writes fee_transactions → DENIED ✓
+
+3. SECURITY — MOZILLA OBSERVATORY (B+ / 80/100)
+   - Added X-Content-Type-Options: nosniff
+   - Added Referrer-Policy: strict-origin-when-cross-origin
+   - X-Frame-Options + CSP added then REMOVED (CSP broke APK Firebase
+     connection — the security score gain wasn't worth breaking the app)
+   - SSL Labs: A+ (Firebase Hosting default)
+   - Google Safe Browsing: no flags (clean)
+
+4. HOMEPAGE EVENTS — REAL CALENDAR
+   - Replaced hardcoded fallback events with real 2026 school events
+   - Homepage "Upcoming Events" (4 cards): Sports Meet, Half-Yearly,
+     Independence Day, Teacher's Day
+   - Events & Activities page (8 cards): Investiture, Sports, Literary
+     Days, Half-Yearly, Independence, Teacher's Day, Pre-Children's
+     Day, Final Exams
+   - Added location pin + clock icons to each card
+   - Added "View Full School Calendar" button → holiday.html
+
+5. ABOUT PAGE MODERNIZATION (Step 1 of 4 done)
+   - Sticky sub-nav with icons on each tab (About, Principal, Mission,
+     Notes, Rules)
+   - Dark gradient stats strip: 20+ Years / LKG-X / English / 2005
+   - Modernized info cards with left accent border, structured
+     curriculum/timing block, gradient highlight on Maxim card
+   - Two CTA buttons: Apply for Admission + Meet Our Principal
+   - Refined typography (line-height 1.9, font-size 15px)
+   - REMAINING (not done): Principal Message, Mission & Vision,
+     Notes to Parents sections
+
+6. NAV FIX
+   - Calendar nav link was rendering invisible (inline style had
+     `color:inherit` overriding the CSS rule). Removed inline color
+     override so it inherits the proper nav link color.
+
+7. AUTH RESTORE FIX (recurring issue, third time)
+   - Problem: opening APK landed on home page, not user portal
+   - Root cause: app-logic.js line 452 `localStorage.removeItem
+     ("sf_session_role")` runs BEFORE _hideAuthOverlay when Firebase
+     fires onAuthStateChanged(null) first
+   - Fix: capture sf_session_role at the very top of
+     teacher-attendance-guard.js (before any Firebase code can clear it)
+     and use that cached value in both _hideAuthOverlay guard and
+     pageshow bfcache handler
+
+8. APK FIREBASE CONNECTION FIX
+   - CSP I added was blocking Firebase connections in the APK
+     (CSP applies to web hosting only normally — but APK loading via
+     remote URL was getting hit too)
+   - Removed CSP entirely from firebase.json
+   - Kept X-Content-Type-Options + Referrer-Policy (harmless headers)
+   - Bumped SW cache from v21 → v22 to force refresh
+
+9. HERO SLIDESHOW (created then REVERTED per user request)
+   - Built hero-slideshow.js with 4 school photos (St. Joan of Arc,
+     Maria Goretti, Tarcisius, Aloysius Gonzaga)
+   - Compressed to WebP via sharp (153KB-249KB each, down from MBs)
+   - Uploaded to Firebase Storage at /hero/heroN.webp
+   - User decided to revert to original color-shift animation
+   - hero-slideshow.js + WebP files kept in repo for future use
+
+----------------------------------------------------------------
+FILES MODIFIED / CREATED THIS SESSION
+----------------------------------------------------------------
+
+Modified:
+  - Sfs-report-card/markentry.js
+  - assessment-app/index.html, main.js, services/auth-service.js
+  - capacitor-back.js
+  - capacitor-push.js
+  - firebase.json (headers)
+  - firestore.rules (security fixes)
+  - functions/index.js
+  - index.html (events, About page, nav fix, font weights, SVG icons)
+  - report-card-admin.js
+  - sw.js (cache v22)
+
+Created:
+  - hero-slideshow.js (built but not active in HTML)
+  - homepage-content-fix.js (patches saveHomepageContent)
+  - rc-class-guard.js (Clean Misrouted Records button)
+  - routine-push-test.js
+  - teacher-attendance-guard.js (auth restore + role caching)
+  - assets/images/hero1-4.webp (compressed school photos)
+
+----------------------------------------------------------------
+TESTING DONE
+----------------------------------------------------------------
+- Mozilla Observatory: B+ 80/100
+- Firebase Rules Playground: 5 tests passed
+- SSL Labs: A+
+- Google Safe Browsing: clean
+- Manual auth test (recommended for next session, not yet run)
+
+----------------------------------------------------------------
+KNOWN ISSUES / PENDING
+----------------------------------------------------------------
+- About page: still need to modernize Principal Message, Mission &
+  Vision, Notes to Parents subpages
+- house_points showing blank cards on homepage (data may not be
+  seeded in Firestore yet — or document IDs don't match query)
+- Student inbox rename to "Notice Box" + sender attribution
+  requested but not yet implemented (couldn't locate the rendering
+  code in current codebase)
+- Cloudinary image WebP/AVIF migration deferred (no Cloudinary
+  in use anymore — Firebase Storage is the source)
+
+----------------------------------------------------------------
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+- Firebase Hosting: deployed (latest)
+- Firestore Rules: deployed (latest)
+- Git: committed + pushed to origin/main (commit 066023c)
