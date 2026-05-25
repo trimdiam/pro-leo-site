@@ -1,38 +1,62 @@
 [
   {
+    "subject_id": "LIT",
+    "subject_name": "Literacy",
+    "classes": ["LKG", "SKG"],
+    "criteria_path": "data/criteria/literacy.json"
+  },
+  {
+    "subject_id": "NUM",
+    "subject_name": "Numeracy",
+    "classes": ["LKG", "SKG"],
+    "criteria_path": "data/criteria/numeracy.json"
+  },
+  {
+    "subject_id": "RHST",
+    "subject_name": "Rhymes & Stories",
+    "classes": ["LKG", "SKG"],
+    "criteria_path": "data/criteria/rhymes-stories.json"
+  },
+  {
+    "subject_id": "ART",
+    "subject_name": "Arts/Colouring",
+    "classes": ["LKG", "SKG"],
+    "criteria_path": "data/criteria/arts.json"
+  },
+  {
     "subject_id": "ENG1",
     "subject_name": "English I",
-    "classes": ["LKG", "SKG", "Class I", "Class II"],
+    "classes": ["Class I", "Class II"],
     "criteria_path": "data/criteria/english1.json"
   },
   {
     "subject_id": "ENG2",
     "subject_name": "English II",
-    "classes": ["LKG", "SKG", "Class I", "Class II"],
+    "classes": ["Class I", "Class II"],
     "criteria_path": "data/criteria/english2.json"
   },
   {
     "subject_id": "MATH",
     "subject_name": "Mathematics",
-    "classes": ["LKG", "SKG", "Class I", "Class II"],
+    "classes": ["Class I", "Class II"],
     "criteria_path": "data/criteria/mathematics.json"
   },
   {
     "subject_id": "SCI",
     "subject_name": "Science",
-    "classes": ["LKG", "SKG", "Class I", "Class II"],
+    "classes": ["Class I", "Class II"],
     "criteria_path": "data/criteria/science.json"
   },
   {
     "subject_id": "KHA",
     "subject_name": "Khasi",
-    "classes": ["LKG", "SKG", "Class I", "Class II"],
+    "classes": ["Class I", "Class II"],
     "criteria_path": "data/criteria/khasi.json"
   },
   {
     "subject_id": "HIN",
     "subject_name": "Hindi",
-    "classes": ["LKG", "SKG", "Class II"],
+    "classes": ["Class II"],
     "criteria_path": "data/criteria/hindi.json"
   }
 ]

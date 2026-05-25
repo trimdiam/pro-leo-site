@@ -5,10 +5,11 @@ import { collection, query, where, orderBy, getDocs } from 'https://www.gstatic.
 // Display names (left) are used throughout assessment-app UI and session data.
 // Firestore values (right) are stored in the students collection by pro-leo-site.
 export const CLASS_MAP = {
-  'LKG':     'LKG',
-  'SKG':     'SKG',
+  'LKG':      'LKG',
+  'SKG':      'SKG',
   'Class I':  '1',
-  'Class II': '2'
+  'Class II': '2',
+  'Class 9':  '9'
 };
 
 // Reverse of CLASS_MAP — converts Firestore-stored short form back to display name.
@@ -18,10 +19,11 @@ export const FIRESTORE_TO_DISPLAY_CLASS = Object.fromEntries(
 
 // Local JSON fallback paths (used if Firestore fetch fails)
 const FALLBACK_FILES = {
-  'LKG':     'data/students/lkg.json',
-  'SKG':     'data/students/skg.json',
+  'LKG':      'data/students/lkg.json',
+  'SKG':      'data/students/skg.json',
   'Class I':  'data/students/class1.json',
-  'Class II': 'data/students/class2.json'
+  'Class II': 'data/students/class2.json',
+  'Class 9':  'data/students/class9.json'
 };
 
 export async function loadStudentsForClass(className) {

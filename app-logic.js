@@ -31,6 +31,7 @@ import {
   getCountFromServer,
   deleteField,
   writeBatch,
+  documentId,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   getMessaging,
@@ -5590,6 +5591,14 @@ function renderAttendanceCards(
       saveBtn && isHoliday && (saveBtn.style.display = "none"),
       void (document.getElementById("att-summary").textContent = "")
     );
+  // De-duplicate by rollNo — keep first occurrence (lowest rollNo order from Firestore)
+  const _seenRolls = new Set();
+  students = students.filter((d) => {
+    const roll = d.data().rollNo;
+    if (_seenRolls.has(roll)) return false;
+    _seenRolls.add(roll);
+    return true;
+  });
   const absentSet = new Set(existingData?.absent || []),
     lateSet = new Set(existingData?.late || []);
   ((grid.innerHTML = students
@@ -5996,7 +6005,7 @@ function updateAttSummary() {
       (btn.disabled = !0));
     try {
       (await setDoc(doc(db, "attendance_daily", `${classNum}_${date}`), {
-        class: classNum,
+        class: String(classNum),
         date: date,
         absent: absent,
         late: late,
@@ -6030,7 +6039,8 @@ function updateAttSummary() {
     try {
       let q = query(
         collection(db, "attendance_daily"),
-        where("class", "==", String(classNum)),
+        where(documentId(), ">=", `${classNum}_`),
+        where(documentId(), "<=", `${classNum}_`),
         limit(90),
       );
       const snap = await getDocs(q);
@@ -6221,11 +6231,12 @@ function updateAttSummary() {
               getDocs(
                 query(
                   collection(db, "attendance_daily"),
-                  where("class", "==", String(classNum)),
+                  where(documentId(), ">=", `${classNum}_`),
+                  where(documentId(), "<=", `${classNum}_`),
                 ),
               ),
             ]),
-            students = studSnap.docs.map((d) => d.data()),
+            students = studSnap.docs.map((d) => d.data()).filter((s, i, arr) => arr.findIndex(x => x.rollNo === s.rollNo) === i),
             dailyDocs = dailySnap.docs
               .map((d) => d.data())
               .filter((d) => (d.date || "").startsWith(monthPrefix)),
@@ -6352,7 +6363,8 @@ function updateAttSummary() {
           "locked" === r.status
             ? '<span class="am-badge-locked"><i class="fas fa-lock" style="margin-right:4px"></i>Locked</span>'
             : '<span class="am-badge-draft"><i class="fas fa-clock" style="margin-right:4px"></i>Draft</span>'),
-        (lockBtn.style.display = "locked" === r.status ? "none" : ""));
+        (lockBtn.style.display = "locked" === r.status ? "none" : ""),
+        (document.getElementById("am-unlock-btn") && (document.getElementById("am-unlock-btn").style.display = "locked" === r.status ? "" : "none")));
       const bs = r.boys_summary || {},
         gs = r.girls_summary || {},
         totalP = (bs.present || 0) + (gs.present || 0),
@@ -6430,6 +6442,24 @@ function updateAttSummary() {
       } catch (e) {
         showToast("❌ " + e.message);
       }
+  }),
+  (window.unlockMonthlyRecord = async function () {
+    const cur = window._amCurrentDoc;
+    if (!cur) return;
+    if (!confirm(`Unlock attendance for Class ${cur.classNum} — ${cur.monthYear}?\n\nTeachers will be able to edit daily records again.`)) return;
+    try {
+      await updateDoc(doc(db, "attendance_monthly", `${cur.classNum}_${cur.monthYear}`), {
+        status: "draft",
+        unlocked_at: serverTimestamp(),
+        unlocked_by: auth.currentUser?.uid || "admin",
+      });
+      showToast("🔓 Records unlocked successfully!");
+      window._amCurrentDoc.status = "draft";
+      openMonthlyDetail(cur.classNum, cur.monthYear);
+      loadAdminMonthlyAtt();
+    } catch (e) {
+      showToast("❌ " + e.message);
+    }
   }),
   (window.pdfExportAttendance = function () {
     const d = window._amSnapshotData;
@@ -11883,6 +11913,83 @@ window.loadTeacherPortal = async function (user) {
     console.warn("Phase 2 assignments load:", e.message);
   }
 };
+// ── Duplicate Student Cleanup ────────────────────────────────────────────────
+(function () {
+  let _dupToDelete = [];
+
+  function dupLog(msg, cls) {
+    const el = document.getElementById("dup-log");
+    if (!el) return;
+    el.style.display = "block";
+    el.innerHTML += cls ? `<span style="color:${cls}">${msg}</span>\n` : msg + "\n";
+    el.scrollTop = el.scrollHeight;
+  }
+
+  window.scanDuplicates = async function () {
+    _dupToDelete = [];
+    const logEl = document.getElementById("dup-log");
+    const delBtn = document.getElementById("dup-delete-btn");
+    if (logEl) { logEl.innerHTML = ""; logEl.style.display = "block"; }
+    if (delBtn) { delBtn.style.display = "none"; delBtn.disabled = true; }
+    dupLog("⏳ Scanning students collection...");
+    try {
+      const snap = await getDocs(query(collection(db, "students"), orderBy("rollNo")));
+      dupLog(`📦 ${snap.size} documents fetched.`);
+      const groups = {};
+      snap.docs.forEach(d => {
+        const s = d.data();
+        const key = `${s.class}_${s.rollNo}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push({ id: d.id, data: s });
+      });
+      let dupCount = 0;
+      Object.values(groups).forEach(docs => {
+        if (docs.length < 2) return;
+        dupCount++;
+        dupLog(`\n⚠️ Class ${docs[0].data.class} · Roll ${docs[0].data.rollNo}`, "#f2c94c");
+        const keeper  = docs.find(d => d.data.name !== d.data.name.toUpperCase()) || docs[0];
+        const delDocs = docs.filter(d => d.id !== keeper.id);
+        dupLog(`  ✅ KEEP   "${keeper.data.name}"`, "#6fcf97");
+        delDocs.forEach(d => {
+          dupLog(`  🗑️ DELETE "${d.data.name}"  (${d.id})`, "#eb5757");
+          _dupToDelete.push(d.id);
+        });
+      });
+      if (dupCount === 0) {
+        dupLog("\n✅ No duplicates found — collection is clean.", "#6fcf97");
+      } else {
+        dupLog(`\n${_dupToDelete.length} duplicate(s) ready to delete.`, "#f2c94c");
+        if (delBtn) { delBtn.style.display = "inline-flex"; delBtn.disabled = false; }
+      }
+    } catch (e) {
+      dupLog("❌ Error: " + e.message, "#eb5757");
+    }
+  };
+
+  window.deleteDuplicates = async function () {
+    if (!_dupToDelete.length) return;
+    if (!confirm(`Permanently delete ${_dupToDelete.length} duplicate student(s)? This cannot be undone.`)) return;
+    const delBtn = document.getElementById("dup-delete-btn");
+    if (delBtn) delBtn.disabled = true;
+    dupLog(`\n🗑️ Deleting ${_dupToDelete.length} document(s)...`);
+    let deleted = 0, failed = 0;
+    for (const id of _dupToDelete) {
+      try {
+        await deleteDoc(doc(db, "students", id));
+        dupLog(`  ✅ Deleted: ${id}`, "#6fcf97");
+        deleted++;
+      } catch (e) {
+        dupLog(`  ❌ Failed: ${id} — ${e.message}`, "#eb5757");
+        failed++;
+      }
+    }
+    dupLog(`\n🎉 Done — ${deleted} deleted, ${failed} failed.`, deleted > 0 ? "#6fcf97" : "#eb5757");
+    _dupToDelete = [];
+    if (delBtn) delBtn.style.display = "none";
+    window.loadStudentRecords && loadStudentRecords();
+  };
+})();
+
 const _origLogout = window.logout;
 window.logout = function () {
   (_tpAssignUnsubscribe &&

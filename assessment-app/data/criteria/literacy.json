@@ -1,0 +1,26 @@
+{
+  "subject_id": "LIT",
+  "subject_name": "Literacy",
+  "classes": ["LKG", "SKG"],
+  "criteria": [
+    { "criterion_id": "LIT_C01", "criterion_name": "Pencil Grip", "max_marks": 5 },
+    { "criterion_id": "LIT_C02", "criterion_name": "Hand Coordination", "max_marks": 5 },
+    { "criterion_id": "LIT_C03", "criterion_name": "Tracing Ability", "max_marks": 5 },
+    { "criterion_id": "LIT_C04", "criterion_name": "Direction and Formation", "max_marks": 5 },
+    { "criterion_id": "LIT_C05", "criterion_name": "Copy Writing Skills", "max_marks": 5 },
+    { "criterion_id": "LIT_C06", "criterion_name": "Shows Interest and Participation", "max_marks": 5 },
+    { "criterion_id": "LIT_C07", "criterion_name": "Neatness / Cleanliness", "max_marks": 5 },
+    { "criterion_id": "LIT_C08", "criterion_name": "Understands Simple Instructions", "max_marks": 5 },
+    { "criterion_id": "LIT_C09", "criterion_name": "Works Independently", "max_marks": 5 },
+    { "criterion_id": "LIT_C10", "criterion_name": "Completes Work on Time", "max_marks": 5 },
+    { "criterion_id": "LIT_C11", "criterion_name": "Listens Attentively", "max_marks": 5 },
+    { "criterion_id": "LIT_C12", "criterion_name": "Stays on Task", "max_marks": 5 },
+    { "criterion_id": "LIT_C13", "criterion_name": "Pronunciation", "max_marks": 5 },
+    { "criterion_id": "LIT_C14", "criterion_name": "Sentence Formation", "max_marks": 5 },
+    { "criterion_id": "LIT_C15", "criterion_name": "Confidence in Speaking", "max_marks": 5 },
+    { "criterion_id": "LIT_C16", "criterion_name": "Listening and Responding", "max_marks": 5 },
+    { "criterion_id": "LIT_C17", "criterion_name": "Expression and Communication", "max_marks": 5 },
+    { "criterion_id": "LIT_C18", "criterion_name": "Alphabet Identification", "max_marks": 5 },
+    { "criterion_id": "LIT_C19", "criterion_name": "Letter Sound Identification through Pictures", "max_marks": 5 }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "subject_id": "ART",
+  "subject_name": "Arts/Colouring",
+  "classes": ["LKG", "SKG"],
+  "criteria": [
+    { "criterion_id": "ART_C01", "criterion_name": "Actively Takes Part in Colouring Activities", "max_marks": 5 },
+    { "criterion_id": "ART_C02", "criterion_name": "Uses Crayons or Colours Correctly", "max_marks": 5 },
+    { "criterion_id": "ART_C03", "criterion_name": "Stays on Task", "max_marks": 5 },
+    { "criterion_id": "ART_C04", "criterion_name": "Follows Instructions", "max_marks": 5 },
+    { "criterion_id": "ART_C05", "criterion_name": "Works Independently", "max_marks": 5 },
+    { "criterion_id": "ART_C06", "criterion_name": "Interest and Creativity", "max_marks": 5 },
+    { "criterion_id": "ART_C07", "criterion_name": "Care of Materials", "max_marks": 5 },
+    { "criterion_id": "ART_C08", "criterion_name": "Colour Recognition", "max_marks": 5 },
+    { "criterion_id": "ART_C09", "criterion_name": "Hand-Eye Coordination", "max_marks": 5 },
+    { "criterion_id": "ART_C10", "criterion_name": "Colour Selection", "max_marks": 5 },
+    { "criterion_id": "ART_C11", "criterion_name": "Colouring Within Pictures / Shapes", "max_marks": 5 },
+    { "criterion_id": "ART_C12", "criterion_name": "Grip and Control", "max_marks": 5 },
+    { "criterion_id": "ART_C13", "criterion_name": "Creativity", "max_marks": 5 },
+    { "criterion_id": "ART_C14", "criterion_name": "Neatness / Cleanliness", "max_marks": 5 }
+  ]
+}

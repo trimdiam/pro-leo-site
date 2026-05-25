@@ -1,0 +1,27 @@
+{
+  "subject_id": "NUM",
+  "subject_name": "Numeracy",
+  "classes": ["LKG", "SKG"],
+  "criteria": [
+    { "criterion_id": "NUM_C01", "criterion_name": "Pencil Grip", "max_marks": 5 },
+    { "criterion_id": "NUM_C02", "criterion_name": "Hand Coordination", "max_marks": 5 },
+    { "criterion_id": "NUM_C03", "criterion_name": "Number Formation", "max_marks": 5 },
+    { "criterion_id": "NUM_C04", "criterion_name": "Tracing Formation", "max_marks": 5 },
+    { "criterion_id": "NUM_C05", "criterion_name": "Counting and Writing", "max_marks": 5 },
+    { "criterion_id": "NUM_C06", "criterion_name": "Sequencing Numbers", "max_marks": 5 },
+    { "criterion_id": "NUM_C07", "criterion_name": "Neatness / Cleanliness", "max_marks": 5 },
+    { "criterion_id": "NUM_C08", "criterion_name": "Understands Simple Instructions", "max_marks": 5 },
+    { "criterion_id": "NUM_C09", "criterion_name": "Works Independently", "max_marks": 5 },
+    { "criterion_id": "NUM_C10", "criterion_name": "Completes Work on Time", "max_marks": 5 },
+    { "criterion_id": "NUM_C11", "criterion_name": "Listens Attentively", "max_marks": 5 },
+    { "criterion_id": "NUM_C12", "criterion_name": "Stays on Task", "max_marks": 5 },
+    { "criterion_id": "NUM_C13", "criterion_name": "Number Naming", "max_marks": 5 },
+    { "criterion_id": "NUM_C14", "criterion_name": "Counting Aloud", "max_marks": 5 },
+    { "criterion_id": "NUM_C15", "criterion_name": "Confidence in Speaking", "max_marks": 5 },
+    { "criterion_id": "NUM_C16", "criterion_name": "Listening and Responding", "max_marks": 5 },
+    { "criterion_id": "NUM_C17", "criterion_name": "Participation in Counting Activities", "max_marks": 5 },
+    { "criterion_id": "NUM_C18", "criterion_name": "Number Identification", "max_marks": 5 },
+    { "criterion_id": "NUM_C19", "criterion_name": "Number–Quantity Matching", "max_marks": 5 },
+    { "criterion_id": "NUM_C20", "criterion_name": "Shape Identification", "max_marks": 5 }
+  ]
+}

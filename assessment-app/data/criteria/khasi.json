@@ -1,12 +1,35 @@
 {
   "subject_id": "KHA",
   "subject_name": "Khasi",
-  "classes": ["LKG", "SKG", "Class I", "Class II"],
+  "classes": [
+    "Class I",
+    "Class II"
+  ],
   "criteria": [
-    { "criterion_id": "KHA_C1", "criterion_name": "Listening", "max_marks": 5 },
-    { "criterion_id": "KHA_C2", "criterion_name": "Speaking", "max_marks": 5 },
-    { "criterion_id": "KHA_C3", "criterion_name": "Reading", "max_marks": 5 },
-    { "criterion_id": "KHA_C4", "criterion_name": "Writing", "max_marks": 5 },
-    { "criterion_id": "KHA_C5", "criterion_name": "Oral Expression", "max_marks": 5 }
+    {
+      "criterion_id": "KHA_C1",
+      "criterion_name": "Listening",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "KHA_C2",
+      "criterion_name": "Speaking",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "KHA_C3",
+      "criterion_name": "Reading",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "KHA_C4",
+      "criterion_name": "Writing",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "KHA_C5",
+      "criterion_name": "Oral Expression",
+      "max_marks": 5
+    }
   ]
 }

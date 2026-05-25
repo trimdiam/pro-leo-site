@@ -31,10 +31,12 @@ export function getEligibleSessions(filters = {}) {
   const sessions = getAllSessions();
   return sessions.filter(s => {
     const status = s.session.status;
-    if (status !== 'reviewed' && status !== 'locked') return false;
+    // Include submitted sessions so admin can see data before formal review/lock.
+    // Draft sessions are excluded — they may be incomplete.
+    if (status !== 'submitted' && status !== 'reviewed' && status !== 'locked') return false;
     if (filters.class && s.session.class !== filters.class) return false;
     if (filters.subject_id && s.session.subject_id !== filters.subject_id) return false;
-    if (filters.yearMonth && !s.session.date.startsWith(filters.yearMonth)) return false; // null/undefined skips this
+    if (filters.yearMonth && !s.session.date.startsWith(filters.yearMonth)) return false;
     return true;
   });
 }
@@ -52,12 +54,16 @@ export async function aggregateByMonth(yearMonth, className, options = {}) {
     return cache[cacheKey];
   }
 
-  // Try Firestore before recomputing — lets a different device pick up
-  // persisted results without having to re-aggregate from sessions.
-  if (!options.force && yearMonth && className) {
+  // Check local eligible sessions first. If any exist, always recompute locally
+  // so stale Firestore snapshots (e.g. an old empty result) never hide real data.
+  // Only fall back to Firestore when this device has no local sessions at all
+  // (cross-device read scenario).
+  const sessions = getEligibleSessions({ yearMonth, class: className });
+
+  if (!options.force && sessions.length === 0 && yearMonth && className) {
     try {
       const remote = await fetchMonthlyAnalytics(yearMonth, className);
-      if (remote) {
+      if (remote && (remote.sessions?.length ?? 0) > 0) {
         cache[cacheKey] = remote;
         saveAggregationCache(cache);
         return remote;
@@ -66,8 +72,6 @@ export async function aggregateByMonth(yearMonth, className, options = {}) {
       console.warn('Firestore analytics fetch failed, computing locally:', err.message);
     }
   }
-
-  const sessions = getEligibleSessions({ yearMonth, class: className });
   if (sessions.length === 0) {
     return {
       yearMonth,

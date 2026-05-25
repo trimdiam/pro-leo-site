@@ -1,13 +1,40 @@
 {
   "subject_id": "ENG1",
   "subject_name": "English I",
-  "classes": ["LKG", "SKG", "Class I", "Class II"],
+  "classes": [
+    "Class I",
+    "Class II"
+  ],
   "criteria": [
-    { "criterion_id": "ENG1_C1", "criterion_name": "Listening", "max_marks": 5 },
-    { "criterion_id": "ENG1_C2", "criterion_name": "Speaking", "max_marks": 5 },
-    { "criterion_id": "ENG1_C3", "criterion_name": "Reading", "max_marks": 5 },
-    { "criterion_id": "ENG1_C4", "criterion_name": "Writing", "max_marks": 5 },
-    { "criterion_id": "ENG1_C5", "criterion_name": "Fluency", "max_marks": 5 },
-    { "criterion_id": "ENG1_C6", "criterion_name": "Behaviour", "max_marks": 5 }
+    {
+      "criterion_id": "ENG1_C1",
+      "criterion_name": "Listening",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "ENG1_C2",
+      "criterion_name": "Speaking",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "ENG1_C3",
+      "criterion_name": "Reading",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "ENG1_C4",
+      "criterion_name": "Writing",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "ENG1_C5",
+      "criterion_name": "Fluency",
+      "max_marks": 5
+    },
+    {
+      "criterion_id": "ENG1_C6",
+      "criterion_name": "Behaviour",
+      "max_marks": 5
+    }
   ]
 }
