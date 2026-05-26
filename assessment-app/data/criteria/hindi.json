@@ -1,35 +1,24 @@
-{
+﻿{
   "subject_id": "HIN",
   "subject_name": "Hindi",
-  "classes": [
-    "Class I",
-    "Class II"
-  ],
+  "classes": ["Class II"],
   "criteria": [
-    {
-      "criterion_id": "HIN_C1",
-      "criterion_name": "Listening",
-      "max_marks": 5
-    },
-    {
-      "criterion_id": "HIN_C2",
-      "criterion_name": "Speaking",
-      "max_marks": 5
-    },
-    {
-      "criterion_id": "HIN_C3",
-      "criterion_name": "Reading",
-      "max_marks": 5
-    },
-    {
-      "criterion_id": "HIN_C4",
-      "criterion_name": "Writing",
-      "max_marks": 5
-    },
-    {
-      "criterion_id": "HIN_C5",
-      "criterion_name": "Oral Expression",
-      "max_marks": 5
-    }
+    { "criterion_id": "HIN_WH1", "criterion_name": "Understand simple instructions",                          "category": "Work Habits",     "max_marks": 5 },
+    { "criterion_id": "HIN_WH2", "criterion_name": "Work Independently",                                      "category": "Work Habits",     "max_marks": 5 },
+    { "criterion_id": "HIN_WH3", "criterion_name": "Listens attentively",                                     "category": "Work Habits",     "max_marks": 5 },
+    { "criterion_id": "HIN_WH4", "criterion_name": "Show manners and help others",                            "category": "Work Habits",     "max_marks": 5 },
+    { "criterion_id": "HIN_WH5", "criterion_name": "Stays on task",                                           "category": "Work Habits",     "max_marks": 5 },
+    { "criterion_id": "HIN_WH6", "criterion_name": "Completes work on time",                                  "category": "Work Habits",     "max_marks": 5 },
+    { "criterion_id": "HIN_WS1", "criterion_name": "Forms letters/numerals correctly",                        "category": "Writing Skills",  "max_marks": 5 },
+    { "criterion_id": "HIN_WS2", "criterion_name": "Spelling",                                                "category": "Writing Skills",  "max_marks": 5 },
+    { "criterion_id": "HIN_WS3", "criterion_name": "Uses capital letters, spacing and punctuation correctly", "category": "Writing Skills",  "max_marks": 5 },
+    { "criterion_id": "HIN_RS1", "criterion_name": "Phonics skill",                                           "category": "Reading Skills",  "max_marks": 5 },
+    { "criterion_id": "HIN_RS2", "criterion_name": "Responds to & enjoys reading",                            "category": "Reading Skills",  "max_marks": 5 },
+    { "criterion_id": "HIN_RS3", "criterion_name": "Comprehension (Understands what he/she is reading)",      "category": "Reading Skills",  "max_marks": 5 },
+    { "criterion_id": "HIN_RS4", "criterion_name": "Reads with fluency, expression and confidence",           "category": "Reading Skills",  "max_marks": 5 },
+    { "criterion_id": "HIN_SS1", "criterion_name": "Expresses ideas clearly",                                 "category": "Speaking Skills", "max_marks": 5 },
+    { "criterion_id": "HIN_SS2", "criterion_name": "Communicates well with students",                         "category": "Speaking Skills", "max_marks": 5 },
+    { "criterion_id": "HIN_SS3", "criterion_name": "Confident to ask for help",                               "category": "Speaking Skills", "max_marks": 5 },
+    { "criterion_id": "HIN_SS4", "criterion_name": "Fluency",                                                 "category": "Speaking Skills", "max_marks": 5 }
   ]
 }

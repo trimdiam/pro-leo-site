@@ -1,35 +1,21 @@
-{
+﻿{
   "subject_id": "MATH",
   "subject_name": "Mathematics",
-  "classes": [
-    "Class I",
-    "Class II"
-  ],
+  "classes": ["Class I", "Class II"],
   "criteria": [
-    {
-      "criterion_id": "MATH_C1",
-      "criterion_name": "Number Recognition",
-      "max_marks": 5
-    },
-    {
-      "criterion_id": "MATH_C2",
-      "criterion_name": "Counting",
-      "max_marks": 5
-    },
-    {
-      "criterion_id": "MATH_C3",
-      "criterion_name": "Shapes",
-      "max_marks": 5
-    },
-    {
-      "criterion_id": "MATH_C4",
-      "criterion_name": "Patterns",
-      "max_marks": 5
-    },
-    {
-      "criterion_id": "MATH_C5",
-      "criterion_name": "Activity Participation",
-      "max_marks": 5
-    }
+    { "criterion_id": "MATH_WH1", "criterion_name": "Understand simple instructions",                    "category": "Work Habits",    "max_marks": 5 },
+    { "criterion_id": "MATH_WH2", "criterion_name": "Work Independently",                                "category": "Work Habits",    "max_marks": 5 },
+    { "criterion_id": "MATH_WH3", "criterion_name": "Listens attentively",                               "category": "Work Habits",    "max_marks": 5 },
+    { "criterion_id": "MATH_WH4", "criterion_name": "Show manners and help others",                      "category": "Work Habits",    "max_marks": 5 },
+    { "criterion_id": "MATH_WH5", "criterion_name": "Stays on task",                                     "category": "Work Habits",    "max_marks": 5 },
+    { "criterion_id": "MATH_WH6", "criterion_name": "Completes work on time",                            "category": "Work Habits",    "max_marks": 5 },
+    { "criterion_id": "MATH_WS1", "criterion_name": "Forms letters/numerals correctly",                  "category": "Writing Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_WS2", "criterion_name": "Counting numbers",                                  "category": "Writing Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_WS3", "criterion_name": "Recognises and writes nos. ordinals, place value",  "category": "Writing Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_SV1", "criterion_name": "Basic Addition",                                    "category": "Solving Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_SV2", "criterion_name": "Basic Subtraction",                                 "category": "Solving Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_SV3", "criterion_name": "Can solve Word problems",                           "category": "Solving Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_SV4", "criterion_name": "Can identify and understand basic shapes",          "category": "Solving Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_SV5", "criterion_name": "Can understand measurements",                       "category": "Solving Skills", "max_marks": 5 }
   ]
 }

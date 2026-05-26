@@ -1,30 +1,24 @@
-{
+﻿{
   "subject_id": "SCI",
   "subject_name": "Science",
-  "classes": [
-    "Class I",
-    "Class II"
-  ],
+  "classes": ["Class I", "Class II"],
   "criteria": [
-    {
-      "criterion_id": "SCI_C1",
-      "criterion_name": "Observation",
-      "max_marks": 5
-    },
-    {
-      "criterion_id": "SCI_C2",
-      "criterion_name": "Participation",
-      "max_marks": 5
-    },
-    {
-      "criterion_id": "SCI_C3",
-      "criterion_name": "Understanding",
-      "max_marks": 5
-    },
-    {
-      "criterion_id": "SCI_C4",
-      "criterion_name": "Activity Work",
-      "max_marks": 5
-    }
+    { "criterion_id": "SCI_WH1", "criterion_name": "Understand simple instructions",                                "category": "Work Habits",                           "max_marks": 5 },
+    { "criterion_id": "SCI_WH2", "criterion_name": "Work Independently",                                            "category": "Work Habits",                           "max_marks": 5 },
+    { "criterion_id": "SCI_WH3", "criterion_name": "Listens attentively",                                           "category": "Work Habits",                           "max_marks": 5 },
+    { "criterion_id": "SCI_WH4", "criterion_name": "Show manners and help others",                                  "category": "Work Habits",                           "max_marks": 5 },
+    { "criterion_id": "SCI_WH5", "criterion_name": "Stays on task",                                                 "category": "Work Habits",                           "max_marks": 5 },
+    { "criterion_id": "SCI_WH6", "criterion_name": "Completes work on time",                                        "category": "Work Habits",                           "max_marks": 5 },
+    { "criterion_id": "SCI_WS1", "criterion_name": "Forms letters/numerals correctly",                              "category": "Writing Skills",                        "max_marks": 5 },
+    { "criterion_id": "SCI_WS2", "criterion_name": "Spelling",                                                      "category": "Writing Skills",                        "max_marks": 5 },
+    { "criterion_id": "SCI_WS3", "criterion_name": "Uses capital letters, spacing and punctuation correctly",        "category": "Writing Skills",                        "max_marks": 5 },
+    { "criterion_id": "SCI_RS1", "criterion_name": "Phonics skill",                                                 "category": "Reading Skills",                        "max_marks": 5 },
+    { "criterion_id": "SCI_RS2", "criterion_name": "Responds to & enjoys reading",                                  "category": "Reading Skills",                        "max_marks": 5 },
+    { "criterion_id": "SCI_RS3", "criterion_name": "Comprehension (Understands what he/she is reading)",            "category": "Reading Skills",                        "max_marks": 5 },
+    { "criterion_id": "SCI_RS4", "criterion_name": "Reads with fluency, expression and confidence",                 "category": "Reading Skills",                        "max_marks": 5 },
+    { "criterion_id": "SCI_SE1", "criterion_name": "Demonstrates curiosity & asks questions",                       "category": "Social & Emotional / Subject Learning", "max_marks": 5 },
+    { "criterion_id": "SCI_SE2", "criterion_name": "Can identify objects (living/non-living/plants/animals etc.)",  "category": "Social & Emotional / Subject Learning", "max_marks": 5 },
+    { "criterion_id": "SCI_SE3", "criterion_name": "Participates in activities/simple experiments/games",           "category": "Social & Emotional / Subject Learning", "max_marks": 5 },
+    { "criterion_id": "SCI_SE4", "criterion_name": "Understands topics taught",                                     "category": "Social & Emotional / Subject Learning", "max_marks": 5 }
   ]
 }
