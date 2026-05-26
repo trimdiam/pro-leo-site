@@ -1,91 +1,101 @@
 // auth-fast-restore.js
-// Optimistic portal restore + bulletproof spinner kill.
-// MUST load BEFORE app-logic.js (no defer, placed early in <head>).
+// Optimistic session restore: as soon as window.loginAs is available
+// (defined in script.js), call it with the cached role so the portal
+// opens BEFORE Firebase resolves the persisted session from IndexedDB.
 //
-// Two jobs:
-//   1. If a cached role exists, immediately show the right portal page
-//      (no spinner-then-home flash on cold start).
-//   2. ALWAYS install a watchdog that kills the auth spinner if it gets
-//      stuck — this is the safety net for the "infinite spinner" bug.
+// This routes through the proper login flow (showPage → loadPortalLibs →
+// navStudentTo/navTeacherTo) — no manual page toggling, no interference
+// with the existing routing logic (CLAUDE.md rule #1).
+//
+// MUST load BEFORE script.js so we're polling early. No defer.
 
 (function () {
   var ROLE_KEY = 'sf_session_role';
-  var OVERLAY_ID = 'login-check-overlay';
+  var OVERLAY_ID = 'auth-restore-overlay'; // the real one, injected by script.js
 
   var role = '';
   try { role = localStorage.getItem(ROLE_KEY) || ''; } catch (_) {}
 
-  // ── Inject a CSS kill-switch up front. Once <html data-fast-restore> is
-  //    set, NOTHING can show the overlay until we explicitly remove it.
-  //    This beats any inline style.display = 'flex' that app code might set.
-  try {
-    var styleEl = document.createElement('style');
-    styleEl.id = 'fast-restore-style';
-    styleEl.textContent =
-      'html[data-fast-restore="1"] #' + OVERLAY_ID + ' { display: none !important; visibility: hidden !important; }';
-    (document.head || document.documentElement).appendChild(styleEl);
-  } catch (_) {}
-
-  var PAGE_MAP = {
-    teacher: 'page-teacher-dash',
-    admin:   'page-admin-dash',
-    student: 'page-student-dash',
-    office:  'page-office-dash'
-  };
-
-  if (role && PAGE_MAP[role]) {
-    window._fastRestoreActive = true;
-    window._fastRestoreRole = role;
-    document.documentElement.setAttribute('data-fast-restore', '1');
-    showPortalWhenReady(PAGE_MAP[role]);
+  // No cached session — let normal flow handle it.
+  if (!role) {
+    installSpinnerWatchdog();
+    return;
   }
 
-  function showPortalWhenReady(pageId) {
-    function tryShow() {
-      var page = document.getElementById(pageId);
-      if (!page) { setTimeout(tryShow, 30); return; }
+  if (!['teacher','admin','student','office'].includes(role)) {
+    installSpinnerWatchdog();
+    return;
+  }
+
+  window._fastRestoreActive = true;
+  window._fastRestoreRole = role;
+
+  // Poll for window.loginAs to be defined (script.js loads with defer).
+  // Once available, call it — that triggers the full proper login flow.
+  var started = Date.now();
+  var pollId = setInterval(function () {
+    if (typeof window.loginAs === 'function') {
+      clearInterval(pollId);
       try {
-        document.querySelectorAll('.page').forEach(function (p) {
-          p.classList.remove('active');
-        });
-        page.classList.add('active');
-        var nav = document.getElementById('public-nav');
-        if (nav) nav.style.display = 'none';
-        window.isLoggedIn = true;
-        window._currentUserRole = role;
-      } catch (_) {}
+        window.loginAs(role);
+        // loginAs sets isLoggedIn and persists role; spinner stays until
+        // Firebase resolves and _handleAuthUser fires _hideAuthOverlay.
+        // We can speed that up — once the portal is active, kill the spinner
+        // optimistically (Firebase will re-validate in background and either
+        // confirm or sign out cleanly).
+        setTimeout(function () {
+          try { window._hideAuthOverlay && window._hideAuthOverlay(); } catch (_) {}
+        }, 100);
+      } catch (e) {
+        // If loginAs throws for any reason, let the normal flow take over.
+        window._fastRestoreActive = false;
+      }
+      return;
     }
-    tryShow();
+    // Give up after 4s — script.js should be ready well before that.
+    if (Date.now() - started > 4000) {
+      clearInterval(pollId);
+      window._fastRestoreActive = false;
+    }
+  }, 30);
+
+  installSpinnerWatchdog();
+
+  // Watchdog: if the auth-restore-overlay is still visible after 10s
+  // (Firebase taking too long or _handleAuthUser hung), force-dismiss it
+  // so the user isn't stuck on the spinner. This is the safety net.
+  function installSpinnerWatchdog() {
+    var watchStart = Date.now();
+    var interval = setInterval(function () {
+      var elapsed = Date.now() - watchStart;
+      if (elapsed > 15000) { clearInterval(interval); return; }
+      var ov = document.getElementById(OVERLAY_ID);
+      if (!ov) { if (elapsed > 6000) clearInterval(interval); return; }
+      // Visible if still in DOM and not opacity:0
+      var cs = getComputedStyle(ov);
+      if (cs.opacity === '0' || cs.display === 'none') return;
+      if (elapsed > 10000) {
+        // Hard kill — call the real hide function or force-remove
+        try { window._hideAuthOverlay && window._hideAuthOverlay(); } catch (_) {}
+        setTimeout(function () {
+          var still = document.getElementById(OVERLAY_ID);
+          if (still) still.remove();
+        }, 400);
+      }
+    }, 500);
+
+    // Tap-to-dismiss: if the spinner gets stuck and watchdog hasn't fired,
+    // user can tap it to dismiss. Last-resort escape hatch.
+    document.addEventListener('click', function (e) {
+      var ov = document.getElementById(OVERLAY_ID);
+      if (!ov) return;
+      if (e.target === ov || ov.contains(e.target)) {
+        try { window._hideAuthOverlay && window._hideAuthOverlay(); } catch (_) {}
+        setTimeout(function () {
+          var still = document.getElementById(OVERLAY_ID);
+          if (still) still.remove();
+        }, 350);
+      }
+    }, true);
   }
-
-  // ── Spinner watchdog: poll every 400ms for the first 20s. If the
-  //    overlay is visible at any point, force-hide it. Runs ALWAYS,
-  //    regardless of whether fast-restore activated — this is the
-  //    safety net for the "stuck on spinner" bug.
-  var watchdogStart = Date.now();
-  var watchdogInterval = setInterval(function () {
-    var elapsed = Date.now() - watchdogStart;
-    if (elapsed > 20000) { clearInterval(watchdogInterval); return; }
-    var ov = document.getElementById(OVERLAY_ID);
-    if (!ov) return;
-    var visible = ov.offsetParent !== null ||
-                  getComputedStyle(ov).display !== 'none';
-    if (!visible) return;
-    // Spinner visible — kill it after the grace period (4s) if no Firebase
-    // resolution happened. Fast-restore users get instant kill.
-    if (window._fastRestoreActive || elapsed > 4000) {
-      ov.style.setProperty('display', 'none', 'important');
-      ov.style.setProperty('visibility', 'hidden', 'important');
-    }
-  }, 400);
-
-  // ── Emergency escape hatch: tap the overlay to dismiss it. Last resort
-  //    for users if something we haven't anticipated goes wrong.
-  document.addEventListener('click', function (e) {
-    var ov = document.getElementById(OVERLAY_ID);
-    if (!ov) return;
-    if (e.target === ov || ov.contains(e.target)) {
-      ov.style.setProperty('display', 'none', 'important');
-    }
-  }, true);
 })();

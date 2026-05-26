@@ -29,10 +29,6 @@
     var _origHide = window._hideAuthOverlay;
     var _guardRetries = 0;
     window._hideAuthOverlay = function () {
-      // Fast-restore already handled the overlay + portal navigation on cold
-      // start. Just dismiss any leftover spinner state, no retry loop needed.
-      if (window._fastRestoreActive) { _origHide(); return; }
-
       // Use the role captured at script load time — localStorage may already
       // have been cleared by app-logic.js's onAuthStateChanged(null) handler.
       var role = _cachedRole;
@@ -181,16 +177,13 @@
     if (role === 'teacher') applyVisibility();
   });
 
-  // ── Hard fallback: ALWAYS hide overlay after 8s. This runs unconditionally
-  // as a final safety net for the "stuck on spinner" bug. Force-style with
-  // !important so nothing can override it.
-  setTimeout(function () {
-    try { window._hideAuthOverlay && window._hideAuthOverlay(); } catch (_) {}
-    var ov = document.getElementById('login-check-overlay');
-    if (ov) {
-      ov.style.setProperty('display', 'none', 'important');
-      ov.style.setProperty('visibility', 'hidden', 'important');
-    }
-  }, 8000);
+  // ── Hard fallback: hide overlay after 5s if auth resolves slowly.
+  // The fast-restore watchdog also covers this case at 10s; keeping the
+  // shorter 5s fallback for non-fast-restore loads (no cached role).
+  if (!window._fastRestoreActive) {
+    setTimeout(function () {
+      try { window._hideAuthOverlay && window._hideAuthOverlay(); } catch (_) {}
+    }, 5000);
+  }
 
 })();
