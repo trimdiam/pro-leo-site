@@ -317,11 +317,29 @@ async function _handleAuthUser(user) {
   if (!_authHandling) {
     _authHandling = !0;
     try {
-      // Ensure the ID token is valid before any Firestore call.
-      // On cold start, Firebase may fire onAuthStateChanged before the token
-      // is fully refreshed — this prevents the first getDoc from being denied.
-      try { await user.getIdToken(false); } catch (_) {}
-      const userDoc = await getDoc(doc(db, "users", user.uid));
+      // Token race fix: on fresh login / cold start, Firebase may fire
+      // onAuthStateChanged before the ID token has propagated to Firestore.
+      // The first getDoc can return permission-denied OR an empty-role doc.
+      // Retry up to 3x with backoff (0/300/1200ms), force-refresh on attempt 0.
+      let userDoc = null;
+      let _lastErr = null;
+      const _attemptDelays = [0, 300, 900];
+      for (let _i = 0; _i < _attemptDelays.length; _i++) {
+        if (_attemptDelays[_i] > 0)
+          await new Promise((r) => setTimeout(r, _attemptDelays[_i]));
+        try { await user.getIdToken(_i === 0); } catch (_) {}
+        try {
+          userDoc = await getDoc(doc(db, "users", user.uid));
+          if (!userDoc.exists()) break; // no doc — first-time-setup path
+          const _r = (userDoc.data().role || "").toString().trim().toLowerCase();
+          if (_r) break; // got a valid role — done
+          // doc exists but role is empty (token still propagating) — retry
+        } catch (e) {
+          _lastErr = e;
+          if (_i === _attemptDelays.length - 1) throw e;
+        }
+      }
+      if (!userDoc) throw _lastErr || new Error("User doc read failed");
       if (!userDoc.exists()) {
         if (
           (user.providerData || []).some(
@@ -460,11 +478,22 @@ window._handleAuthUser = _handleAuthUser;
         }
       })(user.uid);
     } else {
-      window._officePortalLoaded = !1;
-      try {
-        localStorage.removeItem("sf_session_role");
-      } catch (e) {}
-      window._hideAuthOverlay && window._hideAuthOverlay();
+      // Firebase can fire onAuthStateChanged(null) transiently while restoring
+      // auth state from IndexedDB — especially on return from a sub-app page
+      // (assessment-app, routine-app). If we clear sf_session_role on the
+      // first null, the user is bounced to home and has to log in again even
+      // though their session is still valid.
+      //
+      // Defer the clear by 2s and only execute if auth.currentUser is STILL
+      // null at that point (i.e. truly signed out, not just slow restore).
+      setTimeout(() => {
+        if (auth.currentUser) return; // user restored — ignore transient null
+        window._officePortalLoaded = !1;
+        try {
+          localStorage.removeItem("sf_session_role");
+        } catch (e) {}
+        window._hideAuthOverlay && window._hideAuthOverlay();
+      }, 2000);
     }
   }),
   (window._loginRole = "student"));

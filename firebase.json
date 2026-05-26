@@ -4,6 +4,9 @@
   },
   "hosting": {
     "public": ".",
+    "predeploy": [
+      "node scripts/bump-sw-cache.js"
+    ],
     "ignore": [
       "firebase.json",
       ".firebaserc",
@@ -11,6 +14,7 @@
       "*.md",
       "node_modules/**",
       "functions/**",
+      "scripts/**",
       ".git/**",
       "*.log",
       "set-cors.js",

@@ -1,51 +1,20 @@
 // session-coordinator.js
-// Single owner of the session lifecycle. Replaces auth-fast-restore.js and
-// the auth-restore parts of teacher-attendance-guard.js.
+// Owns the non-auth parts of the page lifecycle. _handleAuthUser in
+// app-logic.js is the sole owner of opening the portal — this file does
+// not call loginAs() and does not branch on the cached role.
 //
 // Responsibilities:
-//   1. Cold start  — call loginAs(role) as soon as script.js is ready
-//   2. Bfcache     — single pageshow handler: refresh data, no duplicate loginAs
-//   3. Spinner     — one watchdog, correct overlay (#auth-restore-overlay)
-//   4. Auth retry  — re-call _handleAuthUser if Firebase rejects cached session
+//   1. Bfcache  — single pageshow handler that refreshes the current section
+//   2. Spinner  — watchdog + tap-to-dismiss for #auth-restore-overlay
 //
-// Everything goes through one flag: window._sessionRestored
-// Other files check that flag instead of doing their own auth work.
+// The "Restoring your session…" spinner stays up until Firebase resolves
+// onAuthStateChanged and _handleAuthUser hides it via _hideAuthOverlay
+// (success path) or app-logic.js's deferred null-branch (signed out).
 
 (function () {
-  var ROLE_KEY    = 'sf_session_role';
-  var OVERLAY_ID  = 'auth-restore-overlay';  // injected by script.js IIFE
+  var OVERLAY_ID = 'auth-restore-overlay';  // injected by script.js IIFE
 
-  var role = '';
-  try { role = localStorage.getItem(ROLE_KEY) || ''; } catch (_) {}
-
-  // ── 1. COLD START ────────────────────────────────────────────────────────
-  // If we have a cached role, call loginAs as soon as script.js defines it.
-  // This makes the portal appear instantly instead of after Firebase resolves.
-  if (role && ['teacher','admin','student','office'].includes(role)) {
-    window._fastRestoreActive = true;
-    window._fastRestoreRole   = role;
-
-    var pollStart = Date.now();
-    var pollId = setInterval(function () {
-      if (typeof window.loginAs !== 'function') {
-        if (Date.now() - pollStart > 5000) clearInterval(pollId); // give up
-        return;
-      }
-      clearInterval(pollId);
-      try {
-        window.loginAs(role);
-        // Dismiss spinner 150ms after portal is active
-        setTimeout(function () {
-          try { window._hideAuthOverlay && window._hideAuthOverlay(); } catch (_) {}
-        }, 150);
-        window._sessionRestored = true;
-      } catch (e) {
-        window._fastRestoreActive = false;
-      }
-    }, 30);
-  }
-
-  // ── 2. BFCACHE RESTORE ──────────────────────────────────────────────────
+  // ── 1. BFCACHE RESTORE ──────────────────────────────────────────────────
   // On browser back-navigation the page is restored from memory. Firebase
   // does NOT re-fire onAuthStateChanged, so _handleAuthUser never runs.
   // We don't call loginAs again (portal is already active), we only
@@ -60,7 +29,7 @@
     setTimeout(refreshCurrentSection, 350);
   });
 
-  // ── 3. SPINNER WATCHDOG ─────────────────────────────────────────────────
+  // ── 2. SPINNER WATCHDOG ─────────────────────────────────────────────────
   // Safety net: if #auth-restore-overlay is still visible after 10 s,
   // force-remove it. Prevents the "stuck on spinner" scenario.
   var watchStart = Date.now();
