@@ -35,9 +35,9 @@
   <link rel="preload" href="theme-modular.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="theme-modular.css"></noscript>
 
-  <!-- Optimistic auth restore — MUST run before app-logic.js to pre-empt
-       the spinner-then-home flash on cold APK start. No defer. -->
-  <script src="auth-fast-restore.js"></script>
+  <!-- Session coordinator — owns cold-start restore, bfcache, spinner.
+       No defer: must run before app-logic.js fires onAuthStateChanged. -->
+  <script src="session-coordinator.js"></script>
 
 </head>
 <body>

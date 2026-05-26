@@ -1,4 +1,4 @@
-const CACHE = 'sfs-v29';
+const CACHE = 'sfs-v30';
 
 // App shell — pre-cached on install for fast cold-start.
 const SHELL = [
@@ -9,7 +9,7 @@ const SHELL = [
   '/notification-center.css',
   '/report-card-styles.css',
   '/portal-mobile-fix.css',
-  '/auth-fast-restore.js',
+  '/session-coordinator.js',
   '/auth-login-retry.js',
   '/view-refresh.js',
   '/config.js',

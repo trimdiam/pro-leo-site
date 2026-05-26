@@ -407,6 +407,8 @@ async function _handleAuthUser(user) {
     }
   }
 }
+// Expose for session-coordinator.js (auth restore without full re-login)
+window._handleAuthUser = _handleAuthUser;
 ((window.firebaseLogin = window.doLogin),
   (window.sendPasswordReset = async function () {
     const email = (document.getElementById("login-email")?.value || "").trim();
