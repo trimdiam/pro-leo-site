@@ -122,7 +122,7 @@ export function computeAnnualSummary(hy1Card, hy2Card) {
 
 const INLINE_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-  @page { size: legal landscape; margin: 0; }
+  @page { size: A4 landscape; margin: 0; }
 
   :root {
     --cd-900:#2B270A; --cd-700:#4E471A; --cd-500:#7A7030;
@@ -306,7 +306,9 @@ const INLINE_CSS = `
   @media print {
     html, body { background:#fff !important; padding:0; display:block; }
     .print-bar { display:none !important; }
-    .rc { box-shadow:none !important; margin:0; width:14in; height:8.5in; }
+    /* Card was designed for 14×8.5in (legal landscape). Scale to A4 landscape
+       (297mm × 210mm ≈ 11.69×8.27in) — single-page fit on most printers. */
+    .rc { box-shadow:none !important; margin:0; width:14in; height:8.5in; zoom:0.835; }
   }
 
   /* ── Mobile ebook view ───────────────────────────────── */
@@ -665,7 +667,12 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   const classLabel  = section ? `${esc(info.className)} — ${esc(section)}` : esc(info.className);
   const academicYear = hy1Card?.academicYear || hy2Card?.academicYear || '2025–2026';
 
-  const logoUrl = opts.logoUrl || 'assets/images/logo.webp';
+  // Resolve relative asset URLs against the current origin so the report HTML
+  // works in any context — new window (about:blank), iframe with blob URL, etc.
+  const baseOrigin = (typeof window !== 'undefined' && window.location && window.location.origin)
+    ? window.location.origin + '/'
+    : '/';
+  const logoUrl = opts.logoUrl || (baseOrigin + 'assets/images/logo.webp');
   const crestHTML = logoUrl
     ? `<div class="crest-wrap"><img src="${esc(logoUrl)}" alt="School crest" /></div>`
     : `<div class="crest-wrap"><div class="no-img">SFDS<br>CREST</div></div>`;
@@ -697,6 +704,10 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   const hy1Range = hy1Card?.dateFrom ? `${hy1Card.dateFrom} – ${hy1Card.dateTo}` : 'Apr – Sep';
   const hy2Range = hy2Card?.dateFrom ? `${hy2Card.dateFrom} – ${hy2Card.dateTo}` : 'Oct – Mar';
 
+  const safeName = (info.studentName || 'student').replace(/[^a-zA-Z0-9]+/g, '_');
+  const safeClass = (info.className || '').replace(/[^a-zA-Z0-9]+/g, '_');
+  const pdfFilename = `ReportCard_${safeName}${safeClass ? '_' + safeClass : ''}.pdf`;
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -704,14 +715,198 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Annual Progress Report — ${esc(info.studentName)}</title>
   <style>${INLINE_CSS}</style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>
+    // Back button — works for new-window (desktop), iframe overlay (Capacitor APK),
+    // and as a last resort, navigates to root.
+    function rcGoBack() {
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'closeReportOverlay' }, '*');
+          return;
+        }
+      } catch (_) {}
+      if (window.opener) {
+        try { window.opener.focus(); } catch (_) {}
+        try { window.close(); return; } catch (_) {}
+      }
+      if (history.length > 1) { history.back(); return; }
+      window.location.href = '/';
+    }
+
+    // Generate one-page PDF client-side. Try Web Share first (Capacitor APK,
+    // mobile browsers) so the user can save/share via the system sheet, then
+    // fall back to anchor-download (desktop browsers).
+    async function rcDownloadPDF() {
+      const btn = document.getElementById('rc-pdf-btn');
+      const orig = btn ? btn.textContent : '';
+      if (btn) { btn.textContent = '⏳ Generating PDF…'; btn.disabled = true; }
+      try {
+        if (typeof html2pdf === 'undefined') {
+          throw new Error('PDF library not loaded. Check your connection and try again.');
+        }
+        const rc = document.querySelector('.rc');
+        if (!rc) throw new Error('Report card content not found');
+        const filename = ${JSON.stringify(pdfFilename)};
+
+        // Force desktop landscape layout for capture regardless of the actual
+        // device viewport. Three defensive measures:
+        //   1) windowWidth/Height: tell html2canvas to render at 14×8.5in @96dpi
+        //   2) Strip the mobile @media block from cloned <style> by brace count
+        //      (more reliable than regex with nested rules)
+        //   3) Append a final override <style> with !important desktop rules,
+        //      in case the strip missed anything
+        function applyDesktopLayoutForCapture(clonedDoc) {
+          var styles = clonedDoc.querySelectorAll('style');
+          for (var i = 0; i < styles.length; i++) {
+            var css = styles[i].textContent || '';
+            var idx = css.indexOf('@media (max-width: 900px)');
+            if (idx < 0) idx = css.indexOf('@media(max-width: 900px)');
+            if (idx < 0) idx = css.indexOf('@media (max-width:900px)');
+            if (idx < 0) continue;
+            var braceStart = css.indexOf('{', idx);
+            if (braceStart < 0) continue;
+            var depth = 1, j = braceStart + 1;
+            while (j < css.length && depth > 0) {
+              if (css[j] === '{') depth++;
+              else if (css[j] === '}') depth--;
+              j++;
+            }
+            if (depth === 0) {
+              styles[i].textContent = css.substring(0, idx) + css.substring(j);
+            }
+          }
+          var override = clonedDoc.createElement('style');
+          override.textContent =
+            // height:auto + overflow:visible let the report grow to fit ALL
+            // content (subjects, signatures, scale). The PDF page below is
+            // sized to match the captured height so nothing is clipped.
+            "body .rc{width:14in!important;max-width:14in!important;height:auto!important;min-height:8.5in!important;margin:0!important;border:3px solid #0C0C0C!important;overflow:visible!important}" +
+            "body .rc .body{display:grid!important;grid-template-columns:1fr 4.2in!important;flex-direction:row!important;min-height:0!important}" +
+            "body .rc .info-strip{grid-template-columns:1.6fr 0.9fr 0.7fr 1fr 1fr 1fr 1fr!important;overflow:visible!important;width:auto!important}" +
+            "body .rc .info-cell{overflow:visible!important}" +
+            "body .rc .info-value{overflow:visible!important;text-overflow:clip!important;white-space:normal!important}" +
+            "body .rc .hdr{flex-wrap:nowrap!important;padding:7px 22px!important;gap:16px!important;align-items:center!important}" +
+            "body .rc .crest-wrap{width:52px!important;height:52px!important}" +
+            "body .rc .hdr-right{width:auto!important;text-align:right!important;display:flex!important;flex-direction:column!important;gap:3px!important;border-top:0!important;padding-top:0!important;margin-top:0!important;align-items:stretch!important;flex-wrap:nowrap!important}" +
+            "body .rc .marks{border-right:1px solid var(--cd-200)!important;border-bottom:0!important;overflow:visible!important;width:auto!important}" +
+            "body .rc table.marks-tbl{table-layout:auto!important;min-width:0!important;font-size:inherit!important}" +
+            "body .rc .marks-tbl thead .term-head th:first-child,body .rc .marks-tbl thead .col-head th.col-sub,body .rc .marks-tbl td.subj-col{position:static!important;width:auto!important;min-width:0!important;max-width:none!important;white-space:nowrap!important;word-break:normal!important}" +
+            "body .rc .summary{border-top:0!important}" +
+            "body .rc .panel+.panel{border-top:0!important}" +
+            "body .rc .footer{width:auto!important}" +
+            "body .rc .scale-row{flex-wrap:nowrap!important}" +
+            "body .rc .scale-items{flex-wrap:nowrap!important}";
+          clonedDoc.head.appendChild(override);
+        }
+        var h2cOpts = {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          // Fix width to 14in × 96dpi = 1344px. Height is NOT fixed —
+          // html2canvas will use the natural rendered height of .rc
+          // (height:auto + min-height:8.5in via onclone override).
+          width:        1344,
+          windowWidth:  1344,
+          windowHeight: 2400, // generous: allows long reports to render fully
+          scrollX: 0, scrollY: 0,
+          onclone: applyDesktopLayoutForCapture
+        };
+
+        // Use html2canvas + jsPDF directly when both globals are exposed by
+        // the bundle — gives us one-shot, single-page output. Otherwise fall
+        // back to the html2pdf chain with the same options.
+        const h2c    = window.html2canvas;
+        const JsPDF  = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+        if (!h2c || !JsPDF) {
+          var optFb = {
+            margin: 0, filename: filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: h2cOpts,
+            jsPDF: { unit: 'in', format: [14, 8.5], orientation: 'landscape' },
+            pagebreak: { mode: ['avoid-all'] }
+          };
+          var blob = await html2pdf().set(optFb).from(rc).outputPdf('blob');
+          var file = new File([blob], filename, { type: 'application/pdf' });
+        } else {
+          var canvas = await h2c(rc, h2cOpts);
+          // PDF page = 14in wide, height proportional to captured content.
+          // Minimum 8.5in (so short reports still look like legal landscape).
+          var pdfW = 14;
+          var pdfH = (canvas.height / canvas.width) * pdfW;
+          if (pdfH < 8.5) pdfH = 8.5;
+          var pdf = new JsPDF({ unit: 'in', format: [pdfW, pdfH], orientation: 'landscape' });
+          pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, pdfW, pdfH, undefined, 'FAST');
+          var blob = pdf.output('blob');
+          var file = new File([blob], filename, { type: 'application/pdf' });
+        }
+
+        // 1) Capacitor Filesystem via parent bridge — best UX on APK if the
+        //    @capacitor/filesystem plugin is installed natively.
+        const inIframe = (function(){ try { return window.parent !== window; } catch(_) { return false; } })();
+        if (inIframe) {
+          const fsResult = await new Promise((resolve) => {
+            const reqId = 'pdf_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+            const reader = new FileReader();
+            reader.onload = () => {
+              const base64 = String(reader.result || '').split(',')[1] || '';
+              function onMsg(e) {
+                if (!e || !e.data || e.data.type !== 'pdfSaveResult' || e.data.reqId !== reqId) return;
+                window.removeEventListener('message', onMsg);
+                resolve(e.data);
+              }
+              window.addEventListener('message', onMsg);
+              window.parent.postMessage({ type: 'savePdfRequest', reqId, filename, base64 }, '*');
+              setTimeout(() => {
+                window.removeEventListener('message', onMsg);
+                resolve({ ok: false, reason: 'timeout' });
+              }, 30000);
+            };
+            reader.onerror = () => resolve({ ok: false, reason: 'read-error' });
+            reader.readAsDataURL(blob);
+          });
+          if (fsResult.ok) {
+            alert(fsResult.message || ('Saved: ' + filename));
+            return;
+          }
+          // If parent has no Filesystem plugin, reason is 'no-plugin' — fall through.
+        }
+
+        // 2) Web Share API with files (modern mobile browsers, Capacitor on newer WebViews)
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: 'Report Card' });
+            return;
+          } catch (err) {
+            if (err && err.name === 'AbortError') return; // user cancelled
+            // share unavailable — fall through
+          }
+        }
+
+        // 3) Anchor download (desktop browsers)
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+      } catch (e) {
+        alert('Could not generate PDF: ' + (e && e.message ? e.message : e));
+      } finally {
+        if (btn) { btn.textContent = orig; btn.disabled = false; }
+      }
+    }
+  </script>
 </head>
 <body>
 
 <div class="print-bar">
   <span>Annual Progress Report &nbsp;·&nbsp; ${esc(info.studentName)} &nbsp;·&nbsp; ${classLabel}</span>
   <div style="display:flex;gap:8px;align-items:center">
-    <button class="print-btn" onclick="if(window.opener){window.opener.focus();window.close();}else{window.location.href='/';}" style="background:#4b5563;">← Back to Portal</button>
-    <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+    <button class="print-btn" onclick="rcGoBack()" style="background:#4b5563;">← Back to Portal</button>
+    <button class="print-btn" id="rc-pdf-btn" onclick="rcDownloadPDF()">📥 Download PDF</button>
   </div>
 </div>
 

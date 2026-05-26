@@ -45,11 +45,85 @@ function formatDate(ts) {
 
 function openPrintWindow(hy1Card, hy2Card, studentInfo) {
   const html = buildPrintableHTML(hy1Card, hy2Card, studentInfo);
-  const w = window.open('', '_blank');
-  w.document.write(html);
-  w.document.close();
-  // Brief delay to ensure styles render before print dialog
-  setTimeout(() => w.print(), 300);
+
+  // On Capacitor (APK), window.open is unreliable — the new window's print
+  // button and window.close don't work in the Android WebView. Render the
+  // report as a full-screen iframe overlay inside the portal instead.
+  // On desktop, keep the new-tab behaviour.
+  const isCapacitor = !!window.Capacitor;
+  let w = null;
+  if (!isCapacitor) {
+    try { w = window.open('', '_blank'); } catch (_) { w = null; }
+  }
+
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+    return;
+  }
+
+  // Inline overlay fallback (Capacitor or popup-blocked desktop)
+  let overlay = document.getElementById('rc-fullscreen-overlay');
+  if (overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'rc-fullscreen-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#fff;overflow:hidden';
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const blobUrl = URL.createObjectURL(blob);
+  const iframe = document.createElement('iframe');
+  iframe.src = blobUrl;
+  iframe.style.cssText = 'border:0;width:100%;height:100%;display:block';
+  overlay.appendChild(iframe);
+  document.body.appendChild(overlay);
+  const prevOverflow = document.body.style.overflow;
+  document.body.style.overflow = 'hidden';
+
+  function onMessage(e) {
+    if (!e || !e.data) return;
+    if (e.data.type === 'closeReportOverlay') {
+      overlay.remove();
+      document.body.style.overflow = prevOverflow;
+      URL.revokeObjectURL(blobUrl);
+      window.removeEventListener('message', onMessage);
+      return;
+    }
+    if (e.data.type === 'savePdfRequest') {
+      handleSavePdfRequest(e.data, e.source);
+      return;
+    }
+  }
+  window.addEventListener('message', onMessage);
+}
+
+// Bridge: report-card iframe asks the portal to save a PDF via Capacitor
+// Filesystem plugin (if installed natively). Falls back gracefully if missing.
+async function handleSavePdfRequest(req, source) {
+  const reply = (data) =>
+    source && source.postMessage({ type: 'pdfSaveResult', reqId: req.reqId, ...data }, '*');
+  try {
+    const cap = window.Capacitor;
+    const fs = cap && cap.Plugins && cap.Plugins.Filesystem;
+    if (!fs || !fs.writeFile) {
+      reply({ ok: false, reason: 'no-plugin' });
+      return;
+    }
+    // Use Documents directory; APK file managers can read it under
+    // /Android/data/<pkg>/files/Documents or similar.
+    const result = await fs.writeFile({
+      path: req.filename,
+      data: req.base64,
+      directory: 'DOCUMENTS',
+      recursive: true
+    });
+    reply({
+      ok: true,
+      message: 'PDF saved to Documents: ' + req.filename,
+      path: result && result.uri ? result.uri : req.filename
+    });
+  } catch (err) {
+    reply({ ok: false, reason: (err && err.message) || 'save-failed' });
+  }
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
