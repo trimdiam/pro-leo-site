@@ -1,3 +1,5 @@
+import { groupCriteriaByCategory } from '../services/criteria-loader.js';
+
 export function createCriteriaList({
   criteria = [],
   errorMessage = '',
@@ -21,10 +23,18 @@ export function createCriteriaList({
     return section;
   }
 
-  const list = document.createElement('ol');
-  list.className = 'criteria-list';
-  criteria.forEach(criterion => list.append(createCriterionRow(criterion)));
-  section.append(list);
+  const grouped = groupCriteriaByCategory(criteria);
+  grouped.forEach(group => {
+    const header = document.createElement('div');
+    header.className = 'criteria-group-header';
+    header.textContent = group.category;
+    section.append(header);
+
+    const list = document.createElement('ol');
+    list.className = 'criteria-list';
+    group.items.forEach(criterion => list.append(createCriterionRow(criterion)));
+    section.append(list);
+  });
   return section;
 }
 

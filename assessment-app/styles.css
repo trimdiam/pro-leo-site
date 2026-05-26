@@ -287,6 +287,40 @@ select, .text-input {
   gap: 12px;
 }
 
+/* Category headers (Work Habits, Writing Skills, etc.) */
+.criteria-group-header {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5A4A35;
+  background: linear-gradient(90deg, rgba(139,111,71,0.10), rgba(139,111,71,0.02));
+  padding: 8px 12px;
+  border-left: 3px solid #8B6F47;
+  border-radius: 4px;
+  margin: 6px 0 2px;
+}
+
+.review-category-row .review-category-cell {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(139,111,71,0.12);
+  color: #5A4A35;
+  border-bottom: 2px solid #8B6F47;
+  padding: 6px 8px;
+}
+
+.quick-criterion-category {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8B6F47;
+  margin-bottom: 4px;
+}
+
 .criteria-list {
   display: grid;
   gap: 10px;

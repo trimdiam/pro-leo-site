@@ -1,4 +1,5 @@
 import { calculateStudentTotal } from '../services/totals-engine.js';
+import { groupCriteriaByCategory } from '../services/criteria-loader.js';
 
 export function createSessionReview({
   sessionData,
@@ -75,6 +76,23 @@ export function createSessionReview({
   table.className = 'review-table';
 
   const thead = document.createElement('thead');
+
+  // Category row — spans the columns of each grouped category
+  const grouped = groupCriteriaByCategory(criteria);
+  const categoryRow = document.createElement('tr');
+  categoryRow.className = 'review-category-row';
+  const blankStudent = createTh('');
+  blankStudent.colSpan = 2;
+  categoryRow.append(blankStudent);
+  grouped.forEach(group => {
+    const th = createTh(group.category);
+    th.colSpan = group.items.length;
+    th.className = 'review-category-cell';
+    categoryRow.append(th);
+  });
+  categoryRow.append(createTh(''));
+  thead.append(categoryRow);
+
   const headerRow = document.createElement('tr');
   headerRow.append(createTh('Student'));
   headerRow.append(createTh('Roll No'));

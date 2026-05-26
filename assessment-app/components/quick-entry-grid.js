@@ -21,7 +21,8 @@ export function createQuickEntryGrid({
 
     const header = document.createElement('div');
     header.className = 'quick-criterion-header';
-    header.innerHTML = `<strong>${criterion.criterion_name}</strong> <span class="quick-progress">${cIndex + 1}/${criteria.length}</span>`;
+    const catLabel = criterion.category ? `<div class="quick-criterion-category">${criterion.category}</div>` : '';
+    header.innerHTML = `${catLabel}<strong>${criterion.criterion_name}</strong> <span class="quick-progress">${cIndex + 1}/${criteria.length}</span>`;
     criterionBlock.append(header);
 
     const grid = document.createElement('div');

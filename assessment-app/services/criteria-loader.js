@@ -150,12 +150,30 @@ function normalizeCriterion(criterion, criteriaFile, className) {
   return {
     criterion_id: criterion.criterion_id,
     criterion_name: criterion.criterion_name,
+    category: criterion.category || 'General',
     max_marks: 5,
     subject_id: criterion.subject_id || criteriaFile.subject_id,
     class_group: Array.isArray(criterion.class_group) ? criterion.class_group : criteriaFile.classes,
     mark_scale: MARK_SCALE,
     selected_class: className || ''
   };
+}
+
+// Group criteria by category, preserving the order in which each category
+// first appears. Returns: [{ category: 'Work Habits', items: [...] }, ...]
+export function groupCriteriaByCategory(criteria) {
+  if (!Array.isArray(criteria) || criteria.length === 0) return [];
+  const order = [];
+  const map = new Map();
+  criteria.forEach(c => {
+    const cat = c.category || 'General';
+    if (!map.has(cat)) {
+      order.push(cat);
+      map.set(cat, []);
+    }
+    map.get(cat).push(c);
+  });
+  return order.map(cat => ({ category: cat, items: map.get(cat) }));
 }
 
 function findDuplicates(values) {

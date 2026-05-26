@@ -1,4 +1,5 @@
 import { calculateStudentTotal } from '../services/totals-engine.js';
+import { groupCriteriaByCategory } from '../services/criteria-loader.js';
 
 export function createAssessmentCard({
   student,
@@ -62,7 +63,15 @@ export function createAssessmentCard({
     const criteriaList = document.createElement('div');
     criteriaList.className = 'card-criteria';
 
-    criteria.forEach(criterion => {
+    const grouped = groupCriteriaByCategory(criteria);
+    grouped.forEach(group => {
+      // Category header (subheading)
+      const groupHeader = document.createElement('div');
+      groupHeader.className = 'criteria-group-header';
+      groupHeader.textContent = group.category;
+      criteriaList.append(groupHeader);
+
+    group.items.forEach(criterion => {
       const row = document.createElement('div');
       row.className = 'criterion-row';
 
@@ -143,6 +152,7 @@ export function createAssessmentCard({
 
       row.append(titleWrap, scale, applyWrap);
       criteriaList.append(row);
+    });
     });
 
     card.append(criteriaList);
