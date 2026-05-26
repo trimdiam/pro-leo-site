@@ -8,6 +8,7 @@ import { createSessionReview } from './components/session-review.js';
 import { createLoginForm } from './components/login-form.js';
 import { createStudentProfile } from './components/student-profile.js';
 import { createQuickEntryGrid } from './components/quick-entry-grid.js';
+import { showDefaultScorePicker } from './components/default-score-picker.js';
 import { loadCriteriaForSubject } from './services/criteria-loader.js';
 import { getSubjectsForClass, loadSubjects } from './services/subject-loader.js';
 import { loadStudentsForClass } from './services/student-loader.js';
@@ -302,14 +303,6 @@ function renderSetup() {
   const optionsPanel = document.createElement('div');
   optionsPanel.className = 'panel options-panel';
 
-  const defaultLabel = document.createElement('label');
-  defaultLabel.className = 'field';
-  defaultLabel.innerHTML = `<input type="checkbox" ${state.useDefaultScore ? 'checked' : ''}> Use default score (4)`;
-  defaultLabel.querySelector('input').addEventListener('change', e => {
-    state.useDefaultScore = e.target.checked;
-    render();
-  });
-
   const quickLabel = document.createElement('label');
   quickLabel.className = 'field';
   quickLabel.innerHTML = `<input type="checkbox" ${state.quickEntryMode ? 'checked' : ''}> Quick entry mode`;
@@ -318,7 +311,7 @@ function renderSetup() {
     render();
   });
 
-  optionsPanel.append(defaultLabel, quickLabel);
+  optionsPanel.append(quickLabel);
   setupRoot.append(optionsPanel);
 
   if (state.errorMessage) {
@@ -804,23 +797,43 @@ function handleStartSession(force = false) {
 
   state.session = result.session;
 
-  if (state.useDefaultScore) {
-    state.marks = initializeMarksWithDefault(state.students, state.criteria);
-  } else {
-    state.marks = {};
-    state.students.forEach(student => {
-      state.marks[student.student_id] = {};
-      state.criteria.forEach(criterion => {
-        state.marks[student.student_id][criterion.criterion_id] = null;
-      });
-    });
-  }
-
-  state.mode = 'assessment';
-  state.lastSaved = null;
-
-  scheduleAutosave();
-  render();
+  // Show default score picker modal before opening the assessment
+  showDefaultScorePicker({
+    subjectName:  state.selectedSubject.subject_name,
+    className:    state.selectedClass,
+    studentCount: state.students.length,
+    onConfirm: (defaultScore) => {
+      if (defaultScore !== null) {
+        // Pre-fill all marks with chosen score
+        state.marks = {};
+        state.students.forEach(student => {
+          state.marks[student.student_id] = {};
+          state.criteria.forEach(criterion => {
+            state.marks[student.student_id][criterion.criterion_id] = defaultScore;
+          });
+        });
+      } else {
+        // Start blank
+        state.marks = {};
+        state.students.forEach(student => {
+          state.marks[student.student_id] = {};
+          state.criteria.forEach(criterion => {
+            state.marks[student.student_id][criterion.criterion_id] = null;
+          });
+        });
+      }
+      state.mode = 'assessment';
+      state.lastSaved = null;
+      scheduleAutosave();
+      render();
+    },
+    onCancel: () => {
+      // Teacher dismissed — stay on setup screen
+      state.session = null;
+      render();
+    }
+  });
+  // render() is called inside onConfirm/onCancel
 }
 
 async function handleResumeSession(sessionId) {

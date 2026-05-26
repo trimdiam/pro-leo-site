@@ -38,10 +38,31 @@ async function buildAuthUser(uid, email, data, loginId) {
   return { uid, email, name: name.trim(), role, teacherId };
 }
 
+const FRIENDLY_ERRORS = {
+  'auth/quota-exceeded':       'Too many login attempts — please wait 2–3 minutes and try again.',
+  'auth/too-many-requests':    'Account temporarily locked due to too many failed attempts. Try again shortly.',
+  'auth/user-not-found':       'Staff ID not recognised. Check your ID and try again.',
+  'auth/wrong-password':       'Incorrect password.',
+  'auth/invalid-credential':   'Incorrect ID or password.',
+  'auth/network-request-failed': 'No network connection. Check your internet and retry.',
+  'auth/user-disabled':        'Your account has been disabled. Contact admin.',
+};
+
+function friendlyError(err) {
+  const msg = FRIENDLY_ERRORS[err.code];
+  if (msg) { const e = new Error(msg); e.code = err.code; return e; }
+  return err;
+}
+
 export async function login(loginId, password) {
   const email      = idToEmail(loginId);
-  const credential = await signInWithEmailAndPassword(auth, email, password);
-  const uid        = credential.user.uid;
+  let credential;
+  try {
+    credential = await signInWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    throw friendlyError(err);
+  }
+  const uid = credential.user.uid;
 
   const userDoc = await getDoc(doc(db, 'users', uid));
   if (!userDoc.exists()) throw new Error('Your account is not set up. Contact admin.');

@@ -37,6 +37,7 @@ import {
   getMessaging,
   getToken,
   onMessage,
+  isSupported as messagingIsSupported,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging.js";
 import {
   getStorage,
@@ -316,6 +317,10 @@ async function _handleAuthUser(user) {
   if (!_authHandling) {
     _authHandling = !0;
     try {
+      // Ensure the ID token is valid before any Firestore call.
+      // On cold start, Firebase may fire onAuthStateChanged before the token
+      // is fully refreshed — this prevents the first getDoc from being denied.
+      try { await user.getIdToken(false); } catch (_) {}
       const userDoc = await getDoc(doc(db, "users", user.uid));
       if (!userDoc.exists()) {
         if (
@@ -368,7 +373,11 @@ async function _handleAuthUser(user) {
           .toString()
           .trim()
           .toLowerCase(),
-        role = "office_staff" === rawRole ? "office" : rawRole;
+        // Normalize all teacher variants → "teacher" for portal routing
+        _roleNorm = rawRole === "office_staff" ? "office"
+          : (rawRole === "class_teacher" || rawRole === "subject_teacher") ? "teacher"
+          : rawRole,
+        role = _roleNorm;
       if (!["student", "teacher", "admin", "office"].includes(role))
         return void showLoginError("Invalid role. Contact admin.");
       (showToast("✅ Welcome! Opening your portal…"),
@@ -436,6 +445,7 @@ window._handleAuthUser = _handleAuthUser;
       }
       !(async function (uid) {
         try {
+          if (!(await messagingIsSupported())) return;
           const messaging = getMessaging(app);
           if ("granted" !== (await Notification.requestPermission())) return;
           const token = await getToken(messaging, {
@@ -11789,6 +11799,7 @@ const TA_ROMAN_TO_NUM = {
   },
   _origLoadTeacherPortal = window.loadTeacherPortal;
 window.loadTeacherPortal = async function (user) {
+  window._p2LastUser = user;  // stored for permission-error retries
   await _origLoadTeacherPortal(user);
   try {
     window._tpAssignLoaded = !1;

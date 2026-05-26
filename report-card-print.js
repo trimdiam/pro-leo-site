@@ -219,6 +219,10 @@ const INLINE_CSS = `
   /* Marks table */
   .marks { border-right:2px solid var(--edge); display:flex; flex-direction:column; overflow:hidden; }
   table.marks-tbl { width:100%; border-collapse:collapse; table-layout:fixed; font-size:10px; }
+  /* Stretch table to fill remaining height when rows are few (e.g. Class II) */
+  table.marks-tbl.stretch-rows { height:100%; }
+  table.marks-tbl.stretch-rows tbody { height:100%; }
+  table.marks-tbl.stretch-rows tbody tr { height:1px; } /* equal distribution trick */
   .marks-tbl thead .term-head th {
     background:var(--cd-700); color:var(--cream);
     font-size:8.5px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
@@ -413,7 +417,18 @@ const INLINE_CSS = `
 
 // ── Table row builders ────────────────────────────────────────────────────────
 
-function buildTableRows(hy1Card, hy2Card) {
+// Fallback: derive category from criterion_id suffix for older saved cards
+function inferCategory(id) {
+  if (!id) return 'General';
+  const u = id.toUpperCase();
+  if (u.includes('_WH')) return 'Work Habits';
+  if (u.includes('_WS')) return 'Writing Skills';
+  if (u.includes('_RS')) return 'Reading Skills';
+  if (u.includes('_SS')) return 'Speaking Skills';
+  return 'General';
+}
+
+function buildTableRows(hy1Card, hy2Card, isPrimary = false) {
   // Build merged subject list from both cards
   const subjectMap = new Map();
   const addSubjects = (card) => {
@@ -445,36 +460,80 @@ function buildTableRows(hy1Card, hy2Card) {
     const annAvg = avgs.length ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
     const annSCode = gradeCode(annAvg);
 
-    rows += `<tr class="subj-head">
-      <td class="subj-col" colspan="3">${esc(subj.name)}</td>
-      <td></td><td></td>
-      <td>${ach(annSCode)}</td>
-    </tr>`;
-
-    // Criteria rows
-    const criteriaMap = new Map();
-    (hy1Subj?.criteria || []).forEach(c => criteriaMap.set(c.criterion_id, { name: c.criterion_name, hy1Score: c.averageScore ?? null, hy1Grade: c.grade || gradeCode(c.averageScore), hy2Score: null, hy2Grade: null }));
-    (hy2Subj?.criteria || []).forEach(c => {
-      if (!criteriaMap.has(c.criterion_id)) criteriaMap.set(c.criterion_id, { name: c.criterion_name, hy1Score: null, hy1Grade: null, hy2Score: null, hy2Grade: null });
-      criteriaMap.get(c.criterion_id).hy2Score = c.averageScore ?? null;
-      criteriaMap.get(c.criterion_id).hy2Grade = c.grade || gradeCode(c.averageScore);
-    });
-
-    criteriaMap.forEach(c => {
-      const ca = [c.hy1Score, c.hy2Score].filter(v => v !== null);
-      const annCAvg = ca.length ? ca.reduce((a, b) => a + b, 0) / ca.length : null;
-      const annCCode = gradeCode(annCAvg);
-
-      const hy1ScoreCell = c.hy1Score !== null ? `<td class="score">${c.hy1Score.toFixed(1)}</td><td>${ach(c.hy1Grade || 'Ex')}</td>` : `<td>—</td><td>${ach('Ex')}</td>`;
-      const hy2ScoreCell = c.hy2Score !== null ? `<td class="score">${c.hy2Score.toFixed(1)}</td><td>${ach(c.hy2Grade || 'Ex')}</td>` : `<td>—</td><td>${ach('Ex')}</td>`;
-
-      rows += `<tr>
-        <td class="subj-col">${esc(c.name)}</td>
-        ${hy1ScoreCell}
-        ${hy2ScoreCell}
-        <td>${ach(annCCode)}</td>
+    if (isPrimary) {
+      // Primary (Class I & II): subject header + one row per CATEGORY (e.g. Work Habits)
+      rows += `<tr class="subj-head">
+        <td class="subj-col" colspan="3">${esc(subj.name)}</td>
+        <td></td><td></td>
+        <td>${ach(annSCode)}</td>
       </tr>`;
-    });
+
+      // Build category → criteria map from both terms
+      const catMap = new Map(); // category → { hy1Scores[], hy2Scores[], hy1Grade, hy2Grade }
+      const addToCat = (criteria, term) => {
+        (criteria || []).forEach(c => {
+          const cat = c.category || inferCategory(c.criterion_id) || 'General';
+          if (!catMap.has(cat)) catMap.set(cat, { hy1Scores: [], hy2Scores: [] });
+          if (term === 'hy1' && c.averageScore != null) catMap.get(cat).hy1Scores.push(c.averageScore);
+          if (term === 'hy2' && c.averageScore != null) catMap.get(cat).hy2Scores.push(c.averageScore);
+        });
+      };
+      addToCat(hy1Subj?.criteria, 'hy1');
+      addToCat(hy2Subj?.criteria, 'hy2');
+
+      catMap.forEach((cat, catName) => {
+        const hy1Avg = cat.hy1Scores.length ? cat.hy1Scores.reduce((a, b) => a + b, 0) / cat.hy1Scores.length : null;
+        const hy2Avg = cat.hy2Scores.length ? cat.hy2Scores.reduce((a, b) => a + b, 0) / cat.hy2Scores.length : null;
+        const annAvgs = [hy1Avg, hy2Avg].filter(v => v !== null);
+        const annAvg  = annAvgs.length ? annAvgs.reduce((a, b) => a + b, 0) / annAvgs.length : null;
+
+        const hy1Cell = hy1Avg !== null
+          ? `<td class="score">${hy1Avg.toFixed(1)}</td><td>${ach(gradeCode(hy1Avg))}</td>`
+          : `<td>—</td><td>${ach('Ex')}</td>`;
+        const hy2Cell = hy2Avg !== null
+          ? `<td class="score">${hy2Avg.toFixed(1)}</td><td>${ach(gradeCode(hy2Avg))}</td>`
+          : `<td>—</td><td>${ach('Ex')}</td>`;
+
+        rows += `<tr>
+          <td class="subj-col" style="padding-left:18px">${esc(catName)}</td>
+          ${hy1Cell}
+          ${hy2Cell}
+          <td>${ach(gradeCode(annAvg))}</td>
+        </tr>`;
+      });
+    } else {
+      // All other classes: subject header + individual criteria rows
+      rows += `<tr class="subj-head">
+        <td class="subj-col" colspan="3">${esc(subj.name)}</td>
+        <td></td><td></td>
+        <td>${ach(annSCode)}</td>
+      </tr>`;
+
+      // Criteria rows
+      const criteriaMap = new Map();
+      (hy1Subj?.criteria || []).forEach(c => criteriaMap.set(c.criterion_id, { name: c.criterion_name, hy1Score: c.averageScore ?? null, hy1Grade: c.grade || gradeCode(c.averageScore), hy2Score: null, hy2Grade: null }));
+      (hy2Subj?.criteria || []).forEach(c => {
+        if (!criteriaMap.has(c.criterion_id)) criteriaMap.set(c.criterion_id, { name: c.criterion_name, hy1Score: null, hy1Grade: null, hy2Score: null, hy2Grade: null });
+        criteriaMap.get(c.criterion_id).hy2Score = c.averageScore ?? null;
+        criteriaMap.get(c.criterion_id).hy2Grade = c.grade || gradeCode(c.averageScore);
+      });
+
+      criteriaMap.forEach(c => {
+        const ca = [c.hy1Score, c.hy2Score].filter(v => v !== null);
+        const annCAvg = ca.length ? ca.reduce((a, b) => a + b, 0) / ca.length : null;
+        const annCCode = gradeCode(annCAvg);
+
+        const hy1ScoreCell = c.hy1Score !== null ? `<td class="score">${c.hy1Score.toFixed(1)}</td><td>${ach(c.hy1Grade || 'Ex')}</td>` : `<td>—</td><td>${ach('Ex')}</td>`;
+        const hy2ScoreCell = c.hy2Score !== null ? `<td class="score">${c.hy2Score.toFixed(1)}</td><td>${ach(c.hy2Grade || 'Ex')}</td>` : `<td>—</td><td>${ach('Ex')}</td>`;
+
+        rows += `<tr>
+          <td class="subj-col">${esc(c.name)}</td>
+          ${hy1ScoreCell}
+          ${hy2ScoreCell}
+          <td>${ach(annCCode)}</td>
+        </tr>`;
+      });
+    }
   });
 
   return rows || `<tr><td colspan="6" style="color:#888;font-style:italic;padding:12px">No assessment data found.</td></tr>`;
@@ -625,7 +684,14 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
     return `${present}<span class="sl">/</span>${working} <span class="dim">days</span>`;
   }
 
-  const tableRows = buildTableRows(hy1Card, hy2Card);
+  // Primary classes (I & II) show category-grouped rows, not individual criteria
+  const classNorm = (info.className || '').toLowerCase().trim();
+  const isClassI  = ['class i', 'class 1', 'i', '1'].includes(classNorm);
+  const isClassII = ['class ii', 'class 2', 'ii', '2'].includes(classNorm);
+  const isPrimary = isClassI || isClassII;
+  // Class I has fewer subjects (no Hindi) → stretch rows to fill page height
+  const stretchRows = isClassI;
+  const tableRows = buildTableRows(hy1Card, hy2Card, isPrimary);
 
   // Term date ranges
   const hy1Range = hy1Card?.dateFrom ? `${hy1Card.dateFrom} – ${hy1Card.dateTo}` : 'Apr – Sep';
@@ -700,7 +766,7 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   <div class="body">
 
     <section class="marks">
-      <table class="marks-tbl">
+      <table class="marks-tbl${stretchRows ? ' stretch-rows' : ''}">
         <colgroup>
           <col style="width:32%" />
           <col style="width:13%" />

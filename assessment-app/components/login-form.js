@@ -75,16 +75,41 @@ export function createLoginForm({ onLogin = () => {}, onLogout = () => {}, onGen
   submitBtn.textContent = 'Login';
   form.append(submitBtn);
 
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
+  async function attemptLogin(id, pw) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Logging in…';
     errorEl.style.display = 'none';
     try {
-      const user = await login(emailInput.value.trim(), passwordInput.value.trim());
+      const user = await login(id, pw);
       onLogin(user);
     } catch (err) {
-      errorEl.textContent = err.message;
-      errorEl.style.display = 'block';
+      if (err.code === 'auth/quota-exceeded' || err.code === 'auth/too-many-requests') {
+        // Auto-retry after 90s with countdown
+        let secs = 90;
+        errorEl.textContent = `${err.message} Retrying in ${secs}s…`;
+        errorEl.style.display = 'block';
+        const tick = setInterval(() => {
+          secs--;
+          if (secs <= 0) {
+            clearInterval(tick);
+            errorEl.style.display = 'none';
+            attemptLogin(id, pw);
+          } else {
+            errorEl.textContent = `${err.message} Retrying in ${secs}s…`;
+          }
+        }, 1000);
+      } else {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Login';
+      }
     }
+  }
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    attemptLogin(emailInput.value.trim(), passwordInput.value.trim());
   });
 
   container.append(form);

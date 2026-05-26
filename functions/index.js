@@ -23,51 +23,125 @@ async function sendPush(token, title, body, data = {}) {
   }
 }
 
-// ── Helper: get FCM token for a student by studentId ──────────────────────
-async function getStudentToken(studentId) {
-  if (!studentId) { console.warn("getStudentToken: no studentId"); return null; }
-  console.log("getStudentToken: looking up", studentId);
+// ── Helper: get FCM token + name for a student by studentId ───────────────
+async function getStudentInfo(studentId) {
+  if (!studentId) return null;
   const snap = await db.collection("users")
     .where("studentId", "==", studentId)
     .limit(1)
     .get();
-  if (snap.empty) { console.warn("getStudentToken: no user found for", studentId); return null; }
-  const token = snap.docs[0].data().fcmToken || null;
-  console.log("getStudentToken: token found?", !!token);
-  return token;
+  if (snap.empty) { console.warn("getStudentInfo: no user for", studentId); return null; }
+  const d = snap.docs[0].data();
+  return {
+    token: d.fcmToken || null,
+    name:  (d.name || d.displayName || "").split(" ")[0] || "Student",
+  };
 }
 
-// ── Helper: send attendance push to newly-absent students ─────────────────
-async function notifyAbsent(data, docId) {
-  const absent = data.absent || [];
-  const date   = data.date   || (docId || "").split("_")[1] || "";
-  const cls    = data.class  || "";
-  const fmt    = date ? new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" }) : date;
+// Keep old name as alias so student_messages trigger still works
+async function getStudentToken(studentId) {
+  const info = await getStudentInfo(studentId);
+  return info ? info.token : null;
+}
 
-  await Promise.all(absent.map(async (sid) => {
-    const token = await getStudentToken(sid);
-    await sendPush(
-      token,
-      "Attendance Alert",
-      `You were marked Absent on ${fmt} (Class ${cls}). Please inform the school if this is incorrect.`,
-      { type: "attendance", date, class: String(cls) }
-    );
+// ── Helper: rich attendance push ──────────────────────────────────────────
+async function sendAttendancePush(token, firstName, status, fmt, cls, date, isReminder) {
+  if (!token) return;
+  const isAbsent = status === "absent";
+  const emoji    = isAbsent ? "🔴" : "🟡";
+  const label    = isAbsent ? "Absent" : "Late";
+  const reminder = isReminder ? " (Reminder)" : "";
+  const title    = `${emoji} Attendance Alert${reminder}`;
+  const body     = isAbsent
+    ? `Hi ${firstName}, you were marked Absent on ${fmt} (Class ${cls}). Contact the school if this is incorrect.`
+    : `Hi ${firstName}, you arrived Late on ${fmt} (Class ${cls}). Please ensure punctuality.`;
+
+  await sendPush(token, title, body, {
+    type:    "attendance",
+    status,
+    date,
+    class:   String(cls),
+    screen:  "attendance",          // deep-link target
+    click_action: "FLUTTER_NOTIFICATION_CLICK",
+  });
+}
+
+// ── Helper: notify absent OR late students ────────────────────────────────
+async function notifyAttendance(data, docId, status, isReminder = false) {
+  const students = data[status] || [];   // "absent" or "late" array
+  const date     = data.date || (docId || "").split("_")[1] || "";
+  const cls      = data.class || "";
+  const fmt      = date
+    ? new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })
+    : date;
+
+  await Promise.all(students.map(async (sid) => {
+    const info = await getStudentInfo(sid);
+    if (!info || !info.token) return;
+    await sendAttendancePush(info.token, info.name, status, fmt, cls, date, isReminder);
   }));
 }
 
-// ── TRIGGER 1a: Attendance created ───────────────────────────────────────
+// ── TRIGGER 1a: Attendance created → notify absent + late ─────────────────
 exports.notifyAbsentStudents = onDocumentCreated(
   "attendance_daily/{docId}",
-  async (event) => notifyAbsent(event.data.data(), event.params.docId)
+  async (event) => {
+    const data = event.data.data();
+    await notifyAttendance(data, event.params.docId, "absent");
+    await notifyAttendance(data, event.params.docId, "late");
+  }
 );
 
-// ── TRIGGER 1b: Attendance updated → notify all absent students ───────────
+// ── TRIGGER 1b: Attendance updated → notify newly absent/late students ────
 exports.notifyAbsentStudentsUpdated = onDocumentUpdated(
   "attendance_daily/{docId}",
   async (event) => {
-    const after = event.data.after.data();
-    console.log("notifyAbsentStudentsUpdated fired, absent:", after.absent);
-    await notifyAbsent(after, event.params.docId);
+    const before = event.data.before.data();
+    const after  = event.data.after.data();
+
+    // Only notify students who are NEW to absent/late (not previously there)
+    const newAbsent = (after.absent || []).filter(s => !(before.absent || []).includes(s));
+    const newLate   = (after.late   || []).filter(s => !(before.late   || []).includes(s));
+
+    const docId = event.params.docId;
+    const date  = after.date || (docId || "").split("_")[1] || "";
+    const cls   = after.class || "";
+    const fmt   = date
+      ? new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })
+      : date;
+
+    await Promise.all([
+      ...newAbsent.map(async (sid) => {
+        const info = await getStudentInfo(sid);
+        if (info && info.token) await sendAttendancePush(info.token, info.name, "absent", fmt, cls, date, false);
+      }),
+      ...newLate.map(async (sid) => {
+        const info = await getStudentInfo(sid);
+        if (info && info.token) await sendAttendancePush(info.token, info.name, "late", fmt, cls, date, false);
+      }),
+    ]);
+  }
+);
+
+// ── SCHEDULED: Absent reminder — fires at 10:30 AM IST ───────────────────
+// Sends a second reminder push to all students absent TODAY.
+exports.absentReminder = onSchedule(
+  { schedule: "30 5 * * 1-6", timeZone: "Asia/Kolkata", region: "asia-south1" },
+  // 10:30 IST = 05:00 UTC; Mon–Sat (days 1–6)
+  async () => {
+    const nowIST  = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const dateStr = nowIST.toISOString().split("T")[0]; // "YYYY-MM-DD"
+
+    // Find all attendance docs for today
+    const snap = await db.collection("attendance_daily")
+      .where("date", "==", dateStr)
+      .get();
+    if (snap.empty) { console.log("absentReminder: no docs for", dateStr); return; }
+
+    for (const doc of snap.docs) {
+      await notifyAttendance(doc.data(), doc.id, "absent", true);
+    }
+    console.log("absentReminder: reminder sent for", dateStr);
   }
 );
 
@@ -147,22 +221,151 @@ exports.notifyStudentMessage = onDocumentCreated(
   }
 );
 
-// ── SCHEDULED: Period-end reminder for teachers ───────────────────────────
-// Runs every minute (IST). When a period ends, each teacher assigned to the
-// NEXT period receives a push: "Period X ended — Class Y: Subject next".
+// ── Helper: build initials→{subject,className} map from one period's slots ──
+function buildTeacherSlotMap(slotsSnap, subjects) {
+  // teacherMap[INITIALS] = { subject, className }
+  // One teacher can only be in one slot per period, so last write wins (fine).
+  const teacherMap = {};
+
+  slotsSnap.docs.forEach(doc => {
+    const s = doc.data();
+
+    if (s.slotType === "value-cate-split") {
+      // Two separate teachers share the period across all involved classes
+      const classes = (s.involvedClasses || []).join(" & ");
+      if (s.valueTeacher) {
+        teacherMap[s.valueTeacher.toUpperCase()] = {
+          subject: "Value Education", className: classes
+        };
+      }
+      if (s.cateTeacher) {
+        teacherMap[s.cateTeacher.toUpperCase()] = {
+          subject: "Catechism", className: classes
+        };
+      }
+    } else {
+      // Normal slot — single teacher
+      const ini = (s.teacherInitials || "").toUpperCase().trim();
+      if (!ini) return;
+
+      // subjectCode can be a string or an array
+      let subjectName;
+      if (Array.isArray(s.subjectCode)) {
+        subjectName = s.subjectCode.map(c => subjects[c] || c).join(" / ");
+      } else if (s.subjectCode) {
+        subjectName = subjects[s.subjectCode] || s.subjectCode;
+      } else {
+        subjectName = "Class";
+      }
+
+      teacherMap[ini] = { subject: subjectName, className: s.className || "" };
+    }
+  });
+
+  return teacherMap;
+}
+
+// ── Helper: resolve initials → fcmToken + name via teachers → users chain ───
+// teachers collection: doc fields include initials/routineInitials + teacherId
+// users collection:    doc fields include teacherId + fcmToken + name
+async function resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextStartTime) {
+  if (Object.keys(teacherMap).length === 0) return [];
+
+  // Step 1: load ALL teacher docs
+  // Build two maps:
+  //   initialsToTeacherId : "SR"      → "SFST016"
+  //   initialsToName      : "SR"      → "Sister Rita"   (first name used in push)
+  const teachersSnap = await db.collection("teachers").get();
+  const initialsToTeacherId = {};
+  const initialsToName      = {};
+
+  teachersSnap.docs.forEach(doc => {
+    const t   = doc.data();
+    const ini = (t.initials || t.routineInitials || "").toUpperCase().trim();
+    const tid = (t.teacherId || t.loginId || doc.id || "").trim();
+    const fullName = (t.name || t.fullName || "").trim();
+    if (ini && tid) {
+      initialsToTeacherId[ini] = tid;
+      // Store first name for the personal notification body
+      initialsToName[ini] = fullName.split(" ")[0] || fullName || "Teacher";
+    }
+  });
+
+  // Step 2: collect only the teacherIds that appear in this period's slots
+  const teacherIds = [];
+  for (const ini of Object.keys(teacherMap)) {
+    const tid = initialsToTeacherId[ini];
+    if (tid) teacherIds.push(tid);
+  }
+  if (teacherIds.length === 0) {
+    console.warn("periodReminder: no teacherIds resolved. Initials in slot:", Object.keys(teacherMap));
+    console.warn("periodReminder: initials in teachers collection:", Object.keys(initialsToTeacherId));
+    return [];
+  }
+
+  // Step 3: look up FCM tokens from users collection (chunk ≤30)
+  const messages = [];
+  for (let i = 0; i < teacherIds.length; i += 30) {
+    const chunk = teacherIds.slice(i, i + 30);
+    const usersSnap = await db.collection("users")
+      .where("teacherId", "in", chunk)
+      .get();
+
+    usersSnap.docs.forEach(uDoc => {
+      const u = uDoc.data();
+      if (!u.fcmToken) return;
+
+      const tid = (u.teacherId || "").trim();
+
+      // Reverse-look up: which initials → this teacherId
+      const ini = Object.keys(initialsToTeacherId)
+        .find(k => initialsToTeacherId[k] === tid);
+      const info = ini ? teacherMap[ini] : null;
+      if (!info) return; // teacher not in this period's slots — skip
+
+      // Name from teachers collection (accurate) with users.name as fallback
+      const firstName  = initialsToName[ini]
+        || (u.name || "").split(" ")[0]
+        || "Teacher";
+      const classLabel = info.className ? `Class ${info.className}` : "";
+      const timeLabel  = nextStartTime  ? ` · Starts ${nextStartTime}` : "";
+
+      messages.push({
+        token: u.fcmToken,
+        notification: {
+          title: `⏰ Period ${endedPeriod} over`,
+          body:  `${firstName}, next: ${info.subject}${classLabel ? " — " + classLabel : ""}${timeLabel}`,
+        },
+        android: {
+          priority: "high",
+          notification: { channelId: "period_reminders", sound: "default" }
+        },
+        data: {
+          type:       "period_reminder",
+          nextPeriod: String(nextPeriod),
+          subject:    info.subject,
+          className:  info.className,
+        },
+      });
+    });
+  }
+
+  return messages;
+}
+
+// ── SCHEDULED: Period-end reminder — runs every minute (IST) ─────────────
 exports.periodEndReminder = onSchedule(
   { schedule: "every 1 minutes", timeZone: "Asia/Kolkata", region: "asia-south1" },
   async () => {
-    // Current time in IST
     const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
     const currentMinutes = nowIST.getHours() * 60 + nowIST.getMinutes();
 
-    // Fetch period timings
+    // 1. Load period timings
     const timingsSnap = await db.collection("settings").doc("periodTimings").get();
     if (!timingsSnap.exists) return;
     const timings = timingsSnap.data();
 
-    // Find which period just ended at this exact minute
+    // 2. Find which period just ended at this exact minute
     let endedPeriod = null;
     for (let p = 1; p <= 6; p++) {
       const t = timings[`period${p}`];
@@ -173,163 +376,96 @@ exports.periodEndReminder = onSchedule(
     if (endedPeriod === null) return;
 
     const nextPeriod = endedPeriod + 1;
-    if (nextPeriod > 6) return; // Last period — no next class
+    if (nextPeriod > 6) return; // school day over
 
-    // Get current school day
+    // Next period start time for the notification body
+    const nextT = timings[`period${nextPeriod}`];
+    const nextStartTime = nextT && nextT.start ? nextT.start : null;
+
+    // 3. Current school day
     const daySnap = await db.collection("settings").doc("schoolDay").get();
     if (!daySnap.exists) return;
     const currentDay = daySnap.data().currentDay;
 
-    // Get slots for next period
+    // 4. Slots for next period
     const slotsSnap = await db
       .collection("routine").doc(String(currentDay))
       .collection("periods").doc(String(nextPeriod))
       .collection("slots").get();
     if (slotsSnap.empty) return;
 
-    // Get subjects map
+    // 5. Subjects map
     const subjectsSnap = await db.collection("subjects").get();
     const subjects = {};
-    subjectsSnap.docs.forEach(d => { subjects[d.data().code] = d.data().name; });
-
-    // Map teacher initials → { subject, className }
-    const teacherMap = {};
-    slotsSnap.docs.forEach(doc => {
-      const s = doc.data();
-      if (s.type === "value-cate-split") {
-        const classes = (s.involvedClasses || []).join(" & ");
-        if (s.valueTeacher) teacherMap[s.valueTeacher] = { subject: "Value Education", className: classes };
-        if (s.cateTeacher)  teacherMap[s.cateTeacher]  = { subject: "Catechism",        className: classes };
-      } else {
-        const subjectName = Array.isArray(s.subjectCodes)
-          ? s.subjectCodes.map(c => subjects[c] || `Subj ${c}`).join(" / ")
-          : (subjects[s.subjectCode] || "Class");
-        if (s.teacherInitials) teacherMap[s.teacherInitials] = { subject: subjectName, className: s.className || "" };
-      }
+    subjectsSnap.docs.forEach(d => {
+      const sd = d.data();
+      subjects[sd.code || d.id] = sd.name || sd.code || d.id;
     });
 
-    const initials = Object.keys(teacherMap);
-    if (initials.length === 0) return;
+    // 6. Build slot map and resolve to FCM messages
+    const teacherMap = buildTeacherSlotMap(slotsSnap, subjects);
+    const messages   = await resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextStartTime);
 
-    // Resolve initials → staffId via teachers collection (batch by 30 for Firestore in-query limit)
-    const staffIdToInitials = {};
-    const staffIds = [];
-    const teacherDocs = await Promise.all(initials.map(i => db.collection("teachers").doc(i).get()));
-    teacherDocs.forEach(snap => {
-      if (!snap.exists) return;
-      const { initials: ini, staffId } = snap.data();
-      if (staffId) { staffIdToInitials[staffId] = ini; staffIds.push(staffId); }
-    });
-    if (staffIds.length === 0) return;
+    if (messages.length === 0) {
+      console.log(`Period ${endedPeriod} ended — no FCM tokens resolved`);
+      return;
+    }
 
-    // Find users with matching staffId (chunk into 30s for in-query limit)
-    const messages = [];
-    const chunks = [];
-    for (let i = 0; i < staffIds.length; i += 30) chunks.push(staffIds.slice(i, i + 30));
-
-    await Promise.all(chunks.map(async chunk => {
-      const usersSnap = await db.collection("users").where("staffId", "in", chunk).get();
-      usersSnap.docs.forEach(uDoc => {
-        const { fcmToken, staffId } = uDoc.data();
-        if (!fcmToken || !staffId) return;
-        const ini  = staffIdToInitials[staffId];
-        const info = ini ? teacherMap[ini] : null;
-        if (!info) return;
-        messages.push({
-          token: fcmToken,
-          notification: {
-            title: `⏰ Period ${endedPeriod} ended`,
-            body: `Next: ${info.subject} — Class ${info.className}`,
-          },
-          android: { priority: "high", notification: { channelId: "period_reminders", sound: "default" } },
-          data: { type: "period_reminder", nextPeriod: String(nextPeriod), className: info.className },
-        });
-      });
-    }));
-
-    if (messages.length === 0) return;
     const result = await fcm.sendEach(messages);
-    console.log(`Period ${endedPeriod} ended — sent ${result.successCount} reminders, ${result.failureCount} failed`);
+    console.log(`Period ${endedPeriod} ended → Period ${nextPeriod} starting ${nextStartTime || "soon"} — sent ${result.successCount}/${messages.length}`);
   }
 );
 
-// ── CALLABLE: Manual period-end reminder trigger (admin only) ─────────────
+// ── CALLABLE: Manual period-end reminder trigger (admin/test) ────────────
 exports.triggerPeriodReminder = onCall(
   { region: "asia-south1" },
   async (request) => {
     const endedPeriod = Number(request.data.period);
-    if (!endedPeriod || endedPeriod < 1 || endedPeriod > 6) {
+    if (!endedPeriod || endedPeriod < 1 || endedPeriod > 6)
       throw new HttpsError("invalid-argument", "period must be 1–6");
-    }
+
     const nextPeriod = endedPeriod + 1;
-    if (nextPeriod > 6) throw new HttpsError("invalid-argument", "No next period after period 6");
+    if (nextPeriod > 6)
+      throw new HttpsError("invalid-argument", "No next period after period 6");
 
-    const daySnap = await db.collection("settings").doc("schoolDay").get();
-    if (!daySnap.exists) throw new HttpsError("not-found", "schoolDay not set");
-    const currentDay = daySnap.data().currentDay;
+    // Settings
+    const [daySnap, timingsSnap] = await Promise.all([
+      db.collection("settings").doc("schoolDay").get(),
+      db.collection("settings").doc("periodTimings").get(),
+    ]);
+    if (!daySnap.exists)    throw new HttpsError("not-found", "schoolDay not set");
+    if (!timingsSnap.exists) throw new HttpsError("not-found", "periodTimings not set");
 
+    const currentDay    = daySnap.data().currentDay;
+    const timings       = timingsSnap.data();
+    const nextT         = timings[`period${nextPeriod}`];
+    const nextStartTime = nextT && nextT.start ? nextT.start : null;
+
+    // Slots
     const slotsSnap = await db
       .collection("routine").doc(String(currentDay))
       .collection("periods").doc(String(nextPeriod))
       .collection("slots").get();
-    if (slotsSnap.empty) throw new HttpsError("not-found", `No slots for Day ${currentDay} Period ${nextPeriod}`);
+    if (slotsSnap.empty)
+      throw new HttpsError("not-found", `No slots for Day ${currentDay} Period ${nextPeriod}`);
 
+    // Subjects
     const subjectsSnap = await db.collection("subjects").get();
     const subjects = {};
-    subjectsSnap.docs.forEach(d => { subjects[d.data().code] = d.data().name; });
-
-    const teacherMap = {};
-    slotsSnap.docs.forEach(doc => {
-      const s = doc.data();
-      if (s.type === "value-cate-split") {
-        const classes = (s.involvedClasses || []).join(" & ");
-        if (s.valueTeacher) teacherMap[s.valueTeacher] = { subject: "Value Education", className: classes };
-        if (s.cateTeacher)  teacherMap[s.cateTeacher]  = { subject: "Catechism",        className: classes };
-      } else {
-        const subjectName = Array.isArray(s.subjectCodes)
-          ? s.subjectCodes.map(c => subjects[c] || `Subj ${c}`).join(" / ")
-          : (subjects[s.subjectCode] || "Class");
-        if (s.teacherInitials) teacherMap[s.teacherInitials] = { subject: subjectName, className: s.className || "" };
-      }
+    subjectsSnap.docs.forEach(d => {
+      const sd = d.data();
+      subjects[sd.code || d.id] = sd.name || sd.code || d.id;
     });
 
-    const initials = Object.keys(teacherMap);
-    if (initials.length === 0) throw new HttpsError("not-found", "No teachers found for that period");
+    // Build + resolve using shared helpers
+    const teacherMap = buildTeacherSlotMap(slotsSnap, subjects);
+    if (Object.keys(teacherMap).length === 0)
+      throw new HttpsError("not-found", "No teachers found in those slots");
 
-    const staffIdToInitials = {};
-    const staffIds = [];
-    const teacherDocs = await Promise.all(initials.map(i => db.collection("teachers").doc(i).get()));
-    teacherDocs.forEach(snap => {
-      if (!snap.exists) return;
-      const { initials: ini, staffId } = snap.data();
-      if (staffId) { staffIdToInitials[staffId] = ini; staffIds.push(staffId); }
-    });
-    if (staffIds.length === 0) throw new HttpsError("not-found", "No staffIds resolved");
+    const messages = await resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextStartTime);
+    if (messages.length === 0)
+      throw new HttpsError("not-found", "No FCM tokens resolved — check teachers/users teacherId linking");
 
-    const messages = [];
-    const chunks = [];
-    for (let i = 0; i < staffIds.length; i += 30) chunks.push(staffIds.slice(i, i + 30));
-    await Promise.all(chunks.map(async chunk => {
-      const usersSnap = await db.collection("users").where("staffId", "in", chunk).get();
-      usersSnap.docs.forEach(uDoc => {
-        const { fcmToken, staffId } = uDoc.data();
-        if (!fcmToken || !staffId) return;
-        const ini  = staffIdToInitials[staffId];
-        const info = ini ? teacherMap[ini] : null;
-        if (!info) return;
-        messages.push({
-          token: fcmToken,
-          notification: {
-            title: `⏰ Period ${endedPeriod} ended`,
-            body: `Next: ${info.subject} — Class ${info.className}`,
-          },
-          android: { priority: "high", notification: { channelId: "period_reminders", sound: "default" } },
-          data: { type: "period_reminder", nextPeriod: String(nextPeriod), className: info.className },
-        });
-      });
-    }));
-
-    if (messages.length === 0) throw new HttpsError("not-found", "No FCM tokens found for teachers");
     const result = await fcm.sendEach(messages);
     return { sent: result.successCount, failed: result.failureCount, total: messages.length };
   }

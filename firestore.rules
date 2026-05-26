@@ -9,7 +9,10 @@ service cloud.firestore {
     }
     // office staff may be stored as 'office' or 'office_staff'
     function isOffice()    { return isRole('office') || isRole('office_staff'); }
-    function isAnyStaff()  { return isRole('admin') || isOffice() || isRole('teacher'); }
+    function isTeacherAny() {
+      return isRole('teacher') || isRole('class_teacher') || isRole('subject_teacher');
+    }
+    function isAnyStaff()  { return isRole('admin') || isOffice() || isTeacherAny(); }
     function isAdmin()     { return isRole('admin'); }
     function isOwner()     { return request.auth != null && request.auth.uid == resource.id; }
 
@@ -39,7 +42,7 @@ service cloud.firestore {
     match /attendance_daily/{docId} {
       allow read:  if isAnyStaff() || request.auth != null;
       allow write: if request.auth != null
-        && (isRole('teacher') || isAdmin())
+        && (isTeacherAny() || isAdmin())
         && (isDailyWriteAllowed(database, docId) || isAdmin());
     }
 
@@ -78,13 +81,13 @@ service cloud.firestore {
     // ── Homework ─────────────────────────────────────────────────────
     match /homework/{docId} {
       allow read:  if request.auth != null;
-      allow write: if isRole('teacher') || isAdmin();
+      allow write: if isTeacherAny() || isAdmin();
     }
 
     // ── Notices ──────────────────────────────────────────────────────
     match /notices/{docId} {
       allow read:  if true;
-      allow write: if isAdmin() || isRole('teacher');
+      allow write: if isAdmin() || isTeacherAny();
     }
 
     // ── Public-read / admin-write collections ─────────────────────────
@@ -133,7 +136,7 @@ service cloud.firestore {
         (request.auth != null &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId == studentId &&
          resource.data.releasedToStudent == true);
-      allow write: if isRole('teacher') || isAdmin();
+      allow write: if isTeacherAny() || isAdmin();
     }
 
     // ── Routine / Timetable ──────────────────────────────────────────
@@ -160,19 +163,19 @@ service cloud.firestore {
     // ── Assessment sessions ───────────────────────────────────────────
     match /assessment_sessions/{docId} {
       allow read:  if isAnyStaff();
-      allow write: if isRole('teacher') || isAdmin();
+      allow write: if isTeacherAny() || isAdmin();
     }
 
     // ── Monthly analytics ─────────────────────────────────────────────
     match /monthly_analytics/{docId} {
       allow read:  if isAnyStaff();
-      allow write: if isRole('teacher') || isAdmin();
+      allow write: if isTeacherAny() || isAdmin();
     }
 
     // ── Weak student flags ────────────────────────────────────────────
     match /weak_students/{docId} {
       allow read:  if isAnyStaff();
-      allow write: if isRole('teacher') || isAdmin();
+      allow write: if isTeacherAny() || isAdmin();
     }
 
     // ── Student academic profiles ─────────────────────────────────────
@@ -180,7 +183,7 @@ service cloud.firestore {
       allow read:  if isAnyStaff() ||
         (request.auth != null &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId == docId);
-      allow write: if isRole('teacher') || isAdmin();
+      allow write: if isTeacherAny() || isAdmin();
     }
 
     // ── Admin notifications ──────────────────────────────────────────

@@ -56,6 +56,36 @@ function saveFcmToken(token) {
   }
 }
 
+// Clear FCM token on logout so a new user on this device doesn't get
+// notifications meant for the previous user.
+function clearFcmTokenForUid(uid) {
+  if (!uid) return;
+  import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js').then(function (fs) {
+    var db = fs.getFirestore(window._firebaseApp);
+    return fs.updateDoc(fs.doc(db, 'users', uid), { fcmToken: fs.deleteField() });
+  }).then(function () {
+    console.log('[push] FCM token cleared for uid:', uid);
+    window._lastFcmToken = null;
+    window._pendingFcmToken = null;
+  }).catch(function (e) {
+    console.warn('[push] token clear failed:', e.message);
+  });
+}
+
+// Hook into logout — clear token before sign-out
+(function hookLogout() {
+  var _interval = setInterval(function () {
+    if (typeof window.logout !== 'function') return;
+    var _orig = window.logout;
+    window.logout = function () {
+      var uid = getCurrentUid();
+      if (uid) clearFcmTokenForUid(uid);
+      _orig.apply(this, arguments);
+    };
+    clearInterval(_interval);
+  }, 200);
+})();
+
 // Always defined — called by the Enable Notifications button in teacher profile
 window.reRegisterPushNotifications = function (statusEl) {
   function setStatus(msg, color) {
@@ -137,7 +167,34 @@ window.reRegisterPushNotifications = function (statusEl) {
 
     Push.addListener('pushNotificationActionPerformed', function (action) {
       var data = action.notification.data || {};
-      if (data.url) { window.location.hash = data.url; }
+
+      // Screen-based deep-link routing
+      var screen = data.screen || data.type || '';
+
+      // Poll until the nav function is ready (app may still be booting)
+      function navWhenReady(fn, sectionId) {
+        if (typeof window[fn] === 'function') { window[fn](sectionId); return; }
+        var attempts = 0;
+        var poll = setInterval(function () {
+          attempts++;
+          if (typeof window[fn] === 'function') { clearInterval(poll); window[fn](sectionId); }
+          if (attempts > 30) clearInterval(poll);
+        }, 200);
+      }
+
+      if (screen === 'attendance') {
+        navWhenReady('navStudentTo', 's-attendance');
+      } else if (screen === 'notice') {
+        navWhenReady('navStudentTo', 's-notices');
+      } else if (screen === 'leave') {
+        navWhenReady('navTeacherTo', 't-leave');
+      } else if (screen === 'message') {
+        navWhenReady('navStudentTo', 's-dashboard'); // messages shown on dashboard
+      } else if (screen === 'period_reminder') {
+        navWhenReady('navTeacherTo', 't-dashboard');
+      } else if (data.url) {
+        window.location.hash = data.url;
+      }
     });
   }
 

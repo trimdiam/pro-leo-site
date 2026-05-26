@@ -1,4 +1,4 @@
-const CACHE = 'sfs-v30';
+const CACHE = 'sfs-v42';
 
 // App shell — pre-cached on install for fast cold-start.
 const SHELL = [
@@ -24,6 +24,7 @@ const SHELL = [
   '/back-button.js',
   '/sibling-system.js',
   '/notification-center.js',
+  '/portal-data-fix.js',
   '/app-logic.js',
   '/assets/images/logo.webp'
 ];
@@ -74,6 +75,12 @@ self.addEventListener('fetch', e => {
     url.hostname.includes('firebasestorage.googleapis.com') ||
     url.hostname.includes('fcm.googleapis.com')
   ) {
+    return;
+  }
+
+  // Never intercept sub-apps — they use ES modules with dynamic imports that
+  // a 503 fallback response will silently break. Let the browser handle them.
+  if (url.pathname.startsWith('/routine-app/') || url.pathname.startsWith('/assessment-app/')) {
     return;
   }
 

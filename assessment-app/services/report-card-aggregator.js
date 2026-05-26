@@ -130,6 +130,7 @@ export async function aggregateStudentForReportCard(studentId, dateFrom, dateTo,
       return {
         criterion_id:   criterionDef.criterion_id,
         criterion_name: criterionDef.criterion_name,
+        category:       criterionDef.category || 'General',
         scores,
         absentCount,
         averageScore,
