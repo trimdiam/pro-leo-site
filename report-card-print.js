@@ -119,8 +119,12 @@ export function computeAnnualSummary(hy1Card, hy2Card) {
 }
 
 // ── Inline CSS ────────────────────────────────────────────────────────────────
-// Split into three pieces so the PDF capture path can swap MOBILE_CSS for
-// PDF_LOCK_CSS — see opts.pdfMode in buildPrintableHTML.
+// BASE_CSS is the single source of truth for the report card layout. Both
+// the visible view (in the iframe overlay) and the PDF capture render from
+// it directly. CSS Grid was replaced with flexbox so the layout doesn't
+// collapse on narrow mobile viewports AND so the alpha html2canvas bundled
+// in html2pdf 0.10.1 renders it correctly. MOBILE_CSS and PDF_LOCK_CSS are
+// kept for reference but no longer included in any emitted HTML.
 
 const BASE_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -203,20 +207,26 @@ const BASE_CSS = `
   .hdr-year  { font-size:10px; font-weight:500; color:var(--cd-100); letter-spacing:0.8px; }
   .hdr-class { font-size:9px; font-weight:600; color:var(--cd-200); letter-spacing:1.4px; text-transform:uppercase; margin-top:2px; }
 
-  /* Info strip */
+  /* Info strip — flexbox (was grid) for narrow-viewport + alpha-h2c reliability */
   .info-strip {
-    display:grid; grid-template-columns:1.6fr 0.9fr 0.7fr 1fr 1fr 1fr 1fr;
+    display:flex; flex-direction:row; align-items:stretch;
     border-bottom:2px solid var(--edge); background:var(--cream-3); flex-shrink:0;
   }
-  .info-cell { padding:5px 12px 6px; border-right:1px solid var(--cd-200); display:flex; flex-direction:column; gap:2px; }
+  .info-cell { padding:5px 12px 6px; border-right:1px solid var(--cd-200); display:flex; flex-direction:column; gap:2px; flex:1 1 0; min-width:0; }
+  .info-strip .info-cell:nth-child(1) { flex-grow:1.6; }
+  .info-strip .info-cell:nth-child(2) { flex-grow:0.9; }
+  .info-strip .info-cell:nth-child(3) { flex-grow:0.7; }
   .info-cell:last-child { border-right:none; }
   .info-eyebrow { font-size:7.5px; font-weight:700; letter-spacing:1.4px; color:var(--cd-500); text-transform:uppercase; }
   .info-value   { font-size:11.5px; font-weight:700; color:var(--txt); }
   .info-value .sl { color:var(--cd-400); margin:0 3px; font-weight:500; }
   .info-value .dim { font-size:9.5px; color:var(--txt-dim); font-weight:500; }
 
-  /* Body */
-  .body { flex:1; display:grid; grid-template-columns:1fr 4.2in; min-height:0; }
+  /* Body — flexbox (was grid) so layout doesn't collapse on narrow mobile
+     viewports and so the alpha html2canvas bundled in html2pdf renders it. */
+  .body { flex:1; display:flex; flex-direction:row; align-items:stretch; min-height:0; }
+  .body > .marks   { flex:1 1 auto; min-width:0; }
+  .body > .summary { flex:0 0 4.2in; width:4.2in; min-width:4.2in; }
 
   /* Marks table */
   .marks { border-right:2px solid var(--edge); display:flex; flex-direction:column; overflow:hidden; }
@@ -276,7 +286,8 @@ const BASE_CSS = `
   .panel-bar::before { content:'▸'; color:var(--cd-200); font-size:10px; }
   .panel-bar.annual  { background:var(--cd-900); }
   .panel-body { padding:7px 12px 9px; background:var(--cream); display:flex; flex-direction:column; gap:6px; flex:1; }
-  .stat-row { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .stat-row { display:flex; flex-direction:row; flex-wrap:wrap; gap:6px; }
+  .stat-row > .stat { flex:1 1 calc(50% - 6px); min-width:0; }
   .stat { background:var(--cd-050); border:1px solid var(--cd-200); border-radius:3px; padding:5px 8px; display:flex; flex-direction:column; gap:2px; }
   .stat .eyebrow { font-size:7.5px; font-weight:700; letter-spacing:1.2px; color:var(--cd-500); text-transform:uppercase; }
   .stat .value   { font-size:12px; font-weight:800; color:var(--txt); line-height:1.15; display:flex; align-items:baseline; gap:4px; }
@@ -299,7 +310,8 @@ const BASE_CSS = `
   .scale-item .ach   { font-size:8.5px; padding:1px 6px; }
   .scale-item .sname { font-weight:700; color:var(--txt); }
   .scale-item .range { color:var(--txt-dim); font-variant-numeric:tabular-nums; }
-  .sign-row  { padding:18px 32px 16px; display:grid; grid-template-columns:repeat(3,1fr); gap:48px; }
+  .sign-row  { padding:18px 32px 16px; display:flex; flex-direction:row; gap:48px; }
+  .sign-row > .sign { flex:1 1 0; min-width:0; }
   .sign      { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:8px; min-height:36px; }
   .sign-line { width:100%; border-top:1px solid var(--edge); }
   .sign-label { font-size:9px; font-weight:700; color:var(--cd-700); text-transform:uppercase; letter-spacing:1.4px; }
@@ -911,31 +923,6 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
 
 </main>`;
 
-  // ── pdfMode: off-screen capture document ────────────────────────────────────
-  // Minimal HTML for the hidden 1344×816 iframe spun up by rcDownloadPDF.
-  // No print bar, no scripts, viewport locked to 1344px so the mobile @media
-  // block can never fire. Layout is deterministic across desktop and APK.
-  if (opts.pdfMode) {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=1344, initial-scale=1.0" />
-  <title>Annual Progress Report — ${esc(info.studentName)}</title>
-  <style>${BASE_CSS}${PDF_LOCK_CSS}</style>
-</head>
-<body>
-${cardHTML}
-</body>
-</html>`;
-  }
-
-  // Pre-build the pdfMode HTML and JSON-encode it for safe embedding into the
-  // visible page's <script>. The < escape prevents nested '<' from being
-  // parsed as a tag (e.g. an accidental </script>).
-  const pdfModeHTML = buildPrintableHTML(hy1Card, hy2Card, studentInfo, { ...opts, pdfMode: true });
-  const pdfModeHTMLJS = JSON.stringify(pdfModeHTML).replace(/</g, '\\u003c');
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -945,12 +932,6 @@ ${cardHTML}
   <style>${BASE_CSS}</style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script>
-    // Pre-built PDF-capture HTML — same content as visible page but with
-    // viewport locked to 1344px so mobile @media never fires. Loaded into a
-    // hidden off-screen iframe by rcDownloadPDF for deterministic single-page
-    // capture. JSON-encoded string with \\u003c escapes from buildPrintableHTML.
-    const PDF_MODE_HTML = ${pdfModeHTMLJS};
-
     // Back button — works for new-window (desktop), iframe overlay (Capacitor APK),
     // and as a last resort, navigates to root.
     function rcGoBack() {
@@ -986,11 +967,11 @@ ${cardHTML}
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     }
 
-    // Generate one-page PDF by rendering the report card into a HIDDEN
-    // off-screen iframe at fixed desktop dimensions (1344×816 = 14×8.5in @ 96dpi)
-    // and capturing from THAT iframe. The visible mobile-rendered DOM is
-    // never touched — this mirrors what window.open gives the admin preview
-    // on desktop, so the PDF always looks like the desktop view.
+    // Generate one-page PDF by capturing the .rc element IN THIS document.
+    // The card has a fixed 14×8.5in size and uses flexbox (not grid) so it
+    // renders at desktop layout regardless of the iframe's actual viewport.
+    // Capturing in-document avoids the cross-frame html2canvas issues we
+    // hit with hidden-iframe approaches on Capacitor WebView.
     //
     // Output path priority: Capacitor Filesystem (APK) → Web Share → anchor download.
     async function rcDownloadPDF() {
@@ -998,45 +979,20 @@ ${cardHTML}
       const orig = btn ? btn.textContent : '';
       if (btn) { btn.textContent = '⏳ Generating PDF…'; btn.disabled = true; }
 
-      let hiddenFrame = null;
-      let blobUrl = null;
       try {
         if (typeof html2pdf === 'undefined') {
           throw new Error('PDF library not loaded. Check your connection and try again.');
         }
         const filename = ${JSON.stringify(pdfFilename)};
 
-        // Spawn off-screen iframe at fixed desktop size. Position far off-screen
-        // (not display:none / visibility:hidden) so layout & computed styles
-        // are valid for html2canvas.
-        hiddenFrame = document.createElement('iframe');
-        hiddenFrame.setAttribute('aria-hidden', 'true');
-        hiddenFrame.setAttribute('tabindex', '-1');
-        hiddenFrame.style.cssText = 'position:fixed;left:-99999px;top:0;width:1344px;height:816px;border:0;pointer-events:none;opacity:0';
-        document.body.appendChild(hiddenFrame);
+        await rcWaitForReady(document);
 
-        blobUrl = URL.createObjectURL(new Blob([PDF_MODE_HTML], { type: 'text/html' }));
+        const rc = document.querySelector('.rc');
+        if (!rc) throw new Error('Report card content not found');
 
-        await new Promise((resolve, reject) => {
-          let done = false;
-          const timer = setTimeout(() => {
-            if (!done) { done = true; reject(new Error('Hidden frame load timeout')); }
-          }, 15000);
-          hiddenFrame.onload  = () => { if (!done) { done = true; clearTimeout(timer); resolve(); } };
-          hiddenFrame.onerror = () => { if (!done) { done = true; clearTimeout(timer); reject(new Error('Hidden frame failed to load')); } };
-          hiddenFrame.src = blobUrl;
-        });
-
-        const fdoc = hiddenFrame.contentDocument;
-        if (!fdoc) throw new Error('Hidden frame document inaccessible');
-
-        await rcWaitForReady(fdoc);
-
-        const rc = fdoc.querySelector('.rc');
-        if (!rc) throw new Error('Report card content not found in hidden frame');
-
-        // Capture: exact 1344×816 from the hidden frame. No onclone tricks —
-        // the hidden doc is already desktop-locked by PDF_LOCK_CSS.
+        // Capture options: render at the card's actual 1344×816 dimensions
+        // regardless of the visible iframe's viewport. windowWidth/Height
+        // tell html2canvas's sandbox to use those measurements.
         const h2cOpts = {
           scale: 2,
           useCORS: true,
@@ -1048,10 +1004,6 @@ ${cardHTML}
           scrollX: 0, scrollY: 0
         };
 
-        // Use the parent iframe's html2canvas / jsPDF (already loaded). The
-        // hidden frame is just a clean DOM source — its CSS forces flexbox
-        // layout (PDF_LOCK_CSS), which html2canvas v1.0-alpha handles
-        // reliably even when cloning cross-document.
         let pdfBlob;
         const h2c   = window.html2canvas;
         const JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
@@ -1128,10 +1080,6 @@ ${cardHTML}
       } catch (e) {
         alert('Could not generate PDF: ' + (e && e.message ? e.message : e));
       } finally {
-        if (hiddenFrame) { try { hiddenFrame.remove(); } catch (_) {} }
-        if (blobUrl) {
-          setTimeout(() => { try { URL.revokeObjectURL(blobUrl); } catch (_) {} }, 1000);
-        }
         if (btn) { btn.textContent = orig; btn.disabled = false; }
       }
     }
@@ -1147,7 +1095,7 @@ ${cardHTML}
   </div>
 </div>
 
-<div style="padding:20px;display:flex;justify-content:center">
+<div style="padding:20px;display:flex;justify-content:safe center;overflow:auto">
 ${cardHTML}
 </div>
 
