@@ -101,50 +101,67 @@ function openPrintWindow(hy1Card, hy2Card, studentInfo) {
   window.addEventListener('message', onMessage);
 }
 
-// Direct PDF download — spawns an off-screen iframe with the report card,
-// waits for it to load, then drives the iframe's built-in rcDownloadPDF()
-// to capture and save without ever showing the report on screen. Used by
-// the "Download PDF" buttons on each term card so students can save the
-// file without opening the full report viewer first.
+// Direct PDF download — opens a visible full-screen overlay, triggers rcDownloadPDF()
+// inside it, then auto-closes the overlay once the PDF is saved.
+//
+// WHY visible overlay instead of a hidden/off-screen iframe:
+// html2canvas only captures content the browser has actually PAINTED. Hidden iframes
+// (opacity:0, left:-99999px, z-index:-1) are skipped by the paint engine → blank canvas
+// → blank PDF. A visible full-screen overlay is guaranteed to be painted correctly.
 async function downloadReportPdfDirect(hy1Card, hy2Card, studentInfo) {
   const html = buildPrintableHTML(hy1Card, hy2Card, studentInfo);
 
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-99999px;top:0;width:1400px;height:900px;pointer-events:none;z-index:-1';
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'border:0;width:100%;height:100%';
-  wrap.appendChild(iframe);
-  document.body.appendChild(wrap);
+  return new Promise((resolve, reject) => {
+    let overlay = document.getElementById('rc-fullscreen-overlay');
+    if (overlay) overlay.remove();
+    overlay = document.createElement('div');
+    overlay.id = 'rc-fullscreen-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#fff;overflow:hidden';
 
-  // Write into about:blank (same-origin) instead of a blob: URL.
-  // blob: URL iframes have an opaque origin — html2canvas's internal sandbox
-  // sub-iframes inherit it and can't load fonts/images, producing blank PDFs.
-  // about:blank inherits the portal's real origin so html2canvas works correctly.
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'border:0;width:100%;height:100%;display:block';
+    overlay.appendChild(iframe);
+    document.body.appendChild(overlay);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
 
-  // Bridge save requests from the off-screen iframe to Capacitor Filesystem on APK.
-  function onMessage(e) {
-    if (!e || !e.data) return;
-    if (e.data.type === 'savePdfRequest') handleSavePdfRequest(e.data, e.source);
-  }
-  window.addEventListener('message', onMessage);
+    function cleanup() {
+      overlay.remove();
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('message', onMessage);
+    }
 
-  try {
-    // Wait for the html2pdf bundle and rcDownloadPDF helper to be ready.
+    function onMessage(e) {
+      if (!e || !e.data) return;
+      if (e.data.type === 'closeReportOverlay') { cleanup(); resolve(); return; }
+      if (e.data.type === 'savePdfRequest') { handleSavePdfRequest(e.data, e.source); return; }
+    }
+    window.addEventListener('message', onMessage);
+
+    iframe.contentDocument.open();
+    iframe.contentDocument.write(html);
+    iframe.contentDocument.close();
+
     const fwin = iframe.contentWindow;
-    for (let i = 0; i < 200 && (!fwin || typeof fwin.rcDownloadPDF !== 'function'); i++) {
-      await new Promise((r) => setTimeout(r, 50));
-    }
-    if (!fwin || typeof fwin.rcDownloadPDF !== 'function') {
-      throw new Error('Report viewer scripts did not load');
-    }
-    await fwin.rcDownloadPDF();
-  } finally {
-    window.removeEventListener('message', onMessage);
-    setTimeout(() => { try { wrap.remove(); } catch (_) {} }, 1000);
-  }
+
+    (async () => {
+      try {
+        // Wait for html2canvas + jsPDF CDN scripts to finish loading
+        for (let i = 0; i < 200 && (!fwin || typeof fwin.rcDownloadPDF !== 'function'); i++) {
+          await new Promise(r => setTimeout(r, 50));
+        }
+        if (!fwin || typeof fwin.rcDownloadPDF !== 'function') {
+          throw new Error('Report viewer scripts did not load');
+        }
+        await fwin.rcDownloadPDF();
+        cleanup();
+        resolve();
+      } catch (err) {
+        cleanup();
+        reject(err);
+      }
+    })();
+  });
 }
 
 // Bridge: report-card iframe asks the portal to save a PDF via Capacitor

@@ -930,7 +930,8 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   <meta name="viewport" content="width=1400, initial-scale=1.0, user-scalable=yes" />
   <title>Annual Progress Report — ${esc(info.studentName)}</title>
   <style>${BASE_CSS}</style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     // Back button — works for new-window (desktop), iframe overlay (Capacitor APK),
     // and as a last resort, navigates to root.
@@ -980,7 +981,9 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
       if (btn) { btn.textContent = '⏳ Generating PDF…'; btn.disabled = true; }
 
       try {
-        if (typeof html2pdf === 'undefined') {
+        const h2c   = window.html2canvas;
+        const JsPDF = window.jspdf && window.jspdf.jsPDF;
+        if (!h2c || !JsPDF) {
           throw new Error('PDF library not loaded. Check your connection and try again.');
         }
         const filename = ${JSON.stringify(pdfFilename)};
@@ -990,39 +993,25 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
         const rc = document.querySelector('.rc');
         if (!rc) throw new Error('Report card content not found');
 
-        // Capture options: render at the card's actual 1344×816 dimensions
-        // regardless of the visible iframe's viewport. windowWidth/Height
-        // tell html2canvas's sandbox to use those measurements.
-        const h2cOpts = {
+        // Capture the .rc element at its natural 14×8.5in (1344×816px) size.
+        // scale:2 → 2688×1632 canvas for sharp output.
+        // logging:false suppresses alpha console noise.
+        const canvas = await h2c(rc, {
           scale: 2,
           useCORS: true,
-          backgroundColor: '#ffffff',
-          width:        1344,
-          height:       816,
-          windowWidth:  1344,
-          windowHeight: 816,
-          scrollX: 0, scrollY: 0
-        };
+          allowTaint: false,
+          backgroundColor: '#FFFCF0',
+          logging: false,
+          width:        rc.offsetWidth  || 1344,
+          height:       rc.offsetHeight || 816,
+          windowWidth:  rc.offsetWidth  || 1344,
+          windowHeight: rc.offsetHeight || 816,
+        });
 
-        let pdfBlob;
-        const h2c   = window.html2canvas;
-        const JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-
-        if (h2c && JsPDF) {
-          const canvas = await h2c(rc, h2cOpts);
-          const pdf = new JsPDF({ unit: 'in', format: [14, 8.5], orientation: 'landscape' });
-          pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, 14, 8.5, undefined, 'FAST');
-          pdfBlob = pdf.output('blob');
-        } else {
-          // Fallback: html2pdf chain — still constrained to single 14×8.5 page.
-          pdfBlob = await html2pdf().set({
-            margin: 0, filename: filename,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: h2cOpts,
-            jsPDF: { unit: 'in', format: [14, 8.5], orientation: 'landscape' },
-            pagebreak: { mode: ['avoid-all'] }
-          }).from(rc).outputPdf('blob');
-        }
+        const pdf = new JsPDF({ unit: 'in', format: [14, 8.5], orientation: 'landscape' });
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 14, 8.5, undefined, 'FAST');
+        const pdfBlob = pdf.output('blob');
+        // (pdfBlob used below)
 
         const file = new File([pdfBlob], filename, { type: 'application/pdf' });
 
