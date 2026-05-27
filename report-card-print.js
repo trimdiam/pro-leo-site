@@ -1084,7 +1084,7 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   </div>
 </div>
 
-<div style="padding:20px;overflow:auto;-webkit-overflow-scrolling:touch">
+<div style="width:100%;box-sizing:border-box;padding:20px;overflow:auto;-webkit-overflow-scrolling:touch">
 ${cardHTML}
 </div>
 
