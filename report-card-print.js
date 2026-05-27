@@ -862,6 +862,7 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   <meta name="viewport" content="width=1344, initial-scale=1.0" />
   <title>Annual Progress Report — ${esc(info.studentName)}</title>
   <style>${BASE_CSS}${PDF_LOCK_CSS}</style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 ${cardHTML}
@@ -987,24 +988,41 @@ ${cardHTML}
           scrollX: 0, scrollY: 0
         };
 
+        // CRITICAL: use the HIDDEN frame's html2canvas / jsPDF, not the
+        // visible iframe's. html2canvas clones into a sandbox in the host
+        // window's context; if we ran it from the visible iframe the sandbox
+        // would inherit the phone's narrow viewport and CSS Grid would
+        // collapse the .body into a single column. Running inside the hidden
+        // frame, the sandbox uses the 1344px-wide context → desktop layout.
+        const fwin = hiddenFrame.contentWindow;
+        for (let i = 0; i < 100 && (!fwin || !fwin.html2canvas); i++) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        if (!fwin || !fwin.html2canvas) {
+          throw new Error('Capture engine failed to load in hidden frame.');
+        }
+
         let pdfBlob;
-        const h2c   = window.html2canvas;
-        const JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+        const h2c    = fwin.html2canvas;
+        const JsPDF  = (fwin.jspdf && fwin.jspdf.jsPDF) || fwin.jsPDF;
+        const h2pdfFn = fwin.html2pdf;
 
         if (h2c && JsPDF) {
           const canvas = await h2c(rc, h2cOpts);
           const pdf = new JsPDF({ unit: 'in', format: [14, 8.5], orientation: 'landscape' });
           pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, 14, 8.5, undefined, 'FAST');
           pdfBlob = pdf.output('blob');
-        } else {
-          // Fallback: html2pdf chain — still constrained to single 14×8.5 page.
-          pdfBlob = await html2pdf().set({
+        } else if (h2pdfFn) {
+          // Fallback: html2pdf chain inside the hidden frame.
+          pdfBlob = await h2pdfFn().set({
             margin: 0, filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: h2cOpts,
             jsPDF: { unit: 'in', format: [14, 8.5], orientation: 'landscape' },
             pagebreak: { mode: ['avoid-all'] }
           }).from(rc).outputPdf('blob');
+        } else {
+          throw new Error('PDF rendering library is unavailable.');
         }
 
         const file = new File([pdfBlob], filename, { type: 'application/pdf' });
