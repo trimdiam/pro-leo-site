@@ -4,15 +4,12 @@
 //   Swipe RIGHT from left edge (EDGE_ZONE px) → drag to open, snap on release
 //   Swipe LEFT  while open                    → drag to close, snap on release
 //   Tap backdrop                              → close (handled by script.js)
-//
-// touchmove is non-passive so we can prevent page scroll during a confirmed
-// horizontal drag. touchstart/touchend remain passive.
 
 (function () {
   const SIDEBAR_WIDTH   = 240;   // must match CSS .sidebar { width: 240px }
   const EDGE_ZONE       = 50;    // px from left edge that begins an open gesture
-  const SNAP_RATIO      = 0.35;  // drag past 35% of sidebar width → snap open/close
-  const VELOCITY_THRESH = 0.35;  // px/ms — fast flick always snaps regardless of distance
+  const SNAP_RATIO      = 0.35;  // drag past 35% of sidebar width → snap
+  const VELOCITY_THRESH = 0.35;  // px/ms — fast flick always snaps
 
   const SIDEBAR_IDS = ['studentSidebar', 'teacherSidebar', 'adminSidebar', 'officeSidebar'];
   const PAGE_MAP    = {
@@ -25,9 +22,9 @@
   let startX    = 0;
   let startY    = 0;
   let startTime = 0;
-  let dragging  = false;  // true once confirmed horizontal
+  let dragging  = false;
   let intent    = null;   // 'open' | 'close'
-  let activeSb  = null;   // the sidebar being dragged
+  let activeSb  = null;
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,31 +46,38 @@
     return document.getElementById('sidebar-backdrop');
   }
 
-  // Disable CSS transition so sidebar tracks finger exactly
-  function disableTransition(sb) { sb.style.transition = 'none'; }
+  // Clear ALL inline backdrop styles so the CSS class system takes over cleanly.
+  // Critical: backdrop-filter:blur stays active even at opacity:0 unless
+  // display:none is restored, making the portal look hazy.
+  function resetBackdrop() {
+    const bd = getBackdrop();
+    if (!bd) return;
+    bd.style.cssText = ''; // wipe every inline style set during drag
+  }
 
-  // Re-enable CSS transition for snap animation
+  function disableTransition(sb) { sb.style.transition = 'none'; }
   function enableTransition(sb)  { sb.style.transform = ''; sb.style.transition = ''; }
 
-  // Move sidebar and backdrop in sync with finger
+  // Move sidebar and fade backdrop in sync with finger
   function trackFinger(sb, dx) {
     const isOpen  = sb.classList.contains('open');
     const base    = isOpen ? 0 : -SIDEBAR_WIDTH;
-    const raw     = base + dx;
-    const clamped = Math.min(0, Math.max(-SIDEBAR_WIDTH, raw));
+    const clamped = Math.min(0, Math.max(-SIDEBAR_WIDTH, base + dx));
     sb.style.transform = `translateX(${clamped}px)`;
 
-    // Backdrop opacity tracks progress (0 = hidden, 1 = fully visible)
-    const progress = (clamped + SIDEBAR_WIDTH) / SIDEBAR_WIDTH;
+    const progress = (clamped + SIDEBAR_WIDTH) / SIDEBAR_WIDTH; // 0→1
     const bd = getBackdrop();
     if (bd) {
-      if (progress > 0) {
-        bd.style.display  = 'block';
-        bd.style.opacity  = progress * 0.85;
+      if (progress > 0.01) {
+        // Only show backdrop when meaningfully dragged open
+        bd.style.display   = 'block';
+        bd.style.opacity   = String(progress * 0.85);
         bd.style.animation = 'none';
-        bd.classList.add('visible');
+        bd.style.backdropFilter       = `blur(${progress}px)`;
+        bd.style.webkitBackdropFilter = `blur(${progress}px)`;
       } else {
-        bd.style.opacity = '0';
+        // Fully closed position — hide immediately so blur doesn't linger
+        bd.style.display = 'none';
       }
     }
   }
@@ -81,23 +85,19 @@
   function snapOpen(sb) {
     enableTransition(sb);
     sb.classList.add('open');
+    resetBackdrop();
     const bd = getBackdrop();
-    if (bd) {
-      bd.style.opacity  = '';
-      bd.style.animation = '';
-      bd.classList.add('visible');
-    }
+    if (bd) bd.classList.add('visible');
   }
 
   function snapClose(sb) {
     enableTransition(sb);
     sb.classList.remove('open');
+    // Remove visible class FIRST, then wipe inline styles so CSS display:none
+    // takes effect immediately — prevents the blur from lingering one more frame.
     const bd = getBackdrop();
-    if (bd) {
-      bd.style.opacity = '';
-      bd.classList.remove('visible');
-      setTimeout(() => { if (bd) bd.style.animation = ''; }, 300);
-    }
+    if (bd) bd.classList.remove('visible');
+    resetBackdrop();
   }
 
   function reset() {
@@ -134,30 +134,20 @@
     const dy = e.touches[0].clientY - startY;
 
     if (!dragging) {
-      // Wait for enough movement to determine direction
       if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      // Vertical scroll — abandon
-      if (Math.abs(dy) > Math.abs(dx)) { reset(); return; }
-      // Wrong horizontal direction — abandon
+      if (Math.abs(dy) > Math.abs(dx))  { reset(); return; } // vertical scroll
       if (intent === 'open'  && dx <= 0) { reset(); return; }
       if (intent === 'close' && dx >= 0) { reset(); return; }
       dragging = true;
       disableTransition(activeSb);
     }
 
-    // Confirmed horizontal drag — prevent page scroll
-    e.preventDefault();
+    e.preventDefault(); // lock out page scroll during horizontal drag
     trackFinger(activeSb, dx);
   }, { passive: false });
 
   document.addEventListener('touchend', function (e) {
-    if (!activeSb) { reset(); return; }
-
-    if (!dragging) {
-      // Finger lifted without a confirmed drag — clean up any partial state
-      reset();
-      return;
-    }
+    if (!activeSb || !dragging) { reset(); return; }
 
     const dx       = e.changedTouches[0].clientX - startX;
     const elapsed  = Math.max(1, Date.now() - startTime);
@@ -176,8 +166,8 @@
   }, { passive: true });
 
   document.addEventListener('touchcancel', function () {
-    if (activeSb) {
-      // Restore to whichever state it was in before the drag
+    if (activeSb && dragging) {
+      // Restore whichever state it was in before the drag started
       intent === 'open' ? snapClose(activeSb) : snapOpen(activeSb);
     }
     reset();
