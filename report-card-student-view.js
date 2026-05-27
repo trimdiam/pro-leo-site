@@ -101,67 +101,61 @@ function openPrintWindow(hy1Card, hy2Card, studentInfo) {
   window.addEventListener('message', onMessage);
 }
 
-// Direct PDF download — opens a visible full-screen overlay, triggers rcDownloadPDF()
-// inside it, then auto-closes the overlay once the PDF is saved.
+// Direct PDF download — opens the same visible full-screen overlay as "View Report"
+// and auto-triggers the Download PDF button inside it. The overlay stays open so
+// the browser can complete the file download — user closes it with "← Back".
 //
-// WHY visible overlay instead of a hidden/off-screen iframe:
-// html2canvas only captures content the browser has actually PAINTED. Hidden iframes
-// (opacity:0, left:-99999px, z-index:-1) are skipped by the paint engine → blank canvas
-// → blank PDF. A visible full-screen overlay is guaranteed to be painted correctly.
-async function downloadReportPdfDirect(hy1Card, hy2Card, studentInfo) {
+// WHY visible overlay: html2canvas only captures content the browser has PAINTED.
+// Hidden/off-screen iframes are skipped by the paint engine → blank canvas → blank PDF.
+// Do NOT await rcDownloadPDF or auto-close — destroying the iframe cancels the download.
+function downloadReportPdfDirect(hy1Card, hy2Card, studentInfo) {
   const html = buildPrintableHTML(hy1Card, hy2Card, studentInfo);
 
-  return new Promise((resolve, reject) => {
-    let overlay = document.getElementById('rc-fullscreen-overlay');
-    if (overlay) overlay.remove();
-    overlay = document.createElement('div');
-    overlay.id = 'rc-fullscreen-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#fff;overflow:hidden';
+  let overlay = document.getElementById('rc-fullscreen-overlay');
+  if (overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'rc-fullscreen-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#fff;overflow:hidden';
 
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'border:0;width:100%;height:100%;display:block';
-    overlay.appendChild(iframe);
-    document.body.appendChild(overlay);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'border:0;width:100%;height:100%;display:block';
+  overlay.appendChild(iframe);
+  document.body.appendChild(overlay);
+  const prevOverflow = document.body.style.overflow;
+  document.body.style.overflow = 'hidden';
 
-    function cleanup() {
+  function onMessage(e) {
+    if (!e || !e.data) return;
+    if (e.data.type === 'closeReportOverlay') {
       overlay.remove();
       document.body.style.overflow = prevOverflow;
       window.removeEventListener('message', onMessage);
+      return;
     }
-
-    function onMessage(e) {
-      if (!e || !e.data) return;
-      if (e.data.type === 'closeReportOverlay') { cleanup(); resolve(); return; }
-      if (e.data.type === 'savePdfRequest') { handleSavePdfRequest(e.data, e.source); return; }
+    if (e.data.type === 'savePdfRequest') {
+      handleSavePdfRequest(e.data, e.source);
+      return;
     }
-    window.addEventListener('message', onMessage);
+  }
+  window.addEventListener('message', onMessage);
 
-    iframe.contentDocument.open();
-    iframe.contentDocument.write(html);
-    iframe.contentDocument.close();
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
 
-    const fwin = iframe.contentWindow;
+  const fwin = iframe.contentWindow;
 
-    (async () => {
-      try {
-        // Wait for html2canvas + jsPDF CDN scripts to finish loading
-        for (let i = 0; i < 200 && (!fwin || typeof fwin.rcDownloadPDF !== 'function'); i++) {
-          await new Promise(r => setTimeout(r, 50));
-        }
-        if (!fwin || typeof fwin.rcDownloadPDF !== 'function') {
-          throw new Error('Report viewer scripts did not load');
-        }
-        await fwin.rcDownloadPDF();
-        cleanup();
-        resolve();
-      } catch (err) {
-        cleanup();
-        reject(err);
-      }
-    })();
-  });
+  // Wait for html2canvas + jsPDF to load, then fire the download.
+  // Overlay stays alive — user closes via "← Back" after the file saves.
+  (async () => {
+    for (let i = 0; i < 200 && (!fwin || typeof fwin.rcDownloadPDF !== 'function'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    if (fwin && typeof fwin.rcDownloadPDF === 'function') {
+      await new Promise(r => setTimeout(r, 400)); // let overlay fully paint
+      fwin.rcDownloadPDF(); // intentionally not awaited — overlay must stay alive
+    }
+  })();
 }
 
 // Bridge: report-card iframe asks the portal to save a PDF via Capacitor
@@ -278,18 +272,8 @@ export async function initReportCardStudentView(studentId) {
         const dlBtn = el('button', 'rc-view-btn rc-download-btn', '📥 Download PDF');
         dlBtn.type = 'button';
         dlBtn.style.marginTop = '6px';
-        dlBtn.addEventListener('click', async () => {
-          const origText = dlBtn.textContent;
-          dlBtn.textContent = '⏳ Generating PDF…';
-          dlBtn.disabled = true;
-          try {
-            await downloadReportPdfDirect(hy1, hy2, studentInfo);
-          } catch (err) {
-            alert('Could not download PDF: ' + (err && err.message ? err.message : err));
-          } finally {
-            dlBtn.textContent = origText;
-            dlBtn.disabled = false;
-          }
+        dlBtn.addEventListener('click', () => {
+          downloadReportPdfDirect(hy1, hy2, studentInfo);
         });
         tc.append(dlBtn);
       } else {
@@ -316,18 +300,8 @@ export async function initReportCardStudentView(studentId) {
       const downloadAllBtn = el('button', 'rc-print-all-btn rc-download-all-btn', '📥 Download Complete Academic Record (PDF)');
       downloadAllBtn.type = 'button';
       downloadAllBtn.style.marginTop = '6px';
-      downloadAllBtn.addEventListener('click', async () => {
-        const origText = downloadAllBtn.textContent;
-        downloadAllBtn.textContent = '⏳ Generating PDF…';
-        downloadAllBtn.disabled = true;
-        try {
-          await downloadReportPdfDirect(hy1Card, hy2Card, studentInfo);
-        } catch (err) {
-          alert('Could not download PDF: ' + (err && err.message ? err.message : err));
-        } finally {
-          downloadAllBtn.textContent = origText;
-          downloadAllBtn.disabled = false;
-        }
+      downloadAllBtn.addEventListener('click', () => {
+        downloadReportPdfDirect(hy1Card, hy2Card, studentInfo);
       });
       root.append(downloadAllBtn);
     }
