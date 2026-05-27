@@ -424,8 +424,10 @@ const MOBILE_CSS = `
 `;
 
 // PDF capture lock — appended after BASE_CSS in pdfMode. Forces deterministic
-// 14×8.5in (1344×816 @ 96dpi) single-page sizing. No mobile breakpoints fire
-// because the hidden capture iframe is fixed at 1344px wide.
+// 14×8.5in (1344×816 @ 96dpi) single-page sizing AND converts CSS Grid layouts
+// to flexbox. Reason: html2pdf 0.10.1 bundles html2canvas v1.0.0-alpha.12 which
+// predates CSS Grid support — mixed-unit `grid-template-columns:1fr 4.2in`
+// gets rendered as a single collapsed column. Flexbox is fully supported.
 const PDF_LOCK_CSS = `
   html, body {
     width: 1344px !important;
@@ -448,6 +450,65 @@ const PDF_LOCK_CSS = `
     margin: 0 !important;
     overflow: hidden !important;
     box-shadow: none !important;
+  }
+
+  /* ── Grid → Flex conversions (html2canvas grid-renderer is broken) ──── */
+  /* Main body: marks left, summary right (was: grid 1fr 4.2in) */
+  body .rc .body {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+  body .rc .body > .marks {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    border-right: 2px solid var(--edge) !important;
+  }
+  body .rc .body > .summary {
+    flex: 0 0 4.2in !important;
+    width: 4.2in !important;
+    min-width: 4.2in !important;
+    max-width: 4.2in !important;
+  }
+
+  /* Info strip: 7 cells in a row (was: grid 1.6fr 0.9fr 0.7fr 1fr 1fr 1fr 1fr) */
+  body .rc .info-strip {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+  }
+  body .rc .info-strip .info-cell {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+  body .rc .info-strip .info-cell:nth-child(1) { flex-grow: 1.6 !important; }
+  body .rc .info-strip .info-cell:nth-child(2) { flex-grow: 0.9 !important; }
+  body .rc .info-strip .info-cell:nth-child(3) { flex-grow: 0.7 !important; }
+
+  /* Stat rows inside summary panels: 2 cols (was: grid 1fr 1fr) */
+  body .rc .stat-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  body .rc .stat-row > .stat {
+    flex: 1 1 calc(50% - 6px) !important;
+    min-width: 0 !important;
+  }
+
+  /* Signature row: 3 cols (was: grid repeat(3, 1fr)) */
+  body .rc .sign-row {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 48px !important;
+  }
+  body .rc .sign-row > .sign {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
   }
 `;
 
@@ -862,7 +923,6 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   <meta name="viewport" content="width=1344, initial-scale=1.0" />
   <title>Annual Progress Report — ${esc(info.studentName)}</title>
   <style>${BASE_CSS}${PDF_LOCK_CSS}</style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 ${cardHTML}
@@ -988,41 +1048,28 @@ ${cardHTML}
           scrollX: 0, scrollY: 0
         };
 
-        // CRITICAL: use the HIDDEN frame's html2canvas / jsPDF, not the
-        // visible iframe's. html2canvas clones into a sandbox in the host
-        // window's context; if we ran it from the visible iframe the sandbox
-        // would inherit the phone's narrow viewport and CSS Grid would
-        // collapse the .body into a single column. Running inside the hidden
-        // frame, the sandbox uses the 1344px-wide context → desktop layout.
-        const fwin = hiddenFrame.contentWindow;
-        for (let i = 0; i < 100 && (!fwin || !fwin.html2canvas); i++) {
-          await new Promise((r) => setTimeout(r, 50));
-        }
-        if (!fwin || !fwin.html2canvas) {
-          throw new Error('Capture engine failed to load in hidden frame.');
-        }
-
+        // Use the parent iframe's html2canvas / jsPDF (already loaded). The
+        // hidden frame is just a clean DOM source — its CSS forces flexbox
+        // layout (PDF_LOCK_CSS), which html2canvas v1.0-alpha handles
+        // reliably even when cloning cross-document.
         let pdfBlob;
-        const h2c    = fwin.html2canvas;
-        const JsPDF  = (fwin.jspdf && fwin.jspdf.jsPDF) || fwin.jsPDF;
-        const h2pdfFn = fwin.html2pdf;
+        const h2c   = window.html2canvas;
+        const JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
 
         if (h2c && JsPDF) {
           const canvas = await h2c(rc, h2cOpts);
           const pdf = new JsPDF({ unit: 'in', format: [14, 8.5], orientation: 'landscape' });
           pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, 14, 8.5, undefined, 'FAST');
           pdfBlob = pdf.output('blob');
-        } else if (h2pdfFn) {
-          // Fallback: html2pdf chain inside the hidden frame.
-          pdfBlob = await h2pdfFn().set({
+        } else {
+          // Fallback: html2pdf chain — still constrained to single 14×8.5 page.
+          pdfBlob = await html2pdf().set({
             margin: 0, filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: h2cOpts,
             jsPDF: { unit: 'in', format: [14, 8.5], orientation: 'landscape' },
             pagebreak: { mode: ['avoid-all'] }
           }).from(rc).outputPdf('blob');
-        } else {
-          throw new Error('PDF rendering library is unavailable.');
         }
 
         const file = new File([pdfBlob], filename, { type: 'application/pdf' });
