@@ -737,6 +737,78 @@ select, .text-input {
   font-size: 0.95rem;
 }
 
+/* ── Subject drill-down styles ─────────────────────────────────────────────── */
+
+.summary-item--clickable { cursor: pointer; transition: background 0.15s; }
+.summary-item--clickable:hover { background: var(--bg-alt, #f5f0e8); }
+.summary-item--active { border-color: #226b63; background: var(--bg-alt, #f5f0e8); }
+.summary-item__arrow { color: #226b63; font-size: 1rem; margin-left: 6px; transition: transform 0.2s; }
+.summary-item__name { font-weight: 600; }
+.subject-drill-container { border-left: 3px solid #226b63; margin-bottom: 4px; border-radius: 0 8px 8px 0; }
+
+.drill-panel { display: grid; gap: 14px; padding: 14px 0; }
+.drill-header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.drill-intel { padding: 7px 12px; border-radius: 8px; font-size: 0.9rem; }
+.drill-intel--strong { background: #d4f0e8; color: #1a5c44; }
+.drill-intel--weak   { background: #fde8e4; color: #922b21; }
+.drill-meta { font-size: 0.82rem; color: #777; margin: 0; }
+
+.drill-alert { padding: 8px 12px; border-radius: 8px; font-size: 0.87rem; margin: 2px 0; }
+.drill-alert--decline     { background: #fde8e4; color: #922b21; }
+.drill-alert--improvement { background: #d4f0e8; color: #1a5c44; }
+.drill-alert--gap         { background: #fff3cd; color: #7a5200; }
+.drill-alert--quickwin    { background: #e8f4fd; color: #1a4a7a; }
+
+.drill-section { display: grid; gap: 8px; }
+.drill-section-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: #555; margin: 0; }
+
+.drill-cat-row { display: grid; grid-template-columns: 160px 1fr 48px;
+  align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px;
+  background: var(--bg); border: 1px solid var(--line); transition: background 0.15s; }
+.drill-cat-row:hover { background: var(--bg-alt, #f5f0e8); }
+.drill-cat-name { display: flex; flex-direction: column; gap: 3px; }
+.drill-bar-wrap { background: #e8e0d0; border-radius: 4px; height: 10px; overflow: hidden; }
+.drill-bar { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.drill-bar-wrap--sm { height: 7px; }
+.drill-pct { font-size: 0.85rem; font-weight: 600; text-align: right; }
+
+.drill-band { font-size: 0.72rem; font-weight: 700; padding: 2px 6px;
+  border-radius: 4px; align-self: flex-start; }
+.drill-band--strong   { background: #d4f0e8; color: #1a5c44; }
+.drill-band--good     { background: #c8eed8; color: #1a5c44; }
+.drill-band--average  { background: #fff3cd; color: #7a5200; }
+.drill-band--weak     { background: #fde8e4; color: #922b21; }
+.drill-band--critical { background: #f5b7b1; color: #6b0f0a; }
+
+.drill-expand-slot { padding: 0 10px; }
+.drill-criteria-box { display: grid; gap: 6px; padding: 10px 0; }
+.drill-criterion-row { display: grid; grid-template-columns: 1fr 120px 100px;
+  align-items: center; gap: 8px; font-size: 0.85rem; }
+.drill-criterion-name { color: #333; }
+.drill-criterion-right { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+
+.drill-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px;
+  border: 1px solid var(--line); }
+.drill-heat-table { border-collapse: collapse; min-width: 100%; font-size: 0.8rem; }
+.drill-th { padding: 7px 10px; background: #3a2a1a; color: #fff; text-align: center;
+  font-weight: 600; white-space: nowrap; }
+.drill-th--name    { text-align: left; min-width: 110px; }
+.drill-th--overall { min-width: 64px; }
+.drill-td { padding: 6px 10px; text-align: center; border-bottom: 1px solid #e8e0d0;
+  font-size: 0.82rem; font-weight: 600; white-space: nowrap; }
+.drill-td--name    { text-align: left; font-weight: 500; background: var(--bg) !important; color: #333 !important; }
+.drill-td--overall { font-weight: 700; }
+
+.drill-student-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 8px; background: var(--bg);
+  border: 1px solid var(--line); font-size: 0.88rem; }
+.drill-rank { font-weight: 700; color: #226b63; min-width: 28px; }
+.drill-student-name { flex: 1; font-weight: 500; }
+.drill-mini-pills { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; margin-top: 4px; }
+.drill-mini-pill { font-size: 0.72rem; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+.drill-empty { color: #888; font-size: 0.9rem; padding: 12px 0; }
+
 .login-form {
   display: grid;
   gap: 12px;

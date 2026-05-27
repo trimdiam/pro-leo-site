@@ -6,6 +6,10 @@ import { getMonthTrend, classifyPerformance, getClassComparison, getSubjectCompa
 import { getTopConcerns } from '../services/concern-engine.js';
 import { getSchoolHealthScore } from '../services/school-health-engine.js';
 import { getClassAttendanceOverview, getAttendanceRiskLevel } from '../services/attendance-engine.js';
+import { getSubjectDrillDown } from '../services/subject-drill-down-engine.js';
+import { renderSubjectDrillDown } from './subject-drill-down-panel.js';
+import { loadSubjectsForClass } from '../services/subject-loader.js';
+import { loadCriteriaForSubject } from '../services/criteria-loader.js';
 
 export function createAnalyticsDashboard({
   classes = [],
@@ -460,27 +464,79 @@ async function renderSubject(container, className, month) {
   container.append(chartWrap);
 
   const labels = subjects.map(s => s.subject_name);
-  const data = subjects.map(s => s.averagePercentage);
-  const avg = data.length > 0 ? Math.round(data.reduce((a, b) => a + b, 0) / data.length) : 0;
-
+  const data   = subjects.map(s => s.averagePercentage);
   const chartConfig = toBarChartData(labels, [{ label: 'Average %', data }]);
   new Chart(canvas, chartConfig);
 
+  // ── Subject list — each row clickable → drill-down ──
+  const allSubjects = await loadSubjectsForClass(className);
+  let activeDrillSubjectId = null;
+
   const list = document.createElement('div');
   list.className = 'summary-list';
+
   subjects.forEach(s => {
     const perf = classifyPerformance(s.averagePercentage);
+
     const item = document.createElement('div');
-    item.className = 'summary-item';
+    item.className = 'summary-item summary-item--clickable';
+    item.title = 'Click to see detailed breakdown';
     item.innerHTML = `
-      <span>${s.subject_name}</span>
+      <span class="summary-item__name">${s.subject_name}</span>
       <span>
         <span class="perf-label" style="color:${perf.color}">${perf.label}</span>
         ${s.averagePercentage}% • ${s.sessions} session(s)
       </span>
+      <span class="summary-item__arrow">▸</span>
     `;
+
+    // Drill-down panel lives directly below this row
+    const drillContainer = document.createElement('div');
+    drillContainer.className = 'subject-drill-container';
+
+    item.addEventListener('click', async () => {
+      const alreadyOpen = activeDrillSubjectId === s.subject_id;
+
+      // Close any open drill panel
+      list.querySelectorAll('.subject-drill-container').forEach(d => d.replaceChildren());
+      list.querySelectorAll('.summary-item--clickable').forEach(i => {
+        i.classList.remove('summary-item--active');
+        const arrow = i.querySelector('.summary-item__arrow');
+        if (arrow) arrow.textContent = '▸';
+      });
+      activeDrillSubjectId = null;
+
+      if (alreadyOpen) return; // second click closes it
+
+      item.classList.add('summary-item--active');
+      const arrow = item.querySelector('.summary-item__arrow');
+      if (arrow) arrow.textContent = '▾';
+      activeDrillSubjectId = s.subject_id;
+
+      drillContainer.textContent = 'Loading breakdown…';
+
+      try {
+        const subjectDef = allSubjects.find(sub => sub.subject_id === s.subject_id);
+        if (!subjectDef) { drillContainer.textContent = 'Subject definition not found.'; return; }
+
+        const criteriaArray = await loadCriteriaForSubject(subjectDef, className);
+        if (!criteriaArray || criteriaArray.length === 0) {
+          drillContainer.textContent = 'No criteria found for this subject.';
+          return;
+        }
+
+        const drillData = getSubjectDrillDown(className, s.subject_id, criteriaArray);
+        renderSubjectDrillDown(drillContainer, drillData);
+      } catch (err) {
+        console.error('Drill-down error:', err);
+        drillContainer.textContent = 'Failed to load breakdown.';
+      }
+    });
+
     list.append(item);
+    list.append(drillContainer);
   });
+
   container.append(list);
 }
 

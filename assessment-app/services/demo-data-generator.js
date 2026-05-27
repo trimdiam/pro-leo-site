@@ -163,6 +163,216 @@ export async function generateDemoData() {
   return sessions.length;
 }
 
+// ── Class I — April & May 2026 — Full Subject Drill-Down Demo ────────────────
+// Covers all 5 Class I subjects with real criterion IDs.
+// Designed to exercise the drill-down panel:
+//   • Work Habits    → consistently strong (82–86%)
+//   • Writing Skills → average (60–64%)
+//   • Reading Skills → skill gap (48–52% — majority below 60%)
+//   • Speaking Skills→ DECLINING April→May (75% → 58%) triggers alert
+//   • Solving Skills (Math only) → rising April→May
+
+const CLASS1_STUDENTS = [
+  { id: 'SFS260101', name: 'ALVINSON MAWRIE'               },
+  { id: 'SFS260102', name: 'BANHOISHAPHRANG S PASSAH'       },
+  { id: 'SFS260103', name: 'BANSHANSKHEM RYNGKHLEM'         },
+  { id: 'SFS260104', name: 'DABITHEIKIN KHONGMALAI'         },
+  { id: 'SFS260105', name: 'DAMANGNAME SOHTUN'              },
+  { id: 'SFS260106', name: 'DAMEIAKI KHARKONGOR'            },
+  { id: 'SFS260107', name: 'DANNY BANSHAN MAWRIE'           },
+  { id: 'SFS260108', name: 'DARRYN COOPER KHARSHIING'       },
+  { id: 'SFS260109', name: 'GABRIEL MAWRIE'                 },
+  { id: 'SFS260110', name: 'GIDEON GERRY PYNGROPE'          },
+  { id: 'SFS260111', name: 'HAMEBANKHRAW MAWRIE'            },
+  { id: 'SFS260112', name: 'HAMEBANTEI KHARKONGOR'          },
+  { id: 'SFS260113', name: 'HANIEL EZEKIEL BASAIWMOIT'      },
+  { id: 'SFS260114', name: 'JOVIAL RANI'                    },
+  { id: 'SFS260115', name: 'KYNSAI KUPAR LYNGDOH'           },
+  { id: 'SFS260116', name: 'LAJIED KHARKONGOR'              },
+  { id: 'SFS260117', name: 'LAKYRPANG MAWRIE'               },
+  { id: 'SFS260118', name: 'LAWANSAME KURKALANG'            },
+  { id: 'SFS260119', name: 'MARKORDOR SUTING'               },
+  { id: 'SFS260120', name: 'MEDASHANLANG ETHAN PYNGROPE'    },
+  { id: 'SFS260121', name: 'MELAMPHRANG JOEL KHARKONGOR'    },
+  { id: 'SFS260122', name: 'MELAMSHWA MAWRIE'               },
+  { id: 'SFS260123', name: 'NATHANIEL SKHEM DKHAR'          },
+  { id: 'SFS260124', name: 'NI-O-ELAD RANI'                 },
+  { id: 'SFS260125', name: 'RENIAL WANSHAN WANSHONG'        },
+  { id: 'SFS260126', name: 'RODRICK K MAWRIE'               },
+  { id: 'SFS260127', name: 'TEIBANDAP MAWRIE'               },
+  { id: 'SFS260128', name: 'WANHIAM HAME SOHTUN'            },
+  { id: 'SFS260129', name: 'WANSALANMI SOHTUN'              },
+  { id: 'SFS260130', name: 'WANSHUA NATHANIEL KHARKONGOR'   },
+  { id: 'SFS260131', name: 'ZAYDEN MAWRIE'                  },
+  { id: 'SFS260132', name: 'ABIGAIL HAPHIBANBHA KHARKONGOR' },
+  { id: 'SFS260133', name: 'BAAIJINGSUK SONGTHIANG'         },
+  { id: 'SFS260134', name: 'BALAPYNTNGEN KHARKONGOR'        },
+  { id: 'SFS260135', name: 'BANNEHDAPHI B MAWRIE'           },
+  { id: 'SFS260136', name: 'CAREFEODOLEEN N.KHARUMNUID'     },
+  { id: 'SFS260137', name: 'DA I HUNSHA LAWAI'              },
+  { id: 'SFS260138', name: 'DA I LASHONGKUN MAWRIE'         },
+  { id: 'SFS260139', name: 'DABETJINGKMEN LYNGDOH'          },
+  { id: 'SFS260140', name: 'DARI PALEI KHARKONGOR'          },
+  { id: 'SFS260141', name: 'DARIJINGKMEN MAWRIE'            },
+  { id: 'SFS260142', name: 'ELLEEN NORA KHYRIEMMUJAT'       },
+  { id: 'SFS260143', name: 'EMIDABIANG KHARMAWPHLANG'       },
+  { id: 'SFS260144', name: 'EVELYNE VICUNA KHARUMNUID'      },
+  { id: 'SFS260145', name: 'EYANA VANESSA KHARKONGOR'       },
+  { id: 'SFS260146', name: 'HAKA LADAPBIANG RANI'           },
+  { id: 'SFS260147', name: 'INDAMANBHA SUTING'              },
+  { id: 'SFS260148', name: 'MELISA BASAIAWMOIT'             },
+  { id: 'SFS260149', name: 'MERIIAKA KHARKONGOR'            },
+  { id: 'SFS260150', name: 'NATANYA MUKHIM'                 },
+  { id: 'SFS260151', name: 'NELATHEHSEI K SYIEMIONG'        },
+  { id: 'SFS260152', name: 'ODELIA JONES KHARKONGOR'        },
+  { id: 'SFS260153', name: 'PRIYANKA RYMBAI'                },
+  { id: 'SFS260154', name: 'RIDAHUN TARIANG'                },
+  { id: 'SFS260155', name: 'RIMEKA MAWRIE'                  },
+  { id: 'SFS260156', name: 'RISAWANKMEN MYNLONG'            },
+  { id: 'SFS260157', name: "SA I MEAIHUN L.LANGSTIEH"       },
+  { id: 'SFS260158', name: 'SAIBANPDIANG MARBANIANG'        },
+  { id: 'SFS260159', name: 'SHIMKHIALANG MAWRIE'            }
+];
+
+// Per-subject, per-category bias tables: [aprilBias, mayBias]
+// Positive = higher marks, negative = lower marks
+const DRILL_DEMO_SUBJECTS = [
+  {
+    subject_id: 'ENG1', subject_name: 'English I',
+    criteria: {
+      'Work Habits':     { ids: ['ENG1_WH1','ENG1_WH2','ENG1_WH3','ENG1_WH4','ENG1_WH5','ENG1_WH6'], bias: [1, 1]   },
+      'Writing Skills':  { ids: ['ENG1_WS1','ENG1_WS2','ENG1_WS3'],                                   bias: [0, 0]   },
+      'Reading Skills':  { ids: ['ENG1_RS1','ENG1_RS2','ENG1_RS3','ENG1_RS4'],                         bias: [-1, -1] },
+      'Speaking Skills': { ids: ['ENG1_SS1','ENG1_SS2','ENG1_SS3','ENG1_SS4'],                         bias: [1, -1]  }  // declining
+    }
+  },
+  {
+    subject_id: 'ENG2', subject_name: 'English II',
+    criteria: {
+      'Work Habits':     { ids: ['ENG2_WH1','ENG2_WH2','ENG2_WH3','ENG2_WH4','ENG2_WH5','ENG2_WH6'], bias: [1, 1]   },
+      'Writing Skills':  { ids: ['ENG2_WS1','ENG2_WS2','ENG2_WS3'],                                   bias: [0, 0]   },
+      'Reading Skills':  { ids: ['ENG2_RS1','ENG2_RS2','ENG2_RS3','ENG2_RS4'],                         bias: [-1, -1] },
+      'Speaking Skills': { ids: ['ENG2_SS1','ENG2_SS2','ENG2_SS3','ENG2_SS4'],                         bias: [0, -1]  }
+    }
+  },
+  {
+    subject_id: 'MATH', subject_name: 'Mathematics',
+    criteria: {
+      'Work Habits':     { ids: ['MATH_WH1','MATH_WH2','MATH_WH3','MATH_WH4','MATH_WH5','MATH_WH6'], bias: [1, 1]   },
+      'Writing Skills':  { ids: ['MATH_WS1','MATH_WS2','MATH_WS3'],                                   bias: [0, 0]   },
+      'Solving Skills':  { ids: ['MATH_SV1','MATH_SV2','MATH_SV3','MATH_SV4','MATH_SV5'],             bias: [-1, 0]  }  // rising
+    }
+  },
+  {
+    subject_id: 'SCI', subject_name: 'Science',
+    criteria: {
+      'Work Habits':                         { ids: ['SCI_WH1','SCI_WH2','SCI_WH3','SCI_WH4','SCI_WH5','SCI_WH6'], bias: [1, 1]   },
+      'Writing Skills':                      { ids: ['SCI_WS1','SCI_WS2','SCI_WS3'],                                bias: [0, 0]   },
+      'Reading Skills':                      { ids: ['SCI_RS1','SCI_RS2','SCI_RS3','SCI_RS4'],                      bias: [-1, -1] },
+      'Social & Emotional / Subject Learning': { ids: ['SCI_SE1','SCI_SE2','SCI_SE3','SCI_SE4'],                    bias: [0, 1]   }
+    }
+  },
+  {
+    subject_id: 'KHA', subject_name: 'Khasi',
+    criteria: {
+      'Work Habits':     { ids: ['KHA_WH1','KHA_WH2','KHA_WH3','KHA_WH4','KHA_WH5','KHA_WH6'], bias: [1, 1]   },
+      'Writing Skills':  { ids: ['KHA_WS1','KHA_WS2','KHA_WS3'],                               bias: [-1, 0]  },
+      'Reading Skills':  { ids: ['KHA_RS1','KHA_RS2','KHA_RS3','KHA_RS4'],                      bias: [-1, -1] },
+      'Speaking Skills': { ids: ['KHA_SS1','KHA_SS2','KHA_SS3','KHA_SS4'],                      bias: [0, 0]   }
+    }
+  }
+];
+
+const DRILL_MONTHS = [
+  { date: '2026-04-15', monthIndex: 0 },
+  { date: '2026-05-15', monthIndex: 1 }
+];
+
+function drillTier(idx, total) {
+  const p = idx / total;
+  if (p < 0.18) return 'strong';
+  if (p < 0.65) return 'average';
+  return 'weak';
+}
+
+function drillMark(tier, bias) {
+  const r = Math.random();
+  let mark;
+  if (tier === 'strong') {
+    mark = r < 0.5 ? 5 : r < 0.85 ? 4 : 3;
+  } else if (tier === 'average') {
+    mark = r < 0.12 ? 5 : r < 0.45 ? 4 : r < 0.80 ? 3 : 2;
+  } else {
+    mark = r < 0.06 ? 4 : r < 0.30 ? 3 : r < 0.65 ? 2 : r < 0.88 ? 1 : 0;
+  }
+  return Math.min(5, Math.max(0, mark + bias));
+}
+
+function buildDrillMarks(subject, monthIndex) {
+  const marks = {};
+  CLASS1_STUDENTS.forEach((st, idx) => {
+    const tier = drillTier(idx, CLASS1_STUDENTS.length);
+    marks[st.id] = { _full_name: st.name };
+    Object.values(subject.criteria).forEach(({ ids, bias }) => {
+      const b = bias[monthIndex];
+      ids.forEach(cid => {
+        // Bottom 15%: occasional absent on first criterion in April
+        const isBottom = idx / CLASS1_STUDENTS.length > 0.85;
+        if (isBottom && monthIndex === 0 && Math.random() < 0.15) {
+          marks[st.id][cid] = { attendance: 'absent' };
+        } else {
+          marks[st.id][cid] = drillMark(tier, b);
+        }
+      });
+    });
+  });
+  return marks;
+}
+
+export async function generateClass1DrillDemo() {
+  clearCache();
+  const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const sessions = [];
+
+  DRILL_MONTHS.forEach(({ date, monthIndex }) => {
+    DRILL_DEMO_SUBJECTS.forEach(subject => {
+      const sessionId = `drillDemo_ClassI_${subject.subject_id}_${date}`;
+      sessions.push({
+        session: {
+          session_id:   sessionId,
+          teacher_name: 'Demo Teacher',
+          class:        'Class I',
+          subject_id:   subject.subject_id,
+          subject_name: subject.subject_name,
+          date,
+          status:       'locked',
+          created_at:   new Date().toISOString(),
+          updated_at:   new Date().toISOString()
+        },
+        marks:    buildDrillMarks(subject, monthIndex),
+        saved_at: new Date().toISOString()
+      });
+    });
+  });
+
+  const merged = [...existing];
+  sessions.forEach(sess => {
+    const idx = merged.findIndex(s => s.session.session_id === sess.session.session_id);
+    if (idx >= 0) merged[idx] = sess; else merged.push(sess);
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+
+  clearCache();
+  return sessions.length;
+}
+
+export function clearClass1DrillDemo() {
+  clearCache();
+  const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const filtered = existing.filter(s => !s.session.session_id.startsWith('drillDemo_'));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+}
+
 export function clearDemoData() {
   clearCache();
   const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');

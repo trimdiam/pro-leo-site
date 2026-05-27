@@ -1041,6 +1041,7 @@
         <button onclick="showDash('s','s-fees',this)"><i class="fas fa-money-bill-wave"></i> Fees</button>
         <button onclick="showDash('s','s-exams',this);window._loadStudentExamSchedule&&window._loadStudentExamSchedule()"><i class="fas fa-calendar-check"></i> Exam Schedule</button>
         <button onclick="showDash('s','s-reportcards',this);loadStudentReportCards()"><i class="fas fa-file-alt"></i> Report Card</button>
+        <button onclick="showDash('s','s-myprogress',this);loadStudentProgress()"><i class="fas fa-chart-bar"></i> My Progress</button>
         <button onclick="showDash('s','s-contact',this)"><i class="fas fa-envelope"></i> Contact</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
@@ -1179,6 +1180,11 @@
         <!-- ── Student Report Cards (Project LEO) ── -->
         <div id="s-reportcards" class="dash-section" data-rc-student-init="false">
           <div id="rc-student-root"></div>
+        </div>
+
+        <!-- ── Student Progress View ── -->
+        <div id="s-myprogress" class="dash-section" data-sp-init="false">
+          <div id="sp-student-root"></div>
         </div>
         <div id="s-attendance" class="dash-section">
           <div class="card" style="padding:28px;max-width:480px;text-align:center;margin-bottom:24px">
@@ -4007,6 +4013,7 @@
 <script type="module" src="app-logic.js?v=17"></script>
 <script type="module" src="report-card-admin-init.js"></script>
 <script type="module" src="report-card-student-init.js"></script>
+<script type="module" src="student-progress-init.js"></script>
 <script defer src="back-button.js"></script>
 <script type="module" src="exam-schedule.js"></script>
 <script>

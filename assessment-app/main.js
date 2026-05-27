@@ -39,6 +39,8 @@ async function getAdminComponents() {
     generateDemoData:           demo.generateDemoData,
     clearDemoData:              demo.clearDemoData,
     generateWeeklyMathDemo:     demo.generateWeeklyMathDemo,
+    generateClass1DrillDemo:    demo.generateClass1DrillDemo,
+    clearClass1DrillDemo:       demo.clearClass1DrillDemo,
   };
   return _adminLazy;
 }
@@ -196,6 +198,18 @@ function renderLogin() {
       const n = await a.generateWeeklyMathDemo();
       alert(`Weekly Maths demo loaded: ${n} sessions for Class I. Profiles updated.`);
       syncSessionsFromFirestore().finally(() => render());
+    },
+    onGenerateClass1DrillDemo: async () => {
+      const a = await getAdminComponents();
+      const n = await a.generateClass1DrillDemo();
+      alert(`Class I drill demo loaded: ${n} sessions (April & May, all 5 subjects). Go to Analytics → Subject tab → select Class I.`);
+      render();
+    },
+    onClearClass1DrillDemo: async () => {
+      const a = await getAdminComponents();
+      a.clearClass1DrillDemo();
+      alert('Class I drill demo data cleared.');
+      render();
     }
   }));
 }
@@ -472,7 +486,8 @@ function renderAdmin() {
     { key: 'summary', label: 'Monthly Summary' },
     { key: 'weak', label: 'Weak Students' },
     { key: 'analytics', label: 'Analytics' },
-    { key: 'reportcards', label: 'Report Cards' }
+    { key: 'reportcards', label: 'Report Cards' },
+    { key: 'demo', label: '🧪 Demo Data' }
   ];
 
   tabDefs.forEach(t => {
@@ -504,7 +519,94 @@ function renderAdmin() {
     renderAdminAnalytics();
   } else if (state.adminView === 'reportcards') {
     renderAdminReportCards();
+  } else if (state.adminView === 'demo') {
+    renderAdminDemo();
   }
+}
+
+function renderAdminDemo() {
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.style.cssText = 'display:grid;gap:16px;max-width:540px';
+
+  function demoSection(title, desc, btnLabel, onLoad, clearLabel, onClear) {
+    const box = document.createElement('div');
+    box.style.cssText = 'border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:8px';
+
+    const h = document.createElement('h4');
+    h.style.cssText = 'margin:0;font-size:0.95rem';
+    h.textContent = title;
+
+    const p = document.createElement('p');
+    p.style.cssText = 'margin:0;font-size:0.83rem;color:#666';
+    p.textContent = desc;
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
+
+    const loadBtn = document.createElement('button');
+    loadBtn.type = 'button';
+    loadBtn.className = 'btn btn-primary btn-sm';
+    loadBtn.textContent = btnLabel;
+    loadBtn.addEventListener('click', async () => {
+      loadBtn.disabled = true; loadBtn.textContent = 'Loading…';
+      try { await onLoad(); } finally { loadBtn.disabled = false; loadBtn.textContent = btnLabel; }
+    });
+    btnRow.append(loadBtn);
+
+    if (clearLabel && onClear) {
+      const clrBtn = document.createElement('button');
+      clrBtn.type = 'button';
+      clrBtn.className = 'btn btn-secondary btn-sm';
+      clrBtn.textContent = clearLabel;
+      clrBtn.addEventListener('click', async () => {
+        clrBtn.disabled = true;
+        try { await onClear(); } finally { clrBtn.disabled = false; }
+      });
+      btnRow.append(clrBtn);
+    }
+
+    box.append(h, p, btnRow);
+    return box;
+  }
+
+  panel.append(demoSection(
+    '📊 General Demo',
+    '3 months of Maths data for Class I & II. Good for overview, trends and completion tabs.',
+    'Load General Demo',
+    async () => { const a = await getAdminComponents(); a.generateDemoData(); render(); },
+    'Clear',
+    async () => { const a = await getAdminComponents(); a.clearDemoData(); render(); }
+  ));
+
+  panel.append(demoSection(
+    '📅 Weekly Maths Demo',
+    '4-week Maths sessions for Class I — locked, overdue and in-progress states with rising trend.',
+    'Load Weekly Maths Demo',
+    async () => {
+      const a = await getAdminComponents();
+      const n = await a.generateWeeklyMathDemo();
+      alert(`Weekly Maths demo loaded: ${n} sessions.`);
+      render();
+    },
+    null, null
+  ));
+
+  panel.append(demoSection(
+    '🔬 Class I Subject Drill Demo',
+    'April & May 2026, all 5 subjects (English I & II, Maths, Science, Khasi), 59 real students. Shows category breakdowns, decline alerts, skill gaps and heat maps in the Analytics → Subject tab.',
+    'Load Class I Drill Demo',
+    async () => {
+      const a = await getAdminComponents();
+      const n = await a.generateClass1DrillDemo();
+      alert(`Loaded ${n} sessions. Go to Analytics → Subject tab → select Class I.`);
+      render();
+    },
+    'Clear Drill Demo',
+    async () => { const a = await getAdminComponents(); a.clearClass1DrillDemo(); render(); }
+  ));
+
+  assessmentRoot.append(panel);
 }
 
 async function renderAdminReportCards() {

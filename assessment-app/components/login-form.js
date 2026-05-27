@@ -1,6 +1,6 @@
 import { login, logout, getCurrentUser } from '../services/auth-service.js';
 
-export function createLoginForm({ onLogin = () => {}, onLogout = () => {}, onGenerateDemo = () => {}, onClearDemo = () => {}, onGenerateWeeklyMathDemo = () => {} } = {}) {
+export function createLoginForm({ onLogin = () => {}, onLogout = () => {}, onGenerateDemo = () => {}, onClearDemo = () => {}, onGenerateWeeklyMathDemo = () => {}, onGenerateClass1DrillDemo = () => {}, onClearClass1DrillDemo = () => {} } = {}) {
   const user = getCurrentUser();
 
   if (user) {
@@ -185,6 +185,44 @@ export function createLoginForm({ onLogin = () => {}, onLogout = () => {}, onGen
     }
   });
   demoPanel.append(weeklyBtn);
+
+  // ── Class I Drill Demo ──
+  const drillDivider = document.createElement('hr');
+  drillDivider.style.cssText = 'margin:12px 0;border-color:var(--line)';
+  demoPanel.append(drillDivider);
+
+  const drillInfo = document.createElement('p');
+  drillInfo.className = 'empty-state';
+  drillInfo.style.fontSize = '0.85rem';
+  drillInfo.textContent = 'Class I full subject drill-down demo — April & May 2026, all 5 subjects (ENG I, ENG II, Maths, Science, Khasi) with 59 students. Shows category breakdowns, decline alerts, skill gaps & heat maps.';
+  demoPanel.append(drillInfo);
+
+  const drillBtnWrap = document.createElement('div');
+  drillBtnWrap.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
+
+  const drillBtn = document.createElement('button');
+  drillBtn.type = 'button';
+  drillBtn.className = 'btn btn-primary';
+  drillBtn.textContent = 'Load Class I Drill Demo';
+  drillBtn.addEventListener('click', async () => {
+    drillBtn.disabled = true;
+    drillBtn.textContent = 'Loading…';
+    try { await onGenerateClass1DrillDemo(); }
+    finally { drillBtn.disabled = false; drillBtn.textContent = 'Load Class I Drill Demo'; }
+  });
+
+  const clearDrillBtn = document.createElement('button');
+  clearDrillBtn.type = 'button';
+  clearDrillBtn.className = 'btn btn-secondary';
+  clearDrillBtn.textContent = 'Clear Drill Demo';
+  clearDrillBtn.addEventListener('click', async () => {
+    clearDrillBtn.disabled = true;
+    try { await onClearClass1DrillDemo(); }
+    finally { clearDrillBtn.disabled = false; }
+  });
+
+  drillBtnWrap.append(drillBtn, clearDrillBtn);
+  demoPanel.append(drillBtnWrap);
 
   container.append(demoPanel);
 

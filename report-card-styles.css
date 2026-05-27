@@ -527,3 +527,123 @@
     max-width: 100%;
   }
 }
+
+/* ── Student Progress View ─────────────────────────────────────────────────── */
+
+.sp-panel { display: grid; gap: 14px; padding: 4px 0; }
+.sp-panel h2 { margin: 0 0 4px; font-size: 1.2rem; }
+.sp-intro { margin: 0; font-size: 0.87rem; color: #666; }
+.sp-empty { text-align: center; color: #888; font-style: italic; padding: 32px 0; }
+.sp-meta  { font-size: 0.78rem; color: #999; margin: 6px 0 0; }
+
+/* Subject card */
+.sp-subject-card {
+  border: 1px solid var(--line, #d4c5a9);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg, #fffcf0);
+}
+.sp-subject-card--open { border-color: #226b63; }
+
+.sp-subject-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  gap: 8px;
+  transition: background 0.15s;
+}
+.sp-subject-header:hover { background: var(--bg-alt, #f5f0e8); }
+.sp-subject-card--open .sp-subject-header { background: var(--bg-alt, #f5f0e8); }
+
+.sp-subject-left  { display: flex; align-items: center; gap: 8px; }
+.sp-subject-right { display: flex; align-items: center; gap: 8px; }
+.sp-subject-name  { font-weight: 700; font-size: 0.97rem; }
+.sp-subject-pct   { font-weight: 700; font-size: 1rem; color: #226b63; }
+.sp-subject-arrow { color: #226b63; font-size: 1rem; transition: transform 0.2s; }
+
+/* Band badges */
+.sp-band { font-size: 0.72rem; font-weight: 700; padding: 2px 7px;
+  border-radius: 4px; white-space: nowrap; }
+.sp-band--strong   { background: #d4f0e8; color: #1a5c44; }
+.sp-band--good     { background: #c8eed8; color: #1a5c44; }
+.sp-band--average  { background: #fff3cd; color: #7a5200; }
+.sp-band--weak     { background: #fde8e4; color: #922b21; }
+.sp-band--critical { background: #f5b7b1; color: #6b0f0a; }
+
+/* Subject body (expanded) */
+.sp-subject-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--line, #d4c5a9);
+}
+.sp-subject-card--open .sp-subject-body { padding-top: 12px; }
+
+/* Alerts */
+.sp-alerts { display: grid; gap: 6px; }
+.sp-alert { padding: 8px 12px; border-radius: 8px; font-size: 0.86rem; }
+.sp-alert--decline     { background: #fde8e4; color: #922b21; }
+.sp-alert--improvement { background: #d4f0e8; color: #1a5c44; }
+
+/* Callout row */
+.sp-callout-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.sp-callout { padding: 7px 12px; border-radius: 8px; font-size: 0.87rem; flex: 1; min-width: 180px; }
+.sp-callout--strong { background: #d4f0e8; color: #1a5c44; }
+.sp-callout--weak   { background: #fde8e4; color: #922b21; }
+
+/* Focus tip */
+.sp-focus-tip {
+  background: #e8f4fd;
+  color: #1a4a7a;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+}
+
+/* Category bars */
+.sp-categories { display: grid; gap: 6px; }
+.sp-cat-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 46px;
+  align-items: center;
+  gap: 10px;
+}
+.sp-cat-name  { display: flex; flex-direction: column; gap: 3px; font-size: 0.88rem; }
+.sp-bar-wrap  { background: #e8e0d0; border-radius: 4px; height: 10px; overflow: hidden; }
+.sp-bar       { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.sp-bar-wrap--sm { height: 7px; }
+.sp-pct       { font-size: 0.83rem; font-weight: 600; text-align: right; }
+
+/* Criteria slot & box */
+.sp-criteria-slot { padding: 0 4px; }
+.sp-criteria-box  { display: grid; gap: 5px; padding: 8px 0 4px; }
+.sp-criterion-row {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.83rem;
+}
+.sp-criterion-name  { color: #333; }
+.sp-criterion-right { display: flex; align-items: center; gap: 5px; justify-content: flex-end; }
+
+/* Toggle button */
+.sp-toggle-btn {
+  background: none;
+  border: 1px solid #226b63;
+  color: #226b63;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.83rem;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.sp-toggle-btn:hover { background: #d4f0e8; }
+
+@media (max-width: 480px) {
+  .sp-cat-row { grid-template-columns: 120px 1fr 40px; }
+  .sp-criterion-row { grid-template-columns: 1fr 80px; }
+  .sp-criterion-right { display: none; }
+  .sp-callout { min-width: 100%; }
+}
