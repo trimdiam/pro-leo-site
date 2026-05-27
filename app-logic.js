@@ -3539,37 +3539,25 @@ function _resolveSubject(code, map) {
         loadStudentFees(),
         window.loadStudentDashWidgets && loadStudentDashWidgets(),
         window.loadAcademicSnapshot(studentId),
-        (async function (studentId, classId, feeBalance) {
-          const banner = document.getElementById("s-reportcard-banner"),
-            feeBanner = document.getElementById("s-reportcard-feebanner");
-          if (!banner || !studentId || !classId) return;
+        (async function (studentId) {
+          // Banner visibility: check the new report_cards collection (Project LEO).
+          // The old marks/_FT.releasedToStudent flag belongs to the legacy system
+          // and is no longer kept in sync with the new admin release workflow.
+          const banner = document.getElementById("s-reportcard-banner");
+          if (!banner || !studentId) return;
           try {
-            const ftDoc = await getDoc(
-              doc(db, "marks", `${classId}_FT`, "students", studentId),
+            const { collection: col, query: qry, where: whr, getDocs: gds } =
+              await import(`https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js`);
+            const snap = await gds(
+              qry(col(db, "report_cards"),
+                whr("studentId", "==", studentId),
+                whr("status", "==", "released"))
             );
-            if (!ftDoc.exists()) return;
-            const data = ftDoc.data(),
-              released = !0 === data?.releasedToStudent,
-              feeHeld = !0 === data?.feeHold,
-              feesCleared = feeBalance <= 0;
-            released && feesCleared
-              ? ((banner.style.display = "flex"),
-                (window._studentRCData = {
-                  hyClassId: `${classId}_HY`,
-                  ftClassId: `${classId}_FT`,
-                  studentId: studentId,
-                }))
-              : (feeHeld || (released && !feesCleared)) &&
-                feeBanner &&
-                (feeBanner.style.display = "flex");
+            if (!snap.empty) banner.style.display = "flex";
           } catch (e) {
             console.warn("checkStudentReportCardRelease:", e.message);
           }
-        })(
-          studentId,
-          String(s.class || ""),
-          parseFloat(s.feeBalance ?? s.feeTotal ?? 0),
-        ));
+        })(studentId));
     } catch (e) {
       showToast("⚠️ Could not load profile: " + e.message);
       const _le = document.getElementById("s-portal-loader");
@@ -3580,30 +3568,12 @@ function _resolveSubject(code, map) {
         }, 380));
     }
   }),
-  (window.studentViewReportCard = async function () {
-    const rc = window._studentRCData;
-    if (rc) {
-      showToast("Loading your report card…");
-      try {
-        const [hyDoc, ftDoc] = await Promise.all([
-          getDoc(doc(db, "marks", rc.hyClassId, "students", rc.studentId)),
-          getDoc(doc(db, "marks", rc.ftClassId, "students", rc.studentId)),
-        ]);
-        if (!ftDoc.exists()) return void showToast("❌ Report card not found.");
-        const classId = rc.hyClassId.replace("_HY", "");
-        (sessionStorage.setItem(
-          "sfds_adminRC",
-          JSON.stringify({
-            hyData: hyDoc.data() || {},
-            ftData: ftDoc.data() || {},
-            classId: classId,
-          }),
-        ),
-          window.open("/Sfs-report-card/reportcard.html", "_blank"));
-      } catch (e) {
-        showToast("❌ " + e.message);
-      }
-    }
+  (window.studentViewReportCard = function () {
+    // Route to the new Project LEO report cards tab (report-card-student-view.js).
+    // The old path (marks/_FT → /Sfs-report-card/reportcard.html) is legacy and
+    // no longer matches the report_cards collection used by the new system.
+    showDash("s", "s-reportcards", null);
+    if (window.loadStudentReportCards) loadStudentReportCards();
   }),
   (window.loadAcademicSnapshot = async function (studentId) {
     const container = document.getElementById("s-academic-snapshot");

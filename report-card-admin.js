@@ -53,10 +53,13 @@ async function checkFeesCleared(studentId) {
   const database = await ensureDb();
   const { collection, query, where, getDocs } = await fsImport();
   try {
+    // 'pending' is the status set when a transaction is created.
+    // 'approved'/'rejected' mean the admin has reviewed it — those are not outstanding.
+    // The old check used '!= paid' but 'paid' is never written anywhere in the app.
     const q = query(
       collection(database, 'fee_transactions'),
       where('studentId', '==', studentId),
-      where('status', '!=', 'paid')
+      where('status', '==', 'pending')
     );
     const snap = await getDocs(q);
     return snap.empty;
