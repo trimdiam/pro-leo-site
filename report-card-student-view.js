@@ -69,22 +69,27 @@ function openPrintWindow(hy1Card, hy2Card, studentInfo) {
   overlay.id = 'rc-fullscreen-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#fff;overflow:hidden';
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const blobUrl = URL.createObjectURL(blob);
+  // Use document.write() into about:blank (same-origin) instead of a blob: URL.
+  // blob: URL iframes have an opaque origin — html2canvas's internal sandbox
+  // sub-iframes inherit it and can't load external resources (fonts, images),
+  // producing a blank white canvas. about:blank inherits the portal's real origin
+  // so html2canvas works correctly.
   const iframe = document.createElement('iframe');
-  iframe.src = blobUrl;
   iframe.style.cssText = 'border:0;width:100%;height:100%;display:block';
   overlay.appendChild(iframe);
   document.body.appendChild(overlay);
   const prevOverflow = document.body.style.overflow;
   document.body.style.overflow = 'hidden';
 
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+
   function onMessage(e) {
     if (!e || !e.data) return;
     if (e.data.type === 'closeReportOverlay') {
       overlay.remove();
       document.body.style.overflow = prevOverflow;
-      URL.revokeObjectURL(blobUrl);
       window.removeEventListener('message', onMessage);
       return;
     }
@@ -105,17 +110,21 @@ async function downloadReportPdfDirect(hy1Card, hy2Card, studentInfo) {
   const html = buildPrintableHTML(hy1Card, hy2Card, studentInfo);
 
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-99999px;top:0;width:1400px;height:900px;pointer-events:none;opacity:0;z-index:-1';
+  wrap.style.cssText = 'position:fixed;left:-99999px;top:0;width:1400px;height:900px;pointer-events:none;z-index:-1';
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'border:0;width:100%;height:100%';
   wrap.appendChild(iframe);
   document.body.appendChild(wrap);
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const blobUrl = URL.createObjectURL(blob);
+  // Write into about:blank (same-origin) instead of a blob: URL.
+  // blob: URL iframes have an opaque origin — html2canvas's internal sandbox
+  // sub-iframes inherit it and can't load fonts/images, producing blank PDFs.
+  // about:blank inherits the portal's real origin so html2canvas works correctly.
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
 
-  // Bridge save requests from the off-screen iframe (same protocol the
-  // visible overlay uses) to Capacitor Filesystem on APK.
+  // Bridge save requests from the off-screen iframe to Capacitor Filesystem on APK.
   function onMessage(e) {
     if (!e || !e.data) return;
     if (e.data.type === 'savePdfRequest') handleSavePdfRequest(e.data, e.source);
@@ -123,17 +132,7 @@ async function downloadReportPdfDirect(hy1Card, hy2Card, studentInfo) {
   window.addEventListener('message', onMessage);
 
   try {
-    await new Promise((resolve, reject) => {
-      let done = false;
-      const timer = setTimeout(() => {
-        if (!done) { done = true; reject(new Error('Report load timeout')); }
-      }, 20000);
-      iframe.onload  = () => { if (!done) { done = true; clearTimeout(timer); resolve(); } };
-      iframe.onerror = () => { if (!done) { done = true; clearTimeout(timer); reject(new Error('Report failed to load')); } };
-      iframe.src = blobUrl;
-    });
-
-    // Wait for the iframe's html2pdf bundle and rcDownloadPDF helper to be ready.
+    // Wait for the html2pdf bundle and rcDownloadPDF helper to be ready.
     const fwin = iframe.contentWindow;
     for (let i = 0; i < 200 && (!fwin || typeof fwin.rcDownloadPDF !== 'function'); i++) {
       await new Promise((r) => setTimeout(r, 50));
@@ -144,10 +143,7 @@ async function downloadReportPdfDirect(hy1Card, hy2Card, studentInfo) {
     await fwin.rcDownloadPDF();
   } finally {
     window.removeEventListener('message', onMessage);
-    setTimeout(() => {
-      try { wrap.remove(); } catch (_) {}
-      try { URL.revokeObjectURL(blobUrl); } catch (_) {}
-    }, 1000);
+    setTimeout(() => { try { wrap.remove(); } catch (_) {} }, 1000);
   }
 }
 
