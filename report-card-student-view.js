@@ -96,6 +96,61 @@ function openPrintWindow(hy1Card, hy2Card, studentInfo) {
   window.addEventListener('message', onMessage);
 }
 
+// Direct PDF download — spawns an off-screen iframe with the report card,
+// waits for it to load, then drives the iframe's built-in rcDownloadPDF()
+// to capture and save without ever showing the report on screen. Used by
+// the "Download PDF" buttons on each term card so students can save the
+// file without opening the full report viewer first.
+async function downloadReportPdfDirect(hy1Card, hy2Card, studentInfo) {
+  const html = buildPrintableHTML(hy1Card, hy2Card, studentInfo);
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;left:-99999px;top:0;width:1400px;height:900px;pointer-events:none;opacity:0;z-index:-1';
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'border:0;width:100%;height:100%';
+  wrap.appendChild(iframe);
+  document.body.appendChild(wrap);
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const blobUrl = URL.createObjectURL(blob);
+
+  // Bridge save requests from the off-screen iframe (same protocol the
+  // visible overlay uses) to Capacitor Filesystem on APK.
+  function onMessage(e) {
+    if (!e || !e.data) return;
+    if (e.data.type === 'savePdfRequest') handleSavePdfRequest(e.data, e.source);
+  }
+  window.addEventListener('message', onMessage);
+
+  try {
+    await new Promise((resolve, reject) => {
+      let done = false;
+      const timer = setTimeout(() => {
+        if (!done) { done = true; reject(new Error('Report load timeout')); }
+      }, 20000);
+      iframe.onload  = () => { if (!done) { done = true; clearTimeout(timer); resolve(); } };
+      iframe.onerror = () => { if (!done) { done = true; clearTimeout(timer); reject(new Error('Report failed to load')); } };
+      iframe.src = blobUrl;
+    });
+
+    // Wait for the iframe's html2pdf bundle and rcDownloadPDF helper to be ready.
+    const fwin = iframe.contentWindow;
+    for (let i = 0; i < 200 && (!fwin || typeof fwin.rcDownloadPDF !== 'function'); i++) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    if (!fwin || typeof fwin.rcDownloadPDF !== 'function') {
+      throw new Error('Report viewer scripts did not load');
+    }
+    await fwin.rcDownloadPDF();
+  } finally {
+    window.removeEventListener('message', onMessage);
+    setTimeout(() => {
+      try { wrap.remove(); } catch (_) {}
+      try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+    }, 1000);
+  }
+}
+
 // Bridge: report-card iframe asks the portal to save a PDF via Capacitor
 // Filesystem plugin (if installed natively). Falls back gracefully if missing.
 async function handleSavePdfRequest(req, source) {
@@ -199,14 +254,31 @@ export async function initReportCardStudentView(studentId) {
         tc.append(overallP);
         tc.append(el('p', '', `Released: ${formatDate(card.releasedAt)}`));
 
-        const viewBtn = el('button', 'rc-view-btn', '📄 View Full Report Card');
+        const hy1 = termTitle.includes('First') ? card : null;
+        const hy2 = termTitle.includes('Second') ? card : null;
+
+        const viewBtn = el('button', 'rc-view-btn', '📄 View Report');
         viewBtn.type = 'button';
-        viewBtn.addEventListener('click', () => {
-          const hy1 = termTitle.includes('First') ? card : null;
-          const hy2 = termTitle.includes('Second') ? card : null;
-          openPrintWindow(hy1, hy2, studentInfo);
-        });
+        viewBtn.addEventListener('click', () => openPrintWindow(hy1, hy2, studentInfo));
         tc.append(viewBtn);
+
+        const dlBtn = el('button', 'rc-view-btn rc-download-btn', '📥 Download PDF');
+        dlBtn.type = 'button';
+        dlBtn.style.marginTop = '6px';
+        dlBtn.addEventListener('click', async () => {
+          const origText = dlBtn.textContent;
+          dlBtn.textContent = '⏳ Generating PDF…';
+          dlBtn.disabled = true;
+          try {
+            await downloadReportPdfDirect(hy1, hy2, studentInfo);
+          } catch (err) {
+            alert('Could not download PDF: ' + (err && err.message ? err.message : err));
+          } finally {
+            dlBtn.textContent = origText;
+            dlBtn.disabled = false;
+          }
+        });
+        tc.append(dlBtn);
       } else {
         tc.append(el('p', '', 'Not yet available.'));
       }
@@ -219,14 +291,32 @@ export async function initReportCardStudentView(studentId) {
 
     root.append(termCards);
 
-    // ── Print complete record button ──
+    // ── View / Download complete record ──
     if (hy1Card || hy2Card) {
-      const printAllBtn = el('button', 'rc-print-all-btn', '🖨 Print Complete Academic Record (Both Terms)');
+      const printAllBtn = el('button', 'rc-print-all-btn', '📄 View Complete Academic Record (Both Terms)');
       printAllBtn.type = 'button';
       printAllBtn.addEventListener('click', () => {
         openPrintWindow(hy1Card, hy2Card, studentInfo);
       });
       root.append(printAllBtn);
+
+      const downloadAllBtn = el('button', 'rc-print-all-btn rc-download-all-btn', '📥 Download Complete Academic Record (PDF)');
+      downloadAllBtn.type = 'button';
+      downloadAllBtn.style.marginTop = '6px';
+      downloadAllBtn.addEventListener('click', async () => {
+        const origText = downloadAllBtn.textContent;
+        downloadAllBtn.textContent = '⏳ Generating PDF…';
+        downloadAllBtn.disabled = true;
+        try {
+          await downloadReportPdfDirect(hy1Card, hy2Card, studentInfo);
+        } catch (err) {
+          alert('Could not download PDF: ' + (err && err.message ? err.message : err));
+        } finally {
+          downloadAllBtn.textContent = origText;
+          downloadAllBtn.disabled = false;
+        }
+      });
+      root.append(downloadAllBtn);
     }
 
   } catch (err) {

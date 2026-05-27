@@ -940,9 +940,9 @@ ${cardHTML}
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=1400, initial-scale=1.0, user-scalable=yes" />
   <title>Annual Progress Report — ${esc(info.studentName)}</title>
-  <style>${BASE_CSS}${MOBILE_CSS}</style>
+  <style>${BASE_CSS}</style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script>
     // Pre-built PDF-capture HTML — same content as visible page but with
