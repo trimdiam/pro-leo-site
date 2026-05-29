@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Year-End Rollover — SFS Admin</title>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; max-width: 920px; margin: 32px auto; padding: 0 18px; background: #f4f1ea; color: #2b2b2b; }
+    h2 { color: #5c4a1e; margin-bottom: 4px; }
+    .sub { color: #7a6a45; font-size: 13.5px; margin: 0 0 20px; }
+    .card { background: #fff; border-radius: 14px; padding: 22px; margin-bottom: 18px; box-shadow: 0 2px 10px rgba(92,74,30,0.08); border: 1px solid #ece4d2; }
+    .step-num { display:inline-flex; width:26px; height:26px; border-radius:50%; background:#7c5c1e; color:#fff; align-items:center; justify-content:center; font-size:13px; font-weight:700; margin-right:8px; }
+    .step-title { font-weight:700; color:#5c4a1e; font-size:15.5px; }
+    .step-desc { color:#6b6150; font-size:13px; margin:8px 0 14px; }
+    button { background: #7c5c1e; color: #fff; border: none; padding: 10px 20px; border-radius: 9px; font-size: 14px; cursor: pointer; margin-right: 8px; font-weight:600; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.danger { background: #c0392b; }
+    button.ghost { background: #8a7c5a; }
+    input[type=email], input[type=password] { width: 100%; padding: 10px 12px; border: 1.5px solid #d8cdb4; border-radius: 9px; font-size: 14px; margin-bottom: 10px; box-sizing: border-box; }
+    .yr-row { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:6px; }
+    .yr-row label { font-size:13px; color:#5c4a1e; font-weight:600; display:block; margin-bottom:4px; }
+    .yr-row input { width:130px; padding:8px 10px; border:1.5px solid #d8cdb4; border-radius:8px; font-size:14px; }
+    .locked-note { font-size:12px; color:#b45309; background:#fef3c7; border:1px solid #fbbf24; border-radius:8px; padding:6px 10px; display:inline-block; }
+    #log { background:#1e1b14; color:#e8e0cf; font-family: ui-monospace, monospace; font-size:13px; padding:16px; border-radius:10px; height:380px; overflow-y:auto; white-space:pre-wrap; display:none; }
+    .green{color:#86c98e}.red{color:#e88}.yellow{color:#f2c94c}.cyan{color:#7fd4d4}.dim{color:#9a8f78}
+    #toolCard { display:none; }
+    #loginStatus { font-size:13px; color:#2f7d4f; margin-top:8px; }
+    .chk { font-size:13.5px; color:#3b3320; display:flex; align-items:flex-start; gap:9px; }
+    .chk input { margin-top:3px; }
+  </style>
+</head>
+<body>
+  <h2>🎓 Year-End Rollover</h2>
+  <p class="sub">St. Francis De Sales School — advance the academic session safely. Every destructive step is gated and preview-first.</p>
+
+  <!-- LOGIN -->
+  <div class="card" id="loginCard">
+    <p style="margin:0 0 14px;color:#6b6150;font-size:14px">Sign in with your <strong>Admin</strong> account to continue.</p>
+    <input type="email" id="emailInp" placeholder="Admin email" autocomplete="username" />
+    <input type="password" id="passwordInp" placeholder="Password" autocomplete="current-password" />
+    <button id="loginBtn" onclick="doLogin()">🔐 Sign In</button>
+    <p id="loginErr" style="color:#c0392b;font-size:13px;margin-top:8px"></p>
+  </div>
+
+  <!-- TOOL -->
+  <div id="toolCard">
+    <div class="card">
+      <p id="loginStatus"></p>
+      <div class="yr-row">
+        <div><label>Closing session (from)</label><input id="fromYear" value="2026-27" /></div>
+        <div><label>New session (to)</label><input id="toYear" value="2027-28" /></div>
+      </div>
+      <p class="step-desc" style="margin-top:10px">Set the labels, then run a dry-run preview. The preview writes nothing — it only counts what each step would touch.</p>
+      <button id="previewBtn" onclick="runPreview()">🔍 Run Dry-Run Preview</button>
+      <button class="ghost" onclick="doLogout()">Logout</button>
+    </div>
+
+    <!-- STEP 1 -->
+    <div class="card">
+      <div><span class="step-num">1</span><span class="step-title">Full backup</span></div>
+      <p class="step-desc">Export the entire Firestore project before anything else — this is the only thing that can fully restore the school's data if a later step goes wrong.
+        Run in Cloud Shell:<br>
+        <code style="display:inline-block;background:#f4f1ea;border:1px solid #e3dac4;border-radius:6px;padding:4px 8px;margin-top:6px;font-size:12.5px">gcloud firestore export gs://&lt;your-bucket&gt;/backups/<span id="bkpYear">2026-27</span>-final</code>
+      </p>
+      <label class="chk"><input type="checkbox" id="backupAck" onchange="onBackupAck()" />
+        <span>I confirm a full Firestore export has completed successfully and I have noted its bucket path.</span></label>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="card">
+      <div><span class="step-num">2</span><span class="step-title">Archive academic data</span> <span id="s2sum" class="dim" style="font-size:13px"></span></div>
+      <p class="step-desc">Copy session-bound academic collections into <code id="archTgt">archive_2026-27</code>_* so last year stays viewable in-app. Copy-only — the source data is not touched.</p>
+      <button class="danger" id="archiveBtn" disabled onclick="runArchiveStep()">📦 Archive (run preview + confirm backup first)</button>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="card">
+      <div><span class="step-num">3</span><span class="step-title">Promote students</span> <span id="s3sum" class="dim" style="font-size:13px"></span></div>
+      <p class="step-desc">Advance each student's class; detained students stay; Class 10 moves to <code>alumni</code>. Roll numbers are left as-is (reassign manually after rollover).</p>
+      <button class="danger" id="promoteBtn" disabled onclick="runPromoteStep()">⬆️ Promote (archive must be verified first)</button>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="card">
+      <div><span class="step-num">4</span><span class="step-title">Clear &amp; reset</span> <span id="s4sum" class="dim" style="font-size:13px"></span></div>
+      <p class="step-desc">Wipe the now-archived live academic collections and reset transient counters so the new year starts clean. <strong style="color:#c0392b">This deletes data</strong> — it re-checks the archive first and aborts if anything is missing.</p>
+      <button class="danger" id="clearBtn" disabled onclick="runClearStep()">🗑️ Clear (promotion must be verified first)</button>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="card">
+      <div><span class="step-num">5</span><span class="step-title">Open new session</span></div>
+      <p class="step-desc">Create the <code id="newSessLbl">2027-28</code> academicSessions document, mark it active, and deactivate the old session so the app points at the new year.</p>
+      <button class="danger" id="sessionBtn" disabled onclick="runSessionStep()">🆕 Create Session (clear must be verified first)</button>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp, getApps, getApp }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { getFirestore }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { buildPreview, runArchive, verifyArchive, runPromotion, verifyPromotion, runClear, verifyClear, openNewSession, verifyNewSession } from "./year-end-rollover.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyBXq3fe0uY8UB7-uLGzGIIvZOQf8YjNqaM",
+      authDomain:        "st-francis-school-a3e7e.firebaseapp.com",
+      projectId:         "st-francis-school-a3e7e",
+      storageBucket:     "st-francis-school-a3e7e.firebasestorage.app",
+      messagingSenderId: "180123372524",
+      appId:             "1:180123372524:web:caed0f2a44d35f19d90ec9"
+    };
+
+    const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    const logEl = document.getElementById("log");
+    const $ = id => document.getElementById(id);
+
+    function log(msg, cls = "") {
+      logEl.style.display = "block";
+      logEl.innerHTML += (cls ? `<span class="${cls}">${msg}</span>` : msg) + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        $("loginCard").style.display = "none";
+        $("toolCard").style.display = "block";
+        $("loginStatus").textContent = `✅ Signed in as ${user.email}`;
+      } else {
+        $("loginCard").style.display = "block";
+        $("toolCard").style.display = "none";
+        logEl.style.display = "none";
+      }
+    });
+
+    window.doLogin = async function () {
+      const errEl = $("loginErr"), btn = $("loginBtn");
+      errEl.textContent = ""; btn.disabled = true; btn.textContent = "Signing in…";
+      try {
+        await signInWithEmailAndPassword(auth, $("emailInp").value.trim(), $("passwordInp").value);
+      } catch (e) {
+        errEl.textContent = "❌ " + e.message; btn.disabled = false; btn.textContent = "🔐 Sign In";
+      }
+    };
+    window.doLogout = () => signOut(auth);
+
+    let lastPreview = null;   // result of the most recent dry-run
+    let archiveDone = false;  // true once archive copy is verified
+    let promoteDone = false;  // true once promotion is verified
+    let clearDone   = false;  // true once clear is verified
+    let sessionDone = false;  // true once new session is verified
+
+    function refreshGates() {
+      // Archive unlocks only after a preview exists AND backup is confirmed.
+      const archReady = !!lastPreview && $("backupAck").checked && !archiveDone;
+      const aBtn = $("archiveBtn");
+      aBtn.disabled = !archReady;
+      if (archiveDone) aBtn.textContent = "✓ Archived & verified";
+      else if (archReady) aBtn.textContent = "📦 Archive academic data";
+      else aBtn.textContent = "📦 Archive (run preview + confirm backup first)";
+
+      // Promote unlocks only after the archive is verified.
+      const promReady = archiveDone && !promoteDone;
+      const pBtn = $("promoteBtn");
+      pBtn.disabled = !promReady;
+      if (promoteDone) pBtn.textContent = "✓ Promoted & verified";
+      else if (promReady) pBtn.textContent = "⬆️ Promote students";
+      else pBtn.textContent = "⬆️ Promote (archive must be verified first)";
+
+      // Clear unlocks only after the promotion is verified.
+      const clrReady = promoteDone && !clearDone;
+      const cBtn = $("clearBtn");
+      cBtn.disabled = !clrReady;
+      if (clearDone) cBtn.textContent = "✓ Cleared & verified";
+      else if (clrReady) cBtn.textContent = "🗑️ Clear & reset";
+      else cBtn.textContent = "🗑️ Clear (promotion must be verified first)";
+
+      // New session unlocks only after the clear is verified.
+      const sessReady = clearDone && !sessionDone;
+      const sBtn = $("sessionBtn");
+      sBtn.disabled = !sessReady;
+      if (sessionDone) sBtn.textContent = "✓ New session active";
+      else if (sessReady) sBtn.textContent = "🆕 Create new session";
+      else sBtn.textContent = "🆕 Create Session (clear must be verified first)";
+    }
+
+    window.onBackupAck = function () {
+      const ok = $("backupAck").checked;
+      log(ok ? "✓ Backup confirmed by admin." : "✗ Backup confirmation withdrawn.", ok ? "green" : "yellow");
+      refreshGates();
+    };
+
+    function syncLabels() {
+      const f = $("fromYear").value.trim(), t = $("toYear").value.trim();
+      $("bkpYear").textContent = f;
+      $("archTgt").textContent = `archive_${f}`;
+      $("newSessLbl").textContent = t;
+    }
+    $("fromYear").addEventListener("input", syncLabels);
+    $("toYear").addEventListener("input", syncLabels);
+
+    window.runPreview = async function () {
+      const btn = $("previewBtn");
+      const fromYear = $("fromYear").value.trim(), toYear = $("toYear").value.trim();
+      if (!fromYear || !toYear) return alert("Enter both session labels.");
+      syncLabels();
+      btn.disabled = true; btn.textContent = "Scanning…";
+      logEl.innerHTML = "";
+      log(`════ DRY-RUN PREVIEW  ${fromYear} → ${toYear} ════`, "cyan");
+      log("Reading Firestore… (no data is modified)\n", "dim");
+
+      try {
+        const r = await buildPreview(db, fromYear, toYear);
+        lastPreview = r;
+
+        const p = r.promotion;
+        log(`STUDENTS (${p.totalStudents})`, "yellow");
+        log(`   ⬆️  promote : ${p.promote}`);
+        log(`   ⏸️  detain  : ${p.detain}   (report-card finalStatus = DETAINED)`);
+        log(`   🎓 graduate: ${p.graduate}  (Class X → alumni)`);
+        if (p.unknown) log(`   ⚠️  unknown : ${p.unknown}  (class not in progression — needs manual review)`, "red");
+        log("");
+
+        log(`ARCHIVE → ${r.archiveTarget}  (${r.totalArchiveDocs} docs total)`, "yellow");
+        log(`   marks (all class/term): ${r.marks.total}`);
+        for (const [k, v] of Object.entries(r.academic)) log(`   ${k}: ${v}`);
+        log("");
+
+        log(`RESET counters (${r.totalResetDocs} docs)`, "yellow");
+        for (const [k, v] of Object.entries(r.reset)) log(`   ${k}: ${v}`);
+        log("");
+
+        log(`UNTOUCHED (kept as-is)`, "green");
+        log(`   ${Object.entries(r.keep).map(([k, v]) => `${k}(${v})`).join("  ")}`, "dim");
+
+        // Surface headline numbers on the step headers.
+        $("s2sum").textContent = `— ${r.totalArchiveDocs} docs to archive`;
+        $("s3sum").textContent = `— ${p.promote} up, ${p.detain} stay, ${p.graduate} graduate`;
+        $("s4sum").textContent = `— ${r.totalArchiveDocs + r.totalResetDocs} docs to clear`;
+
+        log(`\n✅ Preview complete. Nothing was changed.`, "green");
+        if (p.unknown) log(`Resolve the ${p.unknown} unknown-class student(s) before proceeding.`, "red");
+        refreshGates();
+      } catch (e) {
+        log("❌ Preview failed: " + e.message, "red");
+        console.error(e);
+      } finally {
+        btn.disabled = false; btn.textContent = "🔍 Run Dry-Run Preview";
+      }
+    };
+
+    window.runArchiveStep = async function () {
+      if (!lastPreview) return alert("Run the dry-run preview first.");
+      if (!$("backupAck").checked) return alert("Confirm the backup first.");
+      const year = lastPreview.fromYear;
+      if (!confirm(
+        `Copy ${lastPreview.totalArchiveDocs} academic document(s) into archive_${year}_* collections?\n\n` +
+        `This is COPY-ONLY — your live data is not changed or deleted. Safe to run.`
+      )) return;
+
+      const btn = $("archiveBtn");
+      btn.disabled = true; btn.textContent = "Archiving…";
+      log(`\n════ ARCHIVE  ${year} ════`, "cyan");
+      const t0 = Date.now();
+
+      try {
+        const { totalWritten } = await runArchive(db, year, log);
+        log(`\nCopied ${totalWritten} doc(s) in ${((Date.now()-t0)/1000).toFixed(1)}s.`, "dim");
+
+        log(`\n── Verifying archive (re-counting) ──`, "cyan");
+        const v = await verifyArchive(db, year, lastPreview);
+        v.rows.forEach(row => {
+          const tag = row.ok ? "✓" : "✗";
+          log(`   ${tag} ${row.name}: live ${row.expected} → archived ${row.archived}`,
+              row.ok ? "green" : "red");
+        });
+
+        if (v.ok) {
+          archiveDone = true;
+          log(`\n✅ Archive verified — every collection matches. Step 2 complete.`, "green");
+          log(`Step 3 (Promote) is now unlocked.`, "dim");
+        } else {
+          log(`\n⚠️ Archive counts do NOT all match. Do NOT proceed to Clear.`, "red");
+          log(`Re-run Archive, or investigate the mismatched collection(s) above.`, "yellow");
+        }
+      } catch (e) {
+        log("❌ Archive failed: " + e.message, "red");
+        console.error(e);
+      } finally {
+        refreshGates();
+      }
+    };
+
+    window.runPromoteStep = async function () {
+      if (!archiveDone) return alert("Archive must be completed and verified first.");
+      const p = lastPreview.promotion;
+      const fromYear = lastPreview.fromYear, toYear = lastPreview.toYear;
+
+      if (p.unknown > 0 && !confirm(
+        `⚠️ ${p.unknown} student(s) have an unrecognised class and will be SKIPPED (left untouched).\n\n` +
+        `It's safer to fix those records first. Proceed anyway?`
+      )) return;
+
+      if (!confirm(
+        `Promote students for ${fromYear} → ${toYear}?\n\n` +
+        `⬆️ ${p.promote} promoted   ⏸️ ${p.detain} detained   🎓 ${p.graduate} → alumni\n\n` +
+        `This MODIFIES the students collection. Archive is verified and a backup exists. Continue?`
+      )) return;
+
+      const btn = $("promoteBtn");
+      btn.disabled = true; btn.textContent = "Promoting…";
+      log(`\n════ PROMOTE  ${fromYear} → ${toYear} ════`, "cyan");
+      const t0 = Date.now();
+
+      try {
+        const s = await runPromotion(db, fromYear, toYear, log);
+        log(`\nPromoted ${s.promoted}, detained ${s.detained}, graduated ${s.graduated}, ` +
+            `skipped ${s.unknown} — in ${((Date.now()-t0)/1000).toFixed(1)}s.`, "dim");
+
+        log(`\n── Verifying promotion ──`, "cyan");
+        const v = await verifyPromotion(db, toYear);
+        log(`   students now on ${toYear}: ${v.onNewYear}/${v.total}`, "green");
+        log(`   moved to alumni: ${v.alumni}`, "green");
+        if (v.leftover) log(`   not on new year: ${v.leftover} (expected = skipped/unknown)`, "yellow");
+        log(`   ${v.ok ? "✓" : "✗"} graduates remaining in students: ${v.stuckGraduates}`,
+            v.ok ? "green" : "red");
+
+        if (v.ok) {
+          promoteDone = true;
+          log(`\n✅ Promotion verified. Step 3 complete.`, "green");
+          log(`Step 4 (Clear & reset) is now unlocked.`, "dim");
+        } else {
+          log(`\n⚠️ Some graduates are still in students. Investigate before clearing.`, "red");
+        }
+      } catch (e) {
+        log("❌ Promotion failed: " + e.message, "red");
+        console.error(e);
+      } finally {
+        refreshGates();
+      }
+    };
+
+    window.runClearStep = async function () {
+      if (!promoteDone) return alert("Promotion must be completed and verified first.");
+      const year = lastPreview.fromYear;
+      const docCount = lastPreview.totalArchiveDocs + lastPreview.totalResetDocs;
+
+      if (!confirm(
+        `⚠️ FINAL DELETE — this removes ${docCount} live document(s).\n\n` +
+        `Everything academic was archived to archive_${year}_* and verified, and you confirmed a full backup. ` +
+        `The tool re-checks the archive once more and aborts if anything is missing.\n\nProceed to the typed confirmation?`
+      )) return;
+
+      const typed = prompt(`Type DELETE (in capitals) to permanently clear the ${year} academic data:`);
+      if (typed !== "DELETE") {
+        log(`Clear cancelled — confirmation text did not match.`, "yellow");
+        return;
+      }
+
+      const btn = $("clearBtn");
+      btn.disabled = true; btn.textContent = "Clearing…";
+      log(`\n════ CLEAR & RESET  ${year} ════`, "cyan");
+      const t0 = Date.now();
+
+      try {
+        const r = await runClear(db, year, lastPreview, log);
+        if (r.aborted) {
+          log(`\n🛑 Clear ABORTED by the safety check — nothing was deleted.`, "red");
+          return;
+        }
+        log(`\nDeleted ${r.totalDeleted} academic + ${r.resetDeleted} counter doc(s) in ` +
+            `${((Date.now()-t0)/1000).toFixed(1)}s.`, "dim");
+
+        log(`\n── Verifying clear (all should be 0) ──`, "cyan");
+        const v = await verifyClear(db);
+        v.rows.forEach(row =>
+          log(`   ${row.ok ? "✓" : "✗"} ${row.name}: ${row.remaining} remaining`,
+              row.ok ? "green" : "red"));
+
+        if (v.ok) {
+          clearDone = true;
+          log(`\n✅ Clear verified — all academic collections empty. Step 4 complete.`, "green");
+          log(`Step 5 (Open new session) is now unlocked.`, "dim");
+        } else {
+          log(`\n⚠️ Some collections still hold data — re-run Clear.`, "red");
+        }
+      } catch (e) {
+        log("❌ Clear failed: " + e.message, "red");
+        console.error(e);
+      } finally {
+        refreshGates();
+      }
+    };
+
+    window.runSessionStep = async function () {
+      if (!clearDone) return alert("Clear must be completed and verified first.");
+      const fromYear = lastPreview.fromYear, toYear = lastPreview.toYear;
+
+      if (!confirm(
+        `Create academic session "${toYear}" and mark it active?\n\n` +
+        `The previous session ("${fromYear}") will be set inactive so the app points at the new year.`
+      )) return;
+
+      const btn = $("sessionBtn");
+      btn.disabled = true; btn.textContent = "Creating…";
+      log(`\n════ OPEN NEW SESSION  ${toYear} ════`, "cyan");
+
+      try {
+        await openNewSession(db, fromYear, toYear, log);
+
+        log(`\n── Verifying active session ──`, "cyan");
+        const v = await verifyNewSession(db, toYear);
+        log(`   ${v.ok ? "✓" : "✗"} active session(s): ${v.active.join(", ") || "none"}`,
+            v.ok ? "green" : "red");
+
+        if (v.ok) {
+          sessionDone = true;
+          log(`\n🎉 ROLLOVER COMPLETE — ${fromYear} archived, students promoted, ${toYear} is now the active session.`, "green");
+        } else {
+          log(`\n⚠️ Expected exactly one active session (${toYear}). Re-run this step.`, "red");
+        }
+      } catch (e) {
+        log("❌ Create session failed: " + e.message, "red");
+        console.error(e);
+      } finally {
+        refreshGates();
+      }
+    };
+  </script>
+</body>
+</html>
