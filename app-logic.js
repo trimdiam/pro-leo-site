@@ -873,6 +873,8 @@ function renderGalleryGrid(items) {
       address = getVal("adm-address");
     if (!(studentName && dob && cls && parentName && contact && address))
       return void showToast("⚠️ Please fill in all required fields (*).");
+    if (!document.getElementById("adm-consent")?.checked)
+      return void showToast("⚠️ Please tick the declaration checkbox before submitting.");
     const father = {
         name: getVal("adm-father-name"),
         occupation: getVal("adm-father-occupation"),
@@ -886,7 +888,7 @@ function renderGalleryGrid(items) {
       photoFile = getFile("adm-doc-photo"),
       birthFile = getFile("adm-doc-birth"),
       marksheetFile = getFile("adm-doc-marksheet"),
-      btn = document.querySelector("#page-admission .btn-primary");
+      btn = document.getElementById("adm-submit-btn");
     btn &&
       ((btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading…'),
       (btn.disabled = !0));
@@ -944,6 +946,7 @@ function renderGalleryGrid(items) {
           const el = document.getElementById(id);
           el && (el.value = "");
         }),
+        (document.getElementById("adm-consent").checked = false),
         showToast(
           "✅ Application submitted! Our team will contact you within 3 working days.",
         ),

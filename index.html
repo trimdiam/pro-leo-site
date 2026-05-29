@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>St. Francis De Sales Sec. School, Laitkor</title>
 
+  <!-- Dark mode — must load before paint to avoid flash -->
+  <script src="dark-mode.js"></script>
+
   <!-- Preconnect to font/CDN origins to speed up handshakes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -65,6 +68,7 @@
       <li><button onclick="showPage('contact')">Contact</button></li>
       <li><button onclick="showPage('admission')" class="btn btn-outline btn-sm" style="margin-left:4px">Apply</button></li>
       <li class="nav-cta"><button onclick="showPage('login')" class="btn btn-primary btn-sm">Login Portal</button></li>
+      <li><button onclick="openSettings()" title="Settings" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1;color:var(--text);transition:all var(--transition)"><i class="fas fa-cog"></i></button></li>
     </ul>
     <button class="nav-hamburger" onclick="toggleMobileMenu()" id="hamburgerBtn">
       <span></span><span></span><span></span>
@@ -80,8 +84,41 @@
     <button onclick="showPage('contact');toggleMobileMenu()">📞 Contact</button>
     <button onclick="showPage('admission');toggleMobileMenu()">✏️ Apply for Admission</button>
     <button onclick="showPage('login');toggleMobileMenu()">🔑 Login Portal</button>
+    <button onclick="openSettings();toggleMobileMenu()">⚙️ Settings</button>
   </div>
 </nav>
+
+<!-- ================================================================
+     SETTINGS PANEL
+================================================================ -->
+<div id="settings-overlay" onclick="closeSettings()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;backdrop-filter:blur(2px)"></div>
+<div id="settings-panel" style="display:none;position:fixed;top:0;right:0;height:100%;width:300px;max-width:90vw;background:var(--card-bg);z-index:9999;box-shadow:-8px 0 32px rgba(0,0,0,0.35);flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%)">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 20px 16px;border-bottom:1px solid var(--border)">
+    <h3 style="font-family:var(--font-head);color:var(--text);margin:0;font-size:1.1rem"><i class="fas fa-cog" style="margin-right:8px;color:var(--accent)"></i>Settings</h3>
+    <button onclick="closeSettings()" style="background:none;border:none;cursor:pointer;color:var(--text-light);font-size:18px;padding:4px"><i class="fas fa-times"></i></button>
+  </div>
+
+  <div style="padding:24px 20px;display:flex;flex-direction:column;gap:28px;overflow-y:auto;flex:1">
+
+    <!-- Appearance -->
+    <div>
+      <p style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-light);margin:0 0 14px">Appearance</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+          <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 2px">Theme</p>
+          <p style="font-size:12px;color:var(--text-light);margin:0">Choose light or dark interface</p>
+        </div>
+        <div style="display:flex;background:var(--bg);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <button id="theme-btn-light" onclick="setTheme('light')" style="padding:8px 14px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font-body);transition:all 0.2s;display:flex;align-items:center;gap:5px">☀️ Light</button>
+          <button id="theme-btn-dark" onclick="setTheme('dark')" style="padding:8px 14px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font-body);transition:all 0.2s;display:flex;align-items:center;gap:5px">🌙 Dark</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="padding:16px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--text-light);text-align:center">St. Francis De Sales Sec. School</div>
+</div>
 
 <!-- ================================================================
      PAGE: HOME
@@ -855,6 +892,24 @@
       <h2>Admission Application Form</h2>
       <p>Please fill in all details carefully. Our team will contact you within 2–3 working days.</p>
 
+      <!-- Step progress indicator -->
+      <div style="display:flex;align-items:center;gap:0;margin:18px 0 24px">
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">1</div>
+          <span style="font-size:11px;margin-top:5px;color:var(--primary);font-weight:600;text-align:center">Student Info</span>
+        </div>
+        <div style="flex:1;height:2px;background:var(--border);margin-bottom:18px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">2</div>
+          <span style="font-size:11px;margin-top:5px;color:var(--primary);font-weight:600;text-align:center">Parents &amp; Guardian</span>
+        </div>
+        <div style="flex:1;height:2px;background:var(--border);margin-bottom:18px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">3</div>
+          <span style="font-size:11px;margin-top:5px;color:var(--primary);font-weight:600;text-align:center">Documents</span>
+        </div>
+      </div>
+
       <!-- Dynamic admission notice from admin -->
       <div id="admission-notice-box" style="display:none;background:#f0faf0;border:1.5px solid #86efac;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:14px;color:#155724"></div>
 
@@ -865,15 +920,33 @@
       </div>
       <div class="form-row">
         <div class="form-group"><label>Class Applying For *</label>
-          <select id="adm-class"><option value="">-- Select Class --</option><option>KG (Kindergarten)</option><option>Grade 1</option><option>Grade 2</option><option>Grade 3</option><option>Grade 4</option><option>Grade 5</option><option>Grade 6</option><option>Grade 7</option><option>Grade 8</option><option>Grade 9</option></select>
+          <select id="adm-class"><option value="">-- Select Class --</option><option>LKG</option><option>SKG</option><option>Class I</option><option>Class II</option><option>Class III</option><option>Class IV</option><option>Class V</option><option>Class VI</option><option>Class VII</option><option>Class VIII</option><option>Class IX</option></select>
         </div>
-        <div class="form-group"><label>Academic Year *</label><select id="adm-year"><option>2025–2026</option><option>2026–2027</option></select></div>
       </div>
       <div class="form-group"><label>Gender</label><select id="adm-gender"><option value="">-- Select --</option><option>Male</option><option>Female</option><option>Other</option></select></div>
 
       <h4 style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:20px 0 14px"><i class="fas fa-users"></i> Parent / Guardian Information</h4>
+
+      <!-- Father -->
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-light);margin:0 0 8px">Father</p>
       <div class="form-row">
-        <div class="form-group"><label>Parent/Guardian Name *</label><input type="text" id="adm-parent-name" placeholder="Full Name"></div>
+        <div class="form-group"><label>Father's Name</label><input type="text" id="adm-father-name" placeholder="Full Name"></div>
+        <div class="form-group"><label>Occupation</label><input type="text" id="adm-father-occupation" placeholder="e.g. Teacher, Farmer"></div>
+      </div>
+      <div class="form-group"><label>Contact Number</label><input type="tel" id="adm-father-contact" placeholder="+91 XXXXX XXXXX"></div>
+
+      <!-- Mother -->
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-light);margin:16px 0 8px">Mother</p>
+      <div class="form-row">
+        <div class="form-group"><label>Mother's Name</label><input type="text" id="adm-mother-name" placeholder="Full Name"></div>
+        <div class="form-group"><label>Occupation</label><input type="text" id="adm-mother-occupation" placeholder="e.g. Homemaker, Nurse"></div>
+      </div>
+      <div class="form-group"><label>Contact Number</label><input type="tel" id="adm-mother-contact" placeholder="+91 XXXXX XXXXX"></div>
+
+      <!-- Guardian / Primary Contact -->
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-light);margin:16px 0 8px">Primary Contact / Guardian</p>
+      <div class="form-row">
+        <div class="form-group"><label>Guardian Name *</label><input type="text" id="adm-parent-name" placeholder="Full Name"></div>
         <div class="form-group"><label>Relationship to Student</label><select id="adm-relation"><option>Father</option><option>Mother</option><option>Guardian</option></select></div>
       </div>
       <div class="form-row">
@@ -883,22 +956,6 @@
       <div class="form-group"><label>Residential Address *</label><textarea id="adm-address" placeholder="Full address including village/town, district, state, PIN"></textarea></div>
       <div class="form-group"><label>Previous School (if applicable)</label><input type="text" id="adm-prev-school" placeholder="Name of previous school"></div>
       <div class="form-group"><label>Any Special Needs / Medical Conditions</label><textarea id="adm-medical" placeholder="Leave blank if none" style="min-height:70px"></textarea></div>
-
-      <!-- ── FATHER'S DETAILS ── -->
-      <h4 style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:20px 0 14px"><i class="fas fa-male"></i> Father's Details</h4>
-      <div class="form-row">
-        <div class="form-group"><label>Father's Name</label><input type="text" id="adm-father-name" placeholder="Full Name"></div>
-        <div class="form-group"><label>Occupation</label><input type="text" id="adm-father-occupation" placeholder="e.g. Teacher, Farmer"></div>
-      </div>
-      <div class="form-group"><label>Contact Number</label><input type="tel" id="adm-father-contact" placeholder="+91 XXXXX XXXXX"></div>
-
-      <!-- ── MOTHER'S DETAILS ── -->
-      <h4 style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:20px 0 14px"><i class="fas fa-female"></i> Mother's Details</h4>
-      <div class="form-row">
-        <div class="form-group"><label>Mother's Name</label><input type="text" id="adm-mother-name" placeholder="Full Name"></div>
-        <div class="form-group"><label>Occupation</label><input type="text" id="adm-mother-occupation" placeholder="e.g. Homemaker, Nurse"></div>
-      </div>
-      <div class="form-group"><label>Contact Number</label><input type="tel" id="adm-mother-contact" placeholder="+91 XXXXX XXXXX"></div>
 
       <!-- ── DOCUMENT UPLOADS ── -->
       <h4 style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:20px 0 14px"><i class="fas fa-paperclip"></i> Document Uploads</h4>
@@ -921,8 +978,13 @@
         <small style="font-size:11px;color:var(--text-light)">Most recent academic marksheet (JPG/PNG/PDF)</small>
       </div>
 
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px">
-        <button class="btn btn-primary" onclick="submitAdmissionForm()"><i class="fas fa-paper-plane"></i> Submit Application</button>
+      <label style="display:flex;align-items:flex-start;gap:10px;margin-top:16px;font-size:13px;color:var(--text-light);cursor:pointer;line-height:1.5">
+        <input type="checkbox" id="adm-consent" style="margin-top:2px;accent-color:var(--primary);width:16px;height:16px;flex-shrink:0">
+        I confirm that all details provided in this application are accurate and complete to the best of my knowledge. I understand that submitting false information may result in cancellation of admission.
+      </label>
+
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn btn-primary" id="adm-submit-btn" onclick="submitAdmissionForm()"><i class="fas fa-paper-plane"></i> Submit Application</button>
         <button class="btn btn-outline" onclick="showPage('home')"><i class="fas fa-home"></i> Back to Home</button>
       </div>
     </div>

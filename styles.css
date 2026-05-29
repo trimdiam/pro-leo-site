@@ -16,6 +16,35 @@
   --font-head: "Playfair Display", serif;
   --font-body: "Nunito", sans-serif;
   --transition: 0.28s ease;
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --border: rgba(139, 111, 71, 0.22);
+  --card-bg: #ffffff;
+  --nav-bg: rgba(229, 211, 179, 0.97);
+  --input-bg: #ffffff;
+  --sidebar-bg: #f5ede0;
+}
+
+[data-theme="dark"] {
+  --primary: #c9a97b;
+  --bg: #121008;
+  --accent: #d4b896;
+  --accent-dark: #c9a97b;
+  --white: #ffffff;
+  --text: #f0e6d3;
+  --text-light: #c4a882;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #38bdf8;
+  --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
+  --card-shadow-hover: 0 10px 36px rgba(0, 0, 0, 0.7);
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --border: rgba(201, 169, 123, 0.2);
+  --card-bg: #1e1810;
+  --nav-bg: rgba(12, 10, 6, 0.97);
+  --input-bg: #262010;
+  --sidebar-bg: #181208;
+  color-scheme: dark;
 }
 *,
 ::after,
@@ -3717,4 +3746,274 @@ tr:hover td {
   .sched-teacher {
     grid-column: 1/-1;
   }
+}
+
+/* ================================================================
+   DARK MODE OVERRIDES
+================================================================ */
+
+/* Cards — !important to beat specificity of existing rules */
+[data-theme="dark"] .card,
+[data-theme="dark"] .feature-card,
+[data-theme="dark"] .admission-card,
+[data-theme="dark"] .ann-card,
+[data-theme="dark"] .leader-card,
+[data-theme="dark"] .login-box,
+[data-theme="dark"] .stat-card {
+  background: var(--card-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Any element with inline white/light background */
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background:white"],
+[data-theme="dark"] [style*="background: white"],
+[data-theme="dark"] [style*="background:#ffffff"],
+[data-theme="dark"] [style*="background: #ffffff"] {
+  background: var(--card-bg) !important;
+  color: var(--text) !important;
+}
+
+/* Inline rgba light backgrounds (glassmorphic cards) */
+[data-theme="dark"] [style*="background:rgba(255,255,255"],
+[data-theme="dark"] [style*="background: rgba(255,255,255"],
+[data-theme="dark"] [style*="background:rgba(255, 255, 255"],
+[data-theme="dark"] [style*="background: rgba(255, 255, 255"] {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Form inputs */
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .form-group textarea,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="tel"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="search"],
+[data-theme="dark"] input[type="file"],
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--text-light) !important;
+  opacity: 1;
+}
+
+/* Nav */
+[data-theme="dark"] #public-nav {
+  background: var(--nav-bg) !important;
+  border-bottom-color: var(--border);
+}
+[data-theme="dark"] .mobile-menu {
+  background: var(--sidebar-bg) !important;
+}
+[data-theme="dark"] .mobile-menu button {
+  color: var(--text) !important;
+  border-bottom-color: var(--border);
+}
+
+/* Sidebar / dashboard */
+[data-theme="dark"] .sidebar {
+  background: var(--sidebar-bg) !important;
+}
+[data-theme="dark"] .dash-main {
+  background: var(--bg) !important;
+}
+[data-theme="dark"] .dash-section {
+  background: transparent;
+}
+
+/* Tables */
+[data-theme="dark"] table {
+  color: var(--text);
+}
+[data-theme="dark"] th {
+  background: rgba(160, 128, 96, 0.15);
+  color: var(--text);
+}
+[data-theme="dark"] td {
+  border-color: var(--border);
+  color: var(--text);
+}
+[data-theme="dark"] tr:hover td {
+  background: rgba(160, 128, 96, 0.08);
+}
+
+/* Hardcoded #fff overrides */
+[data-theme="dark"] .admin-ta-card {
+  background: var(--card-bg) !important;
+}
+[data-theme="dark"] .form-group input:focus,
+[data-theme="dark"] .form-group select:focus,
+[data-theme="dark"] .form-group textarea:focus {
+  background: var(--input-bg);
+  border-color: var(--accent);
+}
+
+/* Labels and headings */
+[data-theme="dark"] label,
+[data-theme="dark"] .form-group label {
+  color: var(--text);
+}
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5 {
+  color: var(--text);
+}
+
+/* Page header */
+[data-theme="dark"] .page-header {
+  background: linear-gradient(135deg, #2a2118 0%, #1e1a14 100%);
+}
+
+/* Modals / overlays */
+[data-theme="dark"] .modal,
+[data-theme="dark"] [id$="-modal"],
+[data-theme="dark"] [id$="Modal"] {
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+/* Badges */
+[data-theme="dark"] .badge {
+  opacity: 0.9;
+}
+
+/* File inputs */
+[data-theme="dark"] input[type="file"] {
+  background: var(--input-bg);
+  border-color: var(--border);
+  color: var(--text-light);
+}
+
+/* ── Student / Teacher stat cards ── */
+[data-theme="dark"] .dash-stat-card {
+  background: var(--card-bg) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .dash-stat-label {
+  color: var(--text-light) !important;
+}
+[data-theme="dark"] .dash-stat-val {
+  color: var(--text) !important;
+}
+
+/* ── Timetable / Schedule cards ── */
+[data-theme="dark"] .sched-card {
+  background: #262010 !important;
+  color: var(--text) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3) !important;
+}
+[data-theme="dark"] .sched-card:hover {
+  background: #2e2614 !important;
+}
+[data-theme="dark"] .sched-card--active {
+  background: linear-gradient(135deg, #112a18, #0e2214) !important;
+  border-left-color: #22c55e !important;
+}
+[data-theme="dark"] .sched-card--free {
+  background: #1c1810 !important;
+  opacity: 0.7 !important;
+}
+[data-theme="dark"] .sched-day-badge {
+  background: #262010 !important;
+  border-color: var(--border) !important;
+  color: var(--text-light) !important;
+}
+[data-theme="dark"] .sched-time {
+  color: var(--accent) !important;
+}
+[data-theme="dark"] .sched-subject {
+  color: var(--text) !important;
+}
+[data-theme="dark"] .sched-teacher {
+  color: var(--text-light) !important;
+}
+[data-theme="dark"] .sched-now-badge {
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: #4ade80 !important;
+}
+
+/* ── Bottom nav bars ── */
+[data-theme="dark"] .s-bottom-nav,
+[data-theme="dark"] .t-bottom-nav {
+  background: #181208 !important;
+  border-top-color: var(--border) !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45) !important;
+}
+[data-theme="dark"] .s-bottom-nav button,
+[data-theme="dark"] .t-bottom-nav button {
+  color: var(--text-light) !important;
+}
+[data-theme="dark"] .s-bottom-nav button.active,
+[data-theme="dark"] .t-bottom-nav button.active {
+  color: var(--accent) !important;
+}
+
+/* ── Notification Center cards ── */
+[data-theme="dark"] .nc-card {
+  background: #1e1810 !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .nc-notice-banner {
+  background: rgba(201, 169, 123, 0.08) !important;
+  border-color: rgba(201, 169, 123, 0.25) !important;
+}
+[data-theme="dark"] .nc-attendance.nc-status-present {
+  background: rgba(22, 163, 74, 0.1) !important;
+  border-color: rgba(34, 197, 94, 0.25) !important;
+}
+[data-theme="dark"] .nc-attendance.nc-status-absent {
+  background: rgba(220, 38, 38, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+[data-theme="dark"] .nc-attendance.nc-status-late {
+  background: rgba(217, 119, 6, 0.1) !important;
+  border-color: rgba(245, 158, 11, 0.25) !important;
+}
+[data-theme="dark"] .nc-fee.nc-fee-paid {
+  background: rgba(22, 163, 74, 0.08) !important;
+  border-color: rgba(34, 197, 94, 0.2) !important;
+}
+[data-theme="dark"] .nc-fee.nc-fee-unpaid {
+  background: rgba(220, 38, 38, 0.08) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+[data-theme="dark"] .nc-exam-item {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .nc-exam-item:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+[data-theme="dark"] .nc-title,
+[data-theme="dark"] .nc-att-title {
+  color: var(--accent) !important;
+}
+[data-theme="dark"] .nc-card-label {
+  color: var(--accent) !important;
+}
+[data-theme="dark"] .nc-att-bar-track {
+  background: rgba(201, 169, 123, 0.15) !important;
+}
+[data-theme="dark"] .nc-fee-detail {
+  border-bottom-color: var(--border) !important;
+}
+[data-theme="dark"] .nc-fee-val {
+  color: var(--text) !important;
+}
+[data-theme="dark"] .nc-notice-message {
+  color: var(--text) !important;
 }
