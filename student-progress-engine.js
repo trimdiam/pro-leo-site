@@ -65,8 +65,14 @@ async function fetchSubjects() {
 }
 
 async function fetchCriteria(criteriaPath) {
-  const res = await fetch(criteriaPath);
-  if (!res.ok) throw new Error(`Could not load criteria: ${criteriaPath}`);
+  // subjects.json stores criteria_path relative to the assessment-app folder
+  // (e.g. "data/criteria/english1.json"). This engine runs from the root
+  // portal page, so prefix it unless it's already rooted there.
+  const url = criteriaPath.startsWith('assessment-app/')
+    ? criteriaPath
+    : `assessment-app/${criteriaPath}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Could not load criteria: ${url}`);
   return res.json();
 }
 
@@ -236,11 +242,25 @@ function computeSubjectProgress(studentId, sessions, subjectId, criteriaArray) {
  */
 export async function getStudentProgress(studentId, studentClass) {
   if (!studentId || !studentClass) return [];
+  const sessions = await fetchStudentSessions(studentClass);
+  return computeProgressFromSessions(studentId, studentClass, sessions);
+}
 
-  const [subjects, sessions] = await Promise.all([
-    fetchSubjects(),
-    fetchStudentSessions(studentClass)
-  ]);
+/**
+ * Pure computation entry point — same logic as getStudentProgress but takes
+ * sessions in memory instead of reading Firestore. Used by getStudentProgress
+ * and by offline demos/tests. Criteria definitions are still fetched from the
+ * static JSON files (works in any browser context).
+ *
+ * @param {string} studentId
+ * @param {string} studentClass
+ * @param {Array}  sessions  - [{ session, marks }] already filtered/eligible
+ * @returns {Array}
+ */
+export async function computeProgressFromSessions(studentId, studentClass, sessions) {
+  if (!studentId || !studentClass) return [];
+
+  const subjects = await fetchSubjects();
 
   const classSubjects = subjects.filter(s =>
     Array.isArray(s.classes) && s.classes.includes(studentClass)

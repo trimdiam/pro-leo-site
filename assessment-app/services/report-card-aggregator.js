@@ -45,7 +45,8 @@ async function buildSubjectCriteriaMap(className) {
         subject_name: subject.subject_name,
         criteria:     criteria.map(c => ({
           criterion_id:   c.criterion_id,
-          criterion_name: c.criterion_name
+          criterion_name: c.criterion_name,
+          category:       c.category || 'General'
         }))
       });
     }

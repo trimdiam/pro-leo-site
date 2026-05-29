@@ -239,21 +239,33 @@ export async function initStudentProgressView(studentId, studentClass) {
   try {
     const subjects = await getStudentProgress(studentId, studentClass);
     loading.remove();
-
-    if (subjects.length === 0) {
-      root.append(el('p', 'sp-empty', 'No assessment data available yet. Check back after your teacher completes an assessment.'));
-      return;
-    }
-
-    const intro = el('p', 'sp-intro',
-      'Tap any subject to see your detailed breakdown. Subjects needing most attention are shown first.');
-    root.append(intro);
-
-    subjects.forEach(subject => root.append(buildSubjectCard(subject)));
-
+    renderStudentProgress(root, subjects);
   } catch (err) {
     loading?.remove();
     root.append(el('p', 'sp-empty', `Error loading progress: ${err.message}`));
     console.error('Student progress view error:', err);
   }
+}
+
+/**
+ * Renders an already-computed progress array into a root element.
+ * Shared by the live portal and offline demos so both look identical.
+ * Assumes the loading placeholder (if any) has been removed by the caller.
+ *
+ * @param {HTMLElement} root
+ * @param {Array} subjects - output of getStudentProgress / computeProgressFromSessions
+ */
+export function renderStudentProgress(root, subjects) {
+  if (!root) return;
+
+  if (!subjects || subjects.length === 0) {
+    root.append(el('p', 'sp-empty', 'No assessment data available yet. Check back after your teacher completes an assessment.'));
+    return;
+  }
+
+  const intro = el('p', 'sp-intro',
+    'Tap any subject to see your detailed breakdown. Subjects needing most attention are shown first.');
+  root.append(intro);
+
+  subjects.forEach(subject => root.append(buildSubjectCard(subject)));
 }

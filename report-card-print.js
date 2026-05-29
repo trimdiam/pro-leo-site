@@ -537,7 +537,23 @@ function inferCategory(id) {
   return 'General';
 }
 
-function buildTableRows(hy1Card, hy2Card, isPrimary = false) {
+function buildTableRows(hy1Card, hy2Card, opts = {}) {
+  // Back-compat: a boolean third arg means "groupByCategory".
+  const { groupByCategory = false, gradesOnly = false } =
+    typeof opts === 'boolean' ? { groupByCategory: opts } : opts;
+
+  // Column helpers — kindergarten (gradesOnly) shows a single Level pill per term;
+  // all other classes show a Score cell + a Level pill.
+  const termCell = (avg) => gradesOnly
+    ? `<td>${ach(gradeCode(avg))}</td>`
+    : (avg !== null && avg !== undefined
+        ? `<td class="score">${avg.toFixed(1)}</td><td>${ach(gradeCode(avg))}</td>`
+        : `<td>—</td><td>${ach('Ex')}</td>`);
+  // Subject-header blank middle cells: 2 per term (Score+Level) normally, 1 in gradesOnly.
+  const headBlanks = gradesOnly ? `<td></td><td></td>` : `<td></td><td></td><td></td><td></td>`;
+  const subjNameSpan = gradesOnly ? 1 : 3;
+  const emptyColspan = gradesOnly ? 4 : 6;
+
   // Build merged subject list from both cards
   const subjectMap = new Map();
   const addSubjects = (card) => {
@@ -569,16 +585,16 @@ function buildTableRows(hy1Card, hy2Card, isPrimary = false) {
     const annAvg = avgs.length ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
     const annSCode = gradeCode(annAvg);
 
-    if (isPrimary) {
-      // Primary (Class I & II): subject header + one row per CATEGORY (e.g. Work Habits)
+    if (groupByCategory) {
+      // Primary (I & II) and Kindergarten (LKG/SKG): subject header + one row per CATEGORY
       rows += `<tr class="subj-head">
-        <td class="subj-col" colspan="3">${esc(subj.name)}</td>
-        <td></td><td></td>
+        <td class="subj-col" colspan="${subjNameSpan}">${esc(subj.name)}</td>
+        ${headBlanks}
         <td>${ach(annSCode)}</td>
       </tr>`;
 
       // Build category → criteria map from both terms
-      const catMap = new Map(); // category → { hy1Scores[], hy2Scores[], hy1Grade, hy2Grade }
+      const catMap = new Map(); // category → { hy1Scores[], hy2Scores[] }
       const addToCat = (criteria, term) => {
         (criteria || []).forEach(c => {
           const cat = c.category || inferCategory(c.criterion_id) || 'General';
@@ -596,61 +612,49 @@ function buildTableRows(hy1Card, hy2Card, isPrimary = false) {
         const annAvgs = [hy1Avg, hy2Avg].filter(v => v !== null);
         const annAvg  = annAvgs.length ? annAvgs.reduce((a, b) => a + b, 0) / annAvgs.length : null;
 
-        const hy1Cell = hy1Avg !== null
-          ? `<td class="score">${hy1Avg.toFixed(1)}</td><td>${ach(gradeCode(hy1Avg))}</td>`
-          : `<td>—</td><td>${ach('Ex')}</td>`;
-        const hy2Cell = hy2Avg !== null
-          ? `<td class="score">${hy2Avg.toFixed(1)}</td><td>${ach(gradeCode(hy2Avg))}</td>`
-          : `<td>—</td><td>${ach('Ex')}</td>`;
-
         rows += `<tr>
           <td class="subj-col" style="padding-left:18px">${esc(catName)}</td>
-          ${hy1Cell}
-          ${hy2Cell}
+          ${termCell(hy1Avg)}
+          ${termCell(hy2Avg)}
           <td>${ach(gradeCode(annAvg))}</td>
         </tr>`;
       });
     } else {
       // All other classes: subject header + individual criteria rows
       rows += `<tr class="subj-head">
-        <td class="subj-col" colspan="3">${esc(subj.name)}</td>
-        <td></td><td></td>
+        <td class="subj-col" colspan="${subjNameSpan}">${esc(subj.name)}</td>
+        ${headBlanks}
         <td>${ach(annSCode)}</td>
       </tr>`;
 
       // Criteria rows
       const criteriaMap = new Map();
-      (hy1Subj?.criteria || []).forEach(c => criteriaMap.set(c.criterion_id, { name: c.criterion_name, hy1Score: c.averageScore ?? null, hy1Grade: c.grade || gradeCode(c.averageScore), hy2Score: null, hy2Grade: null }));
+      (hy1Subj?.criteria || []).forEach(c => criteriaMap.set(c.criterion_id, { name: c.criterion_name, hy1Score: c.averageScore ?? null, hy2Score: null }));
       (hy2Subj?.criteria || []).forEach(c => {
-        if (!criteriaMap.has(c.criterion_id)) criteriaMap.set(c.criterion_id, { name: c.criterion_name, hy1Score: null, hy1Grade: null, hy2Score: null, hy2Grade: null });
+        if (!criteriaMap.has(c.criterion_id)) criteriaMap.set(c.criterion_id, { name: c.criterion_name, hy1Score: null, hy2Score: null });
         criteriaMap.get(c.criterion_id).hy2Score = c.averageScore ?? null;
-        criteriaMap.get(c.criterion_id).hy2Grade = c.grade || gradeCode(c.averageScore);
       });
 
       criteriaMap.forEach(c => {
         const ca = [c.hy1Score, c.hy2Score].filter(v => v !== null);
         const annCAvg = ca.length ? ca.reduce((a, b) => a + b, 0) / ca.length : null;
-        const annCCode = gradeCode(annCAvg);
-
-        const hy1ScoreCell = c.hy1Score !== null ? `<td class="score">${c.hy1Score.toFixed(1)}</td><td>${ach(c.hy1Grade || 'Ex')}</td>` : `<td>—</td><td>${ach('Ex')}</td>`;
-        const hy2ScoreCell = c.hy2Score !== null ? `<td class="score">${c.hy2Score.toFixed(1)}</td><td>${ach(c.hy2Grade || 'Ex')}</td>` : `<td>—</td><td>${ach('Ex')}</td>`;
 
         rows += `<tr>
           <td class="subj-col">${esc(c.name)}</td>
-          ${hy1ScoreCell}
-          ${hy2ScoreCell}
-          <td>${ach(annCCode)}</td>
+          ${termCell(c.hy1Score)}
+          ${termCell(c.hy2Score)}
+          <td>${ach(gradeCode(annCAvg))}</td>
         </tr>`;
       });
     }
   });
 
-  return rows || `<tr><td colspan="6" style="color:#888;font-style:italic;padding:12px">No assessment data found.</td></tr>`;
+  return rows || `<tr><td colspan="${emptyColspan}" style="color:#888;font-style:italic;padding:12px">No assessment data found.</td></tr>`;
 }
 
 // ── Right summary panels ──────────────────────────────────────────────────────
 
-function buildPanel(card, term, label, dateRange, isAnnual = false) {
+function buildPanel(card, term, label, dateRange, isAnnual = false, gradesOnly = false) {
   const barClass = isAnnual ? 'panel-bar annual' : 'panel-bar';
   if (!card) {
     return `<section class="panel">
@@ -688,8 +692,10 @@ function buildPanel(card, term, label, dateRange, isAnnual = false) {
           <div class="value">${ach(overallCode)} ${esc(overallWord)}</div>
         </div>
         <div class="stat">
-          <div class="eyebrow">Average Score</div>
-          <div class="value">${avg !== null ? avg.toFixed(2) : '—'} <span style="font-size:9px;color:var(--txt-dim);font-weight:600">/ 5.0</span></div>
+          <div class="eyebrow">${gradesOnly ? 'Overall Grade' : 'Average Score'}</div>
+          <div class="value">${gradesOnly
+            ? esc(overallWord)
+            : `${avg !== null ? avg.toFixed(2) : '—'} <span style="font-size:9px;color:var(--txt-dim);font-weight:600">/ 5.0</span>`}</div>
         </div>
         <div class="stat">
           <div class="eyebrow">${stat3Label}</div>
@@ -705,7 +711,7 @@ function buildPanel(card, term, label, dateRange, isAnnual = false) {
   </section>`;
 }
 
-function buildAnnualPanel(hy1Card, hy2Card) {
+function buildAnnualPanel(hy1Card, hy2Card, gradesOnly = false) {
   if (!hy1Card && !hy2Card) {
     return `<section class="panel">
       <div class="panel-bar annual">Annual Standing</div>
@@ -732,8 +738,10 @@ function buildAnnualPanel(hy1Card, hy2Card) {
           <div class="value">${ach(summary.annualOverallGrade)} ${esc(summary.annualOverallLabel)}</div>
         </div>
         <div class="stat">
-          <div class="eyebrow">Year Average</div>
-          <div class="value">${summary.annualOverallAvg !== null ? summary.annualOverallAvg.toFixed(2) : '—'} <span style="font-size:9px;color:var(--txt-dim);font-weight:600">/ 5.0</span></div>
+          <div class="eyebrow">${gradesOnly ? 'Year Grade' : 'Year Average'}</div>
+          <div class="value">${gradesOnly
+            ? esc(summary.annualOverallLabel)
+            : `${summary.annualOverallAvg !== null ? summary.annualOverallAvg.toFixed(2) : '—'} <span style="font-size:9px;color:var(--txt-dim);font-weight:600">/ 5.0</span>`}</div>
         </div>
         <div class="stat">
           <div class="eyebrow">Year Trend</div>
@@ -798,14 +806,19 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
     return `${present}<span class="sl">/</span>${working} <span class="dim">days</span>`;
   }
 
-  // Primary classes (I & II) show category-grouped rows, not individual criteria
+  // Primary (I & II) and Kindergarten (LKG & SKG) show category-grouped rows,
+  // not individual criteria. Grouping keeps the card to a single page.
   const classNorm = (info.className || '').toLowerCase().trim();
   const isClassI  = ['class i', 'class 1', 'i', '1'].includes(classNorm);
   const isClassII = ['class ii', 'class 2', 'ii', '2'].includes(classNorm);
+  const isKg      = ['lkg', 'skg'].includes(classNorm);
   const isPrimary = isClassI || isClassII;
-  // Class I has fewer subjects (no Hindi) → stretch rows to fill page height
-  const stretchRows = isClassI;
-  const tableRows = buildTableRows(hy1Card, hy2Card, isPrimary);
+  const groupByCategory = isPrimary || isKg;
+  // Kindergarten (LKG/SKG) is reported by grade only — no numeric scores.
+  const gradesOnly = isKg;
+  // Classes with fewer rows → stretch rows to fill page height
+  const stretchRows = isClassI || isKg;
+  const tableRows = buildTableRows(hy1Card, hy2Card, { groupByCategory, gradesOnly });
 
   // Term date ranges
   const hy1Range = hy1Card?.dateFrom ? `${hy1Card.dateFrom} – ${hy1Card.dateTo}` : 'Apr – Sep';
@@ -831,7 +844,7 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
     <div class="hdr-right">
       <div class="hdr-title">Annual Progress Report</div>
       <div class="hdr-year">Academic Year ${esc(academicYear)}</div>
-      <div class="hdr-class">Primary Section · ${esc(info.className)}</div>
+      <div class="hdr-class">${isKg ? 'Kindergarten Section' : 'Primary Section'} · ${esc(info.className)}</div>
     </div>
   </header>
 
@@ -870,15 +883,29 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
 
     <section class="marks">
       <table class="marks-tbl${stretchRows ? ' stretch-rows' : ''}">
-        <colgroup>
+        <colgroup>${gradesOnly
+          ? `
+          <col style="width:46%" />
+          <col style="width:18%" />
+          <col style="width:18%" />
+          <col style="width:18%" />`
+          : `
           <col style="width:32%" />
           <col style="width:13%" />
           <col style="width:13%" />
           <col style="width:13%" />
           <col style="width:13%" />
-          <col style="width:16%" />
+          <col style="width:16%" />`}
         </colgroup>
-        <thead>
+        <thead>${gradesOnly
+          ? `
+          <tr class="term-head">
+            <th>Subject &amp; Skill Area</th>
+            <th>First Half-Yearly</th>
+            <th>Second Half-Yearly</th>
+            <th>Annual<br/><span style="font-weight:500;letter-spacing:0.5px;font-size:7.5px;opacity:0.7">overall</span></th>
+          </tr>`
+          : `
           <tr class="term-head">
             <th rowspan="2">Subject &amp; Criterion</th>
             <th colspan="2">First Half-Yearly</th>
@@ -888,16 +915,16 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
           <tr class="col-head">
             <th>Score</th><th>Level</th>
             <th>Score</th><th>Level</th>
-          </tr>
+          </tr>`}
         </thead>
         <tbody>${tableRows}</tbody>
       </table>
     </section>
 
     <aside class="summary">
-      ${buildPanel(hy1Card, 'HY1', 'First Half-Yearly', hy1Range)}
-      ${buildPanel(hy2Card, 'HY2', 'Second Half-Yearly', hy2Range)}
-      ${buildAnnualPanel(hy1Card, hy2Card)}
+      ${buildPanel(hy1Card, 'HY1', 'First Half-Yearly', hy1Range, false, gradesOnly)}
+      ${buildPanel(hy2Card, 'HY2', 'Second Half-Yearly', hy2Range, false, gradesOnly)}
+      ${buildAnnualPanel(hy1Card, hy2Card, gradesOnly)}
     </aside>
 
   </div>

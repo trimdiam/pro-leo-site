@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo — My Progress (Class I, 3 months)</title>
+  <link rel="stylesheet" href="report-card-styles.css" />
+  <style>
+    :root {
+      --bg: #fffcf0; --bg-alt: #f5f0e8; --line: #d4c5a9;
+      --text: #2b270a; --text-light: #6e6745;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #e8dcc2; color: var(--text); margin: 0; padding: 24px;
+    }
+    .demo-shell {
+      max-width: 760px; margin: 0 auto; background: #fffdf6;
+      border: 1px solid var(--line); border-radius: 14px;
+      padding: 20px 22px; box-shadow: 0 10px 40px rgba(43,39,10,0.15);
+    }
+    .demo-banner {
+      max-width: 760px; margin: 0 auto 16px; font-size: 13px; color: #5a4a2a;
+      background: #faf3dd; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-banner">
+    <strong>Demo preview</strong> — Student “My Progress” for <strong>Class I</strong>, 3 months of synthetic
+    data across all subjects. Tap a subject to expand; use “See individual criteria” inside.
+  </div>
+  <div class="demo-shell">
+    <div id="sp-student-root"></div>
+  </div>
+  <script type="module" src="/assessment-app/tools/demo-progress.js"></script>
+</body>
+</html>

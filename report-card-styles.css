@@ -643,7 +643,10 @@
 
 @media (max-width: 480px) {
   .sp-cat-row { grid-template-columns: 120px 1fr 40px; }
-  .sp-criterion-row { grid-template-columns: 1fr 80px; }
-  .sp-criterion-right { display: none; }
+  /* Keep the % visible on phones (name | bar | %); only the band chip is
+     dropped to save width. */
+  .sp-criterion-row { grid-template-columns: 1fr 64px 44px; }
+  .sp-criterion-right { gap: 0; }
+  .sp-criterion-right .sp-band { display: none; }
   .sp-callout { min-width: 100%; }
 }

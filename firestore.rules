@@ -16,6 +16,14 @@ service cloud.firestore {
     function isAdmin()     { return isRole('admin'); }
     function isOwner()     { return request.auth != null && request.auth.uid == resource.id; }
 
+    // Maps a student's stored class ("1","2","LKG","SKG") to the label used on
+    // assessment_sessions ("Class I","Class II","LKG","SKG"). Used to scope a
+    // student's read of assessment_sessions to their own class only.
+    function studentAssessmentClass() {
+      let raw = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('class', '');
+      return raw == '1' ? 'Class I' : (raw == '2' ? 'Class II' : raw);
+    }
+
     // ── Users ────────────────────────────────────────────────────────
     // Each user manages their own doc; admin can read all.
     match /users/{uid} {
@@ -131,11 +139,14 @@ service cloud.firestore {
     }
 
     // ── Marks (mark entry system — subject & class teachers) ─────────
+    // A student may read BOTH their term docs (HY + FT) once the admin has
+    // released the report card. Release sets releasedToStudent on the Final
+    // Term ("{classId}_FT") doc, so both terms gate on that single flag.
     match /marks/{termDoc}/students/{studentId} {
       allow read:  if isAnyStaff() ||
         (request.auth != null &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId == studentId &&
-         resource.data.releasedToStudent == true);
+         ftReleasedForStudent(database, termDoc, studentId));
       allow write: if isTeacherAny() || isAdmin();
     }
 
@@ -163,6 +174,11 @@ service cloud.firestore {
     // ── Assessment sessions ───────────────────────────────────────────
     match /assessment_sessions/{docId} {
       allow read:  if isAnyStaff();
+      // A student may read sessions for their own class only (powers the
+      // "My Progress" tab, which filters to their own marks client-side).
+      allow read:  if request.auth != null
+        && isRole('student')
+        && resource.data.session.class == studentAssessmentClass();
       allow write: if isTeacherAny() || isAdmin();
     }
 
@@ -202,6 +218,14 @@ service cloud.firestore {
         && resource.data.status == 'released';
     }
 
+  }
+
+  // ── Helper: has the student's Final Term report card been released? ──
+  // termDoc is "{classId}_HY" or "{classId}_FT"; the FT doc holds the flag.
+  function ftReleasedForStudent(database, termDoc, studentId) {
+    let base = termDoc.split('_')[0];
+    let ftPath = /databases/$(database)/documents/marks/$(base + '_FT')/students/$(studentId);
+    return exists(ftPath) && get(ftPath).data.get('releasedToStudent', false) == true;
   }
 
   // ── Helper: is the daily doc's month unlocked? ───────────────────────

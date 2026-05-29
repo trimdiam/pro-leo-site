@@ -3,6 +3,7 @@
 // Shows released report cards as summary cards and drives e-book printing.
 
 import { buildPrintableHTML } from './report-card-print.js';
+import { isClassIIIToX, renderClassIIIToXReportCard } from './report-card-student-iiix.js';
 
 const FB_VERSION = '10.13.0';
 const FB_BASE    = `https://www.gstatic.com/firebasejs/${FB_VERSION}`;
@@ -197,6 +198,13 @@ async function handleSavePdfRequest(req, source) {
 export async function initReportCardStudentView(studentId) {
   const root = document.getElementById('rc-student-root');
   if (!root) return;
+
+  // Class III–X report cards live in the `marks` collection (Sfs-report-card
+  // system), not `report_cards`. Delegate those to the dedicated III–X view.
+  const classRaw = window._studentClass;
+  if (isClassIIIToX(classRaw)) {
+    return renderClassIIIToXReportCard(root, studentId, classRaw, window._studentSection || '');
+  }
 
   root.innerHTML = '';
   root.className = 'rc-student-panel';

@@ -20,3 +20,24 @@ window.loadStudentProgress = async function () {
   section.dataset.spInit = 'false';
   await initStudentProgressView(studentId, studentClass);
 };
+
+// ── My Progress nav visibility ───────────────────────────────────────────────
+// The assessment system only covers LKG, SKG, Class I and Class II. Hide the
+// "My Progress" sidebar tab for every other class (III–X) so those students
+// don't see an empty section. app-logic.js stores the raw class on
+// window._studentClass ("1","2","LKG","SKG", "3"…"10").
+const ASSESSMENT_CLASSES = new Set(['LKG', 'SKG', '1', '2']);
+
+function applyMyProgressVisibility() {
+  const btn = document.getElementById('s-nav-myprogress');
+  if (!btn) return;
+  const cls = window._studentClass;
+  if (cls == null || cls === '') return; // class not resolved yet — leave as-is
+  btn.style.display = ASSESSMENT_CLASSES.has(String(cls)) ? '' : 'none';
+}
+window.applyMyProgressVisibility = applyMyProgressVisibility;
+
+// Re-evaluate periodically so it applies after login and after switching
+// accounts (both set window._studentClass asynchronously). Cheap + idempotent.
+setInterval(applyMyProgressVisibility, 1000);
+document.addEventListener('DOMContentLoaded', applyMyProgressVisibility);

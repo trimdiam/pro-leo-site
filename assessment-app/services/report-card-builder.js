@@ -12,6 +12,7 @@ import { aggregateStudentForReportCard } from './report-card-aggregator.js';
 import { gradeSubject, computeOverallPerformance, getTermLabel } from './report-card-grade-engine.js';
 import { generateTeacherRemark } from './report-card-remark-engine.js';
 import { loadStudentsForClass } from './student-loader.js';
+import { getTermAttendance } from './report-card-attendance.js';
 
 const REPORT_CARDS_COL = 'report_cards';
 
@@ -110,6 +111,14 @@ export async function buildAndSaveReportCard(params) {
     };
     const teacherRemark = generateTeacherRemark(remarkProfile);
 
+    // 5b. Pull the student's real attendance for this term (best-effort).
+    const attendance = await getTermAttendance({
+      studentId, rollNo, className, dateFrom, dateTo
+    }).catch(err => {
+      console.warn(`Attendance fetch failed for ${studentId}:`, err.message);
+      return { attendancePresentDays: null, attendanceWorkingDays: null };
+    });
+
     // 6. Assemble document
     const docId = `${sanitizeDocId(studentId)}_${term}`;
 
@@ -141,6 +150,7 @@ export async function buildAndSaveReportCard(params) {
         criteria: (s.criteria || []).map(c => ({
           criterion_id:   c.criterion_id,
           criterion_name: c.criterion_name,
+          category:       c.category || 'General',
           averageScore:   c.averageScore ?? null,
           grade:          c.grade?.code || 'Ex',
           label:          c.grade?.label || 'Exempt / No Data',
@@ -164,9 +174,10 @@ export async function buildAndSaveReportCard(params) {
       remarkGeneratedByAI:  true,
       remarkEditedByAdmin:  false,
 
-      // Attendance (admin fills manually)
-      attendancePresentDays: null,
-      attendanceWorkingDays: null,
+      // Attendance — pulled live from attendance_monthly; null if no snapshot
+      // exists for the term (admin can then fill it in manually).
+      attendancePresentDays: attendance.attendancePresentDays,
+      attendanceWorkingDays: attendance.attendanceWorkingDays,
 
       // Promotion (HY2 only — admin fills)
       promotedToClass: null,
