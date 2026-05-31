@@ -8933,7 +8933,10 @@ function idToEmailLocal(id) {
             tbody.innerHTML = snap.docs
               .map((d) => {
                 const t = d.data();
-                return `<tr>\n          <td style="font-size:12px">${t.date || "—"}</td>\n          <td><strong>${t.studentName || "—"}</strong></td>\n          <td>${clsLabel(t.studentClass)}</td>\n          <td style="font-weight:700">${fmtINR(t.amount)}</td>\n          <td style="font-size:12px">${t.paymentMode || "—"}</td>\n          <td><span class="badge ${bc(t.status)}">${t.status || "pending"}</span></td>\n        </tr>`;
+                const receiptBtn = t.status === "approved"
+                  ? `<button onclick="printFeeReceipt('${d.id}')" style="padding:2px 7px;font-size:11px;background:#059669;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-left:6px" title="Print Receipt"><i class="fas fa-receipt"></i></button>`
+                  : "";
+                return `<tr>\n          <td style="font-size:12px">${t.date || "—"}</td>\n          <td><strong>${t.studentName || "—"}</strong></td>\n          <td>${clsLabel(t.studentClass)}</td>\n          <td style="font-weight:700">${fmtINR(t.amount)}</td>\n          <td style="font-size:12px">${t.paymentMode || "—"}</td>\n          <td><span class="badge ${bc(t.status)}">${t.status || "pending"}</span>${receiptBtn}</td>\n        </tr>`;
               })
               .join("");
           } catch (e) {
@@ -9887,7 +9890,7 @@ function idToEmailLocal(id) {
                 acts =
                   "pending" === t.status
                     ? `<div style="display:flex;gap:4px;flex-wrap:wrap">\n               <button class="btn btn-sm btn-success" style="font-size:11px;padding:3px 8px" onclick="approveFeeTransaction('${d.id}')"><i class="fas fa-check"></i> Approve</button>\n               <button class="btn btn-sm btn-danger"  style="font-size:11px;padding:3px 7px" onclick="rejectFeeTransaction('${d.id}')"><i class="fas fa-times"></i></button>\n               ${editDelBtns}\n             </div>`
-                    : `<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">\n               <span style="font-size:11px;color:var(--text-light)">${"approved" === t.status ? t.approvedBy || "Staff" : "Rejected"}</span>\n               ${editDelBtns}\n             </div>`;
+                    : `<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">\n               ${"approved" === t.status ? `<button onclick="printFeeReceipt('${d.id}')" style="padding:3px 8px;font-size:11px;background:#059669;color:#fff;border:none;border-radius:6px;cursor:pointer" title="Print Receipt"><i class="fas fa-receipt"></i> Receipt</button>` : ""}\n               <span style="font-size:11px;color:var(--text-light)">${"approved" === t.status ? t.approvedBy || "Staff" : "Rejected"}</span>\n               ${editDelBtns}\n             </div>`;
               return `<tr>\n          <td style="font-size:12px">${t.date || "—"}</td>\n          <td><strong>${t.studentName || "—"}</strong>${sourceTag}</td>\n          <td>${clsLabel(t.studentClass)}</td>\n          <td style="font-weight:700">${fmtINR(t.amount)}</td>\n          <td style="font-size:12px">${t.paymentMode || "—"}</td>\n          <td>${receiptCell}</td>\n          <td style="font-size:12px">${fmtINR(t.balanceBefore)}</td>\n          <td style="font-size:12px;font-weight:700;color:var(--accent-dark)">${fmtINR(t.balanceAfter)}</td>\n          <td style="font-size:12px">${t.staffName || "—"}</td>\n          <td><span class="badge ${bc(t.status)}">${t.status || "pending"}</span></td>\n          <td>${acts}</td>\n        </tr>`;
             })
             .join("");
@@ -10242,6 +10245,83 @@ function idToEmailLocal(id) {
           (clickedBtn.innerHTML = '<i class="fas fa-check"></i> Approve'));
       }
     }),
+      (window.printFeeReceipt = async function (txnId) {
+        if (!window.jspdf?.jsPDF) return showToast("❌ PDF library not ready. Try again.");
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
+        if (typeof pdf.autoTable !== "function") return showToast("❌ PDF table plugin not ready.");
+        try {
+          showToast("⏳ Generating receipt…");
+          let txn;
+          // Use cache if available
+          if (window._feeApprovalDocs) {
+            txn = window._feeApprovalDocs.find(d => d.id === txnId);
+          }
+          if (!txn) {
+            const snap = await getDoc(doc(db, "fee_transactions", txnId));
+            if (!snap.exists()) return showToast("❌ Transaction not found.");
+            txn = { id: txnId, ...snap.data() };
+          }
+          const pw = pdf.internal.pageSize.getWidth();
+          const pageH = pdf.internal.pageSize.getHeight();
+          // ── Header ──
+          pdf.setFontSize(13); pdf.setFont("helvetica", "bold");
+          pdf.text("St. Francis De Sales Sec. School", pw / 2, 14, { align: "center" });
+          pdf.setFontSize(8); pdf.setFont("helvetica", "normal");
+          pdf.text("Laitkor, Shillong, Meghalaya", pw / 2, 19, { align: "center" });
+          pdf.setDrawColor(139, 111, 71); pdf.setLineWidth(0.5);
+          pdf.line(10, 22, pw - 10, 22);
+          pdf.setFontSize(11); pdf.setFont("helvetica", "bold");
+          pdf.text("FEE RECEIPT", pw / 2, 28, { align: "center" });
+          pdf.line(10, 31, pw - 10, 31);
+          // ── Receipt meta ──
+          pdf.setFontSize(8); pdf.setFont("helvetica", "normal");
+          pdf.text(`Receipt No: ${txn.receiptNo || txnId.slice(-8).toUpperCase()}`, 10, 37);
+          pdf.text(`Date: ${txn.date || new Date().toLocaleDateString("en-IN")}`, pw - 10, 37, { align: "right" });
+          // ── Student details ──
+          pdf.autoTable({
+            startY: 41,
+            body: [
+              ["Student Name", txn.studentName || "—"],
+              ["Class", txn.studentClass ? ("PLG,SKG,LKG".includes(txn.studentClass) ? txn.studentClass : "Class " + txn.studentClass) : "—"],
+              ["Student ID", txn.studentId || "—"],
+              ["Fee Type", txn.feeType || txn.description || "—"],
+              ["Payment Mode", txn.paymentMode || "—"],
+              ["Amount Paid", `Rs. ${(parseFloat(txn.amount) || 0).toLocaleString("en-IN")}`],
+              ["Balance Before", `Rs. ${(parseFloat(txn.balanceBefore) || 0).toLocaleString("en-IN")}`],
+              ["Balance After", `Rs. ${(parseFloat(txn.balanceAfter) || 0).toLocaleString("en-IN")}`],
+              ["Approved By", txn.approvedBy || "Office"],
+              ["Status", "APPROVED ✓"],
+            ],
+            margin: { left: 10, right: 10 },
+            columnStyles: { 0: { fontStyle: "bold", cellWidth: 42, fontSize: 8 }, 1: { fontSize: 8 } },
+            bodyStyles: { cellPadding: 3 },
+            alternateRowStyles: { fillColor: [250, 246, 240] },
+            didParseCell(data) {
+              if (data.row.index === 9) {
+                data.cell.styles.textColor = [5, 150, 105];
+                data.cell.styles.fontStyle = "bold";
+              }
+            }
+          });
+          const finalY = pdf.lastAutoTable.finalY + 10;
+          // ── Signature lines ──
+          pdf.setDrawColor(180, 180, 180);
+          pdf.line(10, finalY + 12, 55, finalY + 12);
+          pdf.line(pw - 55, finalY + 12, pw - 10, finalY + 12);
+          pdf.setFontSize(7); pdf.setFont("helvetica", "normal");
+          pdf.text("Parent / Guardian Signature", 10, finalY + 16);
+          pdf.text("Authorised Signatory", pw - 10, finalY + 16, { align: "right" });
+          // ── Footer ──
+          pdf.setFontSize(7);
+          pdf.text("This is a computer-generated receipt.", pw / 2, pageH - 8, { align: "center" });
+          pdf.setDrawColor(139, 111, 71); pdf.line(10, pageH - 11, pw - 10, pageH - 11);
+          pdf.save(`receipt-${txn.receiptNo || txnId.slice(-8)}.pdf`);
+          showToast("✅ Receipt downloaded!");
+        } catch (e) {
+          showToast("❌ " + e.message);
+        }
+      }),
       (window.rejectFeeTransaction = async function (txnId) {
         if (confirm("Reject this transaction? No balance change will occur."))
           try {
