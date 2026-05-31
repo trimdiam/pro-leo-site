@@ -12024,6 +12024,175 @@ window.loadTeacherPortal = async function (user) {
   };
 })();
 
+// ── Push Notification Admin UI ────────────────────────────────────────────
+// Reads/writes settings/routineNotify and holidays/closures for the
+// daily teacher routine push feature.
+
+(function () {
+  let _pnHolidays = [];   // local copy of ISO dates from holidays/closures
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function pnStatus(msg, color) {
+    const el = document.getElementById('pn-test-status');
+    if (el) { el.textContent = msg; el.style.color = color || 'var(--text-light)'; }
+  }
+
+  function renderToggle(enabled) {
+    const chk   = document.getElementById('pn-enabled');
+    const track = document.getElementById('pn-enabled-track');
+    if (!chk || !track) return;
+    chk.checked = !!enabled;
+    track.style.background = enabled ? 'var(--accent)' : '#ccc';
+  }
+
+  function renderDays(workingDays) {
+    [1,2,3,4,5,6].forEach(d => {
+      const lbl = document.getElementById(`pn-day-${d}`);
+      if (!lbl) return;
+      const chk = lbl.querySelector('input');
+      if (chk) chk.checked = workingDays.includes(d);
+      lbl.style.background = workingDays.includes(d) ? 'rgba(var(--accent-rgb,212,175,55),0.12)' : '';
+      lbl.style.borderColor = workingDays.includes(d) ? 'var(--accent)' : 'var(--border)';
+    });
+  }
+
+  function renderHolidays() {
+    const el = document.getElementById('pn-holiday-list');
+    if (!el) return;
+    if (_pnHolidays.length === 0) { el.innerHTML = '<span style="color:var(--text-light);font-size:12px">No closure dates added.</span>'; return; }
+    el.innerHTML = [..._pnHolidays].sort().map(d =>
+      `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600">
+        ${d}
+        <button onclick="removePushHoliday('${d}')" style="background:none;border:none;color:var(--danger,#ef4444);cursor:pointer;font-size:14px;line-height:1;padding:0">&times;</button>
+      </span>`
+    ).join('');
+  }
+
+  // ── Load ──────────────────────────────────────────────────────────────────
+  window.loadPushNotifySettings = async function () {
+    try {
+      const [cfgSnap, holSnap] = await Promise.all([
+        getDoc(doc(db, 'settings', 'routineNotify')),
+        getDoc(doc(db, 'holidays', 'closures')),
+      ]);
+      const cfg = cfgSnap.exists() ? cfgSnap.data() : {};
+      renderToggle(cfg.enabled !== false);
+      renderDays(Array.isArray(cfg.workingDays) ? cfg.workingDays : [1,2,3,4,5]);
+      _pnHolidays = holSnap.exists() && Array.isArray(holSnap.data().dates) ? [...holSnap.data().dates] : [];
+      renderHolidays();
+    } catch (e) {
+      showToast('⚠️ Could not load notification settings: ' + e.message);
+    }
+    loadPushNotifyLog();
+  };
+
+  // ── Save enabled toggle ───────────────────────────────────────────────────
+  window.savePushNotifyEnabled = async function (enabled) {
+    renderToggle(enabled);
+    try {
+      await setDoc(doc(db, 'settings', 'routineNotify'), {
+        enabled, updatedAt: new Date().toISOString(), updatedBy: auth.currentUser?.uid || ''
+      }, { merge: true });
+      showToast(enabled ? '🔔 Notifications enabled' : '🔕 Notifications disabled');
+    } catch (e) { showToast('❌ Save failed: ' + e.message); }
+  };
+
+  // ── Save working days ─────────────────────────────────────────────────────
+  window.savePushNotifyDays = async function () {
+    const days = [];
+    [1,2,3,4,5,6].forEach(d => {
+      const lbl = document.getElementById(`pn-day-${d}`);
+      const chk = lbl && lbl.querySelector('input');
+      if (chk && chk.checked) days.push(d);
+      if (lbl) {
+        lbl.style.background = (chk && chk.checked) ? 'rgba(212,175,55,0.12)' : '';
+        lbl.style.borderColor = (chk && chk.checked) ? 'var(--accent)' : 'var(--border)';
+      }
+    });
+    try {
+      await setDoc(doc(db, 'settings', 'routineNotify'), {
+        workingDays: days, updatedAt: new Date().toISOString(), updatedBy: auth.currentUser?.uid || ''
+      }, { merge: true });
+      showToast('✅ Working days saved');
+    } catch (e) { showToast('❌ Save failed: ' + e.message); }
+  };
+
+  // ── Holiday add / remove ──────────────────────────────────────────────────
+  async function saveHolidays() {
+    await setDoc(doc(db, 'holidays', 'closures'), {
+      dates: [..._pnHolidays], updatedAt: new Date().toISOString(), updatedBy: auth.currentUser?.uid || ''
+    }, { merge: true });
+  }
+
+  window.addPushHoliday = async function () {
+    const input = document.getElementById('pn-holiday-input');
+    const val   = input && input.value;
+    if (!val) return showToast('⚠️ Pick a date first');
+    if (_pnHolidays.includes(val)) return showToast('Already added');
+    _pnHolidays.push(val);
+    renderHolidays();
+    if (input) input.value = '';
+    try { await saveHolidays(); showToast('📅 Holiday date added'); }
+    catch (e) { showToast('❌ Save failed: ' + e.message); }
+  };
+
+  window.removePushHoliday = async function (date) {
+    _pnHolidays = _pnHolidays.filter(d => d !== date);
+    renderHolidays();
+    try { await saveHolidays(); showToast('Removed ' + date); }
+    catch (e) { showToast('❌ Save failed: ' + e.message); }
+  };
+
+  // ── Test send (calls triggerDailyRoutine callable) ────────────────────────
+  window.testPushNotify = async function () {
+    const btn = document.getElementById('pn-test-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…'; }
+    pnStatus('Sending…', 'var(--text-light)');
+    try {
+      const { getFunctions, httpsCallable } =
+        await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-functions.js');
+      const fns  = getFunctions(app, 'asia-south1');
+      const call = httpsCallable(fns, 'triggerDailyRoutine');
+      const res  = await call({ respectGates: false });
+      const d    = res.data || {};
+      if (d.skipped) {
+        pnStatus(`Skipped: ${d.skipReason}`, 'var(--warning,#f59e0b)');
+        showToast(`ℹ️ Skipped — ${d.skipReason}`);
+      } else {
+        pnStatus(`Sent ${d.sent} / ${d.sent + d.failed} (Day ${d.day})`, 'var(--success,#16a34a)');
+        showToast(`✅ Sent ${d.sent} notifications for Day ${d.day}`);
+      }
+    } catch (e) {
+      pnStatus('Error: ' + e.message, 'var(--danger,#ef4444)');
+      showToast('❌ Test failed: ' + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:6px"></i>Send Test Now'; }
+      loadPushNotifyLog();
+    }
+  };
+
+  // ── Audit log ─────────────────────────────────────────────────────────────
+  window.loadPushNotifyLog = async function () {
+    const el = document.getElementById('pn-log');
+    if (!el) return;
+    el.textContent = 'Loading…';
+    try {
+      const { query: fsQuery, collection: fsCol, orderBy, limit: fsLimit } =
+        await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+      const snap = await getDocs(
+        fsQuery(fsCol(db, 'notification_logs'), orderBy('at', 'desc'), fsLimit(10))
+      );
+      if (snap.empty) { el.textContent = 'No sends recorded yet.'; return; }
+      el.innerHTML = snap.docs.map(d => {
+        const r = d.data();
+        const time = r.at ? new Date(r.at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+        if (r.skipped) return `<div style="padding:5px 0;border-bottom:1px solid var(--border)">${time} · <span style="color:var(--warning,#f59e0b)">${r.slot} skipped</span> · ${r.skipReason}</div>`;
+        return `<div style="padding:5px 0;border-bottom:1px solid var(--border)">${time} · <b>${r.slot}</b> · Day ${r.day || '?'} · <span style="color:var(--success,#16a34a)">${r.sent} sent</span>${r.failed ? ` · <span style="color:var(--danger,#ef4444)">${r.failed} failed</span>` : ''}${r.forced ? ' · <span style="opacity:.6">test</span>' : ''}</div>`;
+      }).join('');
+    } catch (e) { el.textContent = 'Could not load log: ' + e.message; }
+  };
+})();
+
 const _origLogout = window.logout;
 window.logout = function () {
   // Mark this as a deliberate sign-out so the onAuthStateChanged(null) branch

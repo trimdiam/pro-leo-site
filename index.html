@@ -1738,6 +1738,7 @@
         <button onclick="showDash('a','a-student-records',this)"><i class="fas fa-database"></i> Student Records</button>
         <button onclick="showDash('a','a-family-mgmt',this)"><i class="fas fa-users"></i> Family / Sibling</button>
         <button onclick="showDash('a','a-teacher-assign',this);loadTeacherAssignList()"><i class="fas fa-user-tag"></i> Teacher Assignments</button>
+        <button onclick="showDash('a','a-push-notify',this);loadPushNotifySettings()"><i class="fas fa-bell"></i> Push Notifications</button>
         <button onclick="window.open('routine-app/index.html','_blank')"><i class="fas fa-clock"></i> Routine Manager</button>
         <button onclick="window.open('assessment-app/index.html','_blank')"><i class="fas fa-chart-line"></i> Assessment</button>
       </div>
@@ -2289,6 +2290,63 @@
                 <button class="btn btn-outline btn-sm" onclick="closeSyncDirectoryPanel()"><i class="fas fa-times"></i> Cancel</button>
                 <button id="sync-dir-apply-btn" class="btn btn-sm" onclick="applySyncDirectory()" disabled style="background:#5a8a5a;color:#fff;padding:8px 20px;border-radius:8px;border:none;font-family:var(--font-body);font-weight:700;cursor:pointer;opacity:0.5"><i class="fas fa-check"></i> Apply Changes</button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── PUSH NOTIFICATION SETTINGS ── -->
+        <div id="a-push-notify" class="dash-section">
+          <div class="card" style="padding:24px;max-width:680px">
+            <h4 style="color:var(--accent-dark);margin:0 0 4px"><i class="fas fa-bell" style="margin-right:8px;color:var(--accent)"></i>Daily Routine Push Notifications</h4>
+            <p style="font-size:13px;color:var(--text-light);margin:0 0 24px">Sends every teacher their full timetable each morning. Fires at 07:30 and 08:00 IST on working days.</p>
+
+            <!-- Enable toggle -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg);border-radius:10px;border:1px solid var(--border);margin-bottom:16px">
+              <div>
+                <p style="font-weight:700;font-size:14px;color:var(--text);margin:0 0 2px">Enable Notifications</p>
+                <p style="font-size:12px;color:var(--text-light);margin:0">Turn off to silence all routine reminders without deleting settings.</p>
+              </div>
+              <label style="position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0">
+                <input type="checkbox" id="pn-enabled" onchange="savePushNotifyEnabled(this.checked)" style="opacity:0;width:0;height:0">
+                <span id="pn-enabled-track" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:26px;transition:.3s"></span>
+              </label>
+            </div>
+
+            <!-- Working days -->
+            <div style="padding:14px 16px;background:var(--bg);border-radius:10px;border:1px solid var(--border);margin-bottom:16px">
+              <p style="font-weight:700;font-size:14px;color:var(--text);margin:0 0 10px">Working Days</p>
+              <div style="display:flex;flex-wrap:wrap;gap:8px" id="pn-days">
+                <label id="pn-day-1" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;transition:.2s"><input type="checkbox" value="1" onchange="savePushNotifyDays()" style="margin:0"> Mon</label>
+                <label id="pn-day-2" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;transition:.2s"><input type="checkbox" value="2" onchange="savePushNotifyDays()" style="margin:0"> Tue</label>
+                <label id="pn-day-3" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;transition:.2s"><input type="checkbox" value="3" onchange="savePushNotifyDays()" style="margin:0"> Wed</label>
+                <label id="pn-day-4" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;transition:.2s"><input type="checkbox" value="4" onchange="savePushNotifyDays()" style="margin:0"> Thu</label>
+                <label id="pn-day-5" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;transition:.2s"><input type="checkbox" value="5" onchange="savePushNotifyDays()" style="margin:0"> Fri</label>
+                <label id="pn-day-6" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;transition:.2s"><input type="checkbox" value="6" onchange="savePushNotifyDays()" style="margin:0"> Sat</label>
+              </div>
+            </div>
+
+            <!-- Holiday closures -->
+            <div style="padding:14px 16px;background:var(--bg);border-radius:10px;border:1px solid var(--border);margin-bottom:16px">
+              <p style="font-weight:700;font-size:14px;color:var(--text);margin:0 0 4px">Holiday Closures</p>
+              <p style="font-size:12px;color:var(--text-light);margin:0 0 12px">Notifications are skipped on these dates. Add specific school holiday dates here (separate from the display calendar).</p>
+              <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                <input type="date" id="pn-holiday-input" style="padding:8px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px;background:var(--card-bg);color:var(--text)">
+                <button onclick="addPushHoliday()" class="btn btn-sm" style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer"><i class="fas fa-plus"></i> Add</button>
+              </div>
+              <div id="pn-holiday-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px"></div>
+            </div>
+
+            <!-- Test + audit log -->
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+              <button onclick="testPushNotify()" id="pn-test-btn" class="btn" style="background:var(--primary);color:var(--text);border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px"><i class="fas fa-paper-plane" style="margin-right:6px"></i>Send Test Now</button>
+              <button onclick="loadPushNotifyLog()" class="btn btn-sm btn-outline" style="padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer"><i class="fas fa-history" style="margin-right:6px"></i>Refresh Log</button>
+              <span id="pn-test-status" style="font-size:13px;color:var(--text-light)"></span>
+            </div>
+
+            <!-- Audit log table -->
+            <div>
+              <p style="font-weight:700;font-size:13px;color:var(--text);margin:0 0 8px">Recent Sends</p>
+              <div id="pn-log" style="font-size:12px;color:var(--text-light);padding:8px 0">Loading…</div>
             </div>
           </div>
         </div>
