@@ -65,7 +65,7 @@ const db = getFirestore(app);
   (window._firebaseAuth = auth),
   (window.firebaseConfig = firebaseConfig),
   (window.initializeApp = initializeApp),
-  (window._academicAppUrl = "../assessment-app/index.html"),
+  (window._academicAppUrl = ""),  // assessment app not accessible to students
   (window._firestoreDb = db),
   (window._sfAppReady = Promise.resolve(app)),
   Object.assign(window, {
