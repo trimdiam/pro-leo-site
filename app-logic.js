@@ -11012,7 +11012,7 @@ function idToEmailLocal(id) {
       countLabel = document.getElementById("dues-count-label");
     if (tbody) {
       ((tbody.innerHTML =
-        '<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--text-light);"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>'),
+        '<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--text-light);"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>'),
         chipsEl && (chipsEl.innerHTML = ""),
         countLabel && (countLabel.textContent = ""));
       try {
@@ -11069,43 +11069,60 @@ function idToEmailLocal(id) {
           0 === records.length)
         )
           return void (tbody.innerHTML =
-            '<tr><td colspan="7" style="text-align:center;padding:32px;color:#28a745;font-weight:600;"><i class="fas fa-check-circle"></i> No pending dues found — all clear!</td></tr>');
+            '<tr><td colspan="8" style="text-align:center;padding:32px;color:#28a745;font-weight:600;"><i class="fas fa-check-circle"></i> No pending dues found — all clear!</td></tr>');
+        window._duesRecords = records.map(r => ({ ...r, _waNum: (waMap[r.studentId] || "").replace(/\D/g, "") }));
         ((tbody.innerHTML = records
           .map((r) => {
             const reminded = r.lastRemindedDate
                 ? new Date(r.lastRemindedDate).toLocaleDateString("en-IN")
                 : "—",
+              remindCount = r.remindCount || 0,
               waNum = (waMap[r.studentId] || "").replace(/\D/g, ""),
               waMsg = encodeURIComponent(
-                `Dear Parent of ${r.studentName || r.studentId},\nThis is a reminder from St. Francis De Sales Sec. School, Laitkor.\nYour fee payment of ₹${(r.amount || 0).toLocaleString("en-IN")} is awaiting approval.\nKindly contact the school office.\nThank you.`,
+                `Dear Parent/Guardian of ${r.studentName || r.studentId},\n\nThis is a fee reminder from St. Francis De Sales Sec. School, Laitkor.\n\nFee Type: ${r.feeType || "School Fee"}\nOutstanding Amount: Rs.${(r.amount || 0).toLocaleString("en-IN")}\n\nKindly clear the dues at the school office at your earliest convenience.\n\nThank you.\nSt. Francis De Sales Sec. School`,
               ),
               waBtn = waNum
                 ? `<a href="https://wa.me/91${waNum}?text=${waMsg}" target="_blank" class="btn btn-success btn-sm" onclick="window.markReminded('${r.id}')"><i class="fab fa-whatsapp"></i> Remind</a>`
-                : '<span style="font-size:12px;color:var(--text-light);">No WhatsApp</span>';
-            return `<tr>\n        <td><strong>${r.studentName || r.studentId || "—"}</strong><br><span style="font-size:11px;color:var(--text-light);">${r.studentId || ""}</span></td>\n        <td>${r._cls || "—"}</td>\n        <td>${r.feeType || r.notes || "—"}</td>\n        <td style="font-weight:700;color:#dc3545;">₹${(r.amount || 0).toLocaleString("en-IN")}</td>\n        <td><span class="badge badge-warning">Pending</span></td>\n        <td style="font-size:12px;">${reminded}</td>\n        <td>${waBtn}</td>\n      </tr>`;
+                : `<button onclick="navigator.clipboard.writeText('${(waMap[r.studentId]||'').replace(/'/g,'')}');showToast('📋 Number copied!')" style="padding:3px 8px;font-size:11px;background:#6b7280;color:#fff;border:none;border-radius:6px;cursor:pointer" title="Copy contact number"><i class="fas fa-phone"></i> Copy No.</button>`;
+            return `<tr>\n        <td><strong>${r.studentName || r.studentId || "—"}</strong><br><span style="font-size:11px;color:var(--text-light);">${r.studentId || ""}</span></td>\n        <td>${r._cls || "—"}</td>\n        <td>${r.feeType || r.notes || "—"}</td>\n        <td style="font-weight:700;color:#dc3545;">₹${(r.amount || 0).toLocaleString("en-IN")}</td>\n        <td><span class="badge badge-warning">Pending</span></td>\n        <td style="font-size:12px;text-align:center;">${remindCount > 0 ? `<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">${remindCount}×</span>` : "—"}</td>\n        <td style="font-size:12px;">${reminded}</td>\n        <td>${waBtn}</td>\n      </tr>`;
           })
           .join("")),
           countLabel &&
             (countLabel.textContent = `Showing ${records.length} record(s)`));
       } catch (err) {
         (console.error("Dues load error:", err),
-          (tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:28px;color:#dc3545;">Error loading dues: ${err.message}</td></tr>`));
+          (tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:28px;color:#dc3545;">Error loading dues: ${err.message}</td></tr>`));
       }
     }
   }),
   (window.markReminded = async function (docId) {
     try {
       const {
-        getFirestore: getFirestore,
-        doc: doc,
-        updateDoc: updateDoc,
+        getFirestore, doc, updateDoc, getDoc, increment
       } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-      await updateDoc(doc(getFirestore(), "fee_transactions", docId), {
+      const db2 = getFirestore();
+      await updateDoc(doc(db2, "fee_transactions", docId), {
         lastRemindedDate: new Date().toISOString().split("T")[0],
+        remindCount: increment(1),
       });
     } catch (e) {
       console.warn("markReminded:", e.message);
     }
+  }),
+  (window.remindAllDues = function () {
+    const records = (window._duesRecords || []).filter(r => r._waNum);
+    if (!records.length) return showToast("⚠️ No students with WhatsApp numbers in the current list.");
+    if (!confirm(`Send WhatsApp reminders to ${records.length} student(s)? Each will open in a new tab.`)) return;
+    records.forEach((r, i) => {
+      const waMsg = encodeURIComponent(
+        `Dear Parent/Guardian of ${r.studentName || r.studentId},\n\nThis is a fee reminder from St. Francis De Sales Sec. School, Laitkor.\n\nFee Type: ${r.feeType || "School Fee"}\nOutstanding Amount: Rs.${(r.amount || 0).toLocaleString("en-IN")}\n\nKindly clear the dues at the school office at your earliest convenience.\n\nThank you.\nSt. Francis De Sales Sec. School`
+      );
+      setTimeout(() => {
+        window.open(`https://wa.me/91${r._waNum}?text=${waMsg}`, "_blank");
+        window.markReminded(r.id);
+      }, i * 600);
+    });
+    showToast(`✅ Opening WhatsApp for ${records.length} student(s)…`);
   }),
   (async () => {
     let _srAllRecords = [],
