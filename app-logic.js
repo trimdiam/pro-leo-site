@@ -11351,7 +11351,7 @@ function idToEmailLocal(id) {
       (window._srGoPage = function (p) {
         ((_srPage = p), srRender());
       }),
-      (window.srExport = function (format) {
+      (window.srExport = async function (format) {
         const data = _srFiltered.length ? _srFiltered : _srAllRecords;
         if (!data.length)
           return void window.showToast?.("⚠️ No data to export.");
