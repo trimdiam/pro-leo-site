@@ -2,6 +2,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ── Rollover lock guard ───────────────────────────────────────────
+    // Returns true when a year-end rollover is in progress (Steps 2–4).
+    // Blocks all academic writes to prevent data interleaving during rollover.
+    function rolloverLocked(database) {
+      let lockPath = /databases/$(database)/documents/settings/rollover_lock;
+      return exists(lockPath) && get(lockPath).data.get('locked', false) == true;
+    }
+
     // ── Role helpers ─────────────────────────────────────────────────
     function isRole(role) {
       return request.auth != null &&
@@ -51,14 +59,15 @@ service cloud.firestore {
       allow read:  if isAnyStaff() || request.auth != null;
       allow write: if request.auth != null
         && (isTeacherAny() || isAdmin())
+        && !rolloverLocked(database)
         && (isDailyWriteAllowed(database, docId) || isAdmin());
     }
 
     // ── Monthly attendance snapshots (locking workflow) ───────────────
     match /attendance_monthly/{docId} {
       allow read:   if isAnyStaff();
-      allow create: if isAnyStaff();
-      allow update: if isAnyStaff() && isMonthlyUpdateAllowed(database);
+      allow create: if isAnyStaff() && !rolloverLocked(database);
+      allow update: if isAnyStaff() && !rolloverLocked(database) && isMonthlyUpdateAllowed(database);
       allow delete: if false;
     }
 
@@ -147,7 +156,7 @@ service cloud.firestore {
         (request.auth != null &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId == studentId &&
          ftReleasedForStudent(database, termDoc, studentId));
-      allow write: if isTeacherAny() || isAdmin();
+      allow write: if (isTeacherAny() || isAdmin()) && !rolloverLocked(database);
     }
 
     // ── Routine / Timetable ──────────────────────────────────────────
@@ -179,19 +188,19 @@ service cloud.firestore {
       allow read:  if request.auth != null
         && isRole('student')
         && resource.data.session.class == studentAssessmentClass();
-      allow write: if isTeacherAny() || isAdmin();
+      allow write: if (isTeacherAny() || isAdmin()) && !rolloverLocked(database);
     }
 
     // ── Monthly analytics ─────────────────────────────────────────────
     match /monthly_analytics/{docId} {
       allow read:  if isAnyStaff();
-      allow write: if isTeacherAny() || isAdmin();
+      allow write: if (isTeacherAny() || isAdmin()) && !rolloverLocked(database);
     }
 
     // ── Weak student flags ────────────────────────────────────────────
     match /weak_students/{docId} {
       allow read:  if isAnyStaff();
-      allow write: if isTeacherAny() || isAdmin();
+      allow write: if (isTeacherAny() || isAdmin()) && !rolloverLocked(database);
     }
 
     // ── Student academic profiles ─────────────────────────────────────
@@ -199,7 +208,7 @@ service cloud.firestore {
       allow read:  if isAnyStaff() ||
         (request.auth != null &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId == docId);
-      allow write: if isTeacherAny() || isAdmin();
+      allow write: if (isTeacherAny() || isAdmin()) && !rolloverLocked(database);
     }
 
     // ── Admin notifications ──────────────────────────────────────────

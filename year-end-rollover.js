@@ -265,9 +265,25 @@ async function archiveMarks(db, year, onProgress) {
   return { source: 'marks', read, written };
 }
 
+// ── Rollover lock helpers ────────────────────────────────────────────────────
+// Writes settings/rollover_lock so Firestore rules block all academic writes
+// during Steps 2–4. Cleared automatically at the end of Step 5.
+async function setRolloverLock(db, locked, year, onProgress) {
+  await setDoc(doc(db, 'settings', 'rollover_lock'), {
+    locked,
+    year: yearTag(year),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+  onProgress && onProgress(
+    locked ? `🔒 Rollover lock SET — academic writes blocked.` : `🔓 Rollover lock CLEARED — writes re-enabled.`,
+    locked ? 'yellow' : 'green'
+  );
+}
+
 // Orchestrate the full archive. onProgress(msg, cssClass) streams log lines.
 // Returns { results: [...], totalWritten, target }.
 export async function runArchive(db, year, onProgress) {
+  await setRolloverLock(db, true, year, onProgress);
   onProgress && onProgress(`Archiving session ${year} → archive_${yearTag(year)}_*`, 'cyan');
   const results = [];
 
@@ -579,6 +595,8 @@ export async function openNewSession(db, fromYear, toYear, onProgress) {
   await setDoc(doc(db, ACADEMIC_SESSIONS, id), data, { merge: true });
   onProgress && onProgress(
     `Created session "${label}" (${data.startDate} → ${data.endDate}), marked active.`, 'green');
+
+  await setRolloverLock(db, false, toYear, onProgress);
 
   return { id, ...data, deactivated: ops.length };
 }

@@ -327,7 +327,8 @@ async function _handleAuthUser(user) {
       for (let _i = 0; _i < _attemptDelays.length; _i++) {
         if (_attemptDelays[_i] > 0)
           await new Promise((r) => setTimeout(r, _attemptDelays[_i]));
-        try { await user.getIdToken(_i === 0); } catch (_) {}
+        // Force-refresh on attempt 0 (fresh login) AND final attempt (stale token fallback).
+        try { await user.getIdToken(_i === 0 || _i === _attemptDelays.length - 1); } catch (_) {}
         try {
           userDoc = await getDoc(doc(db, "users", user.uid));
           if (!userDoc.exists()) break; // no doc — first-time-setup path

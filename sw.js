@@ -1,4 +1,4 @@
-const CACHE = 'sfs-1780052849913';
+const CACHE = 'sfs-1780207684513';
 
 // App shell — pre-cached on install for fast cold-start.
 const SHELL = [
@@ -30,11 +30,13 @@ const SHELL = [
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await Promise.all(SHELL.map(url =>
-      fetch(url, { cache: 'reload' })
-        .then(r => r.ok && cache.put(url, r))
-        .catch(() => {})
-    ));
+    // All shell files must succeed — abort install if any fail so we never
+    // cache a broken partial shell that would serve a broken app forever.
+    await Promise.all(SHELL.map(async url => {
+      const r = await fetch(url, { cache: 'reload' });
+      if (!r.ok) throw new Error(`SW install: failed to cache ${url} (${r.status})`);
+      await cache.put(url, r);
+    }));
     self.skipWaiting();
   })());
 });
