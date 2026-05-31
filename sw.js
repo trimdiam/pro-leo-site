@@ -1,4 +1,4 @@
-const CACHE = 'sfs-1780211916396';
+const CACHE = 'sfs-1780252173619';
 
 // App shell — pre-cached on install for fast cold-start.
 const SHELL = [
@@ -104,7 +104,7 @@ self.addEventListener('fetch', e => {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE);
       try {
-        const res = await fetchWithTimeout(request, 3000);
+        const res = await fetchWithTimeout(request, 1200);
         if (res && res.ok) cache.put(request, res.clone());
         return res;
       } catch (_) {
