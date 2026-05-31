@@ -890,8 +890,13 @@ function renderGalleryGrid(items) {
       parentName = getVal("adm-parent-name"),
       contact = getVal("adm-contact"),
       address = getVal("adm-address");
+    const feeAmount = parseFloat(document.getElementById("adm-fee-amount")?.value || 0) || 0;
+    const feeMode   = (document.getElementById("adm-fee-mode")?.value || "").trim();
+    const feeRef    = (document.getElementById("adm-fee-ref")?.value || "").trim();
     if (!(studentName && dob && cls && parentName && contact && address))
       return void showToast("⚠️ Please fill in all required fields (*).");
+    if (!feeAmount || !feeMode)
+      return void showToast("⚠️ Please enter the admission fee amount and payment mode.");
     if (!document.getElementById("adm-consent")?.checked)
       return void showToast("⚠️ Please tick the declaration checkbox before submitting.");
     const father = {
@@ -939,6 +944,10 @@ function renderGalleryGrid(items) {
           father: father,
           mother: mother,
           documents: documents,
+          admissionFee: feeAmount,
+          admissionFeeMode: feeMode,
+          admissionFeeRef: feeRef,
+          admissionFeeStatus: "pending_verification",
           status: "pending",
           submittedAt: new Date().toISOString(),
           createdAt: new Date().toISOString(),
@@ -10316,7 +10325,7 @@ function idToEmailLocal(id) {
       const tbody = document.getElementById("adm-list-body");
       if (tbody) {
         tbody.innerHTML =
-          '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
+          '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
         try {
           const statusFilter =
             document.getElementById("adm-filter-status")?.value || "pending";
@@ -10341,21 +10350,29 @@ function idToEmailLocal(id) {
             });
           if (snap.empty)
             return void (tbody.innerHTML =
-              '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light)">No applications found.</td></tr>');
+              '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-light)">No applications found.</td></tr>');
           ((tbody.innerHTML = ""),
             sortedDocs.forEach((d) => {
               const a = d.data(),
                 date = a.submittedAt?.toDate
                   ? a.submittedAt.toDate().toLocaleDateString("en-IN")
-                  : "—",
+                  : a.submittedAt ? new Date(a.submittedAt).toLocaleDateString("en-IN") : "—",
                 statusBadge =
                   "forwarded_to_admin" === a.status
                     ? '<span style="background:#d1fae5;color:#065f46;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600">Forwarded</span>'
                     : '<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600">Pending</span>',
+                feeStatus = a.admissionFeeStatus || "",
+                feeBadge = feeStatus === "verified"
+                  ? `<span style="background:#d1fae5;color:#065f46;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600">✅ Verified</span>`
+                  : feeStatus === "failed"
+                  ? `<span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600">❌ Failed</span>`
+                  : a.admissionFee
+                  ? `<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600">⏳ ₹${Number(a.admissionFee).toLocaleString("en-IN")}</span>`
+                  : `<span style="color:var(--text-light);font-size:11px">—</span>`,
                 tr = document.createElement("tr");
               ((tr.style.cssText =
                 "border-bottom:1px solid var(--border);cursor:pointer"),
-                (tr.innerHTML = `\n          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${a.fullName || "—"}</td>\n          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${a.classApplied || "—"}</td>\n          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${date}</td>\n          <td style="padding:10px 12px;font-size:13px">${statusBadge}</td>\n          <td style="padding:10px 12px;white-space:nowrap;display:flex;gap:6px">\n            <button onclick="viewAdmission('${d.id}')" style="padding:6px 12px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer"><i class="fas fa-eye"></i> View</button>\n            <button onclick="printAdmissionById('${d.id}')" style="padding:6px 10px;background:#6b7280;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer" title="Print"><i class="fas fa-print"></i></button>\n          </td>`),
+                (tr.innerHTML = `\n          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${a.fullName || "—"}</td>\n          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${a.classApplied || "—"}</td>\n          <td style="padding:10px 12px;font-size:13px;white-space:nowrap">${date}</td>\n          <td style="padding:10px 12px;font-size:13px">${feeBadge}</td>\n          <td style="padding:10px 12px;font-size:13px">${statusBadge}</td>\n          <td style="padding:10px 12px;white-space:nowrap;display:flex;gap:6px">\n            <button onclick="viewAdmission('${d.id}')" style="padding:6px 12px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer"><i class="fas fa-eye"></i> View</button>\n            <button onclick="printAdmissionById('${d.id}')" style="padding:6px 10px;background:#6b7280;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer" title="Print"><i class="fas fa-print"></i></button>\n          </td>`),
                 tbody.appendChild(tr));
             }),
             (window.__admissionsCache = {}),
@@ -10363,7 +10380,7 @@ function idToEmailLocal(id) {
               window.__admissionsCache[d.id] = d.data();
             }));
         } catch (e) {
-          tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:#ef4444">Error: ${e.message}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:#ef4444">Error: ${e.message}</td></tr>`;
         }
       }
     }),
@@ -10408,6 +10425,10 @@ function idToEmailLocal(id) {
           sv("adm-d-mother-name", m.name),
           sv("adm-d-mother-occ", m.occupation),
           sv("adm-d-mother-tel", m.contact),
+          sv("adm-d-fee-amount", a.admissionFee || ""),
+          sv("adm-d-fee-mode", a.admissionFeeMode || ""),
+          sv("adm-d-fee-ref", a.admissionFeeRef || ""),
+          sv("adm-d-fee-status", a.admissionFeeStatus || "pending_verification"),
           (document.getElementById("adm-d-notes").value = ""));
         const docsEl = document.getElementById("adm-d-docs"),
           docs = a.documents || [];
@@ -10491,6 +10512,10 @@ function idToEmailLocal(id) {
               occupation: gv("adm-d-mother-occ"),
               contact: gv("adm-d-mother-tel"),
             },
+            admissionFee: parseFloat(gv("adm-d-fee-amount")) || 0,
+            admissionFeeMode: gv("adm-d-fee-mode"),
+            admissionFeeRef: gv("adm-d-fee-ref"),
+            admissionFeeStatus: gv("adm-d-fee-status"),
           };
         try {
           (await updateDoc(doc(db, "admissions", currentAdmissionId), payload),

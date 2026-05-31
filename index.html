@@ -978,6 +978,33 @@
         <small style="font-size:11px;color:var(--text-light)">Most recent academic marksheet (JPG/PNG/PDF)</small>
       </div>
 
+      <!-- ── ADMISSION FEE PAYMENT ── -->
+      <h4 style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 14px"><i class="fas fa-money-bill-wave"></i> Admission Fee Payment</h4>
+      <div style="background:#f0faf0;border:1.5px solid #86efac;border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:13px;color:#155724">
+        <i class="fas fa-info-circle" style="margin-right:6px"></i>
+        Pay the admission processing fee and enter the details below. Payment will be verified by the office.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Admission Fee Amount (₹) *</label>
+          <input type="number" id="adm-fee-amount" placeholder="e.g. 500" min="0">
+        </div>
+        <div class="form-group">
+          <label>Payment Mode *</label>
+          <select id="adm-fee-mode">
+            <option value="">-- Select --</option>
+            <option value="Cash">Cash</option>
+            <option value="UPI">UPI</option>
+            <option value="Cheque">Cheque</option>
+            <option value="NEFT">NEFT/Bank Transfer</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Transaction / Reference Number <span style="color:var(--text-light);font-size:11px">(for UPI / Cheque / NEFT)</span></label>
+        <input type="text" id="adm-fee-ref" placeholder="e.g. UPI ref no., Cheque no.">
+      </div>
+
       <label style="display:flex;align-items:flex-start;gap:10px;margin-top:16px;font-size:13px;color:var(--text-light);cursor:pointer;line-height:1.5">
         <input type="checkbox" id="adm-consent" style="margin-top:2px;accent-color:var(--primary);width:16px;height:16px;flex-shrink:0">
         I confirm that all details provided in this application are accurate and complete to the best of my knowledge. I understand that submitting false information may result in cancellation of admission.
@@ -4094,6 +4121,7 @@
                     <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Name</th>
                     <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Class Applied</th>
                     <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Date</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Fee Payment</th>
                     <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Status</th>
                     <th style="padding:10px 12px;text-align:left;font-size:13px;white-space:nowrap">Action</th>
                   </tr></thead>
@@ -4156,6 +4184,23 @@
                     <input id="adm-d-mother-name" type="text" placeholder="Mother's Name" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
                     <input id="adm-d-mother-occ" type="text" placeholder="Occupation" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
                     <input id="adm-d-mother-tel" type="tel" placeholder="Contact No." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Admission Fee Payment -->
+              <div style="margin-bottom:16px">
+                <div style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px"><i class="fas fa-money-bill-wave" style="margin-right:6px"></i>Admission Fee Payment</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:10px">
+                  <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Amount (₹)</label><input id="adm-d-fee-amount" type="number" min="0" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+                  <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Mode</label><select id="adm-d-fee-mode" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark)"><option value="">—</option><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="Cheque">Cheque</option><option value="NEFT">NEFT</option></select></div>
+                  <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Ref / Txn No.</label><input id="adm-d-fee-ref" type="text" placeholder="UPI ref / Cheque no." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark);box-sizing:border-box"></div>
+                  <div><label style="font-size:11px;color:var(--text-light);text-transform:uppercase;display:block;margin-bottom:3px">Payment Status</label>
+                    <select id="adm-d-fee-status" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--glass-bg);color:var(--text-dark)">
+                      <option value="pending_verification">Pending Verification</option>
+                      <option value="verified">Verified ✅</option>
+                      <option value="failed">Failed ❌</option>
+                    </select>
                   </div>
                 </div>
               </div>
