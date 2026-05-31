@@ -3,7 +3,7 @@ const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 
 initializeApp();
@@ -12,15 +12,48 @@ setGlobalOptions({ maxInstances: 10, region: "asia-south1" });
 const db  = getFirestore();
 const fcm = getMessaging();
 
+// ── Helper: is an FCM error a permanent "this token is dead" signal? ─────────
+// These mean the token will NEVER work again (app uninstalled, token rotated).
+// Transient errors (unavailable, internal, quota) are NOT included — we keep
+// those tokens and let the next push retry.
+function isDeadToken(code) {
+  return code === "messaging/registration-token-not-registered" ||
+         code === "messaging/invalid-registration-token" ||
+         code === "messaging/invalid-argument";
+}
+
+// Remove a dead token from its users doc so the next app open re-registers a
+// fresh one. Best-effort — never throws.
+async function removeDeadToken(userRef) {
+  if (!userRef) return;
+  try {
+    await userRef.update({ fcmToken: FieldValue.delete(), fcmTokenRemovedAt: new Date().toISOString() });
+    console.log("Removed dead FCM token for", userRef.path);
+  } catch (_) { /* ignore */ }
+}
+
 // ── Helper: send FCM to a single FCM token ─────────────────────────────────
-async function sendPush(token, title, body, data = {}) {
+// Pass userRef so a permanently-dead token can be cleaned up automatically.
+async function sendPush(token, title, body, data = {}, userRef = null) {
   if (!token) { console.warn("sendPush: no token, skipping"); return; }
   try {
     const result = await fcm.send({ token, notification: { title, body }, data, android: { priority: "high" } });
     console.log("FCM send success:", result);
   } catch (e) {
     console.error("FCM send failed:", e.code, e.message);
+    if (isDeadToken(e.code)) await removeDeadToken(userRef);
   }
+}
+
+// Clean up dead tokens after a multicast sendEach. `refs[i]` is the users doc
+// ref for `messages[i]`; on a permanent failure its token is removed.
+async function cleanupAfterMulticast(result, refs) {
+  if (!result || !result.responses) return;
+  await Promise.all(result.responses.map(async (resp, i) => {
+    if (!resp.success && resp.error && isDeadToken(resp.error.code)) {
+      await removeDeadToken(refs[i]);
+    }
+  }));
 }
 
 // ── Helper: get FCM token + name for a student by studentId ───────────────
@@ -35,17 +68,12 @@ async function getStudentInfo(studentId) {
   return {
     token: d.fcmToken || null,
     name:  (d.name || d.displayName || "").split(" ")[0] || "Student",
+    ref:   snap.docs[0].ref,
   };
 }
 
-// Keep old name as alias so student_messages trigger still works
-async function getStudentToken(studentId) {
-  const info = await getStudentInfo(studentId);
-  return info ? info.token : null;
-}
-
 // ── Helper: rich attendance push ──────────────────────────────────────────
-async function sendAttendancePush(token, firstName, status, fmt, cls, date, isReminder) {
+async function sendAttendancePush(token, firstName, status, fmt, cls, date, isReminder, userRef = null) {
   if (!token) return;
   const isAbsent = status === "absent";
   const emoji    = isAbsent ? "🔴" : "🟡";
@@ -63,7 +91,7 @@ async function sendAttendancePush(token, firstName, status, fmt, cls, date, isRe
     class:   String(cls),
     screen:  "attendance",          // deep-link target
     click_action: "FLUTTER_NOTIFICATION_CLICK",
-  });
+  }, userRef);
 }
 
 // ── Helper: notify absent OR late students ────────────────────────────────
@@ -78,7 +106,7 @@ async function notifyAttendance(data, docId, status, isReminder = false) {
   await Promise.all(students.map(async (sid) => {
     const info = await getStudentInfo(sid);
     if (!info || !info.token) return;
-    await sendAttendancePush(info.token, info.name, status, fmt, cls, date, isReminder);
+    await sendAttendancePush(info.token, info.name, status, fmt, cls, date, isReminder, info.ref);
   }));
 }
 
@@ -99,9 +127,12 @@ exports.notifyAbsentStudentsUpdated = onDocumentUpdated(
     const before = event.data.before.data();
     const after  = event.data.after.data();
 
-    // Only notify students who are NEW to absent/late (not previously there)
-    const newAbsent = (after.absent || []).filter(s => !(before.absent || []).includes(s));
-    const newLate   = (after.late   || []).filter(s => !(before.late   || []).includes(s));
+    // Only notify students who are NEW to absent/late (not previously there).
+    // Set-based diff: O(n) and dedupes, so a student listed twice can't get two pushes.
+    const beforeAbsent = new Set(before.absent || []);
+    const beforeLate   = new Set(before.late   || []);
+    const newAbsent = [...new Set(after.absent || [])].filter(s => !beforeAbsent.has(s));
+    const newLate   = [...new Set(after.late   || [])].filter(s => !beforeLate.has(s));
 
     const docId = event.params.docId;
     const date  = after.date || (docId || "").split("_")[1] || "";
@@ -113,11 +144,11 @@ exports.notifyAbsentStudentsUpdated = onDocumentUpdated(
     await Promise.all([
       ...newAbsent.map(async (sid) => {
         const info = await getStudentInfo(sid);
-        if (info && info.token) await sendAttendancePush(info.token, info.name, "absent", fmt, cls, date, false);
+        if (info && info.token) await sendAttendancePush(info.token, info.name, "absent", fmt, cls, date, false, info.ref);
       }),
       ...newLate.map(async (sid) => {
         const info = await getStudentInfo(sid);
-        if (info && info.token) await sendAttendancePush(info.token, info.name, "late", fmt, cls, date, false);
+        if (info && info.token) await sendAttendancePush(info.token, info.name, "late", fmt, cls, date, false, info.ref);
       }),
     ]);
   }
@@ -164,7 +195,7 @@ exports.notifyNewNotice = onDocumentCreated(
 
     await Promise.all(usersSnap.docs.map(async (doc) => {
       const token = doc.data().fcmToken;
-      await sendPush(token, `📢 ${title}`, body, { type: "notice", noticeId: event.params.noticeId });
+      await sendPush(token, `📢 ${title}`, body, { type: "notice", noticeId: event.params.noticeId }, doc.ref);
     }));
   }
 );
@@ -188,6 +219,7 @@ exports.notifyLeaveDecision = onDocumentUpdated(
     const userDoc = await db.collection("users").doc(uid).get();
     if (!userDoc.exists) { console.warn("notifyLeaveDecision: no user doc for", uid); return; }
     const token = userDoc.data().fcmToken;
+    const userRef = userDoc.ref;
 
     const from = after.from || "";
     const to   = after.to   || "";
@@ -198,7 +230,7 @@ exports.notifyLeaveDecision = onDocumentUpdated(
       ? `Your leave from ${from} to ${to} has been approved.`
       : `Your leave from ${from} to ${to} has been rejected. Please contact the admin.`;
 
-    await sendPush(token, title, body, { type: "leave", status, leaveId: event.params.leaveId });
+    await sendPush(token, title, body, { type: "leave", status, leaveId: event.params.leaveId }, userRef);
   }
 );
 
@@ -211,12 +243,13 @@ exports.notifyStudentMessage = onDocumentCreated(
     const subject   = msg.subject   || "New Message";
     const preview   = (msg.message  || "").substring(0, 80);
 
-    const token = await getStudentToken(studentId);
+    const info = await getStudentInfo(studentId);
     await sendPush(
-      token,
+      info ? info.token : null,
       `✉️ ${subject}`,
       preview || "You have a new message from the administration.",
-      { type: "message", msgId: event.params.msgId }
+      { type: "message", msgId: event.params.msgId },
+      info ? info.ref : null
     );
   }
 );
@@ -269,7 +302,7 @@ function buildTeacherSlotMap(slotsSnap, subjects) {
 // teachers collection: doc fields include initials/routineInitials + teacherId
 // users collection:    doc fields include teacherId + fcmToken + name
 async function resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextStartTime) {
-  if (Object.keys(teacherMap).length === 0) return [];
+  if (Object.keys(teacherMap).length === 0) return { messages: [], refs: [] };
 
   // Step 1: load ALL teacher docs
   // Build two maps:
@@ -305,6 +338,7 @@ async function resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextS
 
   // Step 3: look up FCM tokens from users collection (chunk ≤30)
   const messages = [];
+  const refs = [];   // refs[i] is the users doc for messages[i] — for dead-token cleanup
   for (let i = 0; i < teacherIds.length; i += 30) {
     const chunk = teacherIds.slice(i, i + 30);
     const usersSnap = await db.collection("users")
@@ -347,10 +381,11 @@ async function resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextS
           className:  info.className,
         },
       });
+      refs.push(uDoc.ref);
     });
   }
 
-  return messages;
+  return { messages, refs };
 }
 
 // ── SCHEDULED: Period-end reminder — runs every minute (IST) ─────────────
@@ -404,7 +439,7 @@ exports.periodEndReminder = onSchedule(
 
     // 6. Build slot map and resolve to FCM messages
     const teacherMap = buildTeacherSlotMap(slotsSnap, subjects);
-    const messages   = await resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextStartTime);
+    const { messages, refs } = await resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextStartTime);
 
     if (messages.length === 0) {
       console.log(`Period ${endedPeriod} ended — no FCM tokens resolved`);
@@ -412,6 +447,7 @@ exports.periodEndReminder = onSchedule(
     }
 
     const result = await fcm.sendEach(messages);
+    await cleanupAfterMulticast(result, refs);
     console.log(`Period ${endedPeriod} ended → Period ${nextPeriod} starting ${nextStartTime || "soon"} — sent ${result.successCount}/${messages.length}`);
   }
 );
@@ -462,11 +498,12 @@ exports.triggerPeriodReminder = onCall(
     if (Object.keys(teacherMap).length === 0)
       throw new HttpsError("not-found", "No teachers found in those slots");
 
-    const messages = await resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextStartTime);
+    const { messages, refs } = await resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextStartTime);
     if (messages.length === 0)
       throw new HttpsError("not-found", "No FCM tokens resolved — check teachers/users teacherId linking");
 
     const result = await fcm.sendEach(messages);
+    await cleanupAfterMulticast(result, refs);
     return { sent: result.successCount, failed: result.failureCount, total: messages.length };
   }
 );
