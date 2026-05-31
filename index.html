@@ -1110,6 +1110,10 @@
     </nav>
     <div class="dash-main">
       <!-- Holiday banner — inside dash-main so it doesn't overlap the sidebar -->
+      <div id="s-must-change-pw-banner" style="display:none;background:linear-gradient(90deg,#7c3aed,#6d28d9);color:#fff;padding:12px 20px;font-size:13px;font-weight:600;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span><i class="fas fa-key" style="margin-right:8px"></i>You are using a temporary password. Please change it to secure your account.</span>
+        <button onclick="navStudentTo('s-profile')" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:700">Change Now →</button>
+      </div>
       <div id="s-holiday-banner" style="display:none;background:linear-gradient(90deg,#059669,#047857);color:#fff;padding:10px 20px;font-size:13px;font-weight:600;align-items:center;justify-content:space-between;gap:12px;">
         <span><i class="fas fa-umbrella-beach" style="margin-right:8px"></i><span id="s-holiday-banner-msg"></span></span>
         <button onclick="document.getElementById('s-holiday-banner').style.display='none'" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;font-weight:700">✕ Dismiss</button>
@@ -1229,6 +1233,15 @@
               <div style="color:#fde68a;font-size:11px;font-weight:600;letter-spacing:0.5px">CONTACT OFFICE</div>
               <div style="color:#fff;font-size:13px;font-weight:700;margin-top:2px">&#9742; 9612946550</div>
             </div>
+          </div>
+
+          <!-- Change Password -->
+          <div class="card" style="padding:24px;max-width:420px;margin-bottom:20px" id="s-change-pw-card">
+            <h4 style="color:var(--accent-dark);margin-bottom:4px"><i class="fas fa-key" style="margin-right:8px;color:var(--accent)"></i>Change Password</h4>
+            <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Update your login password.</p>
+            <div class="form-group"><label>New Password <span style="color:var(--danger)">*</span></label><input type="password" id="s-new-pw" placeholder="Min 6 characters"></div>
+            <div class="form-group"><label>Confirm Password <span style="color:var(--danger)">*</span></label><input type="password" id="s-confirm-pw" placeholder="Re-enter new password"></div>
+            <button class="btn btn-primary" onclick="changeOwnPassword('s-new-pw','s-confirm-pw')"><i class="fas fa-save"></i> Update Password</button>
           </div>
 
           <!-- Academic Intelligence Snapshot — populated by loadAcademicSnapshot() -->
@@ -1452,6 +1465,11 @@
           <div><div class="dash-username" style="text-align:right" id="t-header-name">—</div><div class="dash-role" id="t-header-role">Teacher</div></div>
           <div class="dash-avatar" id="t-header-avatar">T</div>
         </div>
+      </div>
+      <!-- Must-change-password banner -->
+      <div id="t-must-change-pw-banner" style="display:none;background:linear-gradient(90deg,#7c3aed,#6d28d9);color:#fff;padding:12px 20px;font-size:13px;font-weight:600;display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span><i class="fas fa-key" style="margin-right:8px"></i>You are using a temporary password. Please change it now to secure your account.</span>
+        <button onclick="showDash('t','t-profile',document.querySelector('#teacherSidebar button[onclick*=t-profile]'))" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:700">Change Now →</button>
       </div>
       <div class="dash-content">
         <div id="t-dashboard" class="dash-section active">

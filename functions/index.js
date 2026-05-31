@@ -5,6 +5,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
+const { getAuth } = require("firebase-admin/auth");
 
 initializeApp();
 setGlobalOptions({ maxInstances: 10, region: "asia-south1" });
@@ -703,5 +704,38 @@ exports.triggerDailyRoutine = onCall(
       throw new HttpsError("permission-denied", "Admin only.");
     const force = !(request.data && request.data.respectGates);
     return await runDailyRoutine("test", { force });
+  }
+);
+
+// ── CALLABLE: Admin sets a temp password for a user ───────────────────────
+exports.setTempPassword = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    // Must be signed in as admin
+    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+    const callerDoc = await db.collection("users").doc(request.auth.uid).get();
+    if (!callerDoc.exists || !["admin", "super_admin"].includes(callerDoc.data().role))
+      throw new HttpsError("permission-denied", "Admin only.");
+
+    const { uid, tempPassword } = request.data;
+    if (!uid || !tempPassword) throw new HttpsError("invalid-argument", "uid and tempPassword required.");
+    if (tempPassword.length < 6) throw new HttpsError("invalid-argument", "Password must be at least 6 characters.");
+
+    // Set the password via Admin SDK
+    await getAuth().updateUser(uid, { password: tempPassword });
+
+    // Flag the user doc so portal can prompt them to change it on next login
+    await db.collection("users").doc(uid).set({ mustChangePassword: true }, { merge: true });
+
+    // Log to audit
+    await db.collection("audit_log").add({
+      action: "Password Reset",
+      detail: `UID: ${uid} — temp password set by admin`,
+      performedBy: callerDoc.data().name || request.auth.token.email || "Admin",
+      uid: request.auth.uid,
+      timestamp: new Date().toISOString()
+    });
+
+    return { success: true };
   }
 );

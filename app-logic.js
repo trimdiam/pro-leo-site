@@ -3636,6 +3636,7 @@ function _resolveSubject(code, map) {
         loadStudentFees(),
         window.loadStudentDashWidgets && loadStudentDashWidgets(),
         window.loadAcademicSnapshot(studentId),
+        userData.mustChangePassword && window._showMustChangePwBanner && _showMustChangePwBanner("student"),
         (async function (studentId) {
           // Banner visibility: check the new report_cards collection (Project LEO).
           // The old marks/_FT.releasedToStudent flag belongs to the legacy system
@@ -5532,7 +5533,8 @@ function _arcCalcTotal(academics) {
         loadTeacherHomework(),
         loadTeacherNotices(),
         window.loadTeacherDashWidgets && loadTeacherDashWidgets(),
-        loadLeaveHistory());
+        loadLeaveHistory(),
+        userData.mustChangePassword && window._showMustChangePwBanner && _showMustChangePwBanner("teacher"));
     } catch (e) {
       showToast("⚠️ Teacher portal: " + e.message);
     }
@@ -5593,6 +5595,40 @@ function _arcCalcTotal(academics) {
       }
     } catch (e) {
       showToast("⚠️ Could not load profile: " + e.message);
+    }
+  }),
+  // Must-change-password banner
+  (window._showMustChangePwBanner = function(role) {
+    const id = role === "student" ? "s-must-change-pw-banner" : "t-must-change-pw-banner";
+    const el = document.getElementById(id);
+    if (el) el.style.display = "flex";
+  }),
+
+  // Student change password (no current password required — used after temp reset)
+  (window.changeOwnPassword = async function (newId, confirmId) {
+    const newPwd     = document.getElementById(newId)?.value?.trim() || "";
+    const confirmPwd = document.getElementById(confirmId)?.value?.trim() || "";
+    if (!newPwd || !confirmPwd) return void showToast("⚠️ Both fields are required.");
+    if (newPwd.length < 6) return void showToast("⚠️ Password must be at least 6 characters.");
+    if (newPwd !== confirmPwd) return void showToast("⚠️ Passwords do not match.");
+    const user = window._firebaseAuth?.currentUser;
+    if (!user) return void showToast("⚠️ Not logged in.");
+    try {
+      await updatePassword(user, newPwd);
+      // Clear mustChangePassword flag
+      await setDoc(doc(db, "users", user.uid), { mustChangePassword: false }, { merge: true });
+      document.getElementById(newId).value = "";
+      document.getElementById(confirmId).value = "";
+      // Hide the "you must change your password" banner if shown
+      const banner = document.getElementById("must-change-pw-banner");
+      if (banner) banner.style.display = "none";
+      showToast("✅ Password updated successfully!");
+    } catch(e) {
+      if (e.code === "auth/requires-recent-login") {
+        showToast("⚠️ Session expired. Please log out and log back in, then change your password.");
+      } else {
+        showToast("❌ " + e.message);
+      }
     }
   }),
   (window.teacherChangePassword = async function () {
@@ -8101,17 +8137,11 @@ async function _loadTeacherLeaves(teacherId) {
   }
 }
 async function resetAuthPasswordByUid(uid, email, newPassword) {
-  const {
-      initializeApp: initializeApp,
-      getApp: getApp,
-      getApps: getApps,
-    } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js"),
-    {
-      getAuth: getAuth,
-      signInWithEmailAndPassword: signInTemp,
-      updatePassword: updatePassword,
-    } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js");
-  throw new Error("NEEDS_CONSOLE_RESET");
+  // Call the setTempPassword Cloud Function
+  const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-functions.js");
+  const fns = getFunctions(window._firebaseApp, "asia-south1");
+  const setTempPassword = httpsCallable(fns, "setTempPassword");
+  await setTempPassword({ uid, tempPassword: newPassword });
 }
 async function createAuthAccountSafe(email, password) {
   const res = await fetch(
@@ -8549,23 +8579,7 @@ function idToEmailLocal(id) {
               "Account exists but no portal record found. Delete from Firebase Console and retry.",
             );
           uid = snap.docs[0].id;
-          try {
-            await resetAuthPasswordByUid();
-          } catch (re) {
-            if ("NEEDS_CONSOLE_RESET" === re.message)
-              return (
-                (document.getElementById("tlm-done-tid").textContent = tid),
-                (document.getElementById("tlm-done-pass").textContent =
-                  "(see instructions below)"),
-                (document.getElementById("tlm-success-box").style.display =
-                  "block"),
-                (document.getElementById("tlm-success-box").innerHTML =
-                  `<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;margin-top:8px;font-size:13px"><b>⚠️ Password Reset Required via Firebase Console</b><br>To reset this teacher's password:<br>1. Go to <a href="https://console.firebase.google.com/project/st-francis-school-a3e7e/authentication/users" target="_blank" style="color:#1a3a6b">Firebase Console → Authentication</a><br>2. Find <b>${loginEmail}</b><br>3. Click ⋮ → <b>Reset password</b> or set new password<br>Then share the new password with the teacher.</div>`),
-                void (document.getElementById("tlm-actions").style.display =
-                  "none")
-              );
-            throw re;
-          }
+          await resetAuthPasswordByUid(uid, loginEmail, password);
         }
       }
       (uid &&
@@ -8679,20 +8693,7 @@ function idToEmailLocal(id) {
               "A login account already exists for this student but no portal record was found. Delete the account from Firebase Console and try again.",
             );
           uid = snap.docs[0].id;
-          try {
-            await resetAuthPasswordByUid();
-          } catch (re) {
-            if ("NEEDS_CONSOLE_RESET" === re.message)
-              return (
-                (document.getElementById("slm-success-box").style.display =
-                  "block"),
-                (document.getElementById("slm-success-box").innerHTML =
-                  `<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;font-size:13px"><b>⚠️ Password Reset via Firebase Console</b><br>1. Go to <a href="https://console.firebase.google.com/project/st-francis-school-a3e7e/authentication/users" target="_blank" style="color:#1a3a6b">Firebase Console → Authentication</a><br>2. Find <b>${loginEmail}</b> → reset password<br>3. Share the new password with the student.</div>`),
-                void (document.getElementById("slm-actions").style.display =
-                  "none")
-              );
-            throw re;
-          }
+          await resetAuthPasswordByUid(uid, loginEmail, password);
         }
       }
       if (uid) {
