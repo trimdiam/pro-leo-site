@@ -7092,6 +7092,7 @@ function updateAttSummary() {
     if (!d) return void showToast("⚠️ Open a monthly record first.");
     showToast("⏳ Generating PDF…");
     try { await window.loadPortalLibs(); } catch(e) {}
+    await window._ensureJsPDF();
     if (!window.jspdf?.jsPDF) return void showToast("❌ PDF library failed to load. Check your internet and try again.");
     const { jsPDF: jsPDF } = window.jspdf,
       pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }),
@@ -9589,7 +9590,8 @@ function idToEmailLocal(id) {
         a.click();
         URL.revokeObjectURL(a.href);
       }),
-      (window.downloadMonthlyCollectionPDF = function () {
+      (window.downloadMonthlyCollectionPDF = async function () {
+        await window._ensureJsPDF();
         if (!window.jspdf?.jsPDF) return showToast("❌ PDF library not ready. Try again.");
         const { jsPDF } = window.jspdf;
         if (typeof new jsPDF().autoTable !== "function") return showToast("❌ PDF table plugin not ready.");
@@ -10242,6 +10244,7 @@ function idToEmailLocal(id) {
       }
     }),
       (window.printFeeReceipt = async function (txnId) {
+        await window._ensureJsPDF();
         if (!window.jspdf?.jsPDF) return showToast("❌ PDF library not ready. Try again.");
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
@@ -11384,6 +11387,7 @@ function idToEmailLocal(id) {
           (window.XLSX.utils.book_append_sheet(wb, ws, "Students"),
             window.XLSX.writeFile(wb, "student-records.xlsx"));
         } else if ("pdf" === format) {
+          await window._ensureJsPDF();
           if (!window.jspdf?.jsPDF)
             return void window.showToast?.("❌ PDF library not loaded.");
           const { jsPDF: jsPDF } = window.jspdf,
