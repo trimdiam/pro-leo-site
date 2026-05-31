@@ -507,3 +507,201 @@ exports.triggerPeriodReminder = onCall(
     return { sent: result.successCount, failed: result.failureCount, total: messages.length };
   }
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DAILY ROUTINE REMINDER — full-day timetable push to every teacher at 07:30
+// and 08:00 IST on working days (skipping holidays). Reads the Day Cycle from
+// settings/schoolDay.currentDay (never writes it). See docs/DAILY-ROUTINE-NOTIFICATIONS.md
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Extract the teacher assignment(s) from one routine slot.
+// Returns [{ initials, subject, className }] — two entries for a value/cate split.
+function extractSlotAssignments(s, subjects) {
+  const out = [];
+  if (s.slotType === "value-cate-split") {
+    const classes = (s.involvedClasses || []).join(" & ");
+    if (s.valueTeacher) out.push({ initials: String(s.valueTeacher).toUpperCase().trim(), subject: "Value Education", className: classes });
+    if (s.cateTeacher)  out.push({ initials: String(s.cateTeacher).toUpperCase().trim(),  subject: "Catechism",       className: classes });
+    return out;
+  }
+  const ini = (s.teacherInitials || "").toUpperCase().trim();
+  if (!ini) return out;
+  let subjectName;
+  if (Array.isArray(s.subjectCode))  subjectName = s.subjectCode.map(c => subjects[c] || c).join(" / ");
+  else if (s.subjectCode)            subjectName = subjects[s.subjectCode] || s.subjectCode;
+  else                               subjectName = "Class";
+  out.push({ initials: ini, subject: subjectName, className: s.className || "" });
+  return out;
+}
+
+// Highest configured period number (period1..periodN); defaults to 8.
+function maxPeriodFromTimings(timings) {
+  let max = 0;
+  for (let p = 1; p <= 12; p++) if (timings[`period${p}`]) max = p;
+  return max || 8;
+}
+
+// Build INITIALS → [{ period, subject, className, start, end }] for a whole day.
+async function buildDayTeacherSchedule(db, day, subjects, timings) {
+  const schedule = {};
+  const maxP = maxPeriodFromTimings(timings);
+  for (let p = 1; p <= maxP; p++) {
+    let slotsSnap;
+    try {
+      slotsSnap = await db.collection("routine").doc(String(day))
+        .collection("periods").doc(String(p)).collection("slots").get();
+    } catch (e) { continue; }
+    if (slotsSnap.empty) continue;
+    const t = timings[`period${p}`] || {};
+    slotsSnap.docs.forEach(doc => {
+      extractSlotAssignments(doc.data(), subjects).forEach(a => {
+        if (!a.initials) return;
+        (schedule[a.initials] || (schedule[a.initials] = [])).push({
+          period: p, subject: a.subject, className: a.className, start: t.start || "", end: t.end || "",
+        });
+      });
+    });
+  }
+  return schedule;
+}
+
+// Resolve a list of teacher INITIALS → { teacherId, firstName, token, ref }.
+// Chains teachers (initials→teacherId+name) → users (teacherId→fcmToken).
+async function resolveTeachers(db, initialsList) {
+  const teachersSnap = await db.collection("teachers").get();
+  const iniToTid = {}, iniToName = {};
+  teachersSnap.docs.forEach(doc => {
+    const t   = doc.data();
+    const ini = (t.initials || t.routineInitials || "").toUpperCase().trim();
+    const tid = (t.teacherId || t.loginId || doc.id || "").trim();
+    const nm  = (t.name || t.fullName || "").trim();
+    if (ini && tid) { iniToTid[ini] = tid; iniToName[ini] = nm.split(" ")[0] || nm || "Teacher"; }
+  });
+
+  const wanted = [];
+  for (const ini of initialsList) { const tid = iniToTid[ini]; if (tid) wanted.push({ ini, tid }); }
+
+  const tidToUser = {};
+  const tids = [...new Set(wanted.map(w => w.tid))];
+  for (let i = 0; i < tids.length; i += 30) {
+    const chunk = tids.slice(i, i + 30);
+    const us = await db.collection("users").where("teacherId", "in", chunk).get();
+    us.forEach(u => {
+      const d = u.data();
+      const tid = (d.teacherId || "").trim();
+      if (tid) tidToUser[tid] = { token: d.fcmToken || null, ref: u.ref, name: (d.name || "").split(" ")[0] };
+    });
+  }
+
+  const out = {};
+  for (const { ini, tid } of wanted) {
+    const u = tidToUser[tid];
+    out[ini] = {
+      teacherId: tid,
+      firstName: iniToName[ini] || (u && u.name) || "Teacher",
+      token: u ? u.token : null,
+      ref:   u ? u.ref   : null,
+    };
+  }
+  return out;
+}
+
+// Shared sender. slot is "07:30" | "08:00" | "test". opts.force bypasses the
+// enabled/working-day/holiday gates (used by the admin test button).
+async function runDailyRoutine(slot, opts = {}) {
+  const force  = !!opts.force;
+  const istNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const dateStr = `${istNow.getFullYear()}-${String(istNow.getMonth() + 1).padStart(2, "0")}-${String(istNow.getDate()).padStart(2, "0")}`;
+
+  const log = {
+    type: "daily_routine", slot, date: dateStr, day: null,
+    sent: 0, failed: 0, totalTeachers: 0, skipped: false, skipReason: null,
+    forced: force, at: new Date().toISOString(),
+  };
+  const writeLog = async () => { try { await db.collection("notification_logs").add(log); } catch (_) {} };
+
+  // ── Gates ──
+  const cfgSnap = await db.collection("settings").doc("routineNotify").get();
+  const cfg = cfgSnap.exists ? cfgSnap.data() : {};
+  if (!force && cfg.enabled === false) { log.skipped = true; log.skipReason = "disabled";        await writeLog(); return log; }
+  const workingDays = Array.isArray(cfg.workingDays) ? cfg.workingDays : [1, 2, 3, 4, 5];
+  if (!force && !workingDays.includes(istNow.getDay())) { log.skipped = true; log.skipReason = "not_working_day"; await writeLog(); return log; }
+
+  const holSnap  = await db.collection("holidays").doc("closures").get();
+  const holDates = holSnap.exists && Array.isArray(holSnap.data().dates) ? holSnap.data().dates : [];
+  if (!force && holDates.includes(dateStr)) { log.skipped = true; log.skipReason = "holiday"; await writeLog(); return log; }
+
+  // ── Day cycle (read-only) ──
+  const daySnap = await db.collection("settings").doc("schoolDay").get();
+  if (!daySnap.exists) { log.skipped = true; log.skipReason = "no_day_set"; await writeLog(); return log; }
+  const day = Number(daySnap.data().currentDay) || 1;
+  log.day = day;
+
+  // ── Timetable + subjects ──
+  const [timingsSnap, subjectsSnap] = await Promise.all([
+    db.collection("settings").doc("periodTimings").get(),
+    db.collection("subjects").get(),
+  ]);
+  const timings = timingsSnap.exists ? timingsSnap.data() : {};
+  const subjects = {};
+  subjectsSnap.docs.forEach(d => { const sd = d.data(); subjects[sd.code || d.id] = sd.name || sd.code || d.id; });
+
+  const schedule = await buildDayTeacherSchedule(db, day, subjects, timings);
+  const initialsList = Object.keys(schedule);
+  if (initialsList.length === 0) { log.skipped = true; log.skipReason = "no_routine"; await writeLog(); return log; }
+  log.totalTeachers = initialsList.length;
+
+  // ── Resolve tokens + build per-teacher full-day messages ──
+  const resolved = await resolveTeachers(db, initialsList);
+  const messages = [], refs = [];
+  for (const ini of initialsList) {
+    const info = resolved[ini];
+    if (!info || !info.token) continue;
+    const periods = schedule[ini].sort((a, b) => a.period - b.period);
+    const lines = periods.map(p =>
+      `P${p.period}${p.start && p.end ? ` ${p.start}–${p.end}` : ""} · ${p.subject}${p.className ? ` · Class ${p.className}` : ""}`);
+    const body = `Today is Day ${day}. Good morning, ${info.firstName}.\n${lines.join("\n")}`;
+    messages.push({
+      token: info.token,
+      notification: { title: "Today's Teaching Routine", body },
+      android: { priority: "high", notification: { channelId: "period_reminders", sound: "default" } },
+      data: { type: "daily_routine", screen: "daily_routine", day: String(day), click_action: "FLUTTER_NOTIFICATION_CLICK" },
+    });
+    refs.push(info.ref);
+  }
+
+  if (messages.length === 0) { log.skipped = true; log.skipReason = "no_tokens"; await writeLog(); return log; }
+
+  const result = await fcm.sendEach(messages);
+  await cleanupAfterMulticast(result, refs);
+  log.sent = result.successCount;
+  log.failed = result.failureCount;
+  await writeLog();
+  console.log(`[dailyRoutine ${slot}] Day ${day}: sent ${result.successCount}/${messages.length} (teachers with routine: ${initialsList.length})`);
+  return log;
+}
+
+// ── SCHEDULED: 07:30 IST daily ────────────────────────────────────────────
+exports.dailyRoutineMorning1 = onSchedule(
+  { schedule: "30 7 * * *", timeZone: "Asia/Kolkata", region: "asia-south1" },
+  async () => { await runDailyRoutine("07:30"); }
+);
+
+// ── SCHEDULED: 08:00 IST daily ────────────────────────────────────────────
+exports.dailyRoutineMorning2 = onSchedule(
+  { schedule: "0 8 * * *", timeZone: "Asia/Kolkata", region: "asia-south1" },
+  async () => { await runDailyRoutine("08:00"); }
+);
+
+// ── CALLABLE: admin "Send test now" — forces a send ignoring the gates ────
+exports.triggerDailyRoutine = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+    const u = await db.collection("users").doc(request.auth.uid).get();
+    if (!u.exists || u.data().role !== "admin")
+      throw new HttpsError("permission-denied", "Admin only.");
+    const force = !(request.data && request.data.respectGates);
+    return await runDailyRoutine("test", { force });
+  }
+);
