@@ -3864,14 +3864,17 @@
           <div class="card" style="padding:24px;margin-bottom:20px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
               <h4 style="color:var(--accent-dark)"><i class="fas fa-chart-bar" style="margin-right:8px;color:var(--accent)"></i>All Transactions</h4>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
                 <select id="o-report-filter" onchange="loadOfficeReports()" style="padding:6px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px">
                   <option value="all">All</option>
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
                 </select>
+                <input type="date" id="o-report-from" onchange="loadOfficeReports()" style="padding:6px 10px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px" title="From date">
+                <input type="date" id="o-report-to" onchange="loadOfficeReports()" style="padding:6px 10px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px" title="To date">
                 <button class="btn btn-sm btn-outline" onclick="loadOfficeReports()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <button class="btn btn-sm btn-outline" onclick="exportOfficeReports()" title="Export to CSV"><i class="fas fa-download"></i> Export</button>
               </div>
             </div>
             <div class="table-wrap">

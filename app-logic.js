@@ -9524,26 +9524,19 @@ function idToEmailLocal(id) {
         if (!tbody) return;
         tbody.innerHTML =
           '<tr><td colspan="8" style="text-align:center;padding:14px"><i class="fas fa-spinner fa-spin"></i></td></tr>';
-        const filter =
-          document.getElementById("o-report-filter")?.value || "all";
+        const filter = document.getElementById("o-report-filter")?.value || "all";
+        const fromDate = document.getElementById("o-report-from")?.value || "";
+        const toDate = document.getElementById("o-report-to")?.value || "";
         try {
-          const snap =
-            "all" === filter
-              ? await getDocs(
-                  query(
-                    collection(db, "fee_transactions"),
-                    orderBy("createdAt", "desc"),
-                    limit(60),
-                  ),
-                )
-              : await getDocs(
-                  query(
-                    collection(db, "fee_transactions"),
-                    where("status", "==", filter),
-                    orderBy("createdAt", "desc"),
-                    limit(60),
-                  ),
-                );
+          let q = collection(db, "fee_transactions");
+          const constraints = [];
+          if (filter !== "all") constraints.push(where("status", "==", filter));
+          if (fromDate) constraints.push(where("date", ">=", fromDate));
+          if (toDate) constraints.push(where("date", "<=", toDate));
+          constraints.push(orderBy("date", "desc"));
+          constraints.push(limit(200));
+          const snap = await getDocs(query(q, ...constraints));
+          window._officeReportDocs = snap.docs.map(d => d.data());
           if (snap.empty)
             return void (tbody.innerHTML =
               '<tr><td colspan="8" style="text-align:center;padding:14px;color:var(--text-light)">No records found.</td></tr>');
@@ -9562,6 +9555,27 @@ function idToEmailLocal(id) {
         } catch (e) {
           tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
         }
+      }),
+      (window.exportOfficeReports = function () {
+        const rows = window._officeReportDocs || [];
+        if (!rows.length) return showToast("No data to export.");
+        const header = ["Date","Student","Class","Amount","Mode","Receipt No.","Staff","Status"];
+        const csv = [header, ...rows.map(t => [
+          t.date || "",
+          t.studentName || "",
+          t.studentClass || "",
+          t.amount || "",
+          t.paymentMode || "",
+          t.receiptNo || "",
+          t.staffName || "",
+          t.status || ""
+        ].map(v => `"${String(v).replace(/"/g,'""')}"`))].map(r => r.join(",")).join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `fee-report-${new Date().toISOString().split("T")[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
       }),
       (window.loadClasswiseDueReport = async function () {
         const cls = document.getElementById("o-classwise-filter")?.value || "",
