@@ -3286,6 +3286,14 @@
           </div>
         </div>
         <div id="a-reportcards" class="dash-section" data-rc-admin-init="false">
+          <!-- Pipeline overview -->
+          <div class="card" style="padding:24px;margin-bottom:18px" id="arc-pipeline-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+              <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-tasks" style="margin-right:8px;color:var(--accent)"></i>Report Card Pipeline</h4>
+              <button class="btn btn-sm btn-outline" onclick="loadRCPipeline()"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
+            <div id="arc-pipeline-body"><p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px"><i class="fas fa-spinner fa-spin"></i> Loading pipeline…</p></div>
+          </div>
           <div class="card" style="padding:24px;margin-bottom:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
               <div>

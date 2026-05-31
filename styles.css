@@ -2214,6 +2214,53 @@ tr:hover td {
   70%  { transform: scale(1.25); }
   100% { transform: scale(1); }
 }
+/* ── Report Card Pipeline ── */
+.arc-pipeline-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 1fr 1fr 1fr 180px;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.arc-pipeline-row:last-child { border-bottom: none; }
+.arc-pipeline-header {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-light);
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border);
+}
+.arc-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.arc-step.done   { color: var(--success); }
+.arc-step.pending { color: var(--warning); }
+.arc-step.waiting { color: var(--text-light); }
+.arc-next-action {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+}
+.arc-next-action.act   { background: var(--accent); color: #fff; }
+.arc-next-action.done  { background: #d1fae5; color: #065f46; cursor: default; }
+.arc-next-action.wait  { background: var(--bg); color: var(--text-light); cursor: default; border: 1px solid var(--border); }
+@media (max-width: 768px) {
+  .arc-pipeline-row { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .arc-pipeline-header { display: none; }
+}
+
 /* ── Teacher Today at a Glance chips ── */
 .t-glance-chip {
   display: inline-flex;

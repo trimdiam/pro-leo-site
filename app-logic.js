@@ -2014,6 +2014,7 @@ window.showDash = function (prefix, sectionId, btn) {
     "s" === prefix &&
       window.syncStudentBottomNav &&
       window.syncStudentBottomNav(sectionId),
+    "a-reportcards" === sectionId && window.loadRCPipeline && loadRCPipeline(),
     "a-events" === sectionId && loadAdminEvents(),
     "a-announcements" === sectionId && loadAdminAnnouncements(),
     "a-why-choose" === sectionId && loadAdminWhyChooseUs(),
@@ -5564,6 +5565,102 @@ function _arcCalcTotal(academics) {
       console.warn("loadLeaveQuota:", e.message);
     }
   }),
+  (window.loadRCPipeline = async function () {
+    const wrap = document.getElementById("arc-pipeline-body");
+    if (!wrap) return;
+    wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      // Get all classes
+      const classSnap = await getDocs(collection(db, "classes"));
+      const seen = new Set(), classes = [];
+      classSnap.forEach(d => {
+        const base = d.id.split("-")[0].trim();
+        if (!seen.has(base)) { seen.add(base); classes.push(base); }
+      });
+      classes.sort((a, b) => a.length - b.length || a.localeCompare(b));
+      if (!classes.length) {
+        wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">No classes found.</p>';
+        return;
+      }
+
+      // Build pipeline data for each class
+      const rows = await Promise.all(classes.map(async cls => {
+        try {
+          const [ftSnap, hySnap] = await Promise.all([
+            getDocs(collection(db, "marks", `${cls}_FT`, "students")),
+            getDocs(collection(db, "marks", `${cls}_HY`, "students")),
+          ]);
+          const hasData = !ftSnap.empty || !hySnap.empty;
+          if (!hasData) return { cls, hasData: false };
+
+          const students = [];
+          ftSnap.forEach(d => students.push({ id: d.id, ...d.data() }));
+          const total = students.length;
+          const locked = students.filter(s => s.status === "locked").length;
+          const allLocked = total > 0 && locked === total;
+          // Decisions: students who need a manual decision (borderline/fail and no decision set)
+          const needDecision = students.filter(s => {
+            if (s.status !== "locked") return false;
+            const autoPass = s.academics && Object.values(s.academics).every(v => !v || v.total >= 30);
+            return !autoPass && !s.adminDecision;
+          });
+          const decisionsComplete = allLocked && needDecision.length === 0;
+          const released = students.filter(s => s.releasedToStudent === true).length;
+          const allReleased = allLocked && released === locked;
+          return { cls, hasData, total, locked, allLocked, needDecision: needDecision.length, decisionsComplete, released, allReleased };
+        } catch(e) { return { cls, hasData: false, error: true }; }
+      }));
+
+      // Render
+      const step = (done, label, icon) =>
+        `<span class="arc-step ${done ? 'done' : 'waiting'}">
+          <i class="fas ${done ? 'fa-check-circle' : 'fa-circle'}" style="font-size:13px"></i>${label}
+        </span>`;
+
+      let html = `<div class="arc-pipeline-row arc-pipeline-header">
+        <div>Class</div><div>Marks Entered</div><div>Records Locked</div><div>Decisions Made</div><div>Released</div><div>Next Action</div>
+      </div>`;
+
+      rows.forEach(r => {
+        if (!r.hasData) {
+          html += `<div class="arc-pipeline-row">
+            <strong>Class ${r.cls}</strong>
+            ${step(false,"Not started","")}<div>—</div><div>—</div><div>—</div>
+            <span class="arc-next-action wait">⬜ No data yet</span>
+          </div>`;
+          return;
+        }
+        const s1 = true; // has data
+        const s2 = r.allLocked;
+        const s3 = r.decisionsComplete;
+        const s4 = r.allReleased;
+
+        let nextBtn = "";
+        if (s4) {
+          nextBtn = `<span class="arc-next-action done">✅ All done</span>`;
+        } else if (s3) {
+          nextBtn = `<button class="arc-next-action act" onclick="document.getElementById('arc-class-select').value=document.getElementById('arc-class-select').querySelector('[value=\\'${r.cls}\\']')?.value||'${r.cls}';loadAdminReportCards();document.getElementById('arc-release-all-btn').click()">🚀 Release Now</button>`;
+        } else if (s2) {
+          nextBtn = `<button class="arc-next-action act" onclick="document.getElementById('arc-class-select').value='${r.cls}';loadAdminReportCards()">✏️ Set Decisions (${r.needDecision})</button>`;
+        } else if (s1) {
+          nextBtn = `<span class="arc-next-action wait">⏳ Awaiting teacher lock (${r.locked}/${r.total})</span>`;
+        }
+
+        html += `<div class="arc-pipeline-row">
+          <strong>Class ${r.cls}</strong>
+          ${step(s1, `${r.total} students`, "fa-check-circle")}
+          ${step(s2, s2 ? `${r.locked} locked` : `${r.locked}/${r.total}`, "fa-lock")}
+          ${step(s3, s3 ? "Done" : r.needDecision > 0 ? `${r.needDecision} pending` : "N/A", "fa-user-check")}
+          ${step(s4, s4 ? "All released" : r.released > 0 ? `${r.released}/${r.locked}` : "Not yet", "fa-unlock")}
+          ${nextBtn}
+        </div>`;
+      });
+
+      wrap.innerHTML = html;
+    } catch(e) {
+      wrap.innerHTML = `<p style="color:var(--danger);text-align:center;padding:12px">❌ ${e.message}</p>`;
+    }
+  }),
   (window.loadAdminReportCards = async function () {
     await (async function () {
       const sel = document.getElementById("arc-class-select");
@@ -5884,7 +5981,8 @@ function updateAttSummary() {
         showToast(
           `✅ ${toRelease.length} report card(s) released. ${toHold.length} withheld.` + (_auditLog("Report Cards Released", `${toRelease.length} released, ${toHold.length} withheld — Class ${window._arcRMClassId || "?"}`), ""),
         ),
-        loadAdminReportCards());
+        loadAdminReportCards(),
+        window.loadRCPipeline && loadRCPipeline());
     } catch (e) {
       showToast("❌ " + e.message);
     } finally {
