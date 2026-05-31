@@ -11309,6 +11309,8 @@ function idToEmailLocal(id) {
       }
     }),
       (window.srFilter = function () {
+        clearTimeout(window._srFilterTimer);
+        window._srFilterTimer = setTimeout(function () {
         const q = (
             document.getElementById("sr-search")?.value || ""
           ).toLowerCase(),
@@ -11339,6 +11341,7 @@ function idToEmailLocal(id) {
           }),
           (_srPage = 1),
           srRender());
+        }, 200);
       }),
       (window.srSort = function (key) {
         ((_srSortDir = _srSortKey === key ? -_srSortDir : 1),
@@ -11981,17 +11984,20 @@ function taEsc(s) {
     }
   }),
   (window.filterTAList = function () {
-    const q = (document.getElementById("ta-search").value || "").toLowerCase();
-    renderTAList(
-      (window._taAllTeachers || []).filter(
-        (t) =>
-          (t.name || "").toLowerCase().includes(q) ||
-          (t.email || "").toLowerCase().includes(q) ||
-          (t.assignments || []).some((a) =>
-            (a.subjectLabel || "").toLowerCase().includes(q),
-          ),
-      ),
-    );
+    clearTimeout(window._taFilterTimer);
+    window._taFilterTimer = setTimeout(function () {
+      const q = (document.getElementById("ta-search")?.value || "").toLowerCase();
+      renderTAList(
+        (window._taAllTeachers || []).filter(
+          (t) =>
+            (t.name || "").toLowerCase().includes(q) ||
+            (t.email || "").toLowerCase().includes(q) ||
+            (t.assignments || []).some((a) =>
+              (a.subjectLabel || "").toLowerCase().includes(q),
+            ),
+        ),
+      );
+    }, 200);
   }),
   (window.openLoginCheckPanel = async function () {
     ((document.getElementById("login-check-overlay").style.display = "block"),
