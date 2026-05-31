@@ -41,3 +41,20 @@ Spawn rules:
 - Dynamic pages / auth walls → agent-browser CLI
 - PDFs → pdftotext (not Read tool)
 - Repeated fetch patterns → wrap as reusable tool
+
+---
+
+## Context Memory Management
+
+1. **80% Rule:** When context usage reaches ~80%, proactively run `/consolidate-memory` before continuing. Do not wait for the user to ask.
+
+2. **Before compressing:** Always update memory files with any decisions, architectural changes, or pending work from the current session first. Never compress and lose context.
+
+3. **What to save before compressing:**
+   - Any new Firestore collections or schema changes
+   - Any new Cloud Functions added or modified
+   - Pending tasks / next steps explicitly mentioned by the user
+   - Any bugs fixed with non-obvious root causes (so they aren't re-introduced)
+   - Changes to auth, routing, or SW behaviour
+
+4. **What NOT to save:** Completed one-off tasks with no lasting implication, generic code snippets re-findable in the codebase, anything already documented in a work log file in `pro-leo-site`.
