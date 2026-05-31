@@ -3407,21 +3407,35 @@ tr:hover td {
   .tp-assign-table tr {
     display: block;
     border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 10px;
-    padding: 10px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    padding: 14px;
+    background: var(--card-bg);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   }
   .tp-assign-table td {
     display: flex;
+    align-items: center;
     justify-content: space-between;
     border: none;
-    padding: 4px 0;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text);
+  }
+  .tp-assign-table tr td:last-child {
+    border-bottom: none;
+    padding-top: 10px;
   }
   .tp-assign-table td::before {
     content: attr(data-label);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-light);
     font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    margin-right: 12px;
   }
   #page-admin-dash .dash-content {
     padding: 12px;
