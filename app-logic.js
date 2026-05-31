@@ -481,20 +481,38 @@ window._handleAuthUser = _handleAuthUser;
     } else {
       // Firebase can fire onAuthStateChanged(null) transiently while restoring
       // auth state from IndexedDB — especially on return from a sub-app page
-      // (assessment-app, routine-app). If we clear sf_session_role on the
-      // first null, the user is bounced to home and has to log in again even
-      // though their session is still valid.
+      // (assessment-app, routine-app). Clearing sf_session_role on a transient
+      // null bounces an active user back to the login screen even though their
+      // session is still valid. A fixed 2s defer loses that race on slow
+      // devices where the restore takes longer than 2s.
       //
-      // Defer the clear by 2s and only execute if auth.currentUser is STILL
-      // null at that point (i.e. truly signed out, not just slow restore).
-      setTimeout(() => {
-        if (auth.currentUser) return; // user restored — ignore transient null
+      // Three cases:
+      //   • Deliberate logout (flag set by the logout wrapper) → clear now.
+      //   • No cached session (public visitor — no sf_session_role) → clear now,
+      //     so they aren't made to wait behind the spinner.
+      //   • Cached session + transient null → a genuine sign-out keeps
+      //     currentUser null forever, while a transient null resolves within a
+      //     moment. Poll for up to 6s and only clear if the user never returns.
+      const _doClearSession = () => {
         window._officePortalLoaded = !1;
-        try {
-          localStorage.removeItem("sf_session_role");
-        } catch (e) {}
+        try { localStorage.removeItem("sf_session_role"); } catch (e) {}
         window._hideAuthOverlay && window._hideAuthOverlay();
-      }, 2000);
+      };
+      let _hadSession = !1;
+      try { _hadSession = !!localStorage.getItem("sf_session_role"); } catch (e) {}
+      if (window._deliberateSignOut || !_hadSession) {
+        window._deliberateSignOut = !1;
+        _doClearSession();
+      } else {
+        let _tries = 0;
+        const _pollId = setInterval(() => {
+          if (auth.currentUser) { clearInterval(_pollId); return; } // restored — ignore transient null
+          if (++_tries >= 12) {                                     // 12 × 500ms = 6s, still null
+            clearInterval(_pollId);
+            if (!auth.currentUser) _doClearSession();
+          }
+        }, 500);
+      }
     }
   }),
   (window._loginRole = "student"));
@@ -12008,6 +12026,9 @@ window.loadTeacherPortal = async function (user) {
 
 const _origLogout = window.logout;
 window.logout = function () {
+  // Mark this as a deliberate sign-out so the onAuthStateChanged(null) branch
+  // clears the session immediately instead of polling for a transient-null restore.
+  window._deliberateSignOut = !0;
   (_tpAssignUnsubscribe &&
     (_tpAssignUnsubscribe(), (_tpAssignUnsubscribe = null)),
     (window._tpAssignLoaded = !1),
