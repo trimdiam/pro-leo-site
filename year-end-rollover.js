@@ -16,7 +16,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
-  collection, getDocs, getCountFromServer, doc, getDoc, setDoc, writeBatch
+  collection, getDocs, getCountFromServer, doc, getDoc, setDoc, writeBatch, query, where
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
 
 const BATCH_LIMIT = 400; // Firestore hard cap is 500 ops/batch; stay clear of it.
@@ -389,24 +389,71 @@ export async function runPromotion(db, fromYear, toYear, onProgress) {
   onProgress && onProgress(
     `Prepared ${ops.length} write op(s) across ${summary.total} student(s).`, 'dim');
   await runBatched(db, ops, onProgress);
+
+  // Sync users.class to match the promoted students.class.
+  // users docs are keyed by Firebase Auth UID and have a `studentId` field.
+  // We query in chunks of 30 (Firestore `in` limit) across all studentIds.
+  onProgress && onProgress(`\nSyncing users collection…`, 'cyan');
+  const newClassBySid = {};
+  (await getDocs(collection(db, 'students'))).forEach(d => {
+    const s = d.data();
+    const sid = s.studentId || d.id;
+    newClassBySid[sid] = s.class || '';
+  });
+  const sids = Object.keys(newClassBySid);
+  const userOps = [];
+  for (let i = 0; i < sids.length; i += 30) {
+    const chunk = sids.slice(i, i + 30);
+    const uSnap = await getDocs(query(collection(db, 'users'), where('studentId', 'in', chunk)));
+    uSnap.forEach(d => {
+      const sid = d.data().studentId;
+      const newClass = newClassBySid[sid];
+      if (newClass !== undefined) {
+        userOps.push({ type: 'update', ref: doc(db, 'users', d.id), data: { class: newClass } });
+      }
+    });
+  }
+  if (userOps.length > 0) {
+    await runBatched(db, userOps, onProgress);
+    onProgress && onProgress(`   users synced: ${userOps.length} doc(s) updated`, 'green');
+  } else {
+    onProgress && onProgress(`   users: no linked accounts found`, 'dim');
+  }
+
   return summary;
 }
 
 // Re-read students and confirm the promotion landed cleanly.
-// ok === true means no non-detained graduate remains in `students`.
+// ok === true means no non-detained graduate remains in `students` and users are synced.
 export async function verifyPromotion(db, toYear) {
   const sSnap = await getDocs(collection(db, 'students'));
   let onNewYear = 0, leftover = 0, stuckGraduates = 0;
+  const classBySid = {};
   sSnap.forEach(d => {
     const s = d.data();
+    const sid = s.studentId || d.id;
+    classBySid[sid] = s.class || '';
     if (s.academicYear === toYear) onNewYear++; else leftover++;
     const { graduate } = nextClass(s.class);
     if (graduate && s.promotionStatus !== 'DETAINED') stuckGraduates++;
   });
   const alumni = await safeCount(db, ALUMNI_COLLECTION);
+
+  // Check users are in sync
+  const sids = Object.keys(classBySid);
+  let usersOutOfSync = 0;
+  for (let i = 0; i < sids.length; i += 30) {
+    const chunk = sids.slice(i, i + 30);
+    const uSnap = await getDocs(query(collection(db, 'users'), where('studentId', 'in', chunk)));
+    uSnap.forEach(d => {
+      const u = d.data();
+      if (u.class !== classBySid[u.studentId]) usersOutOfSync++;
+    });
+  }
+
   return {
-    ok: stuckGraduates === 0,
-    total: sSnap.size, onNewYear, leftover, stuckGraduates, alumni,
+    ok: stuckGraduates === 0 && usersOutOfSync === 0,
+    total: sSnap.size, onNewYear, leftover, stuckGraduates, alumni, usersOutOfSync,
   };
 }
 
