@@ -525,7 +525,7 @@ async function renderSubject(container, className, month) {
           return;
         }
 
-        const drillData = getSubjectDrillDown(className, s.subject_id, criteriaArray);
+        const drillData = await getSubjectDrillDown(className, s.subject_id, criteriaArray);
         renderSubjectDrillDown(drillContainer, drillData);
       } catch (err) {
         console.error('Drill-down error:', err);

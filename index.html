@@ -1098,8 +1098,8 @@
         <button onclick="showDash('s','s-profile',this)"><i class="fas fa-user"></i> My Profile</button>
         <button onclick="showDash('s','s-attendance',this)"><i class="fas fa-calendar-check"></i> Attendance</button>
         <button onclick="showDash('s','s-routine',this)"><i class="fas fa-clock"></i> My Routine</button>
-        <button onclick="showDash('s','s-homework',this)"><i class="fas fa-book-open"></i> Homework</button>
-        <button onclick="showDash('s','s-notices',this)"><i class="fas fa-bullhorn"></i> Notices</button>
+        <button onclick="showDash('s','s-homework',this);window._clearStudentBadge&&_clearStudentBadge('hw')"><i class="fas fa-book-open"></i> Homework<span class="s-nav-badge" id="s-badge-hw-sidebar" style="display:none"></span></button>
+        <button onclick="showDash('s','s-notices',this);window._clearStudentBadge&&_clearStudentBadge('notices')"><i class="fas fa-bullhorn"></i> Notices<span class="s-nav-badge" id="s-badge-notices-sidebar" style="display:none"></span></button>
         <button onclick="showDash('s','s-fees',this)"><i class="fas fa-money-bill-wave"></i> Fees</button>
         <button onclick="showDash('s','s-exams',this);window._loadStudentExamSchedule&&window._loadStudentExamSchedule()"><i class="fas fa-calendar-check"></i> Exam Schedule</button>
         <button onclick="showDash('s','s-reportcards',this);loadStudentReportCards()"><i class="fas fa-file-alt"></i> Report Card</button>
@@ -1265,6 +1265,11 @@
               <tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading attendance log…</td></tr>
             </tbody></table></div>
           </div>
+          <div class="card" style="padding:24px" id="s-att-dates-card">
+            <h4 style="color:var(--accent-dark);margin-bottom:4px"><i class="fas fa-calendar-times" style="margin-right:8px;color:var(--danger)"></i>Absent & Late Dates</h4>
+            <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Dates recorded as absent or late this year. Contact your class teacher if you spot an error.</p>
+            <div id="s-att-dates-wrap"><i class="fas fa-spinner fa-spin" style="color:var(--text-light)"></i> Loading…</div>
+          </div>
         </div>
         <div id="s-routine" class="dash-section">
           <div class="card" style="padding:24px">
@@ -1368,8 +1373,9 @@
     <button data-section="s-attendance" onclick="navStudentTo('s-attendance')">
       <i class="fas fa-calendar-check"></i><span>Attendance</span>
     </button>
-    <button data-section="s-homework" onclick="navStudentTo('s-homework')">
+    <button data-section="s-homework" onclick="navStudentTo('s-homework');window._clearStudentBadge&&_clearStudentBadge('hw')" style="position:relative">
       <i class="fas fa-book-open"></i><span>Homework</span>
+      <span class="s-nav-badge s-bottom-badge" id="s-badge-hw-bottom" style="display:none"></span>
     </button>
     <button data-section="s-fees" onclick="navStudentTo('s-fees')">
       <i class="fas fa-money-bill-wave"></i><span>Fees</span>
@@ -1425,6 +1431,14 @@
             <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-book-open"></i></div><div><div class="dash-stat-val" id="t-stat-hw">—</div><div class="dash-stat-label">Homeworks Posted</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon green"><i class="fas fa-calendar-check"></i></div><div><div class="dash-stat-val" id="t-stat-class">—</div><div class="dash-stat-label">My Class</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon blue"><i class="fas fa-chalkboard"></i></div><div><div class="dash-stat-val" id="t-stat-subjects" style="font-size:0.85rem;line-height:1.2">—</div><div class="dash-stat-label">Subject(s)</div></div></div>
+          </div>
+          <!-- ── Today at a Glance ── -->
+          <div class="card" style="padding:20px;margin-bottom:18px" id="t-today-glance">
+            <h4 style="color:var(--accent-dark);margin:0 0 14px"><i class="fas fa-sun" style="margin-right:8px;color:var(--accent)"></i>Today at a Glance <span id="t-glance-date" style="font-size:13px;font-weight:400;color:var(--text-light);margin-left:6px"></span></h4>
+            <div style="display:flex;flex-wrap:wrap;gap:12px" id="t-glance-items">
+              <div class="t-glance-chip" id="t-glance-att"><i class="fas fa-spinner fa-spin"></i> Checking attendance…</div>
+              <div class="t-glance-chip" id="t-glance-hw"><i class="fas fa-spinner fa-spin"></i> Checking homework…</div>
+            </div>
           </div>
           <div class="grid-2">
             <div class="card" style="padding:24px">
@@ -1703,6 +1717,22 @@
       <i class="fas fa-user"></i><span>Profile</span>
     </button>
   </nav>
+  <!-- ── Teacher: Student Profile Modal ── -->
+  <div id="t-student-profile-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(44,31,14,0.55);backdrop-filter:blur(3px);overflow-y:auto;padding:24px 16px" onclick="if(event.target===this)closeTStudentProfile()">
+    <div style="max-width:520px;margin:0 auto;background:var(--card-bg);border-radius:16px;padding:28px;position:relative">
+      <button onclick="closeTStudentProfile()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-light)">✕</button>
+      <div style="text-align:center;margin-bottom:20px">
+        <div id="tsp-avatar" style="width:64px;height:64px;border-radius:50%;background:var(--accent);color:#fff;font-size:24px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 10px">—</div>
+        <h3 id="tsp-name" style="margin:0;font-family:var(--font-head);color:var(--text)">—</h3>
+        <p id="tsp-meta" style="margin:4px 0 0;font-size:13px;color:var(--text-light)">—</p>
+      </div>
+      <div id="tsp-body" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px"></div>
+      <div id="tsp-att-section" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="font-weight:700;color:var(--accent-dark);margin-bottom:10px"><i class="fas fa-calendar-check" style="margin-right:6px"></i>Attendance This Year</div>
+        <div id="tsp-att-body" style="color:var(--text-light);font-size:13px"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ================================================================

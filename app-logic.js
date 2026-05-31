@@ -1937,6 +1937,28 @@ async function loadAdminContacts() {
       }
   }));
 const _origShowDash = window.showDash;
+// ── Student notification badge helpers ────────────────────────────────────────
+window._updateStudentBadge = function (key, count) {
+  const ids = key === 'hw'
+    ? ['s-badge-hw-sidebar', 's-badge-hw-bottom']
+    : ['s-badge-notices-sidebar'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (count > 0) {
+      el.textContent = count > 99 ? '99+' : count;
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+};
+window._clearStudentBadge = function (key) {
+  // Save the timestamp they last viewed this section
+  try { localStorage.setItem('s_' + key + '_last_seen', new Date().toISOString()); } catch(e) {}
+  window._updateStudentBadge(key, 0);
+};
+
 window.showDash = function (prefix, sectionId, btn) {
   if (
     (_origShowDash(prefix, sectionId, btn),
@@ -4486,6 +4508,64 @@ function _arcCalcTotal(academics) {
       }
     }
   }),
+  (window.loadTeacherGlance = async function () {
+    const attEl = document.getElementById("t-glance-att"),
+      hwEl  = document.getElementById("t-glance-hw"),
+      dateEl = document.getElementById("t-glance-date");
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+    if (dateEl) dateEl.textContent = today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+
+    // 1. Attendance check
+    const cls = window._currentTeacherClass || window._attClass || "";
+    if (attEl) {
+      if (!cls) {
+        attEl.className = "t-glance-chip warn";
+        attEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> No class assigned';
+      } else {
+        try {
+          const attDoc = await getDoc(doc(db, "attendance_daily", `${cls}_${todayStr}`));
+          if (attDoc.exists()) {
+            attEl.className = "t-glance-chip done";
+            attEl.innerHTML = '<i class="fas fa-check-circle"></i> Attendance marked today';
+          } else {
+            attEl.className = "t-glance-chip alert";
+            attEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Attendance not marked yet — <a href="javascript:void(0)" onclick="showDash('t','t-attendance',document.querySelector('#teacherSidebar button[onclick*=t-attendance]'))" style="color:inherit;text-decoration:underline">Mark now</a>`;
+          }
+        } catch(e) {
+          attEl.className = "t-glance-chip warn";
+          attEl.innerHTML = '<i class="fas fa-question-circle"></i> Attendance status unknown';
+        }
+      }
+    }
+
+    // 2. Homework count
+    if (hwEl) {
+      if (!cls) {
+        hwEl.className = "t-glance-chip info";
+        hwEl.innerHTML = '<i class="fas fa-book-open"></i> —';
+      } else {
+        try {
+          const hwSnap = await getDocs(query(collection(db, "homework"), where("class", "==", cls), limit(50)));
+          const nowStr = todayStr;
+          const pending = hwSnap.docs.filter(d => {
+            const due = d.data().dueDate || "";
+            return due >= nowStr;
+          }).length;
+          if (pending === 0) {
+            hwEl.className = "t-glance-chip done";
+            hwEl.innerHTML = '<i class="fas fa-check-circle"></i> No pending homework';
+          } else {
+            hwEl.className = "t-glance-chip info";
+            hwEl.innerHTML = `<i class="fas fa-book-open"></i> ${pending} homework item${pending > 1 ? 's' : ''} pending`;
+          }
+        } catch(e) {
+          hwEl.className = "t-glance-chip warn";
+          hwEl.innerHTML = '<i class="fas fa-book-open"></i> Homework status unknown';
+        }
+      }
+    }
+  }),
   (window.loadTeacherDashWidgets = async function () {
     const ini = await _resolveTeacherInitials(),
       schedEl = document.getElementById("t-dash-schedule");
@@ -4498,7 +4578,8 @@ function _arcCalcTotal(academics) {
         "t-dash-notices",
         (aud) => "all" === aud || "teachers" === aud || "both" === aud,
       ),
-      _checkHolidayBanner("t-holiday-banner"));
+      _checkHolidayBanner("t-holiday-banner"),
+      window.loadTeacherGlance && loadTeacherGlance());
     const holEl = document.getElementById("t-dash-holidays");
     if (holEl)
       try {
@@ -4601,6 +4682,12 @@ function _arcCalcTotal(academics) {
             .join("");
           const pendEl = document.getElementById("s-stat-pending-hw");
           pendEl && countUp(pendEl, String(pending));
+          // Only badge homework posted since student last viewed the section
+          try {
+            const lastSeen = localStorage.getItem('s_hw_last_seen') || '';
+            const newCount = snap.docs.filter(d => (d.data().postedAt || '') > lastSeen).length;
+            window._updateStudentBadge && _updateStudentBadge('hw', newCount);
+          } catch(e) { window._updateStudentBadge && _updateStudentBadge('hw', 0); }
         },
         (e) => {
           tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
@@ -4630,6 +4717,12 @@ function _arcCalcTotal(academics) {
       if (!notices.length)
         return void (el.innerHTML =
           '<div style="text-align:center;padding:24px;color:var(--text-light)">No notices available.</div>');
+      // Badge: count notices posted since student last viewed the section
+      try {
+        const lastSeen = localStorage.getItem('s_notices_last_seen') || '';
+        const newCount = notices.filter(n => (n.postedAt || n.createdAt || '') > lastSeen).length;
+        window._updateStudentBadge && _updateStudentBadge('notices', newCount);
+      } catch(e) { window._updateStudentBadge && _updateStudentBadge('notices', 0); }
       const icon = (p) =>
           "Urgent" === p
             ? "fa-exclamation-circle"
@@ -4699,6 +4792,8 @@ function _arcCalcTotal(academics) {
         absent = 0,
         total = 0;
       const byMonth = {},
+        absentDates = [],
+        lateDates = [],
         norm = (v) =>
           String(v || "")
             .trim()
@@ -4706,15 +4801,17 @@ function _arcCalcTotal(academics) {
         sidN = norm(sid);
       snap.forEach((d) => {
         const a = d.data(),
-          isAbsent =
-            Array.isArray(a.absent) && a.absent.some((x) => norm(x) === sidN);
+          isAbsent = Array.isArray(a.absent) && a.absent.some((x) => norm(x) === sidN),
+          isLate = !isAbsent && Array.isArray(a.late) && a.late.some((x) => norm(x) === sidN);
         (total++, isAbsent ? absent++ : present++);
+        if (isAbsent && a.date) absentDates.push(a.date);
+        if (isLate && a.date) lateDates.push(a.date);
         const month = (a.date || "").substring(0, 7);
         month &&
           (byMonth[month] ||
-            (byMonth[month] = { present: 0, absent: 0, total: 0 }),
+            (byMonth[month] = { present: 0, absent: 0, late: 0, total: 0 }),
           byMonth[month].total++,
-          isAbsent ? byMonth[month].absent++ : byMonth[month].present++);
+          isAbsent ? byMonth[month].absent++ : isLate ? byMonth[month].late++ : byMonth[month].present++);
       });
       const pct = total > 0 ? Math.round((present / total) * 100) : 0,
         pctClass =
@@ -4761,6 +4858,25 @@ function _arcCalcTotal(academics) {
               .join(""))
           : (tbody.innerHTML =
               '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px">No attendance records yet.</td></tr>');
+      }
+      // Render absent/late date breakdown
+      const datesWrap = document.getElementById("s-att-dates-wrap");
+      if (datesWrap) {
+        const fmt = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", weekday: "short" });
+        absentDates.sort().reverse();
+        lateDates.sort().reverse();
+        if (!absentDates.length && !lateDates.length) {
+          datesWrap.innerHTML = '<p style="color:var(--success);font-weight:700"><i class="fas fa-check-circle" style="margin-right:6px"></i>No absences or late marks on record. Great attendance!</p>';
+        } else {
+          let html = '';
+          if (absentDates.length) {
+            html += `<div style="margin-bottom:18px"><div style="font-weight:700;color:var(--danger);margin-bottom:10px"><i class="fas fa-times-circle" style="margin-right:6px"></i>Absent (${absentDates.length} day${absentDates.length > 1 ? 's' : ''})</div><div style="display:flex;flex-wrap:wrap;gap:8px">${absentDates.map(d => `<span class="s-att-date-chip s-att-date-absent">${fmt(d)}</span>`).join('')}</div></div>`;
+          }
+          if (lateDates.length) {
+            html += `<div><div style="font-weight:700;color:var(--warning);margin-bottom:10px"><i class="fas fa-clock" style="margin-right:6px"></i>Late (${lateDates.length} day${lateDates.length > 1 ? 's' : ''})</div><div style="display:flex;flex-wrap:wrap;gap:8px">${lateDates.map(d => `<span class="s-att-date-chip s-att-date-late">${fmt(d)}</span>`).join('')}</div></div>`;
+          }
+          datesWrap.innerHTML = html;
+        }
       }
     } catch (e) {
       console.warn("[Attendance] load failed:", e.message);
@@ -5302,94 +5418,67 @@ function _arcCalcTotal(academics) {
     const tbody = document.getElementById("lv-history-tbody");
     if (!tbody) return;
     const user = window._firebaseAuth?.currentUser;
-    if (user)
-      try {
-        const snap = await getDocs(
-          query(
-            collection(db, "leave_applications"),
-            where("uid", "==", user.uid),
-            orderBy("createdAt", "desc"),
-            limit(30),
-          ),
-        );
-        if (
-          (await (async function (uid) {
+    if (!user) return;
+    // Unsubscribe previous listener
+    if (window._leaveHistoryUnsub) { window._leaveHistoryUnsub(); window._leaveHistoryUnsub = null; }
+    const fmt = (s) => s ? new Date(s + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" }) : "—";
+    const bc = { Pending: "badge-warning", Approved: "badge-success", Rejected: "badge-danger" };
+    const renderRows = (docs) => {
+      if (!docs.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:16px">No leave applications yet.</td></tr>'; return; }
+      tbody.innerHTML = docs.map(d => {
+        const l = d.data(), days = _calcDays(l.from, l.to);
+        const byLine = l.status === "Approved" && l.approvedBy ? `<div style="font-size:10px;color:var(--text-light);margin-top:3px">by ${l.approvedBy}</div>`
+          : l.status === "Rejected" && l.rejectedBy ? `<div style="font-size:10px;color:var(--text-light);margin-top:3px">by ${l.rejectedBy}</div>` : "";
+        return `<tr class="lv-ledger-row ${(l.status||"pending").toLowerCase()}">
+          <td>${fmt(l.from)} → ${fmt(l.to)}</td>
+          <td><span class="lv-days-chip">${days}d</span></td>
+          <td style="font-size:12px">${l.type || "—"}</td>
+          <td style="font-size:12px;max-width:160px;white-space:normal">${l.reason || "—"}</td>
+          <td><span class="badge ${bc[l.status]||"badge-info"}">${l.status||"—"}</span>${byLine}</td>
+        </tr>`;
+      }).join("");
+    };
+    try {
+      window._leaveHistoryUnsub = onSnapshot(
+        query(collection(db, "leave_applications"), where("uid", "==", user.uid), orderBy("createdAt", "desc"), limit(30)),
+        async (snap) => {
+          // Track status changes to toast teacher
+          if (window._leavePrevStatuses) {
+            snap.docs.forEach(d => {
+              const prev = window._leavePrevStatuses[d.id];
+              const curr = d.data().status;
+              if (prev && prev !== curr) showToast(`📋 Leave application ${curr === "Approved" ? "✅ Approved" : "❌ Rejected"} by Admin`);
+            });
+          }
+          window._leavePrevStatuses = {};
+          snap.docs.forEach(d => { window._leavePrevStatuses[d.id] = d.data().status; });
+          renderRows(snap.docs);
+          await (async function (uid) {
             try {
               const [settingsSnap, leaveSnap] = await Promise.all([
                   getDoc(doc(db, "settings", "leave_config")),
-                  getDocs(
-                    query(
-                      collection(db, "leave_applications"),
-                      where("uid", "==", uid),
-                    ),
-                  ),
+                  getDocs(query(collection(db, "leave_applications"), where("uid", "==", uid))),
                 ]),
-                quota =
-                  (settingsSnap.exists() && settingsSnap.data().annualQuota) ||
-                  15,
-                daysTaken = leaveSnap.docs
-                  .filter((d) => "Approved" === d.data().status)
-                  .reduce(
-                    (sum, d) => sum + _calcDays(d.data().from, d.data().to),
-                    0,
-                  ),
+                quota = (settingsSnap.exists() && settingsSnap.data().annualQuota) || 15,
+                daysTaken = leaveSnap.docs.filter(d => "Approved" === d.data().status).reduce((sum, d) => sum + _calcDays(d.data().from, d.data().to), 0),
                 balance = quota - daysTaken,
                 pct = Math.min(100, Math.round((daysTaken / quota) * 100)),
-                set = (id, v) => {
-                  const el = document.getElementById(id);
-                  el && (el.textContent = v);
-                };
-              (set("lv-quota-val", quota),
-                set("lv-taken-val", daysTaken),
-                set("lv-balance-val", Math.max(0, balance)),
-                set(
-                  "lv-year-label",
-                  "Academic year " + new Date().getFullYear(),
-                ));
+                set = (id, v) => { const el = document.getElementById(id); el && (el.textContent = v); };
+              (set("lv-quota-val", quota), set("lv-taken-val", daysTaken), set("lv-balance-val", Math.max(0, balance)), set("lv-year-label", "Academic year " + new Date().getFullYear()));
               const fill = document.getElementById("lv-quota-bar-fill");
-              fill &&
-                ((fill.style.width = pct + "%"),
-                (fill.style.background =
-                  pct >= 100 ? "#dc2626" : pct >= 70 ? "#d97706" : "#16a34a"));
+              fill && ((fill.style.width = pct + "%"), (fill.style.background = pct >= 100 ? "#dc2626" : pct >= 70 ? "#d97706" : "#16a34a"));
               const cap = document.getElementById("lv-quota-bar-caption");
-              cap &&
-                (cap.textContent = `${daysTaken} of ${quota} days used (${pct}%)`);
+              cap && (cap.textContent = `${daysTaken} of ${quota} days used (${pct}%)`);
               const stat = document.getElementById("lv-balance-stat");
-              stat &&
-                (stat.className =
-                  "lv-stat lv-stat-balance" +
-                  (balance <= 0 ? " over" : balance <= 3 ? " warn" : ""));
-            } catch (e) {
-              console.warn("Leave summary:", e.message);
-            }
-          })(user.uid),
-          snap.empty)
-        )
-          return void (tbody.innerHTML =
-            '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px">No leave applications yet.</td></tr>');
-        const fmt = (s) =>
-            s
-              ? new Date(s + "T00:00:00").toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "2-digit",
-                })
-              : "—",
-          bc = {
-            Pending: "badge-warning",
-            Approved: "badge-success",
-            Rejected: "badge-danger",
-          };
-        tbody.innerHTML = snap.docs
-          .map((d) => {
-            const l = d.data(),
-              days = _calcDays(l.from, l.to);
-            return `<tr class="lv-ledger-row ${(l.status || "pending").toLowerCase()}">\n          <td>${fmt(l.from)} → ${fmt(l.to)}</td>\n          <td><span class="lv-days-chip">${days}d</span></td>\n          <td style="font-size:12px">${l.type || "—"}</td>\n          <td style="font-size:12px;max-width:180px;white-space:normal">${l.reason || "—"}</td>\n          <td><span class="badge ${bc[l.status] || "badge-info"}">${l.status || "—"}</span></td>\n        </tr>`;
-          })
-          .join("");
-      } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
-      }
+              stat && (stat.className = "lv-stat lv-stat-balance" + (balance <= 0 ? " over" : balance <= 3 ? " warn" : ""));
+            } catch(e) { console.warn("Leave summary:", e.message); }
+          })(user.uid);
+        },
+        (e) => { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`; }
+      );
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
+    }
   }),
   (window.saveLeaveQuota = async function () {
     const quota = parseInt(
@@ -5860,13 +5949,83 @@ function updateAttSummary() {
       (docs && docs.length
         ? (tbody.innerHTML = docs
             .map((d) => {
-              const s = d.data(),
+              const s = d.data(), sid = d.id,
                 waNum = (s.whatsapp || s.contact || "").replace(/[^0-9]/g, "");
-              return `<tr><td>${s.rollNo || "—"}</td><td><strong>${s.name || "—"}</strong></td><td>${"M" === s.gender ? "Male" : "F" === s.gender ? "Female" : s.gender || "—"}</td><td><span class="badge badge-info">${s.bloodGroup || "—"}</span></td><td style="font-size:12px">${s.whatsapp || s.contact || "—"}</td><td>${waNum ? `<a href="https://wa.me/${waNum}" target="_blank" class="btn btn-sm btn-success" style="font-size:11px"><i class="fab fa-whatsapp"></i></a>` : "—"}</td></tr>`;
+              return `<tr><td>${s.rollNo || "—"}</td><td><strong>${s.name || "—"}</strong></td><td>${"M" === s.gender ? "Male" : "F" === s.gender ? "Female" : s.gender || "—"}</td><td><span class="badge badge-info">${s.bloodGroup || "—"}</span></td><td style="font-size:12px">${s.whatsapp || s.contact || "—"}</td><td style="display:flex;gap:6px;align-items:center">${waNum ? `<a href="https://wa.me/${waNum}" target="_blank" class="btn btn-sm btn-success" style="font-size:11px"><i class="fab fa-whatsapp"></i></a>` : ""}<button class="btn btn-sm btn-outline" style="font-size:11px" onclick="openTStudentProfile('${sid}')"><i class="fas fa-eye"></i></button></td></tr>`;
             })
             .join(""))
         : (tbody.innerHTML =
             '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-light)">No students found.</td></tr>'));
+  }),
+  (window.closeTStudentProfile = function () {
+    const ov = document.getElementById("t-student-profile-overlay");
+    if (ov) ov.style.display = "none";
+  }),
+  (window.openTStudentProfile = async function (docId) {
+    const ov = document.getElementById("t-student-profile-overlay");
+    if (!ov) return;
+    ov.style.display = "block";
+    // Reset
+    ["tsp-name","tsp-meta"].forEach(id => { const el=document.getElementById(id); if(el) el.textContent="Loading…"; });
+    document.getElementById("tsp-body").innerHTML = "";
+    document.getElementById("tsp-att-body").innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading…';
+    document.getElementById("tsp-avatar").textContent = "…";
+    try {
+      // Try from cached docs first, then fetch
+      const docs = window._teacherStudentDocs || [];
+      let snap = docs.find(d => d.id === docId);
+      if (!snap) snap = await getDoc(doc(db, "students", docId));
+      const s = snap.data ? snap.data() : snap;
+      if (!s) return;
+      const initials = (s.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
+      document.getElementById("tsp-avatar").textContent = initials;
+      document.getElementById("tsp-name").textContent = s.name || "—";
+      document.getElementById("tsp-meta").textContent = `Class ${s.class || "—"}  •  Roll No. ${s.rollNo || "—"}`;
+      const fields = [
+        ["Gender", s.gender === "M" ? "Male" : s.gender === "F" ? "Female" : s.gender || "—"],
+        ["Blood Group", s.bloodGroup || "—"],
+        ["Date of Birth", s.dob || "—"],
+        ["Religion", s.religion || "—"],
+        ["WhatsApp", s.whatsapp || s.contact || "—"],
+        ["Parent/Guardian", s.parentName || s.guardianName || "—"],
+        ["House", s.house || "—"],
+        ["Student ID", s.studentId || docId],
+      ];
+      document.getElementById("tsp-body").innerHTML = fields.map(([k,v]) =>
+        `<div style="background:var(--bg);border-radius:8px;padding:10px 12px"><div style="font-size:11px;color:var(--text-light);font-weight:700;margin-bottom:3px">${k}</div><div style="font-weight:600">${v}</div></div>`
+      ).join("");
+      // Attendance
+      const cls = s.class || window._currentTeacherClass || "";
+      const sidN = (s.studentId || docId).toUpperCase();
+      if (cls) {
+        const attSnap = await getDocs(query(collection(db, "attendance_daily"), where("class", "in", _classVariants(cls)), limit(300)));
+        let present=0, absent=0, late=0, total=0;
+        const norm = v => String(v||"").trim().toUpperCase();
+        attSnap.forEach(d => {
+          const a = d.data();
+          const isAbs = Array.isArray(a.absent) && a.absent.some(x=>norm(x)===sidN);
+          const isLate = !isAbs && Array.isArray(a.late) && a.late.some(x=>norm(x)===sidN);
+          total++; isAbs ? absent++ : isLate ? late++ : present++;
+        });
+        const pct = total > 0 ? Math.round((present/total)*100) : 0;
+        const color = pct>=90?"var(--success)":pct>=75?"var(--warning)":"var(--danger)";
+        document.getElementById("tsp-att-body").innerHTML =
+          `<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+            <div style="font-size:2rem;font-weight:800;color:${color}">${pct}%</div>
+            <div style="font-size:13px;color:var(--text-light)">
+              Present: <strong>${present}</strong> &nbsp;|&nbsp;
+              Absent: <strong style="color:var(--danger)">${absent}</strong> &nbsp;|&nbsp;
+              Late: <strong style="color:var(--warning)">${late}</strong> &nbsp;|&nbsp;
+              Total: <strong>${total}</strong>
+            </div>
+          </div>`;
+      } else {
+        document.getElementById("tsp-att-body").innerHTML = '<span style="color:var(--text-light)">Class not available.</span>';
+      }
+    } catch(e) {
+      showToast("❌ Failed to load profile: " + e.message);
+      ov.style.display = "none";
+    }
   }),
   (window.exportTeacherClassList = function () {
     const docs = window._teacherStudentDocs;
@@ -6494,13 +6653,17 @@ function updateAttSummary() {
       showToast("❌ " + e.message);
     }
   }),
-  (window.pdfExportAttendance = function () {
+  (window.pdfExportAttendance = async function () {
     const d = window._amSnapshotData;
     if (!d) return void showToast("⚠️ Open a monthly record first.");
+    showToast("⏳ Generating PDF…");
+    try { await window.loadPortalLibs(); } catch(e) {}
+    if (!window.jspdf?.jsPDF) return void showToast("❌ PDF library failed to load. Check your internet and try again.");
     const { jsPDF: jsPDF } = window.jspdf,
       pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }),
       pw = pdf.internal.pageSize.getWidth(),
       pageH = pdf.internal.pageSize.getHeight();
+    if (typeof pdf.autoTable !== "function") return void showToast("❌ PDF table plugin not ready. Please try again.");
     (pdf.setFontSize(14),
       pdf.setFont("helvetica", "bold"),
       pdf.text("St. Francis De Sales Sec. School", pw / 2, 18, {
@@ -6663,11 +6826,14 @@ function updateAttSummary() {
       ));
   }),
   (window.printAttendance = function () {
-    window._amSnapshotData
-      ? (document.body.classList.add("att-printing"),
-        window.print(),
-        document.body.classList.remove("att-printing"))
-      : showToast("⚠️ Open a monthly record first.");
+    if (!window._amSnapshotData) return void showToast("⚠️ Open a monthly record first.");
+    document.body.classList.add("att-printing");
+    function _removePrintClass() {
+      document.body.classList.remove("att-printing");
+      window.removeEventListener("afterprint", _removePrintClass);
+    }
+    window.addEventListener("afterprint", _removePrintClass);
+    window.print();
   }),
   (window.renderAttendanceRanking = function (studs) {
     const wrap = document.getElementById("am-ranking-wrap");

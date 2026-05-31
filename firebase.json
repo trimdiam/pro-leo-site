@@ -50,6 +50,11 @@
       "WORK-LOG-*.md",
       "fix-hero.html"
     ],
+    "version": {
+      "releases": {
+        "count": 5
+      }
+    },
     "rewrites": [
       {
         "source": "**",

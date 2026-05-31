@@ -2147,6 +2147,75 @@ tr:hover td {
 .s-bottom-nav {
   display: none;
 }
+/* ── Student notification badges ── */
+.s-nav-badge {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  margin-left: 6px;
+  vertical-align: middle;
+  animation: badge-pop 0.25s ease;
+}
+.s-bottom-badge {
+  position: absolute;
+  top: 4px;
+  right: 10px;
+  margin: 0;
+  min-width: 16px;
+  height: 16px;
+  font-size: 9px;
+}
+@keyframes badge-pop {
+  0%   { transform: scale(0); }
+  70%  { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+/* ── Teacher Today at a Glance chips ── */
+.t-glance-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  background: rgba(255,255,255,0.6);
+  color: var(--text);
+}
+.t-glance-chip.done   { background:#d1fae5; border-color:#6ee7b7; color:#065f46; }
+.t-glance-chip.warn   { background:#fff3cd; border-color:#ffc107; color:#856404; }
+.t-glance-chip.alert  { background:#fde8e8; border-color:#f5c6c6; color:#c0392b; }
+.t-glance-chip.info   { background:#dbeafe; border-color:#93c5fd; color:#1e40af; }
+
+/* ── Attendance date chips ── */
+.s-att-date-chip {
+  display: inline-block;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.s-att-date-absent {
+  background: #fde8e8;
+  color: #c0392b;
+  border: 1px solid #f5c6c6;
+}
+.s-att-date-late {
+  background: #fff8e1;
+  color: #b07d2a;
+  border: 1px solid #ffe082;
+}
 @media (max-width: 768px) {
   .s-bottom-nav {
     display: flex;

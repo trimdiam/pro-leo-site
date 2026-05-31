@@ -7,6 +7,7 @@
 
 import { getEligibleSessions, extractYearMonth } from './aggregation-engine.js';
 import { getMarkValue } from './totals-engine.js';
+import { loadStudentsForClass } from './student-loader.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -58,7 +59,7 @@ function buildCriterionMap(criteriaArray) {
  *
  * studentMap: Map<studentId, { full_name, criteria: Map<criterionId, {total,count}>, months: Set }>
  */
-function collectMarks(className, subjectId) {
+function collectMarks(className, subjectId, nameMap = new Map()) {
   const sessions = getEligibleSessions({ class: className, subject_id: subjectId });
 
   const studentMap = new Map();
@@ -76,7 +77,7 @@ function collectMarks(className, subjectId) {
       if (!studentMap.has(studentId)) {
         studentMap.set(studentId, {
           student_id: studentId,
-          full_name: studentMarks._full_name || studentId,
+          full_name: nameMap.get(studentId) || studentMarks._full_name || studentId,
           criteria: new Map(),
           months: new Set()
         });
@@ -147,9 +148,15 @@ function buildMonthlyCategory(className, subjectId, criterionMap) {
  * @param {Array}  criteriaArray  Raw criteria array from the subject's JSON file
  * @returns {Object} Full drill-down analytics object
  */
-export function getSubjectDrillDown(className, subjectId, criteriaArray) {
+export async function getSubjectDrillDown(className, subjectId, criteriaArray) {
   const criterionMap = buildCriterionMap(criteriaArray);
-  const { studentMap, allCriterionIds, monthSet, sessions } = collectMarks(className, subjectId);
+  // Build a studentId → full_name lookup from the actual student records
+  const nameMap = new Map();
+  try {
+    const students = await loadStudentsForClass(className);
+    students.forEach(s => { if (s.student_id && s.full_name) nameMap.set(s.student_id, s.full_name); });
+  } catch (e) { /* non-fatal — falls back to ID */ }
+  const { studentMap, allCriterionIds, monthSet, sessions } = collectMarks(className, subjectId, nameMap);
 
   if (studentMap.size === 0) {
     return {
