@@ -9852,9 +9852,11 @@ function idToEmailLocal(id) {
                     limit(100),
                   ),
                 );
-          if (snap.empty)
+          if (snap.empty) {
+            window._feeApprovalDocs = [];
             return void (tbody.innerHTML =
               '<tr><td colspan="11" style="text-align:center;padding:18px;color:var(--text-light)">No records found.</td></tr>');
+          }
           const docs = snap.docs.slice().sort((a, b) => {
               const ta = a.data().createdAt?.toMillis
                 ? a.data().createdAt.toMillis()
@@ -9892,6 +9894,12 @@ function idToEmailLocal(id) {
         } catch (e) {
           tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
         }
+      }),
+      (window.filterFeeApprovals = function () {
+        const q = (document.getElementById("o-txn-search")?.value || "").toLowerCase().trim();
+        document.querySelectorAll("#admin-fee-txn-tbody tr").forEach(tr => {
+          tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? "" : "none";
+        });
       }));
   })(),
   (async () => {
