@@ -1453,6 +1453,41 @@ img {
   padding: 12px 0;
   overflow-y: auto;
 }
+.sidebar-group-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s;
+}
+.sidebar-group-label:hover { opacity: 0.85; }
+.sidebar-group-label .sg-arrow {
+  font-size: 9px;
+  transition: transform 0.25s ease;
+  opacity: 0.6;
+}
+.sidebar-group-label.collapsed .sg-arrow {
+  transform: rotate(-90deg);
+}
+.sidebar-group-items {
+  overflow: hidden;
+  max-height: 600px;
+  transition: max-height 0.3s ease, opacity 0.25s ease;
+  opacity: 1;
+}
+.sidebar-group-items.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
 .sidebar-nav button {
   display: flex;
   align-items: center;

@@ -216,6 +216,13 @@ service cloud.firestore {
       allow read, write: if isAdmin() || isOffice();
     }
 
+    // ── Audit log ────────────────────────────────────────────────────
+    match /audit_log/{docId} {
+      allow read:  if isAdmin();
+      allow create: if isAnyStaff();
+      allow update, delete: if false;
+    }
+
     // ── Notification logs (audit trail for scheduled pushes) ─────────
     // Written ONLY by Cloud Functions via the Admin SDK (which bypasses these
     // rules); no client may write. Admin reads them for the audit view.

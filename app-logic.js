@@ -1937,6 +1937,55 @@ async function loadAdminContacts() {
       }
   }));
 const _origShowDash = window.showDash;
+// ── Audit log UI ─────────────────────────────────────────────────────────────
+window.loadAuditLog = async function() {
+  const tbody = document.getElementById("audit-log-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
+  try {
+    const filter = document.getElementById("audit-filter-action")?.value || "";
+    const snap = await getDocs(query(collection(db, "audit_log"), orderBy("timestamp", "desc"), limit(100)));
+    let entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (filter) entries = entries.filter(e => e.action && e.action.includes(filter));
+    if (!entries.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:18px;color:var(--text-light)">No audit records yet.</td></tr>';
+      return;
+    }
+    const actionColor = a => {
+      if (a.includes("Delete") || a.includes("Rejected")) return "var(--danger)";
+      if (a.includes("Approved") || a.includes("Added") || a.includes("Released")) return "var(--success)";
+      if (a.includes("Locked")) return "var(--warning)";
+      return "var(--accent)";
+    };
+    tbody.innerHTML = entries.map(e => {
+      const ts = e.timestamp ? new Date(e.timestamp).toLocaleString("en-IN", { day:"2-digit", month:"short", year:"2-digit", hour:"2-digit", minute:"2-digit" }) : "—";
+      return `<tr>
+        <td style="font-size:12px;white-space:nowrap;color:var(--text-light)">${ts}</td>
+        <td><span style="font-weight:700;font-size:12px;color:${actionColor(e.action||"")}">${e.action || "—"}</span></td>
+        <td style="font-size:12px;max-width:280px;white-space:normal">${e.detail || "—"}</td>
+        <td style="font-size:12px;color:var(--text-light)">${e.performedBy || "—"}</td>
+      </tr>`;
+    }).join("");
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--danger)">❌ ${e.message}</td></tr>`;
+  }
+};
+
+// ── Audit log helper ──────────────────────────────────────────────────────────
+window._auditLog = async function(action, detail, extra = {}) {
+  try {
+    const user = window._firebaseAuth?.currentUser;
+    await addDoc(collection(db, "audit_log"), {
+      action,
+      detail,
+      performedBy: window._adminName || window._teacherName || user?.email || "Admin",
+      uid: user?.uid || "",
+      timestamp: new Date().toISOString(),
+      ...extra
+    });
+  } catch(e) { console.warn("[AuditLog] failed:", e.message); }
+};
+
 // ── Student notification badge helpers ────────────────────────────────────────
 window._updateStudentBadge = function (key, count) {
   const ids = key === 'hw'
@@ -3238,9 +3287,11 @@ function setVal(id, val) {
       const docId = document.getElementById("sf-doc-id").value;
       (docId
         ? (await setDoc(doc(db, "students", docId), data, { merge: !0 }),
+          _auditLog("Student Updated", `${data.name || docId} (Class ${data.class || "?"})`, { refId: docId }),
           showToast("✅ Student updated!"))
         : ((data.createdAt = new Date().toISOString()),
           await addDoc(collection(db, "students"), data),
+          _auditLog("Student Added", `${data.name || "New student"} (Class ${data.class || "?"})`),
           showToast("✅ Student added!")),
         closeStudentModal(),
         await window.loadStudents(window._currentClassFilter));
@@ -3271,6 +3322,7 @@ function setVal(id, val) {
       (btn.disabled = !0));
     try {
       (await deleteDoc(doc(db, "students", docId)),
+        _auditLog("Student Deleted", `Document ID: ${docId}`, { refId: docId }),
         showToast("🗑️ Student deleted."),
         closeDeleteConfirm(),
         await window.loadStudents(window._currentClassFilter));
@@ -5830,7 +5882,7 @@ function updateAttSummary() {
         await batch.commit(),
         (document.getElementById("arc-release-modal").style.display = "none"),
         showToast(
-          `✅ ${toRelease.length} report card(s) released. ${toHold.length} withheld.`,
+          `✅ ${toRelease.length} report card(s) released. ${toHold.length} withheld.` + (_auditLog("Report Cards Released", `${toRelease.length} released, ${toHold.length} withheld — Class ${window._arcRMClassId || "?"}`), ""),
         ),
         loadAdminReportCards());
     } catch (e) {
@@ -5919,11 +5971,15 @@ function updateAttSummary() {
   }),
   (window.adminApproveLeave = async function (docId) {
     try {
+      const snap = await getDoc(doc(db, "leave_applications", docId));
+      const l = snap.exists() ? snap.data() : {};
+      const adminName = window._adminName || "Admin";
       (await setDoc(
         doc(db, "leave_applications", docId),
-        { status: "Approved", updatedAt: new Date().toISOString() },
+        { status: "Approved", approvedBy: adminName, updatedAt: new Date().toISOString() },
         { merge: !0 },
       ),
+        _auditLog("Leave Approved", `${l.teacherName || l.uid || docId} — ${l.type || "Leave"} (${l.from || "?"} → ${l.to || "?"})`, { refId: docId }),
         showToast("✅ Leave approved."),
         loadAdminLeave());
     } catch (e) {
@@ -5932,11 +5988,15 @@ function updateAttSummary() {
   }),
   (window.adminRejectLeave = async function (docId) {
     try {
+      const snap = await getDoc(doc(db, "leave_applications", docId));
+      const l = snap.exists() ? snap.data() : {};
+      const adminName = window._adminName || "Admin";
       (await setDoc(
         doc(db, "leave_applications", docId),
-        { status: "Rejected", updatedAt: new Date().toISOString() },
+        { status: "Rejected", rejectedBy: adminName, updatedAt: new Date().toISOString() },
         { merge: !0 },
       ),
+        _auditLog("Leave Rejected", `${l.teacherName || l.uid || docId} — ${l.type || "Leave"} (${l.from || "?"} → ${l.to || "?"})`, { refId: docId }),
         showToast("Leave rejected."),
         loadAdminLeave());
     } catch (e) {
@@ -6627,6 +6687,7 @@ function updateAttSummary() {
             locked_by: auth.currentUser?.uid || "admin",
           },
         ),
+          _auditLog("Attendance Locked", `Class ${cur.classNum} — ${cur.monthYear}`),
           showToast("🔒 Records locked successfully!"),
           (window._amCurrentDoc.status = "locked"),
           openMonthlyDetail(cur.classNum, cur.monthYear),
@@ -9730,6 +9791,7 @@ function idToEmailLocal(id) {
             console.warn("[FeeNotif]", e.message);
           }
         })(txn.studentId, txn.amount, newBalance, txnId),
+          _auditLog("Fee Approved", `Student: ${txn.studentId || "?"} — ₹${txn.amount || "?"} (${txn.feeType || txn.description || "payment"})`, { refId: txnId }),
           showToast("✅ Approved! Balance updated and notification sent."),
           window.loadAdminFeeTransactions && loadAdminFeeTransactions());
       } catch (e) {
@@ -9748,6 +9810,7 @@ function idToEmailLocal(id) {
               rejectedBy: "Admin",
               rejectedAt: new Date().toISOString(),
             }),
+              _auditLog("Fee Rejected", `Transaction ID: ${txnId}`, { refId: txnId }),
               showToast("🗑️ Transaction rejected."),
               window.loadAdminFeeTransactions && loadAdminFeeTransactions());
           } catch (e) {
