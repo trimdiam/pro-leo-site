@@ -34,6 +34,28 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
   navigator.serviceWorker.addEventListener('message', event => {
+    // ── PUSH_NAV: notification tap deep-link when the app is already open ──
+    if (event.data?.type === 'PUSH_NAV') {
+      const screen = event.data.screen || '';
+      const navMap = {
+        'daily_routine':   () => typeof navTeacherTo === 'function' && navTeacherTo('t-schedule'),
+        'period_reminder': () => typeof navTeacherTo === 'function' && navTeacherTo('t-dashboard'),
+        'attendance':      () => typeof navStudentTo === 'function' && navStudentTo('s-attendance'),
+        'notice':          () => typeof navStudentTo === 'function' && navStudentTo('s-notices'),
+        'leave':           () => typeof navTeacherTo === 'function' && navTeacherTo('t-leave'),
+        'message':         () => typeof navStudentTo === 'function' && navStudentTo('s-dashboard'),
+      };
+      const nav = navMap[screen];
+      if (nav) {
+        // Portal may still be booting — retry until nav function is ready.
+        let attempts = 0;
+        const poll = setInterval(() => {
+          if (nav() !== false || ++attempts > 20) clearInterval(poll);
+        }, 200);
+      }
+      return;
+    }
+    // ── SW_UPDATED: show reload banner ────────────────────────────────────
     if (event.data?.type !== 'SW_UPDATED' || window.Capacitor) return;
     // Show a non-intrusive update banner instead of auto-reloading
     if (document.getElementById('sw-update-bar')) return;

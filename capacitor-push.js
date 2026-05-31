@@ -182,7 +182,9 @@ window.reRegisterPushNotifications = function (statusEl) {
         }, 200);
       }
 
-      if (screen === 'attendance') {
+      if (screen === 'daily_routine') {
+        navWhenReady('navTeacherTo', 't-schedule');  // Teacher "My Schedule" page
+      } else if (screen === 'attendance') {
         navWhenReady('navStudentTo', 's-attendance');
       } else if (screen === 'notice') {
         navWhenReady('navStudentTo', 's-notices');
