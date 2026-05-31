@@ -4715,27 +4715,33 @@ function _arcCalcTotal(academics) {
       try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const todayStr = today.toISOString().split("T")[0],
-          upcoming = [
-            ...(await getDocs(query(
-              collection(db, "holidays"),
-              where("date", ">=", todayStr),
-              orderBy("date"),
-              limit(5)
-            ))).docs,
-          ]
-            .map((d) => d.data());
+        const CAL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        const calSnap = await getDoc(doc(db, "holidays", "school_calendar"));
+        const calData = calSnap.exists() ? calSnap.data() : {};
+        const upcoming = [];
+        CAL_MONTHS.forEach((month, mi) => {
+          const evts = calData[month];
+          if (!Array.isArray(evts)) return;
+          evts.forEach(ev => {
+            if (ev.type !== "holiday" || !ev.date) return;
+            const startDay = parseInt(ev.date.toString().split("-")[0], 10);
+            if (isNaN(startDay)) return;
+            const d = new Date(today.getFullYear(), mi, startDay);
+            d.setHours(0, 0, 0, 0);
+            if (d >= today) upcoming.push({ date: d, event: ev.event });
+          });
+        });
+        upcoming.sort((a, b) => a.date - b.date);
         upcoming.length
-          ? (holEl.innerHTML = upcoming
+          ? (holEl.innerHTML = upcoming.slice(0, 5)
               .map((h) => {
-                const d = new Date(h.date + "T00:00:00"),
-                  fmt = d.toLocaleDateString("en-IN", {
+                const fmt = h.date.toLocaleDateString("en-IN", {
                     weekday: "short",
                     day: "numeric",
                     month: "short",
                     year: "numeric",
                   }),
-                  diff = Math.round((d - today) / 864e5),
+                  diff = Math.round((h.date - today) / 864e5),
                   tag =
                     0 === diff
                       ? '<span style="background:#dc2626;color:#fff;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;margin-left:6px">TODAY</span>'
@@ -4744,7 +4750,7 @@ function _arcCalcTotal(academics) {
                         : diff <= 30
                           ? `<span style="background:var(--accent);color:#fff;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;margin-left:6px">in ${diff} days</span>`
                           : `<span style="background:var(--accent);color:#fff;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;margin-left:6px">in ${Math.round(diff/7)} weeks</span>`;
-                return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">\n              <div>\n                <div style="font-size:13px;font-weight:600;color:var(--accent-dark)">${h.reason || "—"}${tag}</div>\n                <div style="font-size:11px;color:var(--text-light);margin-top:2px">${fmt} &nbsp;·&nbsp; ${h.type || "Holiday"}</div>\n              </div>\n              <i class="fas fa-umbrella-beach" style="color:var(--accent);font-size:18px;opacity:0.6"></i>\n            </div>`;
+                return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">\n              <div>\n                <div style="font-size:13px;font-weight:600;color:var(--accent-dark)">${h.event}${tag}</div>\n                <div style="font-size:11px;color:var(--text-light);margin-top:2px">${fmt} &nbsp;·&nbsp; Holiday</div>\n              </div>\n              <i class="fas fa-umbrella-beach" style="color:var(--accent);font-size:18px;opacity:0.6"></i>\n            </div>`;
               })
               .join(""))
           : (holEl.innerHTML =
