@@ -1404,7 +1404,7 @@
         <button onclick="showDash('t','t-leave',this)"><i class="fas fa-calendar-times"></i> Leave</button>
         <button onclick="showDash('t','t-my-subjects',this)"><i class="fas fa-book-open"></i> My Subjects</button>
         <button onclick="showDash('t','t-profile',this)"><i class="fas fa-user-circle"></i> My Profile</button>
-        <button onclick="window.open('assessment-app/index.html','_blank')"><i class="fas fa-chart-line"></i> Assessment</button>
+        <button onclick="window.open('assessment-app/index.html','_blank')" style="position:relative"><i class="fas fa-chart-line"></i> Assessment<span class="s-nav-badge" id="t-badge-assessment" style="display:none"></span></button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
     </nav>
@@ -1455,6 +1455,14 @@
               </div>
               <div id="t-dash-notices"><p style="color:var(--text-light);font-size:13px;text-align:center;padding:16px"><i class="fas fa-spinner fa-spin"></i> Loading…</p></div>
             </div>
+          </div>
+          <!-- ── Assessment Summary widget ── -->
+          <div class="card" style="padding:24px;margin-top:18px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+              <h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-chart-line" style="margin-right:8px;color:var(--accent)"></i>Assessment This Month</h4>
+              <button class="btn btn-sm btn-primary" style="font-size:11px" onclick="window.open('assessment-app/index.html','_blank')"><i class="fas fa-external-link-alt"></i> Open App</button>
+            </div>
+            <div id="t-dash-assessment"><p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px"><i class="fas fa-spinner fa-spin"></i> Loading…</p></div>
           </div>
           <!-- ── Upcoming Holidays widget ── -->
           <div class="card" style="padding:24px;margin-top:18px">

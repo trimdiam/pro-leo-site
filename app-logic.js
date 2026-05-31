@@ -4561,6 +4561,81 @@ function _arcCalcTotal(academics) {
       }
     }
   }),
+  (window._updateAssessmentBadge = function(count) {
+    const el = document.getElementById("t-badge-assessment");
+    if (!el) return;
+    if (count > 0) { el.textContent = count; el.style.display = ""; }
+    else el.style.display = "none";
+  }),
+  (window.loadAssessmentSummary = async function () {
+    const wrap = document.getElementById("t-dash-assessment");
+    if (!wrap) return;
+    const cls = window._currentTeacherClass || "";
+    if (!cls) {
+      wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px">Class not assigned yet.</p>';
+      return;
+    }
+    try {
+      // Get this month's year-month
+      const now = new Date();
+      const ym = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const monthLabel = now.toLocaleString("en-IN", { month: "long", year: "numeric" });
+
+      // Get all subjects for this class
+      const subjSnap = await getDocs(query(collection(db, "subjects"), where("class", "==", cls)));
+      const allSubjects = subjSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      if (!allSubjects.length) {
+        wrap.innerHTML = `<p style="color:var(--text-light);font-size:13px">No subjects found for Class ${cls}.</p>`;
+        return;
+      }
+
+      // Get assessment sessions for this class this month
+      const sessSnap = await getDocs(query(
+        collection(db, "assessment_sessions"),
+        where("session.class", "==", `Class ${cls}`),
+        where("session.yearMonth", "==", ym),
+        limit(50)
+      ));
+      const sessionsBySubject = {};
+      sessSnap.forEach(d => {
+        const subj = d.data().session?.subject_id || "";
+        if (!sessionsBySubject[subj]) sessionsBySubject[subj] = 0;
+        sessionsBySubject[subj]++;
+      });
+
+      const done = allSubjects.filter(s => sessionsBySubject[s.subject_id] > 0).length;
+      const missing = allSubjects.filter(s => !sessionsBySubject[s.subject_id]);
+      const total = allSubjects.length;
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+      // Badge update
+      window._updateAssessmentBadge && _updateAssessmentBadge(missing.length);
+
+      let html = `
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+          <div style="font-size:1.8rem;font-weight:800;color:${pct===100?"var(--success)":pct>=50?"var(--warning)":"var(--danger)"}">${pct}%</div>
+          <div style="font-size:13px;color:var(--text-light)">${done} of ${total} subjects assessed<br><span style="font-size:11px">${monthLabel}</span></div>
+          <div style="flex:1;background:var(--border);border-radius:6px;height:8px;overflow:hidden;margin-left:4px">
+            <div style="width:${pct}%;height:100%;background:${pct===100?"var(--success)":pct>=50?"var(--warning)":"var(--danger)"};border-radius:6px;transition:width 0.5s ease"></div>
+          </div>
+        </div>`;
+
+      if (missing.length) {
+        html += `<div style="font-size:12px;font-weight:700;color:var(--danger);margin-bottom:6px"><i class="fas fa-exclamation-circle" style="margin-right:4px"></i>Not assessed yet this month:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${missing.map(s => `<span style="background:#fde8e8;color:#c0392b;border:1px solid #f5c6c6;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600">${s.subject_name || s.subject_id}</span>`).join("")}
+        </div>`;
+      } else {
+        html += `<p style="color:var(--success);font-weight:700;font-size:13px"><i class="fas fa-check-circle" style="margin-right:6px"></i>All subjects assessed this month!</p>`;
+      }
+
+      wrap.innerHTML = html;
+    } catch(e) {
+      wrap.innerHTML = `<p style="color:var(--text-light);font-size:13px"><i class="fas fa-info-circle" style="margin-right:6px"></i>Assessment data unavailable.</p>`;
+      console.warn("[AssessmentSummary]", e.message);
+    }
+  }),
   (window.loadTeacherGlance = async function () {
     const attEl = document.getElementById("t-glance-att"),
       hwEl  = document.getElementById("t-glance-hw"),
@@ -4632,7 +4707,8 @@ function _arcCalcTotal(academics) {
         (aud) => "all" === aud || "teachers" === aud || "both" === aud,
       ),
       _checkHolidayBanner("t-holiday-banner"),
-      window.loadTeacherGlance && loadTeacherGlance());
+      window.loadTeacherGlance && loadTeacherGlance(),
+      window.loadAssessmentSummary && loadAssessmentSummary());
     const holEl = document.getElementById("t-dash-holidays");
     if (holEl)
       try {
