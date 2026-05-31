@@ -1,4 +1,4 @@
-const CACHE = 'sfs-1780207684513';
+const CACHE = 'sfs-1780211916396';
 
 // App shell — pre-cached on install for fast cold-start.
 const SHELL = [
@@ -13,8 +13,6 @@ const SHELL = [
   '/view-refresh.js',
   '/config.js',
   '/script.js',
-  '/auth-core.js',
-  '/shared.js',
   '/capacitor-push.js',
   '/capacitor-back.js',
   '/teacher-attendance-guard.js',
@@ -30,11 +28,18 @@ const SHELL = [
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    // All shell files must succeed — abort install if any fail so we never
-    // cache a broken partial shell that would serve a broken app forever.
+    // A network FAILURE (fetch throws — e.g. a timeout on a slow cold start)
+    // aborts the whole install so we never activate with a half-cached shell;
+    // the previously-installed SW keeps serving. A 404 (file genuinely absent
+    // from the deploy) is logged and skipped rather than bricking the SW.
     await Promise.all(SHELL.map(async url => {
-      const r = await fetch(url, { cache: 'reload' });
-      if (!r.ok) throw new Error(`SW install: failed to cache ${url} (${r.status})`);
+      let r;
+      try {
+        r = await fetch(url, { cache: 'reload' });
+      } catch (err) {
+        throw new Error(`SW install aborted: network failure fetching ${url} — ${err.message}`);
+      }
+      if (!r.ok) { console.warn(`SW install: ${url} returned ${r.status}, skipping`); return; }
       await cache.put(url, r);
     }));
     self.skipWaiting();
