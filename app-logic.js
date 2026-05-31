@@ -4261,7 +4261,7 @@ async function _checkHolidayBanner(bannerId, msgId) {
         `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
       todayStr = toLocalDate(today),
       tomorrowStr = toLocalDate(tomorrow),
-      snap = await getDocs(query(collection(db, "holidays"), limit(50)));
+      snap = await getDocs(query(collection(db, "holidays"), where("date", ">=", todayStr), where("date", "<=", tomorrowStr), orderBy("date"), limit(2)));
     let match = null;
     if (
       (snap.forEach((d) => {
@@ -4719,12 +4719,15 @@ function _arcCalcTotal(academics) {
         const todayStr = today.toISOString().split("T")[0],
           in60Str = in60.toISOString().split("T")[0],
           upcoming = [
-            ...(await getDocs(query(collection(db, "holidays"), limit(50))))
-              .docs,
+            ...(await getDocs(query(
+              collection(db, "holidays"),
+              where("date", ">=", todayStr),
+              where("date", "<=", in60Str),
+              orderBy("date"),
+              limit(10)
+            ))).docs,
           ]
-            .map((d) => d.data())
-            .filter((h) => h.date && h.date >= todayStr && h.date <= in60Str)
-            .sort((a, b) => a.date.localeCompare(b.date));
+            .map((d) => d.data());
         upcoming.length
           ? (holEl.innerHTML = upcoming
               .map((h) => {
