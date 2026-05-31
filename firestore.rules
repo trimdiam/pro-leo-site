@@ -216,6 +216,16 @@ service cloud.firestore {
       allow read, write: if isAdmin() || isOffice();
     }
 
+    // ── Fee queries ───────────────────────────────────────────────────
+    match /fee_queries/{docId} {
+      allow create: if request.auth != null;
+      allow read:   if isAnyStaff() ||
+        (request.auth != null &&
+         resource.data.studentId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId);
+      allow update: if isAdmin() || isOffice();
+      allow delete: if false;
+    }
+
     // ── Audit log ────────────────────────────────────────────────────
     match /audit_log/{docId} {
       allow read:  if isAdmin();

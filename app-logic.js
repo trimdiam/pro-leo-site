@@ -2074,7 +2074,7 @@ window.showDash = function (prefix, sectionId, btn) {
     "s-notices" === sectionId &&
       window.loadStudentNotices &&
       loadStudentNotices(),
-    "s-fees" === sectionId && window.loadStudentFees && loadStudentFees(),
+    "s-fees" === sectionId && window.loadStudentFees && (loadStudentFees(), loadFeeQueries()),
     "t-notices" === sectionId &&
       window.loadTeacherNotices &&
       loadTeacherNotices(),
@@ -2088,7 +2088,7 @@ window.showDash = function (prefix, sectionId, btn) {
       (window.loadLeaveQuota && loadLeaveQuota(),
       window.loadAdminLeave && loadAdminLeave()),
     "a-notices" === sectionId && window.loadAdminNotices && loadAdminNotices(),
-    "a-fees" === sectionId && window.loadAdminFees && loadAdminFees(),
+    "a-fees" === sectionId && window.loadAdminFees && (loadAdminFees(), loadAdminFeeQueries()),
     "a-monthly-att" === sectionId &&
       (window.loadAdminMonthlyAtt && loadAdminMonthlyAtt(),
       window.loadAcademicSessions && loadAcademicSessions()),
@@ -5012,6 +5012,153 @@ function _arcCalcTotal(academics) {
       console.warn("[Attendance] load failed:", e.message);
     }
   }),
+  // ── Fee Queries (Student side) ───────────────────────────────────────────
+  (window.submitFeeQuery = async function () {
+    const type = document.getElementById("fq-type")?.value;
+    const msg  = document.getElementById("fq-message")?.value?.trim();
+    if (!msg) return void showToast("⚠️ Please enter your message.");
+    const sid  = window._studentId || "";
+    const name = window._studentName || document.getElementById("s-profile-name")?.textContent || "Student";
+    const cls  = window._studentClass || "";
+    const btn  = document.getElementById("fq-submit-btn");
+    btn && ((btn.disabled = true), (btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…'));
+    try {
+      await addDoc(collection(db, "fee_queries"), {
+        studentId: sid,
+        studentName: name,
+        class: cls,
+        type,
+        message: msg,
+        status: "Open",
+        createdAt: new Date().toISOString(),
+        reply: "",
+        repliedAt: "",
+        repliedBy: ""
+      });
+      showToast("✅ Query submitted! The office will respond shortly.");
+      document.getElementById("fq-message").value = "";
+      loadFeeQueries();
+    } catch(e) {
+      showToast("❌ " + e.message);
+    } finally {
+      btn && ((btn.disabled = false), (btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Query'));
+    }
+  }),
+  (window.loadFeeQueries = async function () {
+    const wrap = document.getElementById("fq-history");
+    if (!wrap) return;
+    const sid = window._studentId || "";
+    if (!sid) { wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Not logged in.</p>'; return; }
+    wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      const snap = await getDocs(query(
+        collection(db, "fee_queries"),
+        where("studentId", "==", sid),
+        orderBy("createdAt", "desc"),
+        limit(20)
+      ));
+      if (snap.empty) {
+        wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">No queries submitted yet.</p>';
+        return;
+      }
+      wrap.innerHTML = snap.docs.map(d => {
+        const q = d.data();
+        const ts = q.createdAt ? new Date(q.createdAt).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) : "—";
+        const isOpen = q.status === "Open";
+        const replyHtml = q.reply
+          ? `<div style="margin-top:10px;padding:10px 12px;background:#f0fdf4;border-left:3px solid var(--success);border-radius:0 8px 8px 0;font-size:13px">
+              <div style="font-size:11px;color:var(--text-light);margin-bottom:4px"><i class="fas fa-reply" style="margin-right:4px"></i>${q.repliedBy || "Office"} replied ${q.repliedAt ? new Date(q.repliedAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short"}) : ""}</div>
+              <div>${q.reply}</div>
+            </div>` : "";
+        return `<div style="padding:14px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">
+            <div>
+              <span style="font-weight:700;font-size:13px;color:var(--accent-dark)">${q.type || "Query"}</span>
+              <span style="font-size:11px;color:var(--text-light);margin-left:8px">${ts}</span>
+            </div>
+            <span class="badge ${isOpen ? 'badge-warning' : 'badge-success'}">${q.status || "Open"}</span>
+          </div>
+          <p style="font-size:13px;color:var(--text);margin:6px 0 0">${q.message}</p>
+          ${replyHtml}
+        </div>`;
+      }).join("");
+    } catch(e) {
+      wrap.innerHTML = `<p style="color:var(--danger);font-size:13px;text-align:center;padding:12px">❌ ${e.message}</p>`;
+    }
+  }),
+
+  // ── Fee Queries (Admin side) ──────────────────────────────────────────────
+  (window.loadAdminFeeQueries = async function () {
+    const wrap = document.getElementById("a-fq-list");
+    const countEl = document.getElementById("a-fq-count");
+    if (!wrap) return;
+    wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:16px"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      const filter = document.getElementById("a-fq-filter")?.value || "Open";
+      let q = query(collection(db, "fee_queries"), orderBy("createdAt", "desc"), limit(50));
+      if (filter !== "all") q = query(collection(db, "fee_queries"), where("status", "==", filter), orderBy("createdAt", "desc"), limit(50));
+      const snap = await getDocs(q);
+      // Count open queries for badge
+      const openSnap = await getDocs(query(collection(db, "fee_queries"), where("status", "==", "Open"), limit(50)));
+      if (countEl) {
+        countEl.textContent = openSnap.size;
+        countEl.style.display = openSnap.size > 0 ? "" : "none";
+      }
+      if (snap.empty) {
+        wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:16px">No queries found.</p>';
+        return;
+      }
+      wrap.innerHTML = snap.docs.map(d => {
+        const q = d.data(), id = d.id;
+        const ts = q.createdAt ? new Date(q.createdAt).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
+        const isOpen = q.status === "Open";
+        const replySection = isOpen
+          ? `<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <textarea id="fq-reply-${id}" placeholder="Type your reply…" style="flex:1;min-width:200px;padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:13px;min-height:60px;resize:vertical"></textarea>
+              <button class="btn btn-sm btn-primary" onclick="adminReplyFeeQuery('${id}')" style="align-self:flex-end"><i class="fas fa-reply"></i> Reply</button>
+            </div>`
+          : `<div style="margin-top:8px;padding:8px 12px;background:#f0fdf4;border-left:3px solid var(--success);border-radius:0 8px 8px 0;font-size:13px">
+              <div style="font-size:11px;color:var(--text-light);margin-bottom:3px">Replied by ${q.repliedBy || "Office"}</div>
+              <div>${q.reply}</div>
+            </div>`;
+        return `<div style="padding:16px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+            <div>
+              <strong style="color:var(--accent-dark)">${q.studentName || "Student"}</strong>
+              <span style="font-size:12px;color:var(--text-light);margin-left:6px">Class ${q.class || "?"} · ${q.studentId || ""}</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span class="badge ${isOpen ? 'badge-warning' : 'badge-success'}">${q.status}</span>
+              <span style="font-size:11px;color:var(--text-light)">${ts}</span>
+            </div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px">${q.type || "Query"}</div>
+          <div style="font-size:13px">${q.message}</div>
+          ${replySection}
+        </div>`;
+      }).join("");
+    } catch(e) {
+      wrap.innerHTML = `<p style="color:var(--danger);font-size:13px;text-align:center;padding:16px">❌ ${e.message}</p>`;
+    }
+  }),
+  (window.adminReplyFeeQuery = async function (docId) {
+    const reply = document.getElementById(`fq-reply-${docId}`)?.value?.trim();
+    if (!reply) return void showToast("⚠️ Please type a reply first.");
+    try {
+      await setDoc(doc(db, "fee_queries", docId), {
+        reply,
+        repliedAt: new Date().toISOString(),
+        repliedBy: window._adminName || "Office",
+        status: "Replied"
+      }, { merge: true });
+      _auditLog("Fee Query Replied", `Query ID: ${docId}`, { refId: docId });
+      showToast("✅ Reply sent to student.");
+      loadAdminFeeQueries();
+    } catch(e) {
+      showToast("❌ " + e.message);
+    }
+  }),
+
   (window.loadStudentFees = async function () {
     const listEl = document.getElementById("s-fees-list"),
       totalEl = document.getElementById("s-fees-total"),
