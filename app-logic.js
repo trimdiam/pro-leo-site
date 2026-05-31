@@ -9930,27 +9930,28 @@ function idToEmailLocal(id) {
         annualFee = parseFloat(
           document.getElementById("ofs-annual-fee")?.value || 0,
         );
+      const year = (document.getElementById("ofs-year")?.value || "").trim();
       if (!cls) return void showToast("⚠️ Please select a class.");
       if (!annualFee) return void showToast("⚠️ Annual fee is required.");
+      if (!year) return void showToast("⚠️ Academic Year is required (e.g. 2025-26).");
       const data = {
         class: cls,
+        academicYear: year,
         annualFee: annualFee,
-        tuition:
-          parseFloat(document.getElementById("ofs-tuition")?.value || 0) || 0,
-        examFee:
-          parseFloat(document.getElementById("ofs-exam-fee")?.value || 0) || 0,
-        sportsFee:
-          parseFloat(document.getElementById("ofs-sports-fee")?.value || 0) ||
-          0,
-        annualCharge:
-          parseFloat(
-            document.getElementById("ofs-annual-charge")?.value || 0,
-          ) || 0,
+        tuition: parseFloat(document.getElementById("ofs-tuition")?.value || 0) || 0,
+        examFee: parseFloat(document.getElementById("ofs-exam-fee")?.value || 0) || 0,
+        sportsFee: parseFloat(document.getElementById("ofs-sports-fee")?.value || 0) || 0,
+        annualCharge: parseFloat(document.getElementById("ofs-annual-charge")?.value || 0) || 0,
         notes: (document.getElementById("ofs-notes")?.value || "").trim(),
         updatedAt: new Date().toISOString(),
         updatedBy: window._officeStaffName || "Office Staff",
       };
       try {
+        // Warn if overwriting a different year's structure
+        const existing = await getDoc(doc(db, "fee_structure", cls));
+        if (existing.exists() && existing.data().academicYear && existing.data().academicYear !== year) {
+          if (!confirm(`⚠️ A fee structure for ${clsLabel(cls)} already exists for AY ${existing.data().academicYear}.\n\nOverwrite it with AY ${year}?`)) return;
+        }
         (await setDoc(doc(db, "fee_structure", cls), data, { merge: !0 }),
           showToast("✅ Fee structure saved for " + clsLabel(cls)),
           [
@@ -9960,6 +9961,7 @@ function idToEmailLocal(id) {
             "ofs-exam-fee",
             "ofs-sports-fee",
             "ofs-annual-charge",
+            "ofs-year",
             "ofs-notes",
           ].forEach((id) => {
             const el = document.getElementById(id);
@@ -9985,11 +9987,11 @@ function idToEmailLocal(id) {
                 ORDER.indexOf(a.data().class) - ORDER.indexOf(b.data().class),
             );
             el.innerHTML =
-              '<div class="table-wrap"><table><thead><tr><th>Class</th><th>Annual Fee</th><th>Updated By</th><th></th></tr></thead><tbody>' +
+              '<div class="table-wrap"><table><thead><tr><th>Class</th><th>AY</th><th>Annual Fee</th><th>Updated By</th><th></th></tr></thead><tbody>' +
               sorted
                 .map((d) => {
                   const f = d.data();
-                  return `<tr>\n            <td><strong>${clsLabel(f.class)}</strong>${f.notes ? `<div style="font-size:11px;color:var(--text-light)">${f.notes}</div>` : ""}</td>\n            <td style="font-weight:700;color:var(--accent-dark)">${((n = f.annualFee), "₹" + (parseFloat(n) || 0).toLocaleString("en-IN"))}</td>\n            <td style="font-size:12px;color:var(--text-light)">${f.updatedBy || "—"}</td>\n            <td>\n              <button onclick="officeStaffPrefillFeeForm('${f.class}',${f.annualFee || 0},${f.tuition || 0},${f.examFee || 0},${f.sportsFee || 0},${f.annualCharge || 0})"\n                style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px" title="Edit">\n                <i class="fas fa-edit"></i>\n              </button>\n            </td>\n          </tr>`;
+                  return `<tr>\n            <td><strong>${clsLabel(f.class)}</strong>${f.notes ? `<div style="font-size:11px;color:var(--text-light)">${f.notes}</div>` : ""}</td>\n            <td><span style="background:${f.academicYear ? "var(--primary)" : "#e5e7eb"};color:${f.academicYear ? "#fff" : "var(--text-light)"};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">${f.academicYear || "—"}</span></td>\n            <td style="font-weight:700;color:var(--accent-dark)">${((n = f.annualFee), "₹" + (parseFloat(n) || 0).toLocaleString("en-IN"))}</td>\n            <td style="font-size:12px;color:var(--text-light)">${f.updatedBy || "—"}</td>\n            <td>\n              <button onclick="officeStaffPrefillFeeForm('${f.class}',${f.annualFee || 0},${f.tuition || 0},${f.examFee || 0},${f.sportsFee || 0},${f.annualCharge || 0},'${f.academicYear || ""}')"\n                style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px" title="Edit">\n                <i class="fas fa-edit"></i>\n              </button>\n            </td>\n          </tr>`;
                   var n;
                 })
                 .join("") +
@@ -10000,23 +10002,17 @@ function idToEmailLocal(id) {
         }
       }),
       (window.officeStaffPrefillFeeForm = function (
-        cls,
-        annual,
-        tuition,
-        exam,
-        sports,
-        annualCharge,
+        cls, annual, tuition, exam, sports, annualCharge, year
       ) {
-        const set = (id, v) => {
-          const e = document.getElementById(id);
-          e && (e.value = v);
-        };
+        const set = (id, v) => { const e = document.getElementById(id); e && (e.value = v || ""); };
         (set("ofs-class", cls),
           set("ofs-annual-fee", annual),
           set("ofs-tuition", tuition),
           set("ofs-exam-fee", exam),
           set("ofs-sports-fee", sports),
-          set("ofs-annual-charge", annualCharge));
+          set("ofs-annual-charge", annualCharge),
+          set("ofs-year", year));
+        document.getElementById("ofs-class")?.scrollIntoView({ behavior: "smooth", block: "center" });
       }),
       console.log("[OfficeFeeStructure] ✅ Loaded"));
   })(),
@@ -10753,6 +10749,17 @@ function idToEmailLocal(id) {
             document.getElementById("bulk-fee-type")?.value || "Annual Fee",
           mode = document.getElementById("bulk-mode")?.value || "Cash",
           staffName = window._officeStaffName || "Office Staff";
+        // ── Confirmation summary ──
+        let totalAmt = 0;
+        const summaryLines = [];
+        for (const chk of checked) {
+          const s = JSON.parse(chk.dataset.student);
+          const amt = parseFloat(document.querySelector(`.bulk-amt-input[data-sid="${chk.dataset.sid}"]`)?.value || 0);
+          if (amt > 0) { totalAmt += amt; summaryLines.push(`• ${s.name} — ₹${amt.toLocaleString("en-IN")}`); }
+        }
+        if (!summaryLines.length) return void showToast("⚠️ No valid amounts entered.");
+        const summary = `Record ${summaryLines.length} payment(s)?\n\nFee Type: ${feeType}\nMode: ${mode}\nTotal: ₹${totalAmt.toLocaleString("en-IN")}\n\n${summaryLines.slice(0, 10).join("\n")}${summaryLines.length > 10 ? `\n…and ${summaryLines.length - 10} more` : ""}\n\nThis cannot be undone. Proceed?`;
+        if (!confirm(summary)) return;
         let ok = 0,
           fail = 0;
         for (const chk of checked)
