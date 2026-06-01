@@ -1,5 +1,7 @@
 node_modules/
 .env
+*.env.txt
+gemini.env.txt
 build/
 dist/
 serviceAccountKey.json

@@ -13,6 +13,9 @@ const SUBJECTS_PATH  = 'assessment-app/data/subjects.json';
 const ELIGIBLE_STATUSES = new Set(['submitted', 'reviewed', 'locked']);
 
 let _db = null;
+let _subjectsCache = null;
+const _criteriaCache = new Map();
+const _sessionsCache = new Map();
 
 async function ensureDb() {
   if (_db) return _db;
@@ -59,24 +62,27 @@ function getMarkValue(entry) {
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
 async function fetchSubjects() {
+  if (_subjectsCache) return _subjectsCache;
   const res = await fetch(SUBJECTS_PATH);
   if (!res.ok) throw new Error('Could not load subjects registry');
-  return res.json();
+  _subjectsCache = await res.json();
+  return _subjectsCache;
 }
 
 async function fetchCriteria(criteriaPath) {
-  // subjects.json stores criteria_path relative to the assessment-app folder
-  // (e.g. "data/criteria/english1.json"). This engine runs from the root
-  // portal page, so prefix it unless it's already rooted there.
+  if (_criteriaCache.has(criteriaPath)) return _criteriaCache.get(criteriaPath);
   const url = criteriaPath.startsWith('assessment-app/')
     ? criteriaPath
     : `assessment-app/${criteriaPath}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Could not load criteria: ${url}`);
-  return res.json();
+  const data = await res.json();
+  _criteriaCache.set(criteriaPath, data);
+  return data;
 }
 
 async function fetchStudentSessions(studentClass) {
+  if (_sessionsCache.has(studentClass)) return _sessionsCache.get(studentClass);
   const db = await ensureDb();
   const { collection, query, where, getDocs } =
     await import(`${FB_BASE}/firebase-firestore.js`);
@@ -86,9 +92,11 @@ async function fetchStudentSessions(studentClass) {
     where('session.class', '==', studentClass)
   );
   const snap = await getDocs(q);
-  return snap.docs
+  const sessions = snap.docs
     .map(d => d.data())
     .filter(d => d.session && ELIGIBLE_STATUSES.has(d.session.status));
+  _sessionsCache.set(studentClass, sessions);
+  return sessions;
 }
 
 // ── Core computation ──────────────────────────────────────────────────────────
@@ -266,29 +274,22 @@ export async function computeProgressFromSessions(studentId, studentClass, sessi
     Array.isArray(s.classes) && s.classes.includes(studentClass)
   );
 
-  const results = [];
+  const settled = await Promise.all(
+    classSubjects.map(async subject => {
+      let criteriaFile;
+      try {
+        criteriaFile = await fetchCriteria(subject.criteria_path);
+      } catch {
+        return null;
+      }
+      const criteriaArray = criteriaFile.criteria || [];
+      const progress = computeSubjectProgress(studentId, sessions, subject.subject_id, criteriaArray);
+      if (!progress) return null;
+      return { subject_id: subject.subject_id, subject_name: subject.subject_name, ...progress };
+    })
+  );
 
-  for (const subject of classSubjects) {
-    let criteriaFile;
-    try {
-      criteriaFile = await fetchCriteria(subject.criteria_path);
-    } catch {
-      continue; // skip subjects whose criteria file can't be loaded
-    }
-
-    const criteriaArray = criteriaFile.criteria || [];
-    const progress = computeSubjectProgress(studentId, sessions, subject.subject_id, criteriaArray);
-    if (!progress) continue; // no marks found for this student in this subject
-
-    results.push({
-      subject_id:   subject.subject_id,
-      subject_name: subject.subject_name,
-      ...progress
-    });
-  }
-
-  // Sort by weakest first so student sees what needs attention at the top
-  results.sort((a, b) => a.overallPercentage - b.overallPercentage);
-
-  return results;
+  return settled
+    .filter(Boolean)
+    .sort((a, b) => a.overallPercentage - b.overallPercentage);
 }

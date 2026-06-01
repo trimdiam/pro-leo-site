@@ -2094,12 +2094,14 @@ window.showDash = function (prefix, sectionId, btn) {
       window.loadTeacherDashWidgets &&
       loadTeacherDashWidgets(),
     "s-homework" === sectionId
-      ? window.loadStudentHomework && loadStudentHomework()
+      ? (window.loadStudentHomework && loadStudentHomework(),
+         window._clearStudentBadge && _clearStudentBadge('hw'))
       : window._hwUnsubscribe &&
         (window._hwUnsubscribe(), (window._hwUnsubscribe = null)),
     "s-notices" === sectionId &&
       window.loadStudentNotices &&
-      loadStudentNotices(),
+      (loadStudentNotices(),
+       window._clearStudentBadge && _clearStudentBadge('notices')),
     "s-fees" === sectionId && window.loadStudentFees && (loadStudentFees(), loadFeeQueries()),
     "t-notices" === sectionId &&
       window.loadTeacherNotices &&
@@ -3661,7 +3663,7 @@ function _resolveSubject(code, map) {
         loadStudentNotices(),
         loadStudentFees(),
         window.loadStudentDashWidgets && loadStudentDashWidgets(),
-        window.loadAcademicSnapshot(studentId),
+
         userData.mustChangePassword && window._showMustChangePwBanner && _showMustChangePwBanner("student"),
         (async function (studentId) {
           // Banner visibility: check the new report_cards collection (Project LEO).
@@ -3698,108 +3700,6 @@ function _resolveSubject(code, map) {
     // no longer matches the report_cards collection used by the new system.
     showDash("s", "s-reportcards", null);
     if (window.loadStudentReportCards) loadStudentReportCards();
-  }),
-  (window.loadAcademicSnapshot = async function (studentId) {
-    const container = document.getElementById("s-academic-snapshot");
-    if (!container || !studentId) return;
-    const docId = studentId.replace(/\//g, "_").replace(/\s+/g, "_");
-    try {
-      const snap = await getDoc(doc(db, "student_profiles", docId));
-      if (!snap.exists())
-        return void (container.innerHTML =
-          '\n          <h4><i class="fas fa-chart-line"></i> Academic Performance</h4>\n          <p class="academic-snapshot-empty">Academic report not yet available. Reports are generated after assessments are reviewed.</p>');
-      const p = snap.data(),
-        trendClass =
-          "improving" === p.trendDirection
-            ? "trend-improving"
-            : "declining" === p.trendDirection
-              ? "trend-declining"
-              : "trend-stable",
-        trendIcon =
-          "improving" === p.trendDirection
-            ? "↑"
-            : "declining" === p.trendDirection
-              ? "↓"
-              : "→",
-        alertsHtml =
-          (p.strongestSubject,
-          p.weakestSubject,
-          p.activeAlerts?.length > 0
-            ? `\n        <div class="academic-alerts">\n          <div class="academic-alerts-title"><i class="fas fa-exclamation-triangle"></i> Alerts</div>\n          ${(p.alertReasons || []).map((r) => `<div class="academic-alert-item">• ${r}</div>`).join("")}\n        </div>`
-            : ""),
-        reportUrl =
-          "string" == typeof window._academicAppUrl && window._academicAppUrl
-            ? `${window._academicAppUrl}?student=${encodeURIComponent(studentId)}`
-            : "",
-        linkClass = reportUrl ? "" : " disabled",
-        linkHref = reportUrl || "#",
-        subjectBarsHtml =
-          Array.isArray(p.subjectBreakdown) && p.subjectBreakdown.length
-            ? `<div class="academic-subject-breakdown">\n            <div class="academic-section-title"><i class="fas fa-book"></i> Subject Breakdown</div>\n            ${p.subjectBreakdown
-                .sort((a, b) => b.averagePercentage - a.averagePercentage)
-                .map((s) => {
-                  const pct = s.averagePercentage ?? 0,
-                    barClass =
-                      pct >= 75
-                        ? "bar-good"
-                        : pct >= 50
-                          ? "bar-avg"
-                          : pct >= 40
-                            ? "bar-low"
-                            : "bar-risk";
-                  return `<div class="subject-bar-row">\n                <div class="subject-bar-name">${s.subject_name}</div>\n                <div class="subject-bar-track">\n                  <div class="subject-bar-fill ${barClass}" style="width:${Math.min(pct, 100)}%"></div>\n                </div>\n                <div class="subject-bar-pct">${pct}%</div>\n              </div>`;
-                })
-                .join("")}\n          </div>`
-            : "",
-        hasTrend = Array.isArray(p.monthlyTrend) && p.monthlyTrend.length > 1,
-        trendChartHtml = hasTrend
-          ? '<div class="academic-section-title" style="margin-top:16px"><i class="fas fa-chart-area"></i> Monthly Trend</div>\n           <div class="academic-trend-chart-wrap"><canvas id="s-academic-trend-chart" height="120"></canvas></div>'
-          : "";
-      if (
-        ((container.innerHTML = `\n        <h4><i class="fas fa-chart-line"></i> Academic Performance</h4>\n        <div class="academic-stat-row">\n          <div class="academic-stat">\n            <div class="academic-stat-val">${p.overallAverage ?? "—"}%</div>\n            <div class="academic-stat-label">Overall Average</div>\n            <span class="academic-trend-badge ${trendClass}">${trendIcon} ${p.trendLabel || "Stable"}</span>\n          </div>\n          <div class="academic-stat">\n            <div class="academic-stat-val">${p.monthsTracked ?? "—"}</div>\n            <div class="academic-stat-label">Months Tracked</div>\n          </div>\n          <div class="academic-stat">\n            <div class="academic-stat-val">${p.totalSessions ?? "—"}</div>\n            <div class="academic-stat-label">Total Sessions</div>\n          </div>\n        </div>\n        ${alertsHtml}\n        ${p.summaryText ? `<div class="academic-summary">${p.summaryText}</div>` : ""}\n        ${subjectBarsHtml}\n        ${trendChartHtml}\n        <div class="academic-report-link">\n          <a href="${linkHref}" id="s-academic-report-btn" class="${linkClass}" ${reportUrl ? 'target="_blank"' : ""}>\n            <i class="fas fa-external-link-alt"></i> View Full Academic Report\n          </a>\n        </div>`),
-        hasTrend)
-      ) {
-        const canvas = document.getElementById("s-academic-trend-chart");
-        canvas &&
-          window.Chart &&
-          new window.Chart(canvas, {
-            type: "line",
-            data: {
-              labels: p.monthlyTrend.map((m) => m.month),
-              datasets: [
-                {
-                  label: "Overall %",
-                  data: p.monthlyTrend.map((m) => m.overallPercentage),
-                  borderColor: "#a07735",
-                  backgroundColor: "rgba(160,119,53,0.12)",
-                  borderWidth: 2,
-                  pointRadius: 4,
-                  pointBackgroundColor: "#a07735",
-                  fill: !0,
-                  tension: 0.3,
-                },
-              ],
-            },
-            options: {
-              responsive: !0,
-              plugins: { legend: { display: !1 } },
-              scales: {
-                y: {
-                  min: 0,
-                  max: 100,
-                  ticks: { callback: (v) => v + "%", font: { size: 11 } },
-                  grid: { color: "rgba(0,0,0,0.06)" },
-                },
-                x: { ticks: { font: { size: 11 } }, grid: { display: !1 } },
-              },
-            },
-          });
-      }
-    } catch (e) {
-      ((container.innerHTML =
-        '\n        <h4><i class="fas fa-chart-line"></i> Academic Performance</h4>\n        <p class="academic-snapshot-empty">Could not load academic report.</p>'),
-        console.warn("Academic snapshot load failed:", e.message));
-    }
   }),
   (window.loadStudentNotificationCenter = async function (user) {
     if (user && user.uid && window.NotificationCenter)
@@ -11457,6 +11357,9 @@ function idToEmailLocal(id) {
       }));
   })());
 const TA_CLASS_MAP = {
+    PLG: "PLG",
+    SKG: "SKG",
+    LKG: "LKG",
     I: 1,
     II: 2,
     III: 3,
@@ -12247,15 +12150,20 @@ function taEsc(s) {
   }),
   (window.onTARoleChange = function () {
     const role = document.querySelector('input[name="ta-role"]:checked')?.value;
+    const isOfficeStaff = role === "office_staff";
     document.getElementById("ta-section-b").style.display =
       "class_teacher" === role ? "" : "none";
+    const secC = document.getElementById("ta-section-c");
+    if (secC) secC.style.display = isOfficeStaff ? "none" : "";
   }),
   (window.onTACTClassChange = async function () {
     const cls = document.getElementById("ta-ct-class").value,
       conflictEl = document.getElementById("ta-ct-conflict");
     if (((conflictEl.style.display = "none"), cls))
       try {
-        const snap = await getDoc(doc(db, "classes", `${cls}-A`));
+        const noSection = ["PLG","SKG","LKG"].includes(cls),
+          classDocId = noSection ? cls : `${cls}-A`,
+          snap = await getDoc(doc(db, "classes", classDocId));
         if (snap.exists()) {
           const d = snap.data();
           d.classTeacherId &&

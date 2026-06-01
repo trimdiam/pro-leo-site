@@ -1271,13 +1271,6 @@
             <button class="btn btn-primary" onclick="changeOwnPassword('s-new-pw','s-confirm-pw')"><i class="fas fa-save"></i> Update Password</button>
           </div>
 
-          <!-- Academic Intelligence Snapshot — populated by loadAcademicSnapshot() -->
-          <div id="s-academic-snapshot" class="academic-snapshot-card">
-            <div class="academic-snapshot-loading">
-              <i class="fas fa-spinner fa-spin"></i> Loading academic report...
-            </div>
-          </div>
-
         </div>
         <!-- ── Student Report Cards (Project LEO) ── -->
         <div id="s-reportcards" class="dash-section" data-rc-student-init="false">
@@ -2543,6 +2536,7 @@
                 <label class="admin-ta-radio"><input type="radio" name="ta-role" value="subject_teacher" onchange="onTARoleChange()"> Subject Teacher</label>
                 <label class="admin-ta-radio"><input type="radio" name="ta-role" value="class_teacher" onchange="onTARoleChange()"> Class Teacher</label>
                 <label class="admin-ta-radio"><input type="radio" name="ta-role" value="admin" onchange="onTARoleChange()"> Admin</label>
+                <label class="admin-ta-radio"><input type="radio" name="ta-role" value="office_staff" onchange="onTARoleChange()"> Office Staff</label>
               </div>
             </div>
 
@@ -2552,6 +2546,7 @@
               <label style="font-size:13px;color:var(--text-light);display:block;margin-bottom:8px">Assign as Class Teacher of:</label>
               <select id="ta-ct-class" onchange="onTACTClassChange()" class="admin-ta-select">
                 <option value="">— Class —</option>
+                <option value="PLG">Play Group</option><option value="SKG">SKG</option><option value="LKG">LKG</option>
                 <option value="I">Class I</option><option value="II">Class II</option>
                 <option value="III">Class III</option><option value="IV">Class IV</option><option value="V">Class V</option>
                 <option value="VI">Class VI</option><option value="VII">Class VII</option><option value="VIII">Class VIII</option>
@@ -2561,13 +2556,14 @@
             </div>
 
             <!-- SECTION C: Subject Assignments -->
-            <div class="admin-ta-section">
+            <div class="admin-ta-section" id="ta-section-c">
               <div class="admin-ta-section-head"><span class="admin-ta-marker">▸</span> SECTION C — Subject Assignments</div>
 
               <!-- Single add row -->
               <p style="font-size:12px;color:var(--text-light);margin:0 0 8px">Add a subject assignment:</p>
               <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px">
                 <select id="ta-sub-class" onchange="onTASubClassChange()" class="admin-ta-select"><option value="">— Class —</option>
+                  <option value="PLG">PLG</option><option value="SKG">SKG</option><option value="LKG">LKG</option>
                   <option value="I">I</option><option value="II">II</option>
                   <option value="III">III</option><option value="IV">IV</option><option value="V">V</option>
                   <option value="VI">VI</option><option value="VII">VII</option><option value="VIII">VIII</option>
