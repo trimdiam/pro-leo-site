@@ -216,6 +216,11 @@ service cloud.firestore {
       allow read, write: if isAdmin() || isOffice();
     }
 
+    // ── Office notifications (admin → office feedback) ────────────────
+    match /office_notifications/{docId} {
+      allow read, write: if isAdmin() || isOffice();
+    }
+
     // ── Fee queries ───────────────────────────────────────────────────
     match /fee_queries/{docId} {
       allow create: if request.auth != null;
