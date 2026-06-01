@@ -1971,11 +1971,16 @@ window.loadAuditLog = async function() {
     };
     tbody.innerHTML = entries.map(e => {
       const ts = e.timestamp ? new Date(e.timestamp).toLocaleString("en-IN", { day:"2-digit", month:"short", year:"2-digit", hour:"2-digit", minute:"2-digit" }) : "—";
+      const roleTag = e.role === "office"
+        ? `<div style="font-size:10px;color:#7c3aed"><i class="fas fa-building"></i> Office</div>`
+        : e.role === "teacher" || e.role === "class_teacher"
+        ? `<div style="font-size:10px;color:#0369a1"><i class="fas fa-chalkboard-teacher"></i> Teacher</div>`
+        : `<div style="font-size:10px;color:#6b7280"><i class="fas fa-user-shield"></i> Admin</div>`;
       return `<tr>
         <td style="font-size:12px;white-space:nowrap;color:var(--text-light)">${ts}</td>
         <td><span style="font-weight:700;font-size:12px;color:${actionColor(e.action||"")}">${e.action || "—"}</span></td>
         <td style="font-size:12px;max-width:280px;white-space:normal">${e.detail || "—"}</td>
-        <td style="font-size:12px;color:var(--text-light)">${e.performedBy || "—"}</td>
+        <td style="font-size:12px;color:var(--text-light)">${e.performedBy || "—"}${roleTag}</td>
       </tr>`;
     }).join("");
   } catch(e) {
@@ -1990,7 +1995,8 @@ window._auditLog = async function(action, detail, extra = {}) {
     await addDoc(collection(db, "audit_log"), {
       action,
       detail,
-      performedBy: window._adminName || window._teacherName || user?.email || "Admin",
+      performedBy: window._adminName || window._officeStaffName || window._teacherName || user?.email || "Staff",
+      role: window._loginRole || "admin",
       uid: user?.uid || "",
       timestamp: new Date().toISOString(),
       ...extra
@@ -9756,6 +9762,8 @@ function idToEmailLocal(id) {
           0,
         notes: (document.getElementById("fs-notes")?.value || "").trim(),
         updatedAt: new Date().toISOString(),
+        updatedBy: "Admin",
+        updatedByRole: "admin",
       };
       try {
         (await setDoc(doc(db, "fee_structure", cls), data, { merge: !0 }),
@@ -9799,7 +9807,8 @@ function idToEmailLocal(id) {
               sorted
                 .map((d) => {
                   const f = d.data();
-                  return `<tr>\n            <td style="padding:8px 4px;border-bottom:1px solid var(--bg)"><strong>${clsLabel(f.class)}</strong>${f.notes ? `<div style="font-size:11px;color:var(--text-light)">${f.notes}</div>` : ""}</td>\n            <td style="padding:8px 4px;border-bottom:1px solid var(--bg);text-align:right;font-weight:700;color:var(--accent-dark)">${fmtINR(f.annualFee)}</td>\n            <td style="padding:8px 4px;border-bottom:1px solid var(--bg);text-align:right;white-space:nowrap">\n              <button onclick="prefillFeeStructure('${f.class}',${f.annualFee || 0},${f.tuition || 0},${f.examFee || 0},${f.sportsFee || 0},${f.annualCharge || 0})" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px"><i class="fas fa-edit"></i></button>\n              <button onclick="deleteFeeStructure('${f.class}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;margin-left:8px"><i class="fas fa-trash"></i></button>\n            </td>\n          </tr>`;
+                  const lastBy = f.updatedBy ? `<div style="font-size:10px;color:${f.updatedByRole==='office'?'#7c3aed':'#2563eb'};margin-top:2px"><i class="fas fa-${f.updatedByRole==='office'?'building':'user-shield'}"></i> ${f.updatedBy}</div>` : "";
+                  return `<tr>\n            <td style="padding:8px 4px;border-bottom:1px solid var(--bg)"><strong>${clsLabel(f.class)}</strong>${f.notes ? `<div style="font-size:11px;color:var(--text-light)">${f.notes}</div>` : ""}${lastBy}</td>\n            <td style="padding:8px 4px;border-bottom:1px solid var(--bg);text-align:right;font-weight:700;color:var(--accent-dark)">${fmtINR(f.annualFee)}</td>\n            <td style="padding:8px 4px;border-bottom:1px solid var(--bg);text-align:right;white-space:nowrap">\n              <button onclick="prefillFeeStructure('${f.class}',${f.annualFee || 0},${f.tuition || 0},${f.examFee || 0},${f.sportsFee || 0},${f.annualCharge || 0})" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px"><i class="fas fa-edit"></i></button>\n              <button onclick="deleteFeeStructure('${f.class}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;margin-left:8px"><i class="fas fa-trash"></i></button>\n            </td>\n          </tr>`;
                 })
                 .join("") +
               "</tbody></table></div>";
@@ -9950,6 +9959,7 @@ function idToEmailLocal(id) {
         notes: (document.getElementById("ofs-notes")?.value || "").trim(),
         updatedAt: new Date().toISOString(),
         updatedBy: window._officeStaffName || "Office Staff",
+        updatedByRole: "office",
       };
       try {
         // Warn if overwriting a different year's structure
@@ -9958,6 +9968,7 @@ function idToEmailLocal(id) {
           if (!confirm(`⚠️ A fee structure for ${clsLabel(cls)} already exists for AY ${existing.data().academicYear}.\n\nOverwrite it with AY ${year}?`)) return;
         }
         (await setDoc(doc(db, "fee_structure", cls), data, { merge: !0 }),
+          window._auditLog?.("fee_structure_update", `Office updated fee structure for ${clsLabel(cls)} AY ${year}`),
           showToast("✅ Fee structure saved for " + clsLabel(cls)),
           [
             "ofs-class",
@@ -10683,6 +10694,7 @@ function idToEmailLocal(id) {
               read: !1,
               createdAt: new Date().toISOString(),
             }),
+            window._auditLog?.("admission_forwarded", `Office forwarded admission for ${currentAdmissionData?.fullName || currentAdmissionId} to Admin`),
             showToast("✅ Application forwarded to Admin."),
             window.__admissionsCache?.[currentAdmissionId] &&
               (window.__admissionsCache[currentAdmissionId].status =
@@ -11042,6 +11054,8 @@ function idToEmailLocal(id) {
           filterType = document.getElementById("dues-filter-type")?.value || "",
           filterStatus =
             document.getElementById("dues-filter-status")?.value || "",
+          filterSource =
+            document.getElementById("dues-filter-source")?.value || "",
           snap = await getDocs(
             query(
               collection(db2, "fee_transactions"),
@@ -11055,6 +11069,7 @@ function idToEmailLocal(id) {
           (filterClass && cls !== filterClass) ||
             (filterType && d.feeType !== filterType) ||
             (filterStatus && d.status !== filterStatus) ||
+            (filterSource && d.source !== filterSource) ||
             records.push({ ...d, _cls: cls });
         });
         const uniqueIds = [
@@ -11097,7 +11112,14 @@ function idToEmailLocal(id) {
               waBtn = waNum
                 ? `<a href="https://wa.me/91${waNum}?text=${waMsg}" target="_blank" class="btn btn-success btn-sm" onclick="window.markReminded('${r.id}')"><i class="fab fa-whatsapp"></i> Remind</a>`
                 : `<button onclick="navigator.clipboard.writeText('${(waMap[r.studentId]||'').replace(/'/g,'')}');showToast('📋 Number copied!')" style="padding:3px 8px;font-size:11px;background:#6b7280;color:#fff;border:none;border-radius:6px;cursor:pointer" title="Copy contact number"><i class="fas fa-phone"></i> Copy No.</button>`;
-            return `<tr>\n        <td><strong>${r.studentName || r.studentId || "—"}</strong><br><span style="font-size:11px;color:var(--text-light);">${r.studentId || ""}</span></td>\n        <td>${r._cls || "—"}</td>\n        <td>${r.feeType || r.notes || "—"}</td>\n        <td style="font-weight:700;color:#dc3545;">₹${(r.amount || 0).toLocaleString("en-IN")}</td>\n        <td><span class="badge badge-warning">Pending</span></td>\n        <td style="font-size:12px;text-align:center;">${remindCount > 0 ? `<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">${remindCount}×</span>` : "—"}</td>\n        <td style="font-size:12px;">${reminded}</td>\n        <td>${waBtn}</td>\n      </tr>`;
+            const srcTag = r.source === "office"
+                ? `<div style="font-size:10px;color:#7c3aed;margin-top:2px"><i class="fas fa-building"></i> Office</div>`
+                : r.source === "student-portal"
+                ? `<div style="font-size:10px;color:#2563eb;margin-top:2px"><i class="fas fa-mobile-alt"></i> Student Portal</div>`
+                : r.source === "admin"
+                ? `<div style="font-size:10px;color:#6b7280;margin-top:2px"><i class="fas fa-user-shield"></i> Admin</div>`
+                : "";
+            return `<tr>\n        <td><strong>${r.studentName || r.studentId || "—"}</strong><br><span style="font-size:11px;color:var(--text-light);">${r.studentId || ""}</span>${srcTag}</td>\n        <td>${r._cls || "—"}</td>\n        <td>${r.feeType || r.notes || "—"}</td>\n        <td style="font-weight:700;color:#dc3545;">₹${(r.amount || 0).toLocaleString("en-IN")}</td>\n        <td><span class="badge badge-warning">Pending</span></td>\n        <td style="font-size:12px;text-align:center;">${remindCount > 0 ? `<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">${remindCount}×</span>` : "—"}</td>\n        <td style="font-size:12px;">${reminded}</td>\n        <td>${waBtn}</td>\n      </tr>`;
           })
           .join("")),
           countLabel &&

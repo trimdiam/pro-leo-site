@@ -4111,6 +4111,15 @@
                 <option value="rejected">Rejected Only</option>
               </select>
             </div>
+            <div style="flex:1;min-width:140px;">
+              <label style="font-size:12px;font-weight:700;color:var(--text-light);display:block;margin-bottom:6px;">SOURCE</label>
+              <select id="dues-filter-source" onchange="loadDuesList()" style="width:100%;padding:8px 12px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px;">
+                <option value="">All Sources</option>
+                <option value="office">Office Only</option>
+                <option value="admin">Admin Only</option>
+                <option value="student-portal">Student Portal</option>
+              </select>
+            </div>
           </div>
           <div id="dues-summary-chips" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;min-height:32px;"></div>
           <div style="background:var(--white);border-radius:12px;box-shadow:var(--card-shadow);overflow:hidden;">
