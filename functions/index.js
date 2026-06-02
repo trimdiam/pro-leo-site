@@ -1,5 +1,5 @@
 const { setGlobalOptions } = require("firebase-functions");
-const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
@@ -394,8 +394,7 @@ async function resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextS
           notification: {
             channelId: "period_reminders",
             sound: "default",
-            color: "#8b6f47",                                                           // school brand accent
-            imageUrl: "https://st-francis-school-a3e7e.web.app/assets/images/hero1.webp", // big picture — swap for a ~2:1 banner < ~300KB
+            color: "#8b6f47",
           }
         },
         data: {
@@ -690,7 +689,7 @@ async function runDailyRoutine(slot, opts = {}) {
     messages.push({
       token: info.token,
       notification: { title: "Today's Teaching Routine", body },
-      android: { priority: "high", notification: { channelId: "period_reminders", sound: "default", color: "#8b6f47", imageUrl: "https://st-francis-school-a3e7e.web.app/assets/images/hero1.webp" } },
+      android: { priority: "high", notification: { channelId: "period_reminders", sound: "default", color: "#8b6f47" } },
       data: { type: "daily_routine", screen: "daily_routine", day: String(day), click_action: "FLUTTER_NOTIFICATION_CLICK" },
     });
     refs.push(info.ref);
@@ -765,3 +764,339 @@ exports.setTempPassword = onCall(
     return { success: true };
   }
 );
+
+// ════════════════════════════════════════════════════════════════════════════
+// STAFF (TEACHER) DAILY ATTENDANCE — geo-tagged check-in / check-out
+// ════════════════════════════════════════════════════════════════════════════
+// The ONLY writer of staff_attendance docs. Server-authoritative: the time is
+// stamped here, never trusted from the device clock. The geofence is recorded
+// and flagged (never hard-blocks) so GPS drift can't lock a teacher out.
+
+const STAFF_ATT_DEFAULTS = {
+  schoolLat: 25.53898298536331,
+  schoolLng: 91.8936348432684,
+  radiusMeters: 100,
+  morningExpected: "08:00",
+  minDeparture: "14:30",
+  graceMinutes: 10,
+};
+
+// Great-circle distance in metres between two lat/lng points.
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // earth radius, metres
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+// Server "now" expressed in the school's timezone (IST). Returns the date key
+// (YYYY-MM-DD) and minutes-since-midnight + "HH:MM" — used for the doc id and
+// for late/early comparisons regardless of where the function executes.
+function istNow() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(now).reduce((o, p) => (o[p.type] = p.value, o), {});
+  const hh = parts.hour === "24" ? "00" : parts.hour; // guard midnight rollover
+  return {
+    dateKey: `${parts.year}-${parts.month}-${parts.day}`,
+    localTime: `${hh}:${parts.minute}`,
+    minutes: parseInt(hh, 10) * 60 + parseInt(parts.minute, 10),
+    iso: now.toISOString(),
+    ms: now.getTime(),
+  };
+}
+
+// "HH:MM" → minutes since midnight.
+function hhmmToMinutes(s) {
+  const [h, m] = String(s).split(":").map((n) => parseInt(n, 10));
+  return (h || 0) * 60 + (m || 0);
+}
+
+exports.recordStaffAttendance = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+
+    const uid = request.auth.uid;
+    const userDoc = await db.collection("users").doc(uid).get();
+    if (!userDoc.exists) throw new HttpsError("permission-denied", "User not found.");
+    const user = userDoc.data();
+    const teacherRoles = ["teacher", "class_teacher", "subject_teacher", "admin", "super_admin"];
+    if (!teacherRoles.includes(user.role))
+      throw new HttpsError("permission-denied", "Staff attendance is for teachers only.");
+
+    const { phase, lat, lng, accuracy } = request.data || {};
+    if (phase !== "in" && phase !== "out")
+      throw new HttpsError("invalid-argument", "phase must be 'in' or 'out'.");
+    if (typeof lat !== "number" || typeof lng !== "number" ||
+        Number.isNaN(lat) || Number.isNaN(lng))
+      throw new HttpsError("invalid-argument", "Valid lat/lng required. Enable location.");
+
+    // Config (with code fallbacks so a missing doc never breaks check-in).
+    const cfgSnap = await db.collection("settings").doc("staff_attendance_config").get();
+    const cfg = Object.assign({}, STAFF_ATT_DEFAULTS, cfgSnap.exists ? cfgSnap.data() : {});
+
+    const t = istNow();
+    const distanceMeters = haversineMeters(lat, lng, cfg.schoolLat, cfg.schoolLng);
+    const withinGeofence = distanceMeters <= cfg.radiusMeters;
+
+    const docId = `${uid}_${t.dateKey}`;
+    const ref = db.collection("staff_attendance").doc(docId);
+    const existing = (await ref.get()).data() || {};
+
+    const stamp = {
+      at: t.iso,
+      atMs: t.ms,
+      localTime: t.localTime,
+      lat, lng,
+      accuracy: typeof accuracy === "number" ? Math.round(accuracy) : null,
+      distanceMeters,
+      withinGeofence,
+    };
+
+    if (phase === "in") {
+      if (existing.morningIn)
+        throw new HttpsError("failed-precondition", "Already checked in today.");
+
+      const lateBy = Math.max(0, t.minutes - (hhmmToMinutes(cfg.morningExpected) + (cfg.graceMinutes || 0)));
+      stamp.lateBy = lateBy;
+
+      await ref.set({
+        uid,
+        teacherName: user.name || user.displayName || "",
+        teacherClass: user.class || null,
+        dateKey: t.dateKey,
+        morningIn: stamp,
+        status: lateBy > 0 ? "late" : "present",
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      return { success: true, phase, localTime: t.localTime, withinGeofence, distanceMeters, lateBy };
+    }
+
+    // phase === "out"
+    if (!existing.morningIn)
+      throw new HttpsError("failed-precondition", "No check-in found for today.");
+    if (existing.eveningOut)
+      throw new HttpsError("failed-precondition", "Already checked out today.");
+
+    const earlyBy = Math.max(0, hhmmToMinutes(cfg.minDeparture) - t.minutes);
+    const workedMinutes = Math.max(0, Math.round((t.ms - existing.morningIn.atMs) / 60000));
+    stamp.earlyBy = earlyBy;
+
+    await ref.set({
+      eveningOut: stamp,
+      workedMinutes,
+      earlyDeparture: earlyBy > 0,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return { success: true, phase, localTime: t.localTime, withinGeofence, distanceMeters, earlyBy, workedMinutes };
+  }
+);
+
+// ── Missed-checkout reminder ────────────────────────────────────────────────
+// Finds teachers who checked IN today but never checked OUT, and pushes a
+// gentle reminder. Holidays/Sundays need no special gate: on those days nobody
+// checks in, so the query returns nothing. Idempotent via `reminderSent`.
+async function runStaffCheckoutReminder() {
+  const istNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const dateStr = `${istNow.getFullYear()}-${String(istNow.getMonth() + 1).padStart(2, "0")}-${String(istNow.getDate()).padStart(2, "0")}`;
+
+  const log = {
+    type: "staff_checkout_reminder", date: dateStr,
+    sent: 0, failed: 0, candidates: 0, at: new Date().toISOString(),
+  };
+  const writeLog = async () => { try { await db.collection("notification_logs").add(log); } catch (_) {} };
+
+  const snap = await db.collection("staff_attendance").where("dateKey", "==", dateStr).get();
+  const messages = [], refs = [], docRefs = [];
+
+  for (const docSnap of snap.docs) {
+    const d = docSnap.data();
+    if (!d.morningIn || d.eveningOut || d.reminderSent) continue;  // only checked-in-not-out, once
+    const uDoc = await db.collection("users").doc(d.uid).get();
+    const token = uDoc.exists ? uDoc.data().fcmToken : null;
+    if (!token) continue;
+    const first = ((uDoc.data().name || uDoc.data().displayName || d.teacherName || "").split(" ")[0]) || "there";
+    messages.push({
+      token,
+      notification: {
+        title: "⏰ Don't forget to check out",
+        body: `Hi ${first}, you haven't checked out today. Tap to record your departure before you leave.`,
+      },
+      android: { priority: "high", notification: { channelId: "period_reminders", sound: "default", color: "#8b6f47" } },
+      data: { type: "staff_checkout_reminder", screen: "staff_attendance", click_action: "FLUTTER_NOTIFICATION_CLICK" },
+    });
+    refs.push(uDoc.ref);
+    docRefs.push(docSnap.ref);
+  }
+
+  log.candidates = messages.length;
+  if (messages.length === 0) { await writeLog(); return log; }
+
+  const { messages: _m, refs: _r } = dedupeByToken(messages, refs);
+  const result = await fcm.sendEach(_m);
+  await cleanupAfterMulticast(result, _r);
+
+  // Mark so a second run the same day won't nag again.
+  await Promise.all(docRefs.map(r =>
+    r.set({ reminderSent: true, reminderSentAt: new Date().toISOString() }, { merge: true }).catch(() => {})));
+
+  log.sent = result.successCount;
+  log.failed = result.failureCount;
+  await writeLog();
+  console.log(`[staffCheckoutReminder] ${dateStr}: sent ${result.successCount}/${_m.length}`);
+  return log;
+}
+
+// SCHEDULED: 17:30 IST, Mon–Sat. (To change the time, edit this cron + redeploy;
+// settings.staff_attendance_config.checkoutReminderTime is informational.)
+exports.staffCheckoutReminder = onSchedule(
+  { schedule: "30 17 * * 1-6", timeZone: "Asia/Kolkata", region: "asia-south1" },
+  async () => { await runStaffCheckoutReminder(); }
+);
+
+// CALLABLE: admin-only manual trigger, for testing without waiting for 17:30.
+exports.triggerStaffCheckoutReminder = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+    const c = await db.collection("users").doc(request.auth.uid).get();
+    if (!c.exists || !["admin", "super_admin"].includes(c.data().role))
+      throw new HttpsError("permission-denied", "Admin only.");
+    return await runStaffCheckoutReminder();
+  }
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// PROVISION LOGIN — idempotent, self-healing teacher/student account creation
+// ════════════════════════════════════════════════════════════════════════════
+// ROOT-CAUSE FIX for duplicate user docs. Old flow created auth accounts via the
+// client REST API (can't look up by email) and keyed users docs by the volatile
+// auth uid, so any delete-recreate cycle orphaned the old doc. This function uses
+// the Admin SDK to converge to EXACTLY ONE auth user + ONE users doc per loginId:
+//   1. find-or-create the auth user by email (stable uid),
+//   2. delete every users doc with this loginId whose id !== that uid (orphans),
+//   3. write the single canonical doc + (re)set the password.
+// Run it any number of times — the result is always clean.
+
+// Mirrors the client's idToEmailLocal() so emails match existing accounts.
+function idToEmail(id) {
+  return String(id).trim().toLowerCase().replace(/[^a-z0-9]/g, "_") + "@stfrancis.school";
+}
+
+exports.provisionLogin = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+    const caller = await db.collection("users").doc(request.auth.uid).get();
+    if (!caller.exists || !["admin", "super_admin"].includes(caller.data().role))
+      throw new HttpsError("permission-denied", "Admin only.");
+
+    const { loginId, password, role, name } = request.data || {};
+    if (!loginId || !password || !role)
+      throw new HttpsError("invalid-argument", "loginId, password and role are required.");
+    if (String(password).length < 6)
+      throw new HttpsError("invalid-argument", "Password must be at least 6 characters.");
+    if (!["teacher", "student"].includes(role))
+      throw new HttpsError("invalid-argument", "role must be 'teacher' or 'student'.");
+
+    const email = idToEmail(loginId);
+
+    // 1) Find-or-create the auth user (one stable uid per email).
+    let userRec;
+    try {
+      userRec = await getAuth().getUserByEmail(email);
+    } catch (e) {
+      if (e.code === "auth/user-not-found") userRec = await getAuth().createUser({ email, password });
+      else throw new HttpsError("internal", "Auth lookup failed: " + e.message);
+    }
+    const uid = userRec.uid;
+    await getAuth().updateUser(uid, { password });   // (re)set the password
+
+    // 2) Reconcile: remove any users doc for this loginId that isn't the canonical uid.
+    const dupSnap = await db.collection("users").where("loginId", "==", loginId).get();
+    let removedOrphans = 0;
+    for (const d of dupSnap.docs) {
+      if (d.id !== uid) { await d.ref.delete(); removedOrphans++; }
+    }
+
+    // 3) Write the single canonical doc.
+    const docData = { role, loginId, email, name: name || loginId, updatedAt: new Date().toISOString() };
+    if (role === "teacher") docData.teacherId = loginId;
+    if (role === "student") {
+      docData.studentId = loginId;
+      const sSnap = await db.collection("students").where("studentId", "==", loginId).limit(1).get();
+      if (!sSnap.empty) { const s = sSnap.docs[0].data(); docData.class = s.class || ""; docData.rollNo = s.rollNo || ""; }
+    }
+    await db.collection("users").doc(uid).set(docData, { merge: true });
+
+    console.log(`[provisionLogin] ${role} ${loginId} -> uid ${uid}, removed ${removedOrphans} orphan(s)`);
+    return { uid, email, removedOrphans };
+  }
+);
+
+// CALLABLE: admin force-logout of a user's active session.
+// Overwrites sessions/{uid}.sessionId so the target device's onSnapshot listener
+// detects a mismatch and logs out immediately; also revokes refresh tokens so any
+// missed/offline device is invalidated on its next token refresh.
+exports.adminForceLogout = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+    const caller = await db.collection("users").doc(request.auth.uid).get();
+    if (!caller.exists || !["admin", "super_admin"].includes(caller.data().role))
+      throw new HttpsError("permission-denied", "Admin only.");
+
+    const { uid } = request.data || {};
+    if (!uid) throw new HttpsError("invalid-argument", "uid required.");
+
+    await db.collection("sessions").doc(uid).set({
+      sessionId: "revoked_" + Date.now(),
+      revokedBy: caller.data().name || request.auth.token.email || "Admin",
+      revokedAt: new Date().toISOString(),
+    }, { merge: true });
+
+    try { await getAuth().revokeRefreshTokens(uid); } catch (e) { console.warn("revoke skipped:", e.message); }
+    return { success: true };
+  }
+);
+
+// ── Server-side device tracking ─────────────────────────────────────────────
+// Mirrors every sessions/{uid} write into device_registry, so a device is
+// tracked even if its app is running an OLD cached build (the old client still
+// writes sessions on login). Admin SDK bypasses rules.
+exports.mirrorSessionToRegistry = onDocumentWritten("sessions/{uid}", async (event) => {
+  const after = event.data && event.data.after && event.data.after.exists ? event.data.after.data() : null;
+  if (!after || !after.deviceId) return;                                   // deleted / no device info
+  if (String(after.sessionId || "").indexOf("revoked_") === 0) return;     // admin force-logout, not a real login
+
+  const uid = event.params.uid;
+  const uDoc = await db.collection("users").doc(uid).get();
+  const u = uDoc.exists ? uDoc.data() : {};
+
+  const ref = db.collection("device_registry").doc(uid + "_" + after.deviceId);
+  const existed = (await ref.get()).exists;
+  const stamp = after.loginAt || FieldValue.serverTimestamp();
+
+  const data = {
+    uid,
+    name: u.name || u.displayName || "",
+    role: u.role || "",
+    deviceId: after.deviceId,
+    deviceLabel: after.deviceLabel || "",
+    platform: after.platform || "",
+    lastLoginAt: stamp,
+    lastSeenAt: stamp,
+  };
+  if (!existed) data.firstSeenAt = stamp;
+  await ref.set(data, { merge: true });
+  console.log(`[mirrorSession] tracked ${u.name || uid} (${after.platform})`);
+});

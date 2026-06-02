@@ -1493,6 +1493,8 @@
       </div>
       <div class="dash-content">
         <div id="t-dashboard" class="dash-section active">
+          <!-- Teacher self check-in / check-out (geo-tagged) — staff-attendance.js -->
+          <div id="staff-attendance-card"></div>
           <div class="dash-stats">
             <div class="dash-stat-card"><div class="dash-stat-icon brown"><i class="fas fa-users"></i></div><div><div class="dash-stat-val" id="t-stat-students">—</div><div class="dash-stat-label">My Students</div></div></div>
             <div class="dash-stat-card"><div class="dash-stat-icon yellow"><i class="fas fa-book-open"></i></div><div><div class="dash-stat-val" id="t-stat-hw">—</div><div class="dash-stat-label">Homeworks Posted</div></div></div>
@@ -1828,6 +1830,8 @@
           <button onclick="showDash('a','a-fees',this)"><i class="fas fa-money-bill-wave"></i> Fees</button>
           <button onclick="showDash('a','a-leave',this);loadLeaveQuota();loadAdminLeave()"><i class="fas fa-calendar-times"></i> Leave Applications</button>
           <button onclick="showDash('a','a-monthly-att',this)"><i class="fas fa-chart-bar"></i> Monthly Attendance</button>
+          <button onclick="showDash('a','a-staff-att',this);loadStaffAttendanceAdmin()"><i class="fas fa-fingerprint"></i> Staff Attendance</button>
+          <button onclick="showDash('a','a-sessions',this);loadActiveSessions()"><i class="fas fa-mobile-screen-button"></i> Active Sessions</button>
           <button onclick="showDash('a','a-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
           <button onclick="showDash('a','a-contacts',this)"><i class="fas fa-envelope"></i> Contacts</button>
           <button onclick="showDash('a','a-holidays',this)"><i class="fas fa-umbrella-beach"></i> Holidays</button>
@@ -2414,6 +2418,14 @@
 
         <!-- ── PUSH NOTIFICATION SETTINGS ── -->
         <!-- ── Audit Log ── -->
+        <div id="a-staff-att" class="dash-section">
+          <div id="sa-admin-root"><p style="text-align:center;padding:24px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</p></div>
+        </div>
+
+        <div id="a-sessions" class="dash-section">
+          <div id="ss-admin-root"><p style="text-align:center;padding:24px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</p></div>
+        </div>
+
         <div id="a-audit-log" class="dash-section">
           <div class="card" style="padding:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">
@@ -4357,6 +4369,9 @@
 <script defer src="capacitor-push.js?v=2026-05-23"></script>
 <script defer src="routine-push-test.js"></script>
 <script defer src="teacher-attendance-guard.js"></script>
+<script defer src="staff-attendance.js?v=2026-06-02"></script>
+<script defer src="staff-attendance-admin.js?v=2026-06-02"></script>
+<script defer src="staff-attendance-report.js?v=2026-06-02"></script>
 <script defer src="view-refresh.js"></script>
     <script defer src="rc-class-guard.js"></script>
     <script defer src="homepage-content-fix.js"></script>
@@ -4370,6 +4385,9 @@
 <script type="module" src="student-progress-init.js"></script>
 <script defer src="back-button.js"></script>
 <script type="module" src="exam-schedule.js"></script>
+<script defer src="login-provisioning-fix.js?v=2026-06-02"></script>
+<script defer src="single-session.js?v=2026-06-02c"></script>
+<script defer src="single-session-admin.js?v=2026-06-02c"></script>
 <script>
   (function () {
     var el = document.getElementById('login-module-error');
