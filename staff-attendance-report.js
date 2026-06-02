@@ -59,6 +59,29 @@
     doc.text('St. Francis De Sales School', w - 40, h - 24, { align: 'right' });
   }
 
+  // Output the PDF. Plain downloads (doc.save) often do nothing in the APK
+  // WebView, so inside the app we write the file and open the native share
+  // sheet (Filesystem + Share plugins). On web we keep the normal download.
+  async function outputPdf(doc, filename) {
+    var C = window.Capacitor, P = C && C.Plugins;
+    var isNative = !!(C && (typeof C.isNativePlatform === 'function' ? C.isNativePlatform() : C.isNative));
+    var Fs = P && P.Filesystem, Sh = P && P.Share;
+    if (isNative && Fs && Fs.writeFile && Sh && Sh.share) {
+      try {
+        var b64 = doc.output('datauristring').split(',')[1];
+        var w = await Fs.writeFile({ path: filename, data: b64, directory: 'CACHE' });
+        await Sh.share({ title: filename, url: w.uri, files: [w.uri], dialogTitle: 'Share attendance PDF' });
+        window.showToast && window.showToast('✅ PDF ready to share.');
+        return;
+      } catch (e) {
+        if (e && /cancel/i.test(e.message || '')) return; // user dismissed the sheet
+        // otherwise fall through to a normal download attempt
+      }
+    }
+    doc.save(filename);
+    window.showToast && window.showToast('✅ PDF downloaded.');
+  }
+
   // ── PER-TEACHER daily sheet ──────────────────────────────────────────────
   window.saReportTeacher = async function (uid) {
     var cache = window.saGetMonthCache && window.saGetMonthCache();
@@ -103,8 +126,7 @@
         didDrawPage: function () { footer(doc); },
       });
 
-      doc.save('Staff_Attendance_' + s.name.replace(/[^\w]+/g, '_') + '_' + cache.ym + '.pdf');
-      window.showToast && window.showToast('✅ PDF downloaded.');
+      await outputPdf(doc, 'Staff_Attendance_' + s.name.replace(/[^\w]+/g, '_') + '_' + cache.ym + '.pdf');
     } catch (e) {
       window.showToast && window.showToast('⚠️ ' + (e.message || 'PDF failed'));
     }
@@ -148,8 +170,7 @@
         didDrawPage: function () { footer(doc); },
       });
 
-      doc.save('Staff_Attendance_Roster_' + cache.ym + '.pdf');
-      window.showToast && window.showToast('✅ PDF downloaded.');
+      await outputPdf(doc, 'Staff_Attendance_Roster_' + cache.ym + '.pdf');
     } catch (e) {
       window.showToast && window.showToast('⚠️ ' + (e.message || 'PDF failed'));
     }

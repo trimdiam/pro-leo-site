@@ -38,6 +38,8 @@
     return 'web';
   }
   function deviceLabel() {
+    var model = localStorage.getItem('sfs_deviceModel');
+    if (model) return (platform() + ' · ' + model).slice(0, 120);
     var ua = navigator.userAgent || '';
     var m = ua.match(/\(([^)]+)\)/);
     return (platform() + ' · ' + (m ? m[1] : ua)).slice(0, 120);
@@ -151,16 +153,41 @@
     if (typeof _origLogout === 'function') return _origLogout.apply(this, arguments);
   };
 
+  // Inside the APK, prefer the native (stable) device identifier so a storage
+  // clear doesn't look like a brand-new device. Resolves once and caches into
+  // the SAME localStorage keys the sync helpers read, BEFORE auth runs. No-ops
+  // on web / older APKs without the Device plugin.
+  function resolveNativeDeviceId() {
+    return new Promise(function (resolve) {
+      try {
+        var C = window.Capacitor, P = C && C.Plugins, Dev = P && P.Device;
+        if (!Dev || !Dev.getId) return resolve();
+        var jobs = [];
+        jobs.push(Dev.getId().then(function (r) {
+          var id = r && (r.identifier || r.uuid);
+          if (id) localStorage.setItem(DEV_KEY, 'nat-' + id);
+        }).catch(function () {}));
+        if (Dev.getInfo) jobs.push(Dev.getInfo().then(function (i) {
+          var label = [i && i.manufacturer, i && i.model].filter(Boolean).join(' ');
+          if (label) localStorage.setItem('sfs_deviceModel', label);
+        }).catch(function () {}));
+        Promise.all(jobs).then(function () { resolve(); });
+      } catch (e) { resolve(); }
+    });
+  }
+
   function start() {
-    Promise.all([import(AUTH_URL), import(FS_URL)]).then(function (mods) {
-      var a = mods[0]; _fs = mods[1];
-      var auth = window._firebaseAuth || a.getAuth(window._firebaseApp);
-      _db = _fs.getFirestore(window._firebaseApp);
-      a.onAuthStateChanged(auth, function (user) {
-        if (!user) { detach(); stopHeartbeat(); return; }
-        onSignedIn(user.uid);
-      });
-    }).catch(function (e) { console.warn('[single-session] init failed:', e && e.message); });
+    resolveNativeDeviceId().then(function () {
+      Promise.all([import(AUTH_URL), import(FS_URL)]).then(function (mods) {
+        var a = mods[0]; _fs = mods[1];
+        var auth = window._firebaseAuth || a.getAuth(window._firebaseApp);
+        _db = _fs.getFirestore(window._firebaseApp);
+        a.onAuthStateChanged(auth, function (user) {
+          if (!user) { detach(); stopHeartbeat(); return; }
+          onSignedIn(user.uid);
+        });
+      }).catch(function (e) { console.warn('[single-session] init failed:', e && e.message); });
+    });
   }
 
   var tries = 0;

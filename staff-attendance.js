@@ -83,36 +83,96 @@
       color + '22;color:' + color + ';margin-left:6px">' + txt + '</span>';
   }
 
+  // Inject the card's styles once (scoped under #staff-attendance-card).
+  function injectStyles() {
+    if (document.getElementById('sa-card-styles')) return;
+    var css =
+      '#staff-attendance-card .sa-wrap{border-radius:16px;overflow:hidden;margin-bottom:18px;' +
+        'background:var(--glass-bg,rgba(255,255,255,.72));border:1.5px solid var(--border,rgba(139,111,71,.18));' +
+        'box-shadow:var(--card-shadow);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:saIn .45s ease both}' +
+      '@keyframes saIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}' +
+      '#staff-attendance-card .sa-head{position:relative;display:flex;align-items:center;gap:13px;padding:16px 20px;overflow:hidden;' +
+        'background:linear-gradient(135deg,#6b5030 0%,#8b6f47 55%,#b8925b 100%);color:#fff}' +
+      '#staff-attendance-card .sa-head::after{content:"";position:absolute;inset:0;pointer-events:none;' +
+        'background:radial-gradient(circle at 85% -25%,rgba(240,216,130,.5),transparent 55%)}' +
+      '#staff-attendance-card .sa-hic{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.2);' +
+        'display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;z-index:1}' +
+      '#staff-attendance-card .sa-htitle{margin:0;font-size:16px;font-weight:700;color:#fff;font-family:var(--font-head,serif);z-index:1}' +
+      '#staff-attendance-card .sa-hdate{font-size:12px;opacity:.9;margin-top:1px}' +
+      '#staff-attendance-card .sa-body{padding:20px}' +
+      '#staff-attendance-card .sa-center{text-align:center}' +
+      '#staff-attendance-card .sa-big{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;margin:2px auto 12px}' +
+      '#staff-attendance-card .sa-big.pend{background:rgba(212,175,55,.16);color:#b9770e;animation:saPulse 2s ease-in-out infinite}' +
+      '#staff-attendance-card .sa-big.ok{background:rgba(30,132,73,.14);color:#1e8449}' +
+      '@keyframes saPulse{0%,100%{box-shadow:0 0 0 0 rgba(212,175,55,.4)}50%{box-shadow:0 0 0 13px rgba(212,175,55,0)}}' +
+      '#staff-attendance-card .sa-h2{font-size:16px;font-weight:700;color:var(--text)}' +
+      '#staff-attendance-card .sa-sub{font-size:13px;color:var(--text-light);margin:4px 0 16px}' +
+      '#staff-attendance-card .sa-row{display:flex;align-items:center;gap:14px;margin-bottom:16px}' +
+      '#staff-attendance-card .sa-row .sa-big{margin:0}' +
+      '#staff-attendance-card .sa-label{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--text-light);font-weight:700}' +
+      '#staff-attendance-card .sa-time{font-size:26px;font-weight:800;color:var(--accent-dark);line-height:1.15;font-family:var(--font-head,serif)}' +
+      '#staff-attendance-card .sa-tiles{display:flex;gap:10px;flex-wrap:wrap}' +
+      '#staff-attendance-card .sa-tile{flex:1;min-width:88px;background:var(--bg,rgba(229,211,179,.4));border:1px solid var(--border,rgba(139,111,71,.15));border-radius:12px;padding:11px 10px;text-align:center}' +
+      '#staff-attendance-card .sa-tile.acc{background:linear-gradient(135deg,rgba(139,111,71,.18),rgba(212,175,55,.16));border-color:rgba(139,111,71,.32)}' +
+      '#staff-attendance-card .sa-tval{font-size:19px;font-weight:800;color:var(--accent-dark);margin-top:3px;font-family:var(--font-head,serif)}' +
+      '#staff-attendance-card .sa-done{display:inline-flex;align-items:center;gap:7px;background:rgba(30,132,73,.12);color:#1e8449;font-weight:700;font-size:13px;padding:6px 14px;border-radius:999px;margin-bottom:14px}' +
+      '#staff-attendance-card .sa-chips{margin-top:6px}' +
+      '#staff-attendance-card .sa-btn{width:100%;border:none;border-radius:12px;padding:14px;font-family:var(--font-body,sans-serif);font-weight:700;font-size:15px;color:#fff;cursor:pointer;' +
+        'display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 6px 18px rgba(139,111,71,.32);transition:transform .15s ease,box-shadow .2s ease,opacity .2s}' +
+      '#staff-attendance-card .sa-btn:hover{transform:translateY(-2px);box-shadow:0 9px 24px rgba(139,111,71,.42)}' +
+      '#staff-attendance-card .sa-btn:active{transform:translateY(0)}' +
+      '#staff-attendance-card .sa-btn:disabled{opacity:.7;cursor:wait;transform:none;box-shadow:none}' +
+      '#staff-attendance-card .sa-btn.in{background:linear-gradient(135deg,#8b6f47,#6b5030)}' +
+      '#staff-attendance-card .sa-btn.out{background:linear-gradient(135deg,#c0392b,#922b21)}';
+    var st = document.createElement('style');
+    st.id = 'sa-card-styles'; st.textContent = css;
+    document.head.appendChild(st);
+  }
+
   function render(data) {
     var el = document.getElementById('staff-attendance-card');
     if (!el) return;
+    injectStyles();
 
-    var head = '<h4 style="color:var(--accent-dark);margin:0 0 14px"><i class="fas fa-fingerprint" style="margin-right:8px;color:var(--accent)"></i>My Attendance</h4>';
-    var body;
+    var dateStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' });
+    var head =
+      '<div class="sa-head"><div class="sa-hic"><i class="fas fa-fingerprint"></i></div>' +
+        '<div><h4 class="sa-htitle">My Attendance</h4><div class="sa-hdate">' + dateStr + '</div></div></div>';
+
+    var inner, centerClass = '';
 
     if (!data || !data.morningIn) {
-      body =
-        '<p style="font-size:13px;color:var(--text-light);margin:0 0 14px">Tap to record your arrival. Your location and time are logged.</p>' +
-        '<button id="sa-btn-in" class="btn btn-primary" style="width:100%"><i class="fas fa-sign-in-alt" style="margin-right:8px"></i>Check In</button>';
+      centerClass = ' sa-center';
+      inner =
+        '<div class="sa-big pend"><i class="fas fa-clock"></i></div>' +
+        '<div class="sa-h2">Ready to check in</div>' +
+        '<div class="sa-sub">Tap below — your location &amp; time are logged.</div>' +
+        '<button id="sa-btn-in" class="sa-btn in"><i class="fas fa-sign-in-alt"></i> Check In</button>';
     } else if (!data.eveningOut) {
       var inLate = data.morningIn.lateBy > 0 ? chip('Late ' + fmtMins(data.morningIn.lateBy), '#c0392b') : chip('On time', '#1e8449');
-      var inGeo  = data.morningIn.withinGeofence ? '' : chip('⚠ Off-site (' + data.morningIn.distanceMeters + 'm)', '#b9770e');
-      body =
-        '<div style="font-size:14px;margin:0 0 14px"><i class="fas fa-check-circle" style="color:#1e8449;margin-right:8px"></i>Checked in at <b>' + data.morningIn.localTime + '</b>' + inLate + inGeo + '</div>' +
-        '<button id="sa-btn-out" class="btn btn-primary" style="width:100%"><i class="fas fa-sign-out-alt" style="margin-right:8px"></i>Check Out</button>';
+      var inGeo  = data.morningIn.withinGeofence ? chip('On-site', '#1e8449') : chip('⚠ Off-site ' + data.morningIn.distanceMeters + 'm', '#b9770e');
+      inner =
+        '<div class="sa-row"><div class="sa-big ok"><i class="fas fa-check"></i></div>' +
+          '<div><div class="sa-label">Checked in at</div><div class="sa-time">' + data.morningIn.localTime + '</div>' +
+          '<div class="sa-chips">' + inLate + inGeo + '</div></div></div>' +
+        '<button id="sa-btn-out" class="sa-btn out"><i class="fas fa-sign-out-alt"></i> Check Out</button>';
     } else {
       var outEarly = data.earlyDeparture ? chip('Early ' + fmtMins(data.eveningOut.earlyBy), '#b9770e') : '';
-      var outGeo   = data.eveningOut.withinGeofence ? '' : chip('⚠ Off-site (' + data.eveningOut.distanceMeters + 'm)', '#b9770e');
-      body =
-        '<div style="font-size:14px;line-height:1.9">' +
-          '<div><i class="fas fa-sign-in-alt" style="color:var(--accent);width:20px"></i> In: <b>' + data.morningIn.localTime + '</b></div>' +
-          '<div><i class="fas fa-sign-out-alt" style="color:var(--accent);width:20px"></i> Out: <b>' + data.eveningOut.localTime + '</b>' + outEarly + outGeo + '</div>' +
-          '<div style="margin-top:6px;color:var(--text-light);font-size:13px">Worked ' + fmtMins(data.workedMinutes) + ' today.</div>' +
+      var outGeo   = data.eveningOut.withinGeofence ? '' : chip('⚠ ' + data.eveningOut.distanceMeters + 'm', '#b9770e');
+      inner =
+        '<div class="sa-done"><i class="fas fa-circle-check"></i> Day complete</div>' +
+        '<div class="sa-tiles">' +
+          '<div class="sa-tile"><div class="sa-label">In</div><div class="sa-tval">' + data.morningIn.localTime + '</div></div>' +
+          '<div class="sa-tile"><div class="sa-label">Out</div><div class="sa-tval">' + data.eveningOut.localTime + '</div>' +
+            (outEarly || outGeo ? '<div class="sa-chips">' + outEarly + outGeo + '</div>' : '') + '</div>' +
+          '<div class="sa-tile acc"><div class="sa-label">Worked</div><div class="sa-tval">' + (fmtMins(data.workedMinutes) || '—') + '</div></div>' +
         '</div>';
     }
 
-    el.innerHTML = '<div class="card" style="padding:20px;margin-bottom:18px">' + head + body +
-      '<p id="sa-status" style="margin:10px 0 0;font-size:12px;min-height:16px"></p></div>';
+    el.innerHTML = '<div class="sa-wrap">' + head +
+      '<div class="sa-body' + centerClass + '">' + inner +
+        '<p id="sa-status" style="margin:12px 0 0;font-size:12px;min-height:16px"></p>' +
+      '</div></div>';
 
     var bIn = document.getElementById('sa-btn-in');   if (bIn)  bIn.onclick  = function () { doRecord('in'); };
     var bOut = document.getElementById('sa-btn-out'); if (bOut) bOut.onclick = function () { doRecord('out'); };

@@ -1091,36 +1091,6 @@
         <span id="google-btn-text">Continue with Google</span>
       </button>
 
-      <!--
-        OPTION A: Hide Google sign-in inside the Capacitor Android APK only.
-        Google blocks OAuth popups in embedded WebViews, so the button would
-        fail there. On the website (real browser) it stays visible and works.
-        NOTE: This only HIDES the button — all Google sign-in code is intact.
-        OPTION B (future): replace popup with a native Capacitor Google Auth
-        plugin, then delete this block so the button shows in the APK too.
-      -->
-      <script>
-        (function () {
-          var hasCapacitor = !!(
-            window.Capacitor &&
-            (typeof window.Capacitor.isNativePlatform === "function"
-              ? window.Capacitor.isNativePlatform()
-              : window.Capacitor.isNative)
-          );
-          // Fallback: detect Android WebView via user-agent ("wv" token)
-          // in case the Capacitor global isn't available (very old versions).
-          var ua = navigator.userAgent || "";
-          var isAndroidWebView = /\bwv\b/.test(ua) || /; wv\)/.test(ua);
-          var isNativeApp = hasCapacitor || isAndroidWebView;
-          if (isNativeApp) {
-            var gBtn = document.getElementById("googleSignInBtn");
-            var gDiv = document.getElementById("loginOrDivider");
-            if (gBtn) gBtn.style.display = "none";
-            if (gDiv) gDiv.style.display = "none";
-          }
-        })();
-      </script>
-
       <!-- Firebase status — hidden until a slow/failed load is detected -->
       <div id="login-module-error" style="display:none;margin-top:12px;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:8px;padding:10px 14px;font-size:13px;color:#92400e;align-items:flex-start;gap:8px">
         <i class="fas fa-circle-notch fa-spin" id="firebase-status-icon" style="margin-top:2px;flex-shrink:0"></i>
@@ -2149,6 +2119,7 @@
               <h4 style="color:var(--accent-dark)"><i class="fas fa-chalkboard-teacher" style="margin-right:8px;color:var(--accent)"></i>Teacher Management</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button class="btn btn-primary btn-sm" onclick="openTeacherModal()"><i class="fas fa-plus"></i> Add Teacher</button>
+                <button class="btn btn-outline btn-sm" id="dl-teacher-logins" onclick="downloadTeacherLogins()"><i class="fas fa-download"></i> Download Logins</button>
                 <button class="btn btn-outline btn-sm" id="reseed-btn" onclick="window._teacherSeedDone=false;seedTeachersIfNeeded().then(()=>{loadTeachers();showToast('✅ Teachers reloaded!');})"><i class="fas fa-sync-alt"></i> Reload All Teachers</button>
               </div>
             </div>
@@ -4397,11 +4368,12 @@
 <script defer src="script.js"></script>
 <script defer src="sidebar-swipe.js"></script>
 <script defer src="capacitor-push.js?v=2026-05-23"></script>
+<script defer src="capacitor-native.js?v=2026-06-02"></script>
 <script defer src="routine-push-test.js"></script>
 <script defer src="teacher-attendance-guard.js"></script>
-<script defer src="staff-attendance.js?v=2026-06-02"></script>
-<script defer src="staff-attendance-admin.js?v=2026-06-02"></script>
-<script defer src="staff-attendance-report.js?v=2026-06-02"></script>
+<script defer src="staff-attendance.js?v=2026-06-02b"></script>
+<script defer src="staff-attendance-admin.js?v=2026-06-02b"></script>
+<script defer src="staff-attendance-report.js?v=2026-06-02b"></script>
 <script defer src="view-refresh.js"></script>
     <script defer src="rc-class-guard.js"></script>
     <script defer src="homepage-content-fix.js"></script>
@@ -4416,7 +4388,8 @@
 <script defer src="back-button.js"></script>
 <script type="module" src="exam-schedule.js"></script>
 <script defer src="login-provisioning-fix.js?v=2026-06-02"></script>
-<script defer src="single-session.js?v=2026-06-02c"></script>
+<script defer src="teacher-export.js?v=2026-06-02"></script>
+<script defer src="single-session.js?v=2026-06-02d"></script>
 <script defer src="single-session-admin.js?v=2026-06-02c"></script>
 <script>
   (function () {

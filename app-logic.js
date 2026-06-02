@@ -7,6 +7,7 @@ import {
   getAuth,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithCredential,
   GoogleAuthProvider,
   onAuthStateChanged,
   createUserWithEmailAndPassword,
@@ -287,10 +288,24 @@ function _showFTSError(msg) {
       (btn.style.cursor = "wait")),
       label && (label.textContent = "Opening Google…"));
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      const cred = await signInWithPopup(auth, provider);
-      await _handleAuthUser(cred.user);
+      const _cap = window.Capacitor;
+      if (_cap?.isNativePlatform?.() && _cap.Plugins?.FirebaseAuthentication) {
+        // Native APK: WebViews block Google's OAuth popup, so use the
+        // Capacitor Firebase Authentication plugin, then bridge the returned
+        // Google ID token into the Firebase JS SDK so web auth state matches.
+        const result =
+          await _cap.Plugins.FirebaseAuthentication.signInWithGoogle();
+        const idToken = result?.credential?.idToken;
+        if (!idToken) throw new Error("No Google ID token returned from plugin.");
+        const credential = GoogleAuthProvider.credential(idToken);
+        const cred = await signInWithCredential(auth, credential);
+        await _handleAuthUser(cred.user);
+      } else {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        const cred = await signInWithPopup(auth, provider);
+        await _handleAuthUser(cred.user);
+      }
     } catch (err) {
       console.error("Google sign-in error:", err);
       let msg = "Google sign-in failed. Please try again.";

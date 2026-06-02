@@ -975,6 +975,50 @@ exports.triggerStaffCheckoutReminder = onCall(
   }
 );
 
+// ── Admin: clear all staff_attendance records for ONE day ───────────────────
+// Server-side delete so the "client never writes attendance" rule stays intact
+// (firestore.rules blocks client writes/deletes on staff_attendance). Admin-only.
+// Deletes every staff_attendance doc whose dateKey == the given YYYY-MM-DD.
+exports.clearStaffAttendanceDay = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+    const c = await db.collection("users").doc(request.auth.uid).get();
+    if (!c.exists || !["admin", "super_admin"].includes(c.data().role))
+      throw new HttpsError("permission-denied", "Admin only.");
+
+    const dateKey = String((request.data && request.data.dateKey) || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey))
+      throw new HttpsError("invalid-argument", "dateKey must be in YYYY-MM-DD format.");
+
+    const snap = await db.collection("staff_attendance")
+      .where("dateKey", "==", dateKey).get();
+    if (snap.empty) return { deleted: 0, dateKey };
+
+    let deleted = 0;
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 450) {
+      const batch = db.batch();
+      docs.slice(i, i + 450).forEach((d) => { batch.delete(d.ref); deleted++; });
+      await batch.commit();
+    }
+
+    // Audit trail (admin-readable notification_logs, same as other admin actions).
+    try {
+      await db.collection("notification_logs").add({
+        type: "staff_attendance_cleared",
+        dateKey,
+        deleted,
+        by: c.data().name || request.auth.token.email || "Admin",
+        uid: request.auth.uid,
+        at: new Date().toISOString(),
+      });
+    } catch (_) {}
+
+    return { deleted, dateKey };
+  }
+);
+
 // ════════════════════════════════════════════════════════════════════════════
 // PROVISION LOGIN — idempotent, self-healing teacher/student account creation
 // ════════════════════════════════════════════════════════════════════════════

@@ -267,10 +267,37 @@
     }
   }
 
+  // ── delete a day's records (admin only; server-side Cloud Function) ───────
+  async function clearDay() {
+    var input = el('sa-del-date');
+    var dateKey = (input && input.value) || istDateKey();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+      window.showToast && window.showToast('⚠️ Pick a valid date first.');
+      return;
+    }
+    if (!window.confirm('Delete ALL staff attendance records for ' + dateKey +
+      '?\n\nThis permanently removes every teacher\'s check-in/out for that day and cannot be undone.')) return;
+    var btn = el('sa-del-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting…'; }
+    try {
+      var m = await import(FNS_URL);
+      var fns = m.getFunctions(window._firebaseApp, 'asia-south1');
+      var res = await m.httpsCallable(fns, 'clearStaffAttendanceDay')({ dateKey: dateKey });
+      var d = res.data || {};
+      window.showToast && window.showToast('🗑️ Deleted ' + (d.deleted || 0) + ' record(s) for ' + dateKey + '.');
+      loadToday(); loadMonth();
+    } catch (e) {
+      window.showToast && window.showToast('⚠️ ' + (e.message || 'Delete failed'));
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash"></i> Delete day'; }
+    }
+  }
+
   // ── expose ───────────────────────────────────────────────────────────────
   window.saLoadToday = loadToday;
   window.saLoadMonth = loadMonth;
   window.saSendReminder = sendReminder;
+  window.saClearDay = clearDay;
   window.saGetMonthCache = function () { return monthCache; };
 
   // Called by the sidebar button.
@@ -281,6 +308,7 @@
       root.dataset.built = '1';
       root.innerHTML = buildShell();
       if (el('sa-month')) el('sa-month').value = thisMonthYM();
+      if (el('sa-del-date')) el('sa-del-date').value = istDateKey();
     }
     loadToday();
     loadMonth();
@@ -292,7 +320,9 @@
       '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">' +
         '<div><h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-fingerprint" style="margin-right:8px;color:var(--accent)"></i>Staff Attendance — Today</h4>' +
         '<p style="font-size:13px;color:var(--text-light);margin:4px 0 0">' + istDateKey() + ' · geo-tagged check-in / check-out</p></div>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+          '<input type="date" id="sa-del-date" title="Day to delete" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:13px;background:var(--input-bg);color:var(--text)">' +
+          '<button id="sa-del-btn" class="btn btn-sm" style="background:var(--danger,#dc3545);color:#fff;border:none" onclick="saClearDay()"><i class="fas fa-trash"></i> Delete day</button>' +
           '<button id="sa-remind-btn" class="btn btn-sm btn-outline" onclick="saSendReminder()"><i class="fas fa-paper-plane"></i> Send checkout reminder</button>' +
           '<button class="btn btn-sm btn-outline" onclick="saLoadToday()"><i class="fas fa-sync-alt"></i> Refresh</button>' +
         '</div>' +

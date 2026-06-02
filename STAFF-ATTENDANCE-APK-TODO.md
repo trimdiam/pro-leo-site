@@ -1,70 +1,32 @@
-# ⏳ REMINDER — Next APK rebuild: 2 native jobs (do together, one rebuild)
+# ✅ DONE — Staff Attendance + APK v2.1 (shipped 2026-06-02)
 
-**Created:** 2026-06-02 · **Do this when:** user is home and ready to rebuild the APK.
-Both jobs below ship in the SAME rebuild — don't rebuild twice.
+Both native jobs and all enhancements below are **built, signed (v2.1), and deployed**.
+Roll out the v2.1 APK to teachers; the matching web code is already live on hosting.
 
-## Job 1 — Staff Attendance GPS
-**Status:** Web (browser) works now. **APK does NOT capture GPS yet.** (details below)
+## Job 1 — Staff Attendance GPS ✅
+- `@capacitor/geolocation` installed in the SFS-Care wrapper + `ACCESS_FINE/COARSE_LOCATION`
+  in AndroidManifest. `staff-attendance.js` already prefers the native Geolocation plugin.
+- Verified working (teacher Check In/Out → on-time/late + on-site/off-site chips).
+- School geofence (Firestore `settings/staff_attendance_config`): lat `25.53898298536331`,
+  lng `91.8936348432684`, radius **100m** (off-site is flagged, never blocked). Editable
+  in Firebase Console or via `scripts/seed-staff-attendance-config.js`.
 
-## Job 2 — In-app Google Sign-In (Option B)
-**Status:** Google login currently HIDDEN inside the APK (Option A) because
-Google blocks OAuth popups in WebViews. On the website it works fine.
-**To enable in-app Google login on rebuild:**
-1. `npm install @capacitor-firebase/authentication` then `npx cap sync`
-   (in the Capacitor wrapper project, not the web repo).
-2. Add the app's **SHA-1 fingerprint** in Firebase Console → Project Settings
-   → Your apps (same SHA-1 the Phone-auth screen asked for).
-3. Web code change (ask Claude to do this at rebuild time): in
-   `pro-leo-site/app-logic.js` `doGoogleLogin()`, branch so the native app
-   uses the Capacitor Firebase Authentication plugin and the browser keeps
-   `signInWithPopup` unchanged.
-4. Remove the hide-button `<script>` block in `pro-leo-site/index.html`
-   (just after `#googleSignInBtn`) so the button reappears in the APK.
+## Job 2 — In-app Google Sign-In ✅
+- `@capacitor-firebase/authentication` installed, `rgcfaIncludeGoogle = true` in
+  variables.gradle, `FirebaseAuthentication` provider config in capacitor.config.json.
+- Debug + **release** SHA-1/SHA-256 registered in Firebase; `google-services.json` has both
+  Android OAuth clients. Release cert SHA-1 `72:44:19:...` (keystore `SFS-Care/keystore/sfscare`, alias `sfs-care`).
+- `app-logic.js doGoogleLogin()` branches: native → Capacitor plugin → `signInWithCredential`;
+  browser keeps `signInWithPopup`. The Option-A hide-script was removed from index.html.
 
----
+## Enhancement plugins (all wired in capacitor-native.js, native-guarded) ✅
+StatusBar, SplashScreen, Keyboard, Crashlytics (error hooks + uid), Network (offline banner),
+Device (native deviceId → single-session.js), Share (attendance PDFs → native share sheet).
 
-## Why this file exists
-The teacher geo check-in/out engine (`staff-attendance.js` + `recordStaffAttendance`
-Cloud Function) is deployed and works in a **browser** (HTTPS → `navigator.geolocation`
-prompts fine). But inside the **Capacitor Android APK**, the WebView blocks
-`navigator.geolocation`, so the "Check In" button can't get a location until the
-app is rebuilt with the native Geolocation plugin.
+## Other shipped 2026-06-02 ✅
+- Teacher "My Attendance" card redesigned (gradient header, status orb, stat tiles).
+- Admin "Delete day" button (Staff Attendance → Today) → `clearStaffAttendanceDay` Cloud Function (admin-only, audited).
+- Admin "Download Logins" button (Teacher Management) → `teacher-export.js` CSV of Name + Login ID + admin-typed default password.
 
-`staff-attendance.js` **already prefers** `window.Capacitor.Plugins.Geolocation`
-when present, so NO JS change is needed — only the native build below.
-
-## The one-time native steps (then rebuild APK)
-In the Capacitor project (the Android wrapper, not this web repo):
-
-1. Install the plugin:
-   ```
-   npm install @capacitor/geolocation
-   npx cap sync
-   ```
-2. Add to `android/app/src/main/AndroidManifest.xml` (inside `<manifest>`):
-   ```xml
-   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-   ```
-3. Rebuild + reinstall the APK on a test phone.
-
-## How to verify after the rebuild
-- Log in as a **teacher** on the APK → teacher dashboard → "My Attendance" card.
-- Tap **Check In** → Android should prompt for location → card flips to
-  "Checked in at HH:MM" with on-time/late + off-site chips.
-- Confirm in Firestore: `staff_attendance/{uid}_{YYYY-MM-DD}` has a `morningIn`
-  block with `lat`/`lng`/`withinGeofence`.
-- Tap **Check Out** later → `eveningOut` + `workedMinutes` written.
-
-## Quick test in a browser RIGHT NOW (no APK needed)
-- Open the hosting URL, log in as a teacher, allow location → same flow.
-- School geofence: lat `25.53898298536331`, lng `91.8936348432684`, radius **100m**.
-  (Off-site is recorded + flagged, never blocked.)
-
-## Project context
-- Plan tracked in memory: `project_staff_attendance.md`.
-- ALL 6 steps done + deployed (web): 1 rules+config, 2 Cloud Function,
-  3 teacher UI, 4 missed-checkout reminder, 5 admin board+analytics,
-  6 monthly PDF (per-teacher + whole-staff roster).
-- The ONLY remaining work is the APK native-geolocation rebuild above.
-- Admin view: Admin portal → sidebar → "Staff Attendance".
+## Version
+`SFS-Care/android/app/build.gradle`: versionCode **3** / versionName **"2.1"**.
