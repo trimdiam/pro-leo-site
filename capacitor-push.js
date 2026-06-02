@@ -131,6 +131,80 @@ window.reRegisterPushNotifications = function (statusEl) {
   });
 };
 
+// ── Rich in-app notification card (shown when a push arrives with app OPEN) ──
+// In the foreground the OS shows nothing — Capacitor hands the push to JS — so
+// we render our own glassmorphic card (school logo + brand colours) instead of
+// a plain toast. Tapping it deep-links the same way the OS notification would.
+function showRichPushCard(notification) {
+  try {
+    var data   = notification.data || {};
+    var title  = notification.title || 'St. Francis School';
+    var body   = notification.body || '';
+    var screen = data.screen || data.type || '';
+
+    if (!document.getElementById('sfs-push-card-style')) {
+      var st = document.createElement('style');
+      st.id = 'sfs-push-card-style';
+      st.textContent =
+        '.sfs-push-card{position:fixed;top:14px;left:50%;z-index:99999;width:min(92vw,420px);' +
+        'display:flex;gap:12px;align-items:flex-start;padding:14px 16px 14px 20px;border-radius:18px;' +
+        'background:rgba(255,255,255,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);' +
+        'border:1px solid var(--border,rgba(139,111,71,.22));box-shadow:0 14px 38px rgba(106,80,48,.28);' +
+        'cursor:pointer;font-family:inherit;opacity:0;transform:translateX(-50%) translateY(-140%);' +
+        'transition:transform .42s cubic-bezier(.2,.9,.25,1.2),opacity .3s;}' +
+        '.sfs-push-card.in{opacity:1;transform:translateX(-50%) translateY(0);}' +
+        '.sfs-push-card .bar{position:absolute;left:8px;top:14px;bottom:14px;width:4px;border-radius:4px;' +
+        'background:var(--accent,#8b6f47);}' +
+        '.sfs-push-card .ic{flex:0 0 42px;width:42px;height:42px;border-radius:12px;object-fit:cover;' +
+        'background:var(--accent,#8b6f47);box-shadow:0 3px 10px rgba(106,80,48,.3);}' +
+        '.sfs-push-card .tx{flex:1;min-width:0;}' +
+        '.sfs-push-card .tt{margin:0 0 2px;font-weight:700;font-size:14.5px;line-height:1.25;' +
+        'color:var(--accent-dark,#4a3a26);}' +
+        '.sfs-push-card .bd{margin:0;font-size:13px;line-height:1.38;white-space:pre-line;' +
+        'color:var(--text-light,#5a4a35);display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;}' +
+        '@media(prefers-color-scheme:dark){.sfs-push-card{background:rgba(40,33,24,.88);}}';
+      document.head.appendChild(st);
+    }
+
+    var card = document.createElement('div');
+    card.className = 'sfs-push-card';
+    card.setAttribute('role', 'alert');
+    card.innerHTML =
+      '<span class="bar"></span>' +
+      '<img class="ic" src="/assets/images/logo.webp" alt="" onerror="this.style.visibility=\'hidden\'">' +
+      '<div class="tx"><p class="tt"></p><p class="bd"></p></div>';
+    card.querySelector('.tt').textContent = title;
+    card.querySelector('.bd').textContent = body;
+
+    function dismiss() {
+      clearTimeout(timer);
+      card.classList.remove('in');
+      setTimeout(function () { if (card.parentNode) card.remove(); }, 440);
+    }
+
+    // Tap → same deep-link routing the OS notification uses.
+    card.addEventListener('click', function () {
+      dismiss();
+      var route = {
+        daily_routine:   ['navTeacherTo', 't-schedule'],
+        period_reminder: ['navTeacherTo', 't-dashboard'],
+        leave:           ['navTeacherTo', 't-leave'],
+        attendance:      ['navStudentTo', 's-attendance'],
+        notice:          ['navStudentTo', 's-notices'],
+        message:         ['navStudentTo', 's-dashboard'],
+      }[screen];
+      if (route && typeof window[route[0]] === 'function') window[route[0]](route[1]);
+      else if (data.url) window.location.hash = data.url;
+    });
+
+    document.body.appendChild(card);
+    setTimeout(function () { card.classList.add('in'); }, 20);
+    var timer = setTimeout(dismiss, 6000);
+  } catch (e) {
+    if (window.showToast) window.showToast((notification.title || '') + ': ' + (notification.body || ''));
+  }
+}
+
 // Auto-init inside Capacitor APK
 (function () {
   var Push = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications
@@ -172,9 +246,8 @@ window.reRegisterPushNotifications = function (statusEl) {
     }).catch(function () {});
 
     Push.addListener('pushNotificationReceived', function (notification) {
-      if (window.showToast) {
-        window.showToast(notification.title + ': ' + (notification.body || ''));
-      }
+      // App is OPEN: the OS shows nothing, so render our own styled card.
+      showRichPushCard(notification);
     });
 
     Push.addListener('pushNotificationActionPerformed', function (action) {

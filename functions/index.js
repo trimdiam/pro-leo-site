@@ -38,7 +38,7 @@ async function removeDeadToken(userRef) {
 async function sendPush(token, title, body, data = {}, userRef = null) {
   if (!token) { console.warn("sendPush: no token, skipping"); return; }
   try {
-    const result = await fcm.send({ token, notification: { title, body }, data, android: { priority: "high" } });
+    const result = await fcm.send({ token, notification: { title, body }, data, android: { priority: "high", notification: { color: "#8b6f47" } } });
     console.log("FCM send success:", result);
   } catch (e) {
     console.error("FCM send failed:", e.code, e.message);
@@ -391,7 +391,12 @@ async function resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextS
         },
         android: {
           priority: "high",
-          notification: { channelId: "period_reminders", sound: "default" }
+          notification: {
+            channelId: "period_reminders",
+            sound: "default",
+            color: "#8b6f47",                                                           // school brand accent
+            imageUrl: "https://st-francis-school-a3e7e.web.app/assets/images/hero1.webp", // big picture — swap for a ~2:1 banner < ~300KB
+          }
         },
         data: {
           type:       "period_reminder",
@@ -685,7 +690,7 @@ async function runDailyRoutine(slot, opts = {}) {
     messages.push({
       token: info.token,
       notification: { title: "Today's Teaching Routine", body },
-      android: { priority: "high", notification: { channelId: "period_reminders", sound: "default" } },
+      android: { priority: "high", notification: { channelId: "period_reminders", sound: "default", color: "#8b6f47", imageUrl: "https://st-francis-school-a3e7e.web.app/assets/images/hero1.webp" } },
       data: { type: "daily_routine", screen: "daily_routine", day: String(day), click_action: "FLUTTER_NOTIFICATION_CLICK" },
     });
     refs.push(info.ref);
