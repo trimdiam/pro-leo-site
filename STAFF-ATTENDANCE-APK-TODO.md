@@ -1,7 +1,25 @@
-# ⏳ REMINDER — Staff Attendance: APK geolocation work (pending)
+# ⏳ REMINDER — Next APK rebuild: 2 native jobs (do together, one rebuild)
 
-**Status:** Web (browser) works now. **APK does NOT capture GPS yet.**
 **Created:** 2026-06-02 · **Do this when:** user is home and ready to rebuild the APK.
+Both jobs below ship in the SAME rebuild — don't rebuild twice.
+
+## Job 1 — Staff Attendance GPS
+**Status:** Web (browser) works now. **APK does NOT capture GPS yet.** (details below)
+
+## Job 2 — In-app Google Sign-In (Option B)
+**Status:** Google login currently HIDDEN inside the APK (Option A) because
+Google blocks OAuth popups in WebViews. On the website it works fine.
+**To enable in-app Google login on rebuild:**
+1. `npm install @capacitor-firebase/authentication` then `npx cap sync`
+   (in the Capacitor wrapper project, not the web repo).
+2. Add the app's **SHA-1 fingerprint** in Firebase Console → Project Settings
+   → Your apps (same SHA-1 the Phone-auth screen asked for).
+3. Web code change (ask Claude to do this at rebuild time): in
+   `pro-leo-site/app-logic.js` `doGoogleLogin()`, branch so the native app
+   uses the Capacitor Firebase Authentication plugin and the browser keeps
+   `signInWithPopup` unchanged.
+4. Remove the hide-button `<script>` block in `pro-leo-site/index.html`
+   (just after `#googleSignInBtn`) so the button reappears in the APK.
 
 ---
 

@@ -1071,7 +1071,7 @@
       </div>
 
       <!-- OR divider -->
-      <div style="display:flex;align-items:center;gap:12px;margin:18px 0">
+      <div id="loginOrDivider" style="display:flex;align-items:center;gap:12px;margin:18px 0">
         <div style="flex:1;height:1px;background:var(--primary)"></div>
         <span style="font-size:11px;color:var(--text-light);font-weight:700;letter-spacing:0.6px">OR</span>
         <div style="flex:1;height:1px;background:var(--primary)"></div>
@@ -1090,6 +1090,36 @@
         </svg>
         <span id="google-btn-text">Continue with Google</span>
       </button>
+
+      <!--
+        OPTION A: Hide Google sign-in inside the Capacitor Android APK only.
+        Google blocks OAuth popups in embedded WebViews, so the button would
+        fail there. On the website (real browser) it stays visible and works.
+        NOTE: This only HIDES the button — all Google sign-in code is intact.
+        OPTION B (future): replace popup with a native Capacitor Google Auth
+        plugin, then delete this block so the button shows in the APK too.
+      -->
+      <script>
+        (function () {
+          var hasCapacitor = !!(
+            window.Capacitor &&
+            (typeof window.Capacitor.isNativePlatform === "function"
+              ? window.Capacitor.isNativePlatform()
+              : window.Capacitor.isNative)
+          );
+          // Fallback: detect Android WebView via user-agent ("wv" token)
+          // in case the Capacitor global isn't available (very old versions).
+          var ua = navigator.userAgent || "";
+          var isAndroidWebView = /\bwv\b/.test(ua) || /; wv\)/.test(ua);
+          var isNativeApp = hasCapacitor || isAndroidWebView;
+          if (isNativeApp) {
+            var gBtn = document.getElementById("googleSignInBtn");
+            var gDiv = document.getElementById("loginOrDivider");
+            if (gBtn) gBtn.style.display = "none";
+            if (gDiv) gDiv.style.display = "none";
+          }
+        })();
+      </script>
 
       <!-- Firebase status — hidden until a slow/failed load is detected -->
       <div id="login-module-error" style="display:none;margin-top:12px;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:8px;padding:10px 14px;font-size:13px;color:#92400e;align-items:flex-start;gap:8px">
