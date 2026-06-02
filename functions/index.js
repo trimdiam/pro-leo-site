@@ -57,6 +57,24 @@ async function cleanupAfterMulticast(result, refs) {
   }));
 }
 
+// Collapse duplicate FCM tokens so one physical device never receives the same
+// multicast twice. A device's token can sit on more than one users doc (e.g. an
+// account switch that left a stale token behind). Keeps the FIRST occurrence of
+// each token and its matching ref, so the parallel refs[] array stays aligned
+// for cleanupAfterMulticast(). Drops empty/falsy tokens too.
+function dedupeByToken(messages, refs) {
+  const seen = new Set();
+  const outMessages = [], outRefs = [];
+  for (let i = 0; i < messages.length; i++) {
+    const tok = messages[i] && messages[i].token;
+    if (!tok || seen.has(tok)) continue;
+    seen.add(tok);
+    outMessages.push(messages[i]);
+    outRefs.push(refs ? refs[i] : null);
+  }
+  return { messages: outMessages, refs: outRefs };
+}
+
 // ── Helper: get FCM token + name for a student by studentId ───────────────
 async function getStudentInfo(studentId) {
   if (!studentId) return null;
@@ -447,9 +465,10 @@ exports.periodEndReminder = onSchedule(
       return;
     }
 
-    const result = await fcm.sendEach(messages);
-    await cleanupAfterMulticast(result, refs);
-    console.log(`Period ${endedPeriod} ended → Period ${nextPeriod} starting ${nextStartTime || "soon"} — sent ${result.successCount}/${messages.length}`);
+    const { messages: _msgs, refs: _refs } = dedupeByToken(messages, refs);
+    const result = await fcm.sendEach(_msgs);
+    await cleanupAfterMulticast(result, _refs);
+    console.log(`Period ${endedPeriod} ended → Period ${nextPeriod} starting ${nextStartTime || "soon"} — sent ${result.successCount}/${_msgs.length}`);
   }
 );
 
@@ -503,9 +522,10 @@ exports.triggerPeriodReminder = onCall(
     if (messages.length === 0)
       throw new HttpsError("not-found", "No FCM tokens resolved — check teachers/users teacherId linking");
 
-    const result = await fcm.sendEach(messages);
-    await cleanupAfterMulticast(result, refs);
-    return { sent: result.successCount, failed: result.failureCount, total: messages.length };
+    const { messages: _msgs, refs: _refs } = dedupeByToken(messages, refs);
+    const result = await fcm.sendEach(_msgs);
+    await cleanupAfterMulticast(result, _refs);
+    return { sent: result.successCount, failed: result.failureCount, total: _msgs.length };
   }
 );
 
@@ -673,12 +693,13 @@ async function runDailyRoutine(slot, opts = {}) {
 
   if (messages.length === 0) { log.skipped = true; log.skipReason = "no_tokens"; await writeLog(); return log; }
 
-  const result = await fcm.sendEach(messages);
-  await cleanupAfterMulticast(result, refs);
+  const { messages: _msgs, refs: _refs } = dedupeByToken(messages, refs);
+  const result = await fcm.sendEach(_msgs);
+  await cleanupAfterMulticast(result, _refs);
   log.sent = result.successCount;
   log.failed = result.failureCount;
   await writeLog();
-  console.log(`[dailyRoutine ${slot}] Day ${day}: sent ${result.successCount}/${messages.length} (teachers with routine: ${initialsList.length})`);
+  console.log(`[dailyRoutine ${slot}] Day ${day}: sent ${result.successCount}/${_msgs.length} (teachers with routine: ${initialsList.length})`);
   return log;
 }
 

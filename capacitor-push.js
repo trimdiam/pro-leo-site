@@ -59,8 +59,9 @@ function saveFcmToken(token) {
 // Clear FCM token on logout so a new user on this device doesn't get
 // notifications meant for the previous user.
 function clearFcmTokenForUid(uid) {
-  if (!uid) return;
-  import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js').then(function (fs) {
+  if (!uid) return Promise.resolve();
+  // Returns a promise so logout can AWAIT this delete before signing out.
+  return import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js').then(function (fs) {
     var db = fs.getFirestore(window._firebaseApp);
     return fs.updateDoc(fs.doc(db, 'users', uid), { fcmToken: fs.deleteField() });
   }).then(function () {
@@ -78,9 +79,20 @@ function clearFcmTokenForUid(uid) {
     if (typeof window.logout !== 'function') return;
     var _orig = window.logout;
     window.logout = function () {
+      var self = this, args = arguments;
+      function proceed() { _orig.apply(self, args); }
       var uid = getCurrentUid();
-      if (uid) clearFcmTokenForUid(uid);
-      _orig.apply(this, arguments);
+      if (!uid) { proceed(); return; }
+      // Delete this device's token from the user's doc BEFORE signing out.
+      // The write needs request.auth.uid == uid (firestore.rules), so it must
+      // finish while still authenticated — otherwise signOut() revokes the
+      // credential first, the delete is denied, and the stale token keeps
+      // delivering this user's pushes to whoever logs in next on this device.
+      // Guard with a 2.5s cap so logout never hangs (e.g. offline).
+      var done = false;
+      function once() { if (!done) { done = true; proceed(); } }
+      clearFcmTokenForUid(uid).then(once, once);
+      setTimeout(once, 2500);
     };
     clearInterval(_interval);
   }, 200);
