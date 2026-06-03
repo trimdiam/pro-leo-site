@@ -3628,6 +3628,7 @@
         <button onclick="showDash('o','o-admissions',this)"><i class="fas fa-file-alt"></i> Admissions</button>
         <button onclick="showDash('o','o-notifications',this);loadOfficeNotifications()" style="position:relative"><i class="fas fa-bell"></i> Notifications <span id="o-notif-badge" style="position:absolute;top:6px;right:8px;background:#ef4444;color:#fff;border-radius:999px;font-size:10px;padding:1px 5px;font-weight:700;display:inline-block"></span></button>
         <button onclick="showDash('o','o-reports',this)"><i class="fas fa-chart-bar"></i> Reports</button>
+        <button onclick="showDash('o','o-attendance',this)"><i class="fas fa-fingerprint"></i> My Attendance</button>
         <button onclick="showDash('o','o-profile',this)"><i class="fas fa-user-circle"></i> My Profile</button>
       </div>
       <div class="sidebar-footer"><button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
@@ -4273,6 +4274,11 @@
         </div>
 
         <!-- ── MY PROFILE (Office Staff) ── -->
+        <div id="o-attendance" class="dash-section">
+          <!-- Office staff self check-in / check-out — office-attendance.js -->
+          <div id="staff-attendance-card-office"></div>
+        </div>
+
         <div id="o-profile" class="dash-section">
           <div class="card" style="padding:24px;margin-bottom:20px;max-width:540px">
             <h4 style="color:var(--accent-dark);margin-bottom:20px"><i class="fas fa-user-circle" style="margin-right:8px;color:var(--accent)"></i>My Profile</h4>
@@ -4374,6 +4380,7 @@
 <script defer src="staff-attendance.js?v=2026-06-02b"></script>
 <script defer src="staff-attendance-admin.js?v=2026-06-02b"></script>
 <script defer src="staff-attendance-report.js?v=2026-06-02b"></script>
+<script defer src="office-attendance.js?v=2026-06-03"></script>
 <script defer src="view-refresh.js"></script>
     <script defer src="rc-class-guard.js"></script>
     <script defer src="homepage-content-fix.js"></script>
