@@ -231,7 +231,9 @@ async function loadTeacherAndRoute(uid) {
 
     if (urlClassId && urlAction === 'review' && ME.isClassTeacher) {
       // Deep-link: go directly to class teacher student list
-      ME.ctClassId  = urlClassId;
+      // Normalize to plain Roman (strip any "-A" section suffix) so the marks
+      // path matches what subject teachers wrote to (e.g. "X-A" → "X").
+      ME.ctClassId  = toRomanClassId(urlClassId);
       ME.ctClassNum = classNumFromId(urlClassId);
       await openStudentList(urlTerm);
       return;

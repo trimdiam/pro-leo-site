@@ -6,3 +6,6 @@ build/
 dist/
 serviceAccountKey.json
 *.json.key
+.claude/
+AGENTS.md
+scripts/*backup*.json
