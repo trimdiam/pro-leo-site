@@ -85,11 +85,71 @@ function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ─── OFFLINE BANNER ─────────────────────────────────────────────────────────
+// Paired with the enablePersistence() call in firebase-init.js — that makes
+// writes survive being offline; this makes the offline state VISIBLE so a
+// teacher isn't left guessing whether "Saving…" actually went through.
+function updateOfflineBanner() {
+  const banner = $('meOfflineBanner');
+  if (banner) banner.style.display = navigator.onLine ? 'none' : 'block';
+
+  // If the mark-entry grid is open on a shared-entry subject, keep its
+  // stale-lock warning in sync with live connectivity changes too (not just
+  // the state at the moment the grid was opened).
+  const warnEl = $('gridSharedOfflineWarning');
+  if (warnEl && ME.activeClass) {
+    const isSharedSubj = findSubjectConfig(ME.activeClass.classNum, ME.activeClass.subjectKey)?.sharedEntry === true;
+    warnEl.style.display = (isSharedSubj && !navigator.onLine) ? 'block' : 'none';
+  }
+}
+window.addEventListener('online',  updateOfflineBanner);
+window.addEventListener('offline', updateOfflineBanner);
+document.addEventListener('DOMContentLoaded', updateOfflineBanner);
+updateOfflineBanner();
+
+// ─── BACK TO PORTAL (offline-safe) ──────────────────────────────────────────
+// "Back to Portal" is a FULL page reload of index.html — it re-runs the whole
+// main-portal bootstrap (Auth restore, then a large number of its own
+// dashboard-loading Firestore calls in app-logic.js) that hasn't been audited
+// for offline safety the way mark entry has. Rather than risk stranding a
+// teacher on a broken/blank portal page mid-entry, refuse to leave at all
+// while offline — mark entry itself is the safe, hardened place to stay.
+// Their entries are already safely queued locally regardless (enablePersistence).
+function meBackToPortal() {
+  if (!navigator.onLine) {
+    alert('You\'re offline right now, so "Back to Portal" is disabled to avoid interrupting your work — the portal needs a connection to load. Your entries are already saved on this device and will sync automatically once you\'re back online. You can keep entering marks here in the meantime.');
+    return;
+  }
+  history.length > 1 ? history.back() : (window.location.href = '/');
+}
+
 function subjectToKey(subjectLabel, classNum) {
   const cfg = CONFIG[parseInt(classNum)];
   if (!cfg) return '';
   const found = cfg.subjects.find(s => s.label === subjectLabel);
   return found ? found.key : '';
+}
+
+// Co-scholastic activities are now assignable to subject teachers. They live in
+// cfg.coScholastic (not cfg.subjects), so any lookup by key must check both.
+function findSubjectConfig(classNum, key) {
+  const cfg = CONFIG[parseInt(classNum)];
+  if (!cfg) return null;
+  return (cfg.subjects || []).find(s => s.key === key)
+      || (cfg.coScholastic || []).find(s => s.key === key)
+      || null;
+}
+
+// True when a subject is entered as a GRADE (O–C dropdown), not numeric marks.
+function isGradeSubject(classNum, key) {
+  const s = findSubjectConfig(classNum, key);
+  return !!(s && s.entryType === 'grade');
+}
+
+// Co-scholastic grades are stored in coScholastic[key].{T1|T2}; T1=HY, T2=FT —
+// the exact shape the class-teacher form and report card already read.
+function termToCoScholasticSlot(term) {
+  return term === 'HY' ? 'T1' : 'T2';
 }
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
@@ -99,6 +159,14 @@ let _authResolved = false;
 auth.onAuthStateChanged(async user => {
   _authResolved = true;
   if (user) {
+    // The main portal (app-logic.js) decides whether to WAIT for Firebase
+    // Auth to restore or give up immediately based on this flag — it's
+    // normally only set by the portal's own login form (script.js loginAs()).
+    // Mark entry has its own separate login screen, so without this, a
+    // teacher who reaches mark entry directly (bookmark/deep link, not via
+    // clicking through the portal) gets bounced to the portal's login page
+    // on "Back to Portal" even though their Firebase session is still valid.
+    try { localStorage.setItem('sf_session_role', 'teacher'); } catch (_) {}
     ME.user = user;
     await loadTeacherAndRoute(user.uid);
   } else {
@@ -150,33 +218,54 @@ $('btnLogout').addEventListener('click', () => auth.signOut());
 async function loadTeacherAndRoute(uid) {
   try {
     let teacherData = null;
+    const TEACHER_CACHE_KEY = 'sfs_me_teacher_' + uid;
 
-    // Try master-prompt structure: /teachers/{uid}
-    const directSnap = await db.collection('teachers').doc(uid).get();
-    if (directSnap.exists) {
-      teacherData = directSnap.data();
-    } else {
-      // Fall back to existing site structure: /users/{uid} → /teachers?teacherId=...
-      const userSnap = await db.collection('users').doc(uid).get();
-      if (userSnap.exists) {
-        const userData = userSnap.data();
-        const tid = userData.teacherId || userData.loginId || '';
-        if (tid) {
-          // Try exact match on teacherId field
-          let tSnap = await db.collection('teachers')
-            .where('teacherId', '==', tid).limit(1).get();
-          // Try case-insensitive variant (uppercase)
-          if (tSnap.empty) {
-            tSnap = await db.collection('teachers')
-              .where('teacherId', '==', tid.toUpperCase()).limit(1).get();
+    try {
+      // Try master-prompt structure: /teachers/{uid}
+      const directSnap = await db.collection('teachers').doc(uid).get();
+      if (directSnap.exists) {
+        teacherData = directSnap.data();
+      } else {
+        // Fall back to existing site structure: /users/{uid} → /teachers?teacherId=...
+        const userSnap = await db.collection('users').doc(uid).get();
+        if (userSnap.exists) {
+          const userData = userSnap.data();
+          const tid = userData.teacherId || userData.loginId || '';
+          if (tid) {
+            // Try exact match on teacherId field
+            let tSnap = await db.collection('teachers')
+              .where('teacherId', '==', tid).limit(1).get();
+            // Try case-insensitive variant (uppercase)
+            if (tSnap.empty) {
+              tSnap = await db.collection('teachers')
+                .where('teacherId', '==', tid.toUpperCase()).limit(1).get();
+            }
+            // Try loginId field mirror (set by createTeacherLogin)
+            if (tSnap.empty) {
+              tSnap = await db.collection('teachers')
+                .where('loginId', '==', tid).limit(1).get();
+            }
+            if (!tSnap.empty) teacherData = tSnap.docs[0].data();
           }
-          // Try loginId field mirror (set by createTeacherLogin)
-          if (tSnap.empty) {
-            tSnap = await db.collection('teachers')
-              .where('loginId', '==', tid).limit(1).get();
-          }
-          if (!tSnap.empty) teacherData = tSnap.docs[0].data();
         }
+      }
+      // Remember the last successfully-resolved profile in localStorage —
+      // simple, synchronous, on-device, and NOT split across Firestore SDK
+      // instances the way its own IndexedDB persistence cache can be (the
+      // main portal and mark-entry use separate Firebase app instances).
+      if (teacherData) {
+        try { localStorage.setItem(TEACHER_CACHE_KEY, JSON.stringify(teacherData)); } catch (_) {}
+      }
+    } catch (lookupErr) {
+      // Live lookup failed (typically: genuinely offline and Firestore's own
+      // cache has nothing for this exact query chain). Fall back to the
+      // profile saved on the last successful ONLINE login for this teacher.
+      let cached = null;
+      try { cached = JSON.parse(localStorage.getItem(TEACHER_CACHE_KEY) || 'null'); } catch (_) {}
+      if (cached) {
+        teacherData = cached;
+      } else {
+        throw lookupErr; // nothing to fall back to — let the outer catch handle it
       }
     }
 
@@ -251,7 +340,11 @@ async function loadTeacherAndRoute(uid) {
   } catch (err) {
     console.error(err);
     showScreen('screenDashboard');
-    $('dashboardBody').innerHTML = `<tr><td colspan="5" class="me-empty">Error: ${err.message}</td></tr>`;
+    const offline = !navigator.onLine || /offline|unavailable/i.test(err.message || '');
+    const msg = offline
+      ? 'Your profile hasn’t synced to this device yet. Please connect to the internet once, reopen Mark Entry, and it will then work offline.'
+      : `Error: ${err.message}`;
+    $('dashboardBody').innerHTML = `<tr><td colspan="5" class="me-empty">${msg}</td></tr>`;
   }
 }
 
@@ -440,12 +533,24 @@ function actionBtn(classId, classNum, section, subject, subjectKey, term, status
 async function openGrid(classId, classNum, section, subjectLabel, subjectKey, term) {
   // Resolve classNum as integer (handles Roman numerals like "IX" → 9)
   const classNumInt = classNumFromId(classId) || parseInt(classNum) || classNum;
-  ME.activeClass = { classId, classNum: classNumInt, section, subjectLabel, subjectKey, term };
+  // Normalize to plain Roman ("V-A"/"V-undefined" → "V") so the marks doc id
+  // matches exactly what the class teacher and report card read. Without this,
+  // TA-panel assignments (which carry no section) would write to "V-undefined_HY"
+  // and silently never reflect.
+  const romanClassId = toRomanClassId(classId) || classId;
+  const entryType = isGradeSubject(classNumInt, subjectKey) ? 'grade' : 'marks';
+  ME.activeClass = { classId: romanClassId, classNum: classNumInt, section, subjectLabel, subjectKey, term, entryType };
 
   showScreen('screenGrid');
-  $('gridTitle').textContent = `Class ${classId} — ${subjectLabel} — ${term === 'HY' ? 'Half Yearly' : 'Final Term'}`;
+  $('gridTitle').textContent = `Class ${romanClassId} — ${subjectLabel} — ${term === 'HY' ? 'Half Yearly' : 'Final Term'}`;
   $('gridSubtitle').textContent = 'Academic Year 2026–2027';
   $('gridTableWrap').innerHTML = '<div class="me-loading"><div class="me-spinner"></div><br>Loading students…</div>';
+
+  // Split-subject lock relies on each device's last-synced view of who entered
+  // what. Offline, that view can be stale, so flag it explicitly here rather
+  // than let the lock silently mislead either teacher. ME.activeClass is set
+  // above, so updateOfflineBanner() can resolve the shared-entry check itself.
+  updateOfflineBanner();
 
   try {
     // Students are stored with separate 'class' and 'section' fields, not a combined classId
@@ -464,7 +569,7 @@ async function openGrid(classId, classNum, section, subjectLabel, subjectKey, te
     const students = studSnap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0));
-    const termKey  = `${classId}_${term}`;
+    const termKey  = `${romanClassId}_${term}`;
     const existing = {};
 
     try {
@@ -482,17 +587,21 @@ async function openGrid(classId, classNum, section, subjectLabel, subjectKey, te
 }
 
 function renderGrid(students, existing) {
-  const { classNum, subjectKey } = ME.activeClass;
+  const { classNum, subjectKey, term } = ME.activeClass;
   const cfg      = CONFIG[classNum];
-  const subj     = cfg?.subjects.find(s => s.key === subjectKey);
+  const subj     = findSubjectConfig(classNum, subjectKey);
+  const isGrade  = ME.activeClass.entryType === 'grade';
   const isSingle = subj?.singleTotal === true;
   const isSenior = cfg?.markScheme === 'senior';
+  const slot     = termToCoScholasticSlot(term);
   const wrap     = $('gridTableWrap');
   wrap.innerHTML  = '';
 
   // Build column headers based on mark scheme
   let colHeaders;
-  if (isSingle) {
+  if (isGrade) {
+    colHeaders = '<th>Grade</th>';
+  } else if (isSingle) {
     colHeaders = '<th>Marks /100</th>';
   } else if (isSenior) {
     colHeaders = '<th>IA /20</th><th>TE /80</th>';
@@ -506,7 +615,7 @@ function renderGrid(students, existing) {
       <tr>
         <th>#</th><th>Student Name</th>
         ${colHeaders}
-        <th>Total</th>
+        <th>${isGrade ? 'Selected' : 'Total'}</th>
       </tr>
     </thead>
     <tbody id="gridTbody"></tbody>
@@ -516,18 +625,48 @@ function renderGrid(students, existing) {
   const tbody    = table.querySelector('#gridTbody');
   const allInputs = [];
 
+  const isShared = subj?.sharedEntry === true;
+  const myUid    = ME.user?.uid;
+
   students.forEach((student, idx) => {
     const existData = existing[student.id]?.academics?.[subjectKey] || {};
     const isLocked  = existing[student.id]?.status === 'locked';
+
+    // ── Per-cell lock for split (shared-entry) subjects ──────────────────────
+    // If this student's mark was entered by the OTHER assigned teacher, it is
+    // read-only to me (I can still edit my own, and empty cells stay open). This
+    // is what keeps Khasi vs Alt-English (and Val-Edu vs Catechism) from
+    // clobbering each other when both teachers see the full class list.
+    const enteredBy = isGrade
+      ? existing[student.id]?.coScholastic?.[subjectKey]?.enteredBy
+      : existData.enteredBy;
+    const lockedByOther = isShared && !!enteredBy && enteredBy !== myUid;
+    const cellLocked = isLocked || lockedByOther;
+    const dis        = cellLocked ? 'disabled' : '';
+    const lockTitle  = lockedByOther ? ' title="🔒 Entered by the other assigned teacher"' : '';
+
     const tr = el('tr');
     tr.dataset.studentId = student.id;
+    if (lockedByOther) tr.classList.add('me-locked-other');
 
-    if (isSingle) {
+    if (isGrade) {
+      // Co-scholastic grade: O–C dropdown, read from coScholastic[key].{T1|T2}
+      const g = existing[student.id]?.coScholastic?.[subjectKey]?.[slot] ?? '';
+      const opts = GRADES.map(gr => `<option value="${gr}" ${gr === g ? 'selected' : ''}>${gr}</option>`).join('');
+      tr.innerHTML = `
+        <td>${idx + 1}</td>
+        <td>${escHtml(student.name)}</td>
+        <td><select class="me-mark-input grade" data-field="grade" ${dis}${lockTitle}>
+          <option value="">—</option>${opts}
+        </select></td>
+        <td class="me-total-cell ${g ? 'pass' : 'empty'}" data-total>${g || '—'}${lockedByOther ? ' 🔒' : ''}</td>
+      `;
+    } else if (isSingle) {
       const val = existData.singleMark ?? '';
       tr.innerHTML = `
         <td>${idx + 1}</td>
         <td>${escHtml(student.name)}</td>
-        <td><input type="number" class="me-mark-input single" data-field="singleMark" data-max="100" value="${val}" min="0" max="100" ${isLocked ? 'disabled' : ''}></td>
+        <td><input type="number" class="me-mark-input single" data-field="singleMark" data-max="100" value="${val}" min="0" max="100" ${dis}${lockTitle}></td>
         <td class="me-total-cell empty" data-total>—</td>
       `;
     } else if (isSenior) {
@@ -535,8 +674,8 @@ function renderGrid(students, existing) {
       tr.innerHTML = `
         <td>${idx + 1}</td>
         <td>${escHtml(student.name)}</td>
-        <td><input type="number" class="me-mark-input" data-field="IA" data-max="20"  value="${ia}" min="0" max="20"  ${isLocked ? 'disabled' : ''}></td>
-        <td><input type="number" class="me-mark-input" data-field="TE" data-max="80"  value="${te}" min="0" max="80"  ${isLocked ? 'disabled' : ''}></td>
+        <td><input type="number" class="me-mark-input" data-field="IA" data-max="20"  value="${ia}" min="0" max="20"  ${dis}${lockTitle}></td>
+        <td><input type="number" class="me-mark-input" data-field="TE" data-max="80"  value="${te}" min="0" max="80"  ${dis}${lockTitle}></td>
         <td class="me-total-cell empty" data-total>—</td>
       `;
     } else {
@@ -544,9 +683,9 @@ function renderGrid(students, existing) {
       tr.innerHTML = `
         <td>${idx + 1}</td>
         <td>${escHtml(student.name)}</td>
-        <td><input type="number" class="me-mark-input" data-field="IA" data-max="10"  value="${ia}" min="0" max="10"  ${isLocked ? 'disabled' : ''}></td>
-        <td><input type="number" class="me-mark-input" data-field="UT" data-max="30"  value="${ut}" min="0" max="30"  ${isLocked ? 'disabled' : ''}></td>
-        <td><input type="number" class="me-mark-input" data-field="TE" data-max="60"  value="${te}" min="0" max="60"  ${isLocked ? 'disabled' : ''}></td>
+        <td><input type="number" class="me-mark-input" data-field="IA" data-max="10"  value="${ia}" min="0" max="10"  ${dis}${lockTitle}></td>
+        <td><input type="number" class="me-mark-input" data-field="UT" data-max="30"  value="${ut}" min="0" max="30"  ${dis}${lockTitle}></td>
+        <td><input type="number" class="me-mark-input" data-field="TE" data-max="60"  value="${te}" min="0" max="60"  ${dis}${lockTitle}></td>
         <td class="me-total-cell empty" data-total>—</td>
       `;
     }
@@ -554,13 +693,25 @@ function renderGrid(students, existing) {
     tbody.appendChild(tr);
     const inputs = tr.querySelectorAll('.me-mark-input');
     inputs.forEach(inp => allInputs.push(inp));
-    updateRowTotal(tr, isSingle);
 
-    if (!isLocked) {
-      inputs.forEach(inp => {
-        inp.addEventListener('input',  () => { validateInput(inp); updateRowTotal(tr, isSingle); });
-        inp.addEventListener('blur',   () => { validateInput(inp); updateRowTotal(tr, isSingle); scheduleSave(student.id, tr, isSingle); });
-      });
+    if (isGrade) {
+      const sel = tr.querySelector('[data-field="grade"]');
+      if (sel && !cellLocked) {
+        sel.addEventListener('change', () => {
+          const cell = tr.querySelector('[data-total]');
+          cell.textContent = sel.value || '—';
+          cell.className   = `me-total-cell ${sel.value ? 'pass' : 'empty'}`;
+          scheduleSave(student.id, tr, false);
+        });
+      }
+    } else {
+      updateRowTotal(tr, isSingle);
+      if (!cellLocked) {
+        inputs.forEach(inp => {
+          inp.addEventListener('input',  () => { validateInput(inp); updateRowTotal(tr, isSingle); });
+          inp.addEventListener('blur',   () => { validateInput(inp); updateRowTotal(tr, isSingle); scheduleSave(student.id, tr, isSingle); });
+        });
+      }
     }
   });
 
@@ -613,15 +764,37 @@ function updateRowTotal(tr, isSingle) {
 }
 
 function scheduleSave(studentId, tr, isSingle) {
-  ME.pendingSaves.set(studentId, collectRowData(tr, isSingle));
+  const data = collectRowData(tr, isSingle);
+  if (data === SKIP_ROW) return;   // split subject: blank or other-teacher's cell
+  ME.pendingSaves.set(studentId, data);
   clearTimeout(ME.saveTimer);
   ME.saveTimer = setTimeout(() => flushSaves(), 800);
 }
 
+// Sentinel: a row that must NOT be persisted. Used for split (sharedEntry)
+// subjects to skip BLANK rows (writing nulls would clobber the other teacher)
+// and cells locked to the other teacher. Callers must check for it.
+const SKIP_ROW = '__SKIP_ROW__';
+
 function collectRowData(tr, isSingle) {
-  const { subjectKey, classNum } = ME.activeClass;
-  const cfg = CONFIG[classNum];
+  const { subjectKey, classNum, entryType } = ME.activeClass;
+  const subj     = findSubjectConfig(classNum, subjectKey);
+  const isShared = subj?.sharedEntry === true;
+  const cfg      = CONFIG[classNum];
   const isSenior = cfg?.markScheme === 'senior';
+
+  // Split subject: never persist a cell owned (entered) by the other teacher.
+  if (isShared && tr.classList.contains('me-locked-other')) return SKIP_ROW;
+
+  if (entryType === 'grade') {
+    // Co-scholastic: just the selected grade string ('' = cleared). flushSaves
+    // routes this to coScholastic[key].{T1|T2}, NOT academics.
+    const sel   = tr.querySelector('[data-field="grade"]');
+    const grade = sel ? sel.value : '';
+    if (isShared && grade === '') return SKIP_ROW;          // don't write blanks
+    return isShared ? { grade, enteredBy: ME.user.uid } : { grade };
+  }
+
   const academic = {};
   if (isSingle) {
     const val = parseFloat(tr.querySelector('[data-field="singleMark"]').value);
@@ -639,24 +812,47 @@ function collectRowData(tr, isSingle) {
       ? (isNaN(ia)?0:ia)+(isNaN(ut)?0:ut)+(isNaN(te)?0:te) : null;
     academic[subjectKey] = { IA: isNaN(ia)?null:ia, UT: isNaN(ut)?null:ut, TE: isNaN(te)?null:te, total };
   }
+  if (isShared) {
+    const leaf = academic[subjectKey];
+    if (leaf.total === null || leaf.total === undefined) return SKIP_ROW;  // blank → skip
+    leaf.enteredBy = ME.user.uid;                          // stamp ownership
+  }
   return academic;
 }
 
 async function flushSaves() {
   if (!ME.pendingSaves.size || !ME.activeClass) return;
-  const { classId, term } = ME.activeClass;
+  const { classId, term, subjectKey, entryType } = ME.activeClass;
   const termKey = `${classId}_${term}`;
+  const slot    = termToCoScholasticSlot(term);
   const batch   = db.batch();
   showSaveIndicator('Saving…');
 
-  for (const [studentId, academic] of ME.pendingSaves) {
+  for (const [studentId, payload] of ME.pendingSaves) {
+    if (entryType === 'grade') {
+      // Co-scholastic grade → coScholastic[key].{T1|T2}. Write to BOTH term docs
+      // so readers (report card uses hyData.coScholastic first, falls back to
+      // ftData) always find it — mirroring the class-teacher dual-write.
+      const leaf = { [slot]: payload.grade || '' };
+      if (payload.enteredBy) leaf.enteredBy = payload.enteredBy;  // split-subject ownership
+      const coWrite = {
+        coScholastic:  { [subjectKey]: leaf },
+        lastUpdatedBy: ME.user.uid,
+        lastUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      for (const t of ['HY', 'FT']) {
+        const ref = db.collection('marks').doc(`${classId}_${t}`).collection('students').doc(studentId);
+        batch.set(ref, coWrite, { merge: true });
+      }
+      continue;
+    }
     const ref = db.collection('marks').doc(termKey).collection('students').doc(studentId);
     // Pass the nested object — set({merge:true}) recursively merges nested maps,
     // so academics.{otherSubject} is preserved. Dot-notation keys ("academics.x")
     // would NOT work here: set() treats them as literal top-level field names
     // with a dot in them; only update() interprets dots as field paths.
     batch.set(ref, {
-      academics:     academic,
+      academics:     payload,
       status:        'draft',
       lastUpdatedBy: ME.user.uid,
       lastUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -683,29 +879,39 @@ $('btnSaveDraft').addEventListener('click', async () => {
 
 function collectAllRowsAndSchedule() {
   const { subjectKey, classNum } = ME.activeClass;
-  const cfg      = CONFIG[classNum];
-  const subj     = cfg?.subjects.find(s => s.key === subjectKey);
+  const subj     = findSubjectConfig(classNum, subjectKey);
   const isSingle = subj?.singleTotal === true;
   document.querySelectorAll('#gridTbody tr').forEach(tr => {
     const sid = tr.dataset.studentId;
-    if (sid) ME.pendingSaves.set(sid, collectRowData(tr, isSingle));
+    if (!sid) return;
+    const data = collectRowData(tr, isSingle);
+    if (data === SKIP_ROW) return;   // split subject: skip blank / other-teacher rows
+    ME.pendingSaves.set(sid, data);
   });
 }
 
 $('btnSubmit').addEventListener('click', () => {
-  const { subjectKey, classNum } = ME.activeClass;
-  const subj     = CONFIG[classNum]?.subjects.find(s => s.key === subjectKey);
+  const { subjectKey, classNum, entryType } = ME.activeClass;
+  const subj     = findSubjectConfig(classNum, subjectKey);
+  const isGrade  = entryType === 'grade';
+  const isShared = subj?.sharedEntry === true;
   const isSingle = subj?.singleTotal === true;
   const isSenior = CONFIG[classNum]?.markScheme === 'senior';
   let hasEmpty    = false;
   let hasOverLimit = false;
 
   document.querySelectorAll('#gridTbody tr').forEach(tr => {
-    const fields = isSingle ? ['singleMark'] : (isSenior ? ['IA','TE'] : ['IA','UT','TE']);
+    // Split subjects: a teacher only fills their own students, so blanks and the
+    // other teacher's locked cells are EXPECTED — don't treat them as missing.
+    if (isShared && tr.classList.contains('me-locked-other')) return;
+    // Grade subjects have a single 'grade' field with no numeric maximum.
+    const fields = isGrade ? ['grade']
+      : (isSingle ? ['singleMark'] : (isSenior ? ['IA','TE'] : ['IA','UT','TE']));
     fields.forEach(f => {
       const inp = tr.querySelector(`[data-field="${f}"]`);
       if (!inp) return;
-      if (inp.value === '') { hasEmpty = true; return; }
+      if (inp.value === '') { if (!isShared) hasEmpty = true; return; }
+      if (isGrade) return; // no min/max validation for grades
       const max = parseInt(inp.dataset.max);
       const val = parseFloat(inp.value);
       if (isNaN(val) || val < 0 || val > max) {
@@ -745,29 +951,56 @@ $('btnConfirmSubmit').addEventListener('click', async () => {
   showSaveIndicator('Submitting…');
   collectAllRowsAndSchedule();
 
-  const { classId, term, subjectLabel, subjectKey } = ME.activeClass;
+  const { classId, term, subjectLabel, subjectKey, entryType, classNum } = ME.activeClass;
   const termKey   = `${classId}_${term}`;
   const submitKey = subjectKey || subjectLabel;
+  const slot      = termToCoScholasticSlot(term);
+  const isGrade   = entryType === 'grade';
+  const isShared  = findSubjectConfig(classNum, subjectKey)?.sharedEntry === true;
   const batch     = db.batch();
   const stamp     = firebase.firestore.FieldValue.serverTimestamp();
 
-  // Single atomic batch: marks + submission flag together.
+  // Single atomic batch: marks/grades + submission flag together.
   // Either everything succeeds, or nothing changes — no half-submitted state.
   // Use nested-map syntax (NOT dot-notation keys) because set({merge:true})
   // performs deep merge on nested maps and treats dotted keys as literal names.
   document.querySelectorAll('#gridTbody tr').forEach(tr => {
     const sid = tr.dataset.studentId;
     if (!sid) return;
-    const ref = db.collection('marks').doc(termKey).collection('students').doc(sid);
+    const collected = ME.pendingSaves.get(sid);
 
+    // Split subjects: only touch the students I actually entered. Skipping the
+    // rest leaves the other teacher's marks (and the blank, not-mine rows)
+    // completely untouched — no null clobber, no false "submitted" flag.
+    if (isShared && !collected) return;
+
+    if (isGrade) {
+      // Grade subject: write coScholastic[key].{slot} to BOTH term docs, plus the
+      // submission flag (keyed by subjectKey, same as scholastic subjects so the
+      // subject-teacher dashboard shows "Submitted").
+      const grade = collected ? collected.grade || '' : '';
+      const leaf  = { [slot]: grade };
+      if (collected?.enteredBy) leaf.enteredBy = collected.enteredBy;
+      for (const t of ['HY', 'FT']) {
+        const ref = db.collection('marks').doc(`${classId}_${t}`).collection('students').doc(sid);
+        batch.set(ref, {
+          coScholastic:      { [subjectKey]: leaf },
+          lastUpdatedBy:     ME.user.uid,
+          lastUpdatedAt:     stamp,
+          submittedSubjects: { [submitKey]: { by: ME.user.uid, at: stamp, status: 'submitted' } }
+        }, { merge: true });
+      }
+      return;
+    }
+
+    const ref = db.collection('marks').doc(termKey).collection('students').doc(sid);
     const payload = {
       status:             'draft',
       lastUpdatedBy:      ME.user.uid,
       lastUpdatedAt:      stamp,
       submittedSubjects:  { [submitKey]: { by: ME.user.uid, at: stamp, status: 'submitted' } }
     };
-    const academic = ME.pendingSaves.get(sid);
-    if (academic) payload.academics = academic;
+    if (collected) payload.academics = collected;
 
     batch.set(ref, payload, { merge: true });
   });
@@ -993,6 +1226,8 @@ async function autoSaveRanks(students, existingHY, existingFT, hyRanks, ftRanks,
 }
 
 function renderStudentList(students, existingHY, existingFT, hyRanks, ftRanks, maxMarks, term, classNum) {
+  // Stash for the bulk Class Attendance grid (reuses this already-loaded data).
+  ME.ctData = { students, existingHY, existingFT };
   const tbody = $('slTableBody');
   tbody.innerHTML = '';
 
@@ -1412,15 +1647,144 @@ function renderCoScholastic(hyData, ftData, classNum, isLocked) {
 }
 
 function renderAttendance(hyData, ftData, isLocked) {
-  const dis = isLocked ? 'disabled' : '';
   const ha  = hyData.attendance || {};
   const fa  = ftData.attendance || {};
-  $('sfHyPresent').value   = ha.present ?? '';
-  $('sfHyTotal').value     = ha.total   ?? '';
-  $('sfFtPresent').value   = fa.present ?? '';
-  $('sfFtTotal').value     = fa.total   ?? '';
+  // Attendance is SAVED as hyPresent/hyTotal/ftPresent/ftTotal (see saveCTData and
+  // the bulk attendance grid). Read those keys first; fall back to the old
+  // present/total names so any legacy data still loads. (Previously this read
+  // only present/total, so saved attendance reappeared blank on reopen.)
+  $('sfHyPresent').value = ha.hyPresent ?? ha.present ?? '';
+  $('sfHyTotal').value   = ha.hyTotal   ?? ha.total   ?? '';
+  $('sfFtPresent').value = fa.ftPresent ?? fa.present ?? '';
+  $('sfFtTotal').value   = fa.ftTotal   ?? fa.total   ?? '';
   [$('sfHyPresent'),$('sfHyTotal'),$('sfFtPresent'),$('sfFtTotal')].forEach(inp => inp.disabled = isLocked);
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// CLASS ATTENDANCE — bulk entry (class teacher)
+// One Working Days value for the whole class + Days Present per student. Writes
+// the SAME attendance fields the report card reads (hyPresent/hyTotal for HY,
+// ftPresent/ftTotal for FT) to BOTH term docs, mirroring saveCTData.
+// ════════════════════════════════════════════════════════════════════════════
+function attTermKeys() {
+  const t = ME.activeClass?.term === 'FT' ? 'ft' : 'hy';
+  return { presentKey: t + 'Present', totalKey: t + 'Total' };
+}
+
+function openClassAttendance() {
+  const data = ME.ctData;
+  if (!data || !data.students?.length) { alert('Open the class student list first.'); return; }
+  const term = ME.activeClass?.term === 'FT' ? 'FT' : 'HY';
+  $('attTitle').textContent    = `Class ${ME.ctClassId || ME.activeClass?.classId || ''} — ${term === 'FT' ? 'Final Term' : 'Half Yearly'} Attendance`;
+  $('attSubtitle').textContent = 'Enter days present for each student. Working Days applies to the whole class.';
+  renderAttendanceGrid();
+  showScreen('screenAttendance');
+}
+
+function renderAttendanceGrid() {
+  const { students, existingHY, existingFT } = ME.ctData;
+  const term     = ME.activeClass?.term === 'FT' ? 'FT' : 'HY';
+  const existing = term === 'FT' ? existingFT : existingHY;
+  const { presentKey, totalKey } = attTermKeys();
+
+  // Seed the class Working Days box from any student's saved total.
+  let workingDays = '';
+  for (const s of students) {
+    const wd = existing[s.id]?.attendance?.[totalKey];
+    if (wd != null && wd !== 0) { workingDays = wd; break; }
+  }
+  $('attWorkingDays').value = workingDays;
+
+  const tbody = $('attTableBody');
+  tbody.innerHTML = '';
+  students.forEach((s, idx) => {
+    const att     = existing[s.id]?.attendance || {};
+    const present = att[presentKey] ?? '';
+    const locked  = existing[s.id]?.status === 'locked';
+    const tr = el('tr');
+    tr.dataset.studentId = s.id;
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td>${escHtml(s.name)}</td>
+      <td><input type="number" class="me-mark-input att-present" data-field="present" min="0" value="${present}" ${locked ? 'disabled' : ''}></td>
+      <td class="att-wd" style="text-align:center">—</td>
+      <td class="att-pct" style="text-align:center">—</td>
+    `;
+    tbody.appendChild(tr);
+    const inp = tr.querySelector('.att-present');
+    if (!locked) inp.addEventListener('input', () => updateAttRow(tr));
+  });
+  applyWorkingDaysToRows();
+}
+
+function applyWorkingDaysToRows() {
+  const wd = parseInt($('attWorkingDays').value);
+  document.querySelectorAll('#attTableBody tr').forEach(tr => {
+    const cell = tr.querySelector('.att-wd');
+    if (cell) cell.textContent = isNaN(wd) ? '—' : wd;
+    updateAttRow(tr);
+  });
+}
+
+function updateAttRow(tr) {
+  const wd = parseInt($('attWorkingDays').value);
+  const p  = parseInt(tr.querySelector('.att-present')?.value);
+  const cell = tr.querySelector('.att-pct');
+  if (!cell) return;
+  if (isNaN(wd) || wd <= 0 || isNaN(p)) { cell.textContent = '—'; cell.style.color = ''; return; }
+  const pct = Math.round((p / wd) * 1000) / 10;
+  cell.textContent = pct + '%';
+  cell.style.color = pct < 75 ? '#e07a7a' : '#7dd080';
+}
+
+async function saveClassAttendance() {
+  const data = ME.ctData;
+  if (!data?.students?.length || !ME.activeClass) return;
+  const { classId } = ME.activeClass;
+  const { presentKey, totalKey } = attTermKeys();
+  const wd = parseInt($('attWorkingDays').value);
+  if (isNaN(wd) || wd <= 0) { alert('Enter the total Working Days for the class first.'); return; }
+
+  showSaveIndicator('Saving attendance…');
+  const batch = db.batch();
+  const stamp = firebase.firestore.FieldValue.serverTimestamp();
+  let count = 0;
+  document.querySelectorAll('#attTableBody tr').forEach(tr => {
+    const sid = tr.dataset.studentId;
+    if (!sid) return;
+    const inp = tr.querySelector('.att-present');
+    if (!inp || inp.disabled || inp.value === '') return;   // skip locked / blank
+    const present = parseInt(inp.value) || 0;
+    const attLeaf = { [presentKey]: present, [totalKey]: wd };
+    const attWrite = { attendance: attLeaf, lastUpdatedBy: ME.user.uid, lastUpdatedAt: stamp };
+    for (const t of ['HY', 'FT']) {
+      batch.set(db.collection('marks').doc(`${classId}_${t}`).collection('students').doc(sid),
+                attWrite, { merge: true });
+    }
+    // Keep local cache in sync so reopening shows the saved values immediately.
+    for (const ex of [ME.ctData.existingHY, ME.ctData.existingFT]) {
+      ex[sid] = ex[sid] || {};
+      ex[sid].attendance = Object.assign({}, ex[sid].attendance, attLeaf);
+    }
+    count++;
+  });
+
+  if (!count) { hideSaveIndicator(''); alert('Nothing to save — enter at least one student\'s days present.'); return; }
+
+  try {
+    await batch.commit();
+    hideSaveIndicator(`Attendance saved ✓ (${count})`);
+  } catch (err) {
+    console.error('Attendance save failed:', err);
+    hideSaveIndicator('Save failed ✗');
+    alert('Attendance save failed: ' + (err.message || err.code || 'unknown error'));
+  }
+}
+
+$('btnClassAttendance')?.addEventListener('click', openClassAttendance);
+$('btnBackFromAtt')?.addEventListener('click', () => showScreen('screenStudentList'));
+$('btnSaveAttendance')?.addEventListener('click', saveClassAttendance);
+$('attWorkingDays')?.addEventListener('input', applyWorkingDaysToRows);
 
 function renderRemarks(hyData, ftData, isLocked) {
   const r   = hyData.remarks || ftData.remarks || {};

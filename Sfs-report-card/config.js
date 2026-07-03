@@ -29,7 +29,7 @@ const CONFIG = {
       { key: "pe",               label: "P.E." },
       { key: "singing",          label: "Singing" },
       { key: "discipline",       label: "Discipline" },
-      { key: "gk",               label: "G.K." },
+      { key: "gk",               label: "Aptitude" },
       { key: "arts_craft",       label: "Arts & Craft" },
       { key: "neatness",         label: "Neatness" },
       { key: "val_edu_catechism",label: "Val. Edu./Catechism" }
@@ -60,7 +60,7 @@ const CONFIG = {
       { key: "pe",               label: "P.E." },
       { key: "singing",          label: "Singing" },
       { key: "discipline",       label: "Discipline" },
-      { key: "gk",               label: "G.K." },
+      { key: "gk",               label: "Aptitude" },
       { key: "arts_craft",       label: "Arts & Craft" },
       { key: "neatness",         label: "Neatness" },
       { key: "val_edu_catechism",label: "Val. Edu./Catechism" }
@@ -91,7 +91,7 @@ const CONFIG = {
       { key: "pe",               label: "P.E." },
       { key: "singing",          label: "Singing" },
       { key: "discipline",       label: "Discipline" },
-      { key: "gk",               label: "G.K." },
+      { key: "gk",               label: "Aptitude" },
       { key: "arts_craft",       label: "Arts & Craft" },
       { key: "neatness",         label: "Neatness" },
       { key: "val_edu_catechism",label: "Val. Edu./Catechism" }
@@ -126,7 +126,7 @@ const CONFIG = {
       { key: "pe",               label: "P.E." },
       { key: "singing",          label: "Singing" },
       { key: "discipline",       label: "Discipline" },
-      { key: "gk",               label: "G.K." },
+      { key: "gk",               label: "Aptitude" },
       { key: "arts_craft",       label: "Arts & Craft" },
       { key: "neatness",         label: "Neatness" },
       { key: "val_edu_catechism",label: "Val. Edu./Catechism" }
@@ -163,7 +163,7 @@ const CONFIG = {
       { key: "pe",               label: "P.E." },
       { key: "singing_music",    label: "Singing/Music" },
       { key: "discipline",       label: "Discipline" },
-      { key: "gk",               label: "G.K." },
+      { key: "gk",               label: "Aptitude" },
       { key: "arts_craft",       label: "Arts & Craft" },
       { key: "val_edu_catechism",label: "Val. Edu./Catechism" }
     ],
@@ -199,7 +199,7 @@ const CONFIG = {
       { key: "pe",               label: "P.E." },
       { key: "singing_music",    label: "Singing/Music" },
       { key: "discipline",       label: "Discipline" },
-      { key: "gk",               label: "G.K." },
+      { key: "gk",               label: "Aptitude" },
       { key: "arts_craft",       label: "Arts & Craft" },
       { key: "val_edu_catechism",label: "Val. Edu./Catechism" }
     ],
@@ -291,6 +291,51 @@ const CONFIG = {
     ]
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NORMALIZE CO-SCHOLASTIC ENTRIES (Phase 4 — grade-entry subjects)
+// Co-scholastic activities are now assignable to subject teachers and entered
+// as GRADES (O–C), not numeric marks. Tag each entry with the flags the mark-
+// entry grid + assignment UI branch on. Done here (not inline per class) so all
+// classes stay in sync and the raw config blocks remain readable.
+//   entryType:'grade'   → render a grade dropdown, never IA/UT/TE inputs
+//   isCoScholastic:true → distinguish from scholastic subjects everywhere
+//   countInTotal:false  → structurally excluded from grand total & rank
+// The remaining flags give co-scholastic the same SHAPE as a subject object so
+// code that reads s.isAggregate / s.singleTotal / s.components won't choke.
+// ─────────────────────────────────────────────────────────────────────────────
+Object.keys(CONFIG).forEach(function (clsNum) {
+  var list = CONFIG[clsNum] && CONFIG[clsNum].coScholastic;
+  if (!Array.isArray(list)) return;
+  list.forEach(function (item) {
+    item.entryType     = 'grade';
+    item.isCoScholastic = true;
+    item.countInTotal  = false;
+    item.isAggregate   = false;
+    item.singleTotal   = false;
+    if (!Array.isArray(item.components)) item.components = [];
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARED-ENTRY (SPLIT) SUBJECTS — two teachers, one column
+// Khasi/Alt. English and Val. Edu./Catechism are each taken by a DIFFERENT set
+// of students under ONE mark slot, taught by TWO different teachers. Both are
+// assigned and both see the full class list; each fills only their own students
+// and leaves the rest blank. To make that safe, sharedEntry subjects:
+//   • never write blank rows (so the two teachers' entries stay disjoint), and
+//   • lock a cell already entered by the OTHER teacher (per-cell, via enteredBy).
+// Tag here so all classes stay in sync. Storage key is unchanged → marksheet,
+// report card and grand total are unaffected.
+// ─────────────────────────────────────────────────────────────────────────────
+var SHARED_ENTRY_KEYS = { khasi_alt_english: true, val_edu_catechism: true };
+Object.keys(CONFIG).forEach(function (clsNum) {
+  var cfg = CONFIG[clsNum];
+  if (!cfg) return;
+  [].concat(cfg.subjects || [], cfg.coScholastic || []).forEach(function (item) {
+    if (SHARED_ENTRY_KEYS[item.key]) item.sharedEntry = true;
+  });
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: retrieve configuration for a given class number

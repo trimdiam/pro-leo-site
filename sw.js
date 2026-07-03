@@ -1,4 +1,4 @@
-const CACHE = 'sfs-1780424709983';
+const CACHE = 'sfs-1783043801208';
 
 // App shell — pre-cached on install for fast cold-start.
 const SHELL = [
@@ -108,7 +108,18 @@ self.addEventListener('fetch', e => {
         if (res && res.ok) cache.put(request, res.clone());
         return res;
       } catch (_) {
-        const cached = await cache.match(request) || await cache.match('/index.html');
+        // Offline / slow-network fallback. Match the SAME page ignoring the
+        // query string: mark entry loads markentry.html?classId=…&subject=…
+        // with a UNIQUE query per selection, so an exact (query-sensitive)
+        // match almost always misses. Without ignoreSearch it fell through to
+        // /index.html and rendered the homepage instead of the requested page.
+        // Only fall back to /index.html for an actual root/home navigation.
+        const cached =
+          (await cache.match(request)) ||
+          (await cache.match(request, { ignoreSearch: true })) ||
+          ((url.pathname === '/' || url.pathname === '/index.html')
+            ? await cache.match('/index.html')
+            : null);
         if (cached) return cached;
         // Absolute last resort — return a minimal valid response so
         // respondWith doesn't error out.

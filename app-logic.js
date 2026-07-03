@@ -11634,8 +11634,8 @@ const SFS_TEACHER_DIRECTORY = [
     staffId: "SFST025",
     isPartTime: !1,
   },
-  { initials: "DM", fullName: "Daprikmen Massar", staffId: "", isPartTime: !0 },
-  { initials: "AP", fullName: "Anando Pohtam", staffId: "", isPartTime: !0 },
+  { initials: "DM", fullName: "Daprikmen Massar", staffId: "SFSTEMPT02", isPartTime: !0 },
+  { initials: "AP", fullName: "Anando Pohtam", staffId: "SFSTEMPT01", isPartTime: !0 },
 ];
 function _normName(s) {
   return (s || "").toString().toLowerCase().replace(/\s+/g, " ").trim();
@@ -12194,15 +12194,31 @@ function taEsc(s) {
     if (((subjSel.innerHTML = '<option value="">— Subject —</option>'), !cls))
       return;
     const cfg = window.CONFIG && window.CONFIG[TA_CLASS_MAP[cls]];
-    cfg &&
-      cfg.subjects
-        .filter((s) => !s.isAggregate)
-        .forEach((s) => {
-          const o = document.createElement("option");
-          ((o.value = s.key),
-            (o.textContent = s.label),
-            subjSel.appendChild(o));
-        });
+    if (!cfg) return;
+    cfg.subjects
+      .filter((s) => !s.isAggregate)
+      .forEach((s) => {
+        const o = document.createElement("option");
+        ((o.value = s.key),
+          (o.textContent = s.label),
+          subjSel.appendChild(o));
+      });
+    // Co-scholastic activities are now assignable too — entered as GRADES, not
+    // marks. Grouped separately so admins can tell them apart. The grade-ness is
+    // derived from CONFIG by key downstream, so no extra field is stored on the
+    // assignment object.
+    if (Array.isArray(cfg.coScholastic) && cfg.coScholastic.length) {
+      const grp = document.createElement("optgroup");
+      grp.label = "Co-Scholastic (Grades)";
+      cfg.coScholastic.forEach((s) => {
+        const o = document.createElement("option");
+        ((o.value = s.key),
+          (o.textContent = s.label),
+          (o.dataset.entrytype = "grade"),
+          grp.appendChild(o));
+      });
+      subjSel.appendChild(grp);
+    }
   }),
   (window.addTASubjectRow = function () {
     const cls = document.getElementById("ta-sub-class").value,

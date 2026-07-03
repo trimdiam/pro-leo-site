@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SFS Connect — Mark Entry</title>
   <link rel="stylesheet" href="markentry.css">
+  <script>
+    // Register the same site-wide service worker used by the main portal
+    // (script.js:71) so offline caching works even if a teacher reaches this
+    // page directly (bookmark/deep link) without ever loading index.html first.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
 </head>
 <body class="me-body">
 
@@ -20,10 +28,17 @@
     <div class="me-header-actions">
       <span id="saveIndicator"></span>
       <span id="headerTeacherName" style="font-size:0.82rem;color:var(--me-gold);"></span>
-      <button class="btn btn-sm" id="btnBackPortal" onclick="history.length>1?history.back():window.location.href='/'" style="display:none;background:transparent;border:1px solid var(--me-gold);color:var(--me-gold);border-radius:6px;padding:4px 12px;cursor:pointer;font-size:0.8rem;">&#8592; Back to Portal</button>
+      <button class="btn btn-sm" id="btnBackPortal" onclick="meBackToPortal()" style="display:none;background:transparent;border:1px solid var(--me-gold);color:var(--me-gold);border-radius:6px;padding:4px 12px;cursor:pointer;font-size:0.8rem;">&#8592; Back to Portal</button>
       <button class="btn btn-sm btn-warn" id="btnLogout" style="display:none;">Sign Out</button>
     </div>
   </header>
+
+  <!-- Offline banner — hidden by default, toggled by online/offline events in
+       markentry.js. Stays visible the whole time you're offline (not a toast)
+       so it can't be missed mid-entry. -->
+  <div id="meOfflineBanner" style="display:none;position:sticky;top:0;z-index:9998;background:#c0392b;color:#fff;font-size:13px;font-weight:600;text-align:center;padding:8px 14px;">
+    &#128245; No internet connection — your entries are being saved on this device and will sync automatically once you're back online.
+  </div>
 
   <!-- ═══════════════════════════════════════════
        SCREEN 0 — LOADING (active by default while
@@ -116,6 +131,15 @@
         </div>
       </div>
 
+      <!-- Shown only for shared-entry subjects (Khasi/Alt-English, Val-Edu/
+           Catechism) while offline — the lock shown below reflects the LAST
+           SYNCED data on this device, not the live state, so a student the
+           other teacher has since filled (after you went offline) may still
+           show as editable here. -->
+      <div id="gridSharedOfflineWarning" style="display:none;background:#fbf4e0;border:1px solid #d8b86a;color:#7a5c10;font-size:12.5px;padding:8px 12px;border-radius:6px;margin-bottom:10px;">
+        &#9888; You're offline. The locked/unlocked students shown may be out of date if the other teacher entered marks after you lost connection. Re-check this list once you're back online before relying on it.
+      </div>
+
       <div class="me-card">
         <div class="me-strip">&#9658; Mark Entry Grid</div>
         <div class="me-grid-table-wrap" id="gridTableWrap">
@@ -202,6 +226,7 @@
           <p id="slSubtitle"></p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-sm" id="btnClassAttendance" style="background:#13294b;color:#9bd1ff;border:1px solid #9bd1ff">&#128197; Class Attendance</button>
           <button class="btn btn-sm" id="btnViewMarksheet" style="background:#1e3a1e;color:#d4af37;border:1px solid #d4af37">&#128203; Class Marksheet</button>
           <select id="slStudentPicker" style="padding:4px 8px;border-radius:6px;border:1px solid var(--me-border);background:#2a2a2a;color:#FAF8F3;font-size:12px;max-width:180px">
             <option value="">— Student Report Card —</option>
@@ -229,6 +254,45 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCREEN 5b — CLASS ATTENDANCE (bulk, class teacher)
+  ════════════════════════════════════════════ -->
+  <div class="me-screen" id="screenAttendance">
+    <div class="me-page">
+      <div class="me-grid-header">
+        <button class="btn btn-secondary btn-sm" id="btnBackFromAtt">&#8592; Back</button>
+        <div class="me-grid-title">
+          <h2 id="attTitle">Class Attendance</h2>
+          <p id="attSubtitle"></p>
+        </div>
+        <button class="btn btn-sm btn-primary" id="btnSaveAttendance">&#128190; Save Attendance</button>
+      </div>
+
+      <div class="me-card">
+        <div class="me-strip">&#9658; Working Days (whole class)</div>
+        <div style="padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:13px;color:var(--me-muted)">Total Working Days this term:</label>
+          <input type="number" id="attWorkingDays" class="me-mark-input" min="0" style="max-width:120px" placeholder="0">
+          <span style="font-size:12px;color:var(--me-muted)">Set once &mdash; applies to every student below.</span>
+        </div>
+      </div>
+
+      <div class="me-card">
+        <div class="me-strip">&#9658; Days Present (per student)</div>
+        <div style="overflow-x:auto;">
+          <table class="me-table" id="attTable">
+            <thead>
+              <tr><th>#</th><th>Student Name</th><th>Days Present</th><th>Working Days</th><th>%</th></tr>
+            </thead>
+            <tbody id="attTableBody">
+              <tr><td colspan="5" class="me-loading"><div class="me-spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -391,10 +455,13 @@
        SCRIPTS
   ════════════════════════════════════════════ -->
 
-  <!-- Firebase compat SDK (v9 compat) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <!-- Firebase compat SDK (v9 compat) — self-hosted (not gstatic CDN) so the
+       service worker can cache it same-origin; a cold start offline must not
+       depend on the browser's HTTP cache for a cross-origin CDN file, which
+       can be evicted under storage pressure. See vendor/firebase/README.md. -->
+  <script src="vendor/firebase/firebase-app-compat.js"></script>
+  <script src="vendor/firebase/firebase-auth-compat.js"></script>
+  <script src="vendor/firebase/firebase-firestore-compat.js"></script>
 
   <script src="firebase-init.js"></script>
   <script src="config.js"></script>

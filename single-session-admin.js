@@ -28,6 +28,9 @@
   }
   function isOnline(v) { var d = toDate(v); return d && (Date.now() - d.getTime() < ONLINE_MS); }
 
+  var DAY_MS = 24 * 60 * 60 * 1000;
+  var lastRows = [];
+
   async function load() {
     var body = el('ss-admin-body');
     if (body) body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-light)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
@@ -44,7 +47,7 @@
         var r = d.data() || {};
         var u = users[r.uid] || {};
         rows.push({
-          uid: r.uid, name: r.name || u.name || '(unknown)', loginId: u.loginId || '—',
+          id: d.id, uid: r.uid, name: r.name || u.name || '(unknown)', loginId: u.loginId || '—',
           role: r.role || '—', device: r.deviceLabel || r.platform || '—',
           first: r.firstSeenAt, lastSeen: r.lastSeenAt, online: isOnline(r.lastSeenAt),
         });
@@ -78,10 +81,35 @@
       if (body) body.innerHTML = html || '<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-light)">No devices recorded yet.</td></tr>';
       var cnt = el('ss-admin-count');
       if (cnt) cnt.textContent = rows.length + ' device' + (rows.length === 1 ? '' : 's') + ' · ' + onlineCount + ' online now';
+      lastRows = rows;
     } catch (e) {
       if (body) body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--danger)">✗ ' + esc(e.message) + '</td></tr>';
     }
   }
+
+  window.ssClearOutdated = async function () {
+    var sel = el('ss-clear-days');
+    var days = parseInt((sel && sel.value) || '30', 10);
+    var cutoff = Date.now() - days * DAY_MS;
+    var stale = lastRows.filter(function (r) {
+      if (r.online) return false;
+      var d = toDate(r.lastSeen) || toDate(r.first);
+      return d && d.getTime() < cutoff;
+    });
+    if (!stale.length) { window.showToast && window.showToast('No devices inactive ' + days + '+ day(s) — nothing to clear.'); return; }
+    if (!window.confirm('Remove ' + stale.length + ' device(s) not seen in ' + days + '+ day(s)? This only deletes the device-tracking record — it does not affect the user\'s account or force them out. This cannot be undone.')) return;
+    try {
+      var m = await import(FS_URL);
+      var db = m.getFirestore(window._firebaseApp);
+      var batch = m.writeBatch(db);
+      stale.forEach(function (r) { batch.delete(m.doc(db, 'device_registry', r.id)); });
+      await batch.commit();
+      window.showToast && window.showToast('✅ Cleared ' + stale.length + ' device(s) inactive ' + days + '+ day(s).');
+      load();
+    } catch (e) {
+      window.showToast && window.showToast('⚠️ ' + (e.message || 'Failed to clear devices'));
+    }
+  };
 
   window.ssForceLogout = async function (uid, name) {
     if (!window.confirm('Force logout ' + name + '? Their device will be signed out within a couple of seconds.')) return;
@@ -106,7 +134,15 @@
           '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">' +
             '<div><h4 style="color:var(--accent-dark);margin:0"><i class="fas fa-mobile-screen-button" style="margin-right:8px;color:var(--accent)"></i>Devices &amp; Logins</h4>' +
             '<p style="font-size:13px;color:var(--text-light);margin:4px 0 0">Who uses the app, from which device. <span id="ss-admin-count"></span></p></div>' +
-            '<button class="btn btn-sm btn-outline" onclick="loadActiveSessions()"><i class="fas fa-sync-alt"></i> Refresh</button>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+              '<select id="ss-clear-days" class="form-control" style="font-size:12px;padding:4px 8px;width:auto">' +
+                '<option value="1">1 day+</option>' +
+                '<option value="7">7 days+</option>' +
+                '<option value="30" selected>30 days+</option>' +
+              '</select>' +
+              '<button class="btn btn-sm btn-outline" style="color:var(--danger);border-color:var(--danger)" onclick="ssClearOutdated()"><i class="fas fa-broom"></i> Clear outdated</button>' +
+              '<button class="btn btn-sm btn-outline" onclick="loadActiveSessions()"><i class="fas fa-sync-alt"></i> Refresh</button>' +
+            '</div>' +
           '</div>' +
           '<div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>Device</th><th>First seen</th><th>Last active</th><th>Status</th><th>Action</th></tr></thead>' +
             '<tbody id="ss-admin-body"></tbody></table></div>' +
