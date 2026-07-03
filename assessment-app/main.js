@@ -992,6 +992,7 @@ function loadExistingTestMarks() {
 function handleTestMarkChange(studentId, mark) {
   state.testMarks[studentId] = mark;
   state.testSaveStatus = 'unsaved';
+  render();
 }
 
 function handleTestSave() {

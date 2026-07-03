@@ -10,5 +10,7 @@ serviceAccountKey.json
 AGENTS.md
 scripts/*backup*.json
 firestore-debug.log
+firebase-debug.log
+ui-debug.log
 docs/*.jpeg
 docs/*.jpg

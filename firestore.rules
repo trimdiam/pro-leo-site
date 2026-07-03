@@ -244,6 +244,18 @@ service cloud.firestore {
       allow write: if (isTeacherAny() || isAdmin()) && !rolloverLocked(database);
     }
 
+    // ── Term analytics (Half-Yearly rollup) ───────────────────────────
+    match /term_analytics/{docId} {
+      allow read:  if isAnyStaff();
+      allow write: if (isTeacherAny() || isAdmin()) && !rolloverLocked(database);
+    }
+
+    // ── Class test marks (Half-Yearly, Class I/II) ────────────────────
+    match /class_test_marks/{docId} {
+      allow read:  if isAnyStaff();
+      allow write: if (isTeacherAny() || isAdmin()) && !rolloverLocked(database);
+    }
+
     // ── Student academic profiles ─────────────────────────────────────
     match /student_profiles/{docId} {
       allow read:  if isAnyStaff() ||
