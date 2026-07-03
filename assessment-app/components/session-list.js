@@ -13,7 +13,7 @@ export function createSessionList({
 
   const heading = document.createElement('h2');
   heading.className = 'section-heading';
-  heading.textContent = 'Weekly Assessments';
+  heading.textContent = 'Assessments';
   section.append(heading);
 
   const filterBar = document.createElement('div');
@@ -81,7 +81,7 @@ function createSessionRow(entry, onViewSession, onStatusChange) {
   const meta = document.createElement('div');
   meta.className = 'session-row-meta';
   if (sess.sessionType !== 'legacy' && sess.weekStart) {
-    meta.textContent = `Week: ${formatWeekRange(sess.weekStart, sess.weekEnd)} | Due: ${formatDate(sess.dueDate)} | ${sess.teacher_name}`;
+    meta.textContent = `Period: ${formatWeekRange(sess.weekStart, sess.weekEnd)} | Due: ${formatDate(sess.dueDate)} | ${sess.teacher_name}`;
   } else {
     meta.textContent = `${sess.teacher_name} • ${formatDate(sess.date)}`;
   }

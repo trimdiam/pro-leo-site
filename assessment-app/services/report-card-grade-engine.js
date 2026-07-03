@@ -32,10 +32,17 @@ export function mapScoreToGrade(averageScore) {
 
 /**
  * Grades all criteria within a subject and computes the subject-level grade.
+ * When `classTest` is supplied (Class I/II, once per Half-Yearly term), the
+ * final subjectAverage blends the assessment-criteria average (70%) with the
+ * class test (30%), both normalized to the same 0-5 scale, before being
+ * mapped through mapScoreToGrade — so the Adv/Prof/Dev/Beg/NY thresholds are
+ * unchanged. Omitting classTest (its default) reproduces the exact prior
+ * assessment-only behavior, e.g. for LKG/SKG which have no class test.
  * @param {{ subject_id: string, subject_name: string, criteria: Array, pending?: boolean }} subjectData
+ * @param {{ marksObtained: number, maxMarks: number }|null} [classTest]
  * @returns {object} GradedSubject
  */
-export function gradeSubject(subjectData) {
+export function gradeSubject(subjectData, classTest = null) {
   if (subjectData.pending) {
     return {
       ...subjectData,
@@ -49,18 +56,32 @@ export function gradeSubject(subjectData) {
     grade: mapScoreToGrade(c.averageScore ?? null)
   }));
 
-  // Subject average = mean of criteria that have a numeric average
+  // Assessment average = mean of criteria that have a numeric average
   const scored = gradedCriteria.filter(c => typeof c.averageScore === 'number');
-  const subjectAverage = scored.length > 0
+  const assessmentAverage = scored.length > 0
     ? scored.reduce((sum, c) => sum + c.averageScore, 0) / scored.length
     : null;
 
+  let subjectAverage = assessmentAverage;
+  let classTestScore = null;
+  const hasClassTest = classTest && typeof classTest.marksObtained === 'number' && classTest.maxMarks > 0;
+
+  if (assessmentAverage !== null && hasClassTest) {
+    classTestScore = Math.round((classTest.marksObtained / classTest.maxMarks) * 5 * 100) / 100;
+    subjectAverage = (assessmentAverage * 0.7) + (classTestScore * 0.3);
+  }
+
+  subjectAverage = subjectAverage !== null ? Math.round(subjectAverage * 100) / 100 : null;
+
   return {
-    subject_id:     subjectData.subject_id,
-    subject_name:   subjectData.subject_name,
-    criteria:       gradedCriteria,
-    subjectAverage: subjectAverage !== null ? Math.round(subjectAverage * 100) / 100 : null,
-    subjectGrade:   mapScoreToGrade(subjectAverage)
+    subject_id:        subjectData.subject_id,
+    subject_name:       subjectData.subject_name,
+    criteria:           gradedCriteria,
+    assessmentAverage:  assessmentAverage !== null ? Math.round(assessmentAverage * 100) / 100 : null,
+    classTestScore,
+    classTestMarks:     hasClassTest ? { obtained: classTest.marksObtained, max: classTest.maxMarks } : null,
+    subjectAverage,
+    subjectGrade:       mapScoreToGrade(subjectAverage)
   };
 }
 

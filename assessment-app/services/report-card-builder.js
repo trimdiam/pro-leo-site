@@ -13,6 +13,7 @@ import { gradeSubject, computeOverallPerformance, getTermLabel } from './report-
 import { generateTeacherRemark } from './report-card-remark-engine.js';
 import { loadStudentsForClass } from './student-loader.js';
 import { getTermAttendance } from './report-card-attendance.js';
+import { getClassTest } from './class-test-storage.js';
 
 const REPORT_CARDS_COL = 'report_cards';
 
@@ -54,6 +55,19 @@ function extractFirstName(fullName) {
   return fullName.trim().split(/\s+/)[0];
 }
 
+// Looks up this student's Half-Yearly class test mark for one subject, from
+// the locally-synced cache (same local-first assumption as the rest of this
+// report-card pipeline, which reads sessions via getAllSessions()). Returns
+// null wherever no class test is configured/entered — gradeSubject() then
+// falls back to assessment-only, exactly as before this feature existed.
+function getClassTestForSubject(className, term, subjectId, studentId) {
+  const record = getClassTest(term, className, subjectId);
+  if (!record) return null;
+  const marksObtained = record.marks?.[studentId];
+  if (typeof marksObtained !== 'number') return null;
+  return { marksObtained, maxMarks: record.test?.max_marks };
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -88,8 +102,12 @@ export async function buildAndSaveReportCard(params) {
       return { ok: false, docId: null, skipped: true, error: 'No finalized sessions found for this student in the selected period.' };
     }
 
-    // 3. Grade each subject
-    const gradedSubjects = aggregated.subjects.map(s => gradeSubject(s));
+    // 3. Grade each subject — blend in the Half-Yearly class test where one
+    // exists (Class I/II subjects only; LKG/SKG and any subject without a
+    // configured class test fall back to assessment-only, unchanged).
+    const gradedSubjects = aggregated.subjects.map(s =>
+      gradeSubject(s, getClassTestForSubject(className, term, s.subject_id, studentId))
+    );
 
     // 4. Compute overall performance
     const overall = computeOverallPerformance(gradedSubjects);
@@ -141,10 +159,13 @@ export async function buildAndSaveReportCard(params) {
 
       // Grades
       subjects: gradedSubjects.map(s => ({
-        subject_id:     s.subject_id,
-        subject_name:   s.subject_name,
-        subjectGrade:   s.subjectGrade?.code || 'Ex',
-        subjectAverage: s.subjectAverage,
+        subject_id:        s.subject_id,
+        subject_name:      s.subject_name,
+        subjectGrade:      s.subjectGrade?.code || 'Ex',
+        subjectAverage:    s.subjectAverage,
+        assessmentAverage: s.assessmentAverage ?? null,
+        classTestScore:    s.classTestScore ?? null,
+        classTestMarks:    s.classTestMarks ?? null,
         pending:        s.pending || false,
         pendingNote:    s.pendingNote || null,
         criteria: (s.criteria || []).map(c => ({

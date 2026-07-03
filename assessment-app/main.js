@@ -8,6 +8,7 @@ import { createSessionReview } from './components/session-review.js';
 import { createLoginForm } from './components/login-form.js';
 import { createStudentProfile } from './components/student-profile.js';
 import { createQuickEntryGrid } from './components/quick-entry-grid.js';
+import { createClassTestEntry } from './components/class-test-entry.js';
 import { showDefaultScorePicker } from './components/default-score-picker.js';
 import { loadCriteriaForSubject } from './services/criteria-loader.js';
 import { getSubjectsForClass, loadSubjects } from './services/subject-loader.js';
@@ -19,13 +20,16 @@ import { saveSession, getSession, getAllSessions, syncSessionsFromFirestore } fr
 import { updateSessionStatus, loadFullSessionData, SESSION_STATUS } from './services/session-review-engine.js';
 import { aggregateByMonth, extractYearMonth, clearAggregationCache } from './services/aggregation-engine.js';
 import { getCurrentUser, isTeacher, isAdmin, isLoggedIn, resolveAuthSession } from './services/auth-service.js';
+import { loadClassTestConfig, getClassTestSubjectsForClass } from './services/class-test-loader.js';
+import { saveClassTest, getClassTest, syncClassTestsFromFirestore } from './services/class-test-storage.js';
 
 // ── Heavy admin-only components — lazy loaded on first admin view ─────────
 let _adminLazy = null;
 async function getAdminComponents() {
   if (_adminLazy) return _adminLazy;
-  const [ms, wsl, ad, rcu, demo] = await Promise.all([
+  const [ms, ts, wsl, ad, rcu, demo] = await Promise.all([
     import('./components/monthly-summary.js'),
+    import('./components/term-summary.js'),
     import('./components/weak-student-list.js'),
     import('./components/analytics-dashboard.js'),
     import('./components/report-card-generator-ui.js'),
@@ -33,6 +37,7 @@ async function getAdminComponents() {
   ]);
   _adminLazy = {
     createMonthlySummary:       ms.createMonthlySummary,
+    createTermSummary:          ts.createTermSummary,
     createWeakStudentList:      wsl.createWeakStudentList,
     createAnalyticsDashboard:   ad.createAnalyticsDashboard,
     createReportCardGeneratorUI: rcu.createReportCardGeneratorUI,
@@ -57,9 +62,14 @@ const state = {
 
   teacherName: '',
   date: getToday(),
-  weekStart: getWeekStart(),
-  weekEnd: getWeekEnd(),
-  dueDate: getWeekEnd(),
+  // Bi-weekly cadence: 2 assessments/month, not weekly. periodMonth+periodNumber
+  // drive the picker; weekStart/weekEnd/dueDate stay the actual stored range so
+  // session-storage/aggregation/report-card date logic is untouched.
+  periodMonth: getCurrentPeriodMonth(),
+  periodNumber: getCurrentPeriodNumber(),
+  weekStart: getPeriodRange(getCurrentPeriodMonth(), getCurrentPeriodNumber()).start,
+  weekEnd: getPeriodRange(getCurrentPeriodMonth(), getCurrentPeriodNumber()).end,
+  dueDate: getPeriodRange(getCurrentPeriodMonth(), getCurrentPeriodNumber()).end,
 
   mode: 'setup',
   adminView: 'sessions',
@@ -75,6 +85,8 @@ const state = {
   reviewSessionId: null,
   summaryYearMonth: extractYearMonth(getToday()),
   summaryClass: '',
+  termSummaryTerm: 'HY1',
+  termSummaryClass: '',
   weakYearMonth: extractYearMonth(getToday()),
   weakClass: '',
 
@@ -89,7 +101,17 @@ const state = {
 
   expandedCards: {},
   showRemainingOnly: false,
-  saveStatus: 'idle'
+  saveStatus: 'idle',
+
+  // Class test (Half-Yearly, 30% of blended score) — Class I/II only
+  classTestConfig: null,
+  testClass: '',
+  testSubject: null,
+  testTerm: 'HY1',
+  testStudents: [],
+  testMarks: {},
+  testSaveStatus: 'idle',
+  testLastSaved: null
 };
 
 const setupRoot = document.querySelector('#session-setup-root');
@@ -121,6 +143,7 @@ async function init() {
     render();
     // Sync in background; re-render silently when done
     syncSessionsFromFirestore().finally(() => render());
+    syncClassTestsFromFirestore().finally(() => render());
   } else {
     import('./services/firebase-config.js').then(({ auth }) => {
       if (auth.currentUser) {
@@ -177,6 +200,9 @@ function render() {
   } else if (state.mode === 'admin') {
     setupRoot.replaceChildren();
     renderAdmin();
+  } else if (state.mode === 'classtest') {
+    setupRoot.replaceChildren();
+    renderClassTest();
   }
 }
 
@@ -234,6 +260,13 @@ function renderNav() {
     setupBtn.textContent = 'New Assessment';
     setupBtn.addEventListener('click', () => switchMode('setup'));
     nav.append(setupBtn);
+
+    const testBtn = document.createElement('button');
+    testBtn.type = 'button';
+    testBtn.className = `nav-btn ${state.mode === 'classtest' ? 'active' : ''}`;
+    testBtn.textContent = 'Class Test';
+    testBtn.addEventListener('click', () => switchMode('classtest'));
+    nav.append(testBtn);
   }
 
   if (isAdmin()) {
@@ -279,6 +312,11 @@ function switchMode(mode) {
     state.marks = {};
   }
 
+  if (state.mode === 'classtest' && state.testSaveStatus === 'unsaved') {
+    const ok = confirm('You have unsaved class test marks. Save before leaving?');
+    if (ok) handleTestSave();
+  }
+
   state.mode = mode;
   state.viewingStudentProfile = null;
   state.errorMessage = '';
@@ -300,6 +338,8 @@ function renderSetup() {
     selectedClass: state.selectedClass,
     selectedSubjectId: state.selectedSubject?.subject_id || '',
     teacherName: state.teacherName,
+    periodMonth: state.periodMonth,
+    periodNumber: state.periodNumber,
     weekStart: state.weekStart,
     weekEnd: state.weekEnd,
     dueDate: state.dueDate,
@@ -307,9 +347,8 @@ function renderSetup() {
     onClassChange: handleClassChange,
     onSubjectChange: handleSubjectChange,
     onTeacherNameChange: handleTeacherNameChange,
-    onWeekStartChange: handleWeekStartChange,
-    onWeekEndChange: handleWeekEndChange,
-    onDueDateChange: handleDueDateChange,
+    onPeriodMonthChange: handlePeriodMonthChange,
+    onPeriodNumberChange: handlePeriodNumberChange,
     onStartSession: handleStartSession,
     onResumeSession: handleResumeSession
   }));
@@ -456,6 +495,54 @@ function renderAssessment() {
   assessmentRoot.append(stickyToolbar);
 }
 
+function renderClassTest() {
+  if (!isTeacher()) {
+    assessmentRoot.replaceChildren(createStatus('Access denied: teacher role required.'));
+    return;
+  }
+
+  assessmentRoot.replaceChildren();
+
+  if (!state.classTestConfig) {
+    assessmentRoot.append(createStatus('Loading class test configuration…'));
+    loadClassTestConfig()
+      .then(cfg => { state.classTestConfig = cfg; render(); })
+      .catch(() => { state.errorMessage = 'Failed to load class test configuration'; render(); });
+    return;
+  }
+
+  const subjectsForClass = state.testClass
+    ? getClassTestSubjectsForClass(state.classTestConfig, state.allSubjects, state.testClass)
+    : [];
+
+  assessmentRoot.append(createClassTestEntry({
+    classes: state.classTestConfig.classes,
+    subjects: subjectsForClass,
+    selectedClass: state.testClass,
+    selectedSubjectId: state.testSubject?.subject_id || '',
+    selectedTerm: state.testTerm,
+    teacherName: state.teacherName,
+    students: state.testStudents,
+    marks: state.testMarks,
+    maxMarks: state.testSubject?.max_marks || 30,
+    saveStatus: state.testSaveStatus,
+    lastSaved: state.testLastSaved,
+    onClassChange: handleTestClassChange,
+    onSubjectChange: handleTestSubjectChange,
+    onTermChange: handleTestTermChange,
+    onTeacherNameChange: handleTeacherNameChange,
+    onMarkChange: handleTestMarkChange,
+    onSave: handleTestSave
+  }));
+
+  if (state.errorMessage) {
+    const err = document.createElement('p');
+    err.className = 'error-state';
+    err.textContent = state.errorMessage;
+    assessmentRoot.append(err);
+  }
+}
+
 function renderAdmin() {
   if (!isAdmin()) {
     assessmentRoot.replaceChildren(createStatus('Access denied: admin role required.'));
@@ -484,6 +571,7 @@ function renderAdmin() {
   const tabDefs = [
     { key: 'sessions', label: 'Sessions' },
     { key: 'summary', label: 'Monthly Summary' },
+    { key: 'termsummary', label: 'Term Summary' },
     { key: 'weak', label: 'Weak Students' },
     { key: 'analytics', label: 'Analytics' },
     { key: 'reportcards', label: 'Report Cards' },
@@ -513,6 +601,8 @@ function renderAdmin() {
     }
   } else if (state.adminView === 'summary') {
     renderAdminSummary();
+  } else if (state.adminView === 'termsummary') {
+    renderAdminTermSummary();
   } else if (state.adminView === 'weak') {
     renderAdminWeak();
   } else if (state.adminView === 'analytics') {
@@ -771,6 +861,37 @@ async function renderAdminSummary() {
   }
 }
 
+async function renderAdminTermSummary() {
+  const a = await getAdminComponents();
+  try {
+    assessmentRoot.append(a.createTermSummary({
+      classes,
+      term: state.termSummaryTerm,
+      className: state.termSummaryClass,
+      onBack: () => {
+        state.adminView = 'sessions';
+        render();
+      },
+      onClassChange: className => {
+        state.termSummaryClass = className;
+        render();
+      },
+      onTermChange: term => {
+        state.termSummaryTerm = term;
+        render();
+      },
+      onViewStudentProfile: studentId => {
+        state.viewingStudentProfile = studentId;
+        state.analyticsClass = state.termSummaryClass;
+        render();
+      }
+    }));
+  } catch (error) {
+    console.error(error);
+    assessmentRoot.append(createStatus('Failed to generate term summary.'));
+  }
+}
+
 async function renderAdminWeak() {
   const a = await getAdminComponents();
   assessmentRoot.append(a.createWeakStudentList({
@@ -834,25 +955,88 @@ function handleTeacherNameChange(name) {
   state.errorMessage = '';
 }
 
+async function handleTestClassChange(className) {
+  state.testClass = className;
+  state.testSubject = null;
+  state.errorMessage = '';
+  state.testStudents = className ? await loadStudentsForClass(className).catch(() => []) : [];
+  state.testMarks = {};
+  state.testLastSaved = null;
+  render();
+}
+
+function handleTestSubjectChange(subject) {
+  state.testSubject = subject;
+  loadExistingTestMarks();
+  render();
+}
+
+function handleTestTermChange(term) {
+  state.testTerm = term;
+  loadExistingTestMarks();
+  render();
+}
+
+function loadExistingTestMarks() {
+  state.testMarks = {};
+  state.testLastSaved = null;
+  state.testSaveStatus = 'idle';
+  if (!state.testClass || !state.testSubject || !state.testTerm) return;
+  const existing = getClassTest(state.testTerm, state.testClass, state.testSubject.subject_id);
+  if (existing) {
+    state.testMarks = { ...existing.marks };
+    state.testLastSaved = existing.saved_at ? new Date(existing.saved_at) : null;
+  }
+}
+
+function handleTestMarkChange(studentId, mark) {
+  state.testMarks[studentId] = mark;
+  state.testSaveStatus = 'unsaved';
+}
+
+function handleTestSave() {
+  if (!state.testClass || !state.testSubject || !state.testTerm) return;
+
+  try {
+    saveClassTest({
+      class: state.testClass,
+      subject_id: state.testSubject.subject_id,
+      subject_name: state.testSubject.subject_name,
+      term: state.testTerm,
+      max_marks: state.testSubject.max_marks,
+      teacher_name: state.teacherName
+    }, state.testMarks);
+    state.testLastSaved = new Date();
+    state.testSaveStatus = 'idle';
+  } catch (error) {
+    state.errorMessage = error.message || 'Class test save failed.';
+  }
+  render();
+}
+
 function handleDateChange(date) {
   state.date = date;
   state.errorMessage = '';
 }
 
-function handleWeekStartChange(value) {
-  state.weekStart = value;
-  state.date = value;
-  state.errorMessage = '';
+function handlePeriodMonthChange(value) {
+  state.periodMonth = value;
+  applyPeriodRange();
 }
 
-function handleWeekEndChange(value) {
-  state.weekEnd = value;
-  state.errorMessage = '';
+function handlePeriodNumberChange(value) {
+  state.periodNumber = Number(value);
+  applyPeriodRange();
 }
 
-function handleDueDateChange(value) {
-  state.dueDate = value;
+function applyPeriodRange() {
+  const range = getPeriodRange(state.periodMonth, state.periodNumber);
+  state.weekStart = range.start;
+  state.weekEnd = range.end;
+  state.dueDate = range.end;
+  state.date = range.start;
   state.errorMessage = '';
+  render();
 }
 
 function handleStartSession(force = false) {
@@ -1146,20 +1330,26 @@ function getToday() {
   return `${year}-${month}-${day}`;
 }
 
-function getWeekStart() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// Bi-weekly cadence: 2 assessments/month instead of weekly.
+// Period 1 = 1st-15th, Period 2 = 16th-end of month.
+function getCurrentPeriodMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function getWeekEnd() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = day === 0 ? 0 : 7 - day;
-  d.setDate(d.getDate() + diff);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function getCurrentPeriodNumber() {
+  return new Date().getDate() <= 15 ? 1 : 2;
+}
+
+function getPeriodRange(periodMonth, periodNumber) {
+  const [year, month] = periodMonth.split('-').map(Number);
+  const pad = n => String(n).padStart(2, '0');
+  const start = periodNumber === 1 ? 1 : 16;
+  const end = periodNumber === 1 ? 15 : new Date(year, month, 0).getDate();
+  return {
+    start: `${year}-${pad(month)}-${pad(start)}`,
+    end: `${year}-${pad(month)}-${pad(end)}`
+  };
 }
 
 function formatTime(dateObj) {

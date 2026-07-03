@@ -17,14 +17,12 @@ export function createSessionToolbar({
 
   const sessionTitle = document.createElement('div');
   sessionTitle.className = 'session-title';
-  sessionTitle.textContent = session.sessionType !== 'legacy' && session.weekStart
-    ? 'Weekly Assessment Entry'
-    : 'Assessment Entry';
+  sessionTitle.textContent = 'Assessment Entry';
 
   const sessionMeta = document.createElement('div');
   sessionMeta.className = 'session-meta';
   sessionMeta.textContent = session.sessionType !== 'legacy' && session.weekStart
-    ? `${session.class} | ${session.subject_name} | Week: ${formatWeekRange(session.weekStart, session.weekEnd)}`
+    ? `${session.class} | ${session.subject_name} | Period: ${formatWeekRange(session.weekStart, session.weekEnd)}`
     : `${session.subject_name} — ${session.class} • ${session.teacher_name} • ${formatDate(session.date)}`;
 
   infoBlock.append(sessionTitle, sessionMeta);

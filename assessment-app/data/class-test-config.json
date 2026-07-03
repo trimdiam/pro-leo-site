@@ -1,0 +1,12 @@
+{
+  "classes": ["Class I", "Class II"],
+  "terms": ["HY1", "HY2"],
+  "subjects": {
+    "ENG1": { "subject_name": "English I", "max_marks": 30 },
+    "ENG2": { "subject_name": "English II", "max_marks": 30 },
+    "MATH": { "subject_name": "Mathematics", "max_marks": 30 },
+    "SCI":  { "subject_name": "Science", "max_marks": 30 },
+    "KHA":  { "subject_name": "Khasi", "max_marks": 30 },
+    "HIN":  { "subject_name": "Hindi", "max_marks": 30 }
+  }
+}

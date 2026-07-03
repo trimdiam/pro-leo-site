@@ -4,16 +4,17 @@ export function createSessionSetup({
   selectedClass = '',
   selectedSubjectId = '',
   teacherName = '',
-  weekStart = getWeekStart(),
-  weekEnd = getWeekEnd(),
-  dueDate = getWeekEnd(),
+  periodMonth = getCurrentPeriodMonth(),
+  periodNumber = getCurrentPeriodNumber(),
+  weekStart = '',
+  weekEnd = '',
+  dueDate = '',
   savedSessions = [],
   onClassChange = () => {},
   onSubjectChange = () => {},
   onTeacherNameChange = () => {},
-  onWeekStartChange = () => {},
-  onWeekEndChange = () => {},
-  onDueDateChange = () => {},
+  onPeriodMonthChange = () => {},
+  onPeriodNumberChange = () => {},
   onStartSession = () => {},
   onResumeSession = () => {}
 } = {}) {
@@ -30,32 +31,32 @@ export function createSessionSetup({
   teacherField.append(teacherInput);
   section.append(teacherField);
 
-  const weekStartField = createField('Week Start');
-  const weekStartInput = document.createElement('input');
-  weekStartInput.type = 'date';
-  weekStartInput.value = weekStart;
-  weekStartInput.className = 'text-input';
-  weekStartInput.addEventListener('change', event => onWeekStartChange(event.target.value));
-  weekStartField.append(weekStartInput);
-  section.append(weekStartField);
+  // Bi-weekly cadence: 2 assessments/month, not weekly. Month + Period pick
+  // the range; the actual computed dates (weekStart/weekEnd/dueDate) are
+  // shown read-only below so the teacher knows exactly what they're entering.
+  const monthField = createField('Month');
+  const monthInput = document.createElement('input');
+  monthInput.type = 'month';
+  monthInput.value = periodMonth;
+  monthInput.className = 'text-input';
+  monthInput.addEventListener('change', event => onPeriodMonthChange(event.target.value));
+  monthField.append(monthInput);
+  section.append(monthField);
 
-  const weekEndField = createField('Week End');
-  const weekEndInput = document.createElement('input');
-  weekEndInput.type = 'date';
-  weekEndInput.value = weekEnd;
-  weekEndInput.className = 'text-input';
-  weekEndInput.addEventListener('change', event => onWeekEndChange(event.target.value));
-  weekEndField.append(weekEndInput);
-  section.append(weekEndField);
+  const periodField = createField('Assessment Period');
+  const periodSelect = document.createElement('select');
+  periodSelect.append(createOption('1', 'Period 1 (1st–15th)', periodNumber === 1));
+  periodSelect.append(createOption('2', 'Period 2 (16th–end of month)', periodNumber === 2));
+  periodSelect.addEventListener('change', event => onPeriodNumberChange(event.target.value));
+  periodField.append(periodSelect);
+  section.append(periodField);
 
-  const dueDateField = createField('Due Date');
-  const dueDateInput = document.createElement('input');
-  dueDateInput.type = 'date';
-  dueDateInput.value = dueDate;
-  dueDateInput.className = 'text-input';
-  dueDateInput.addEventListener('change', event => onDueDateChange(event.target.value));
-  dueDateField.append(dueDateInput);
-  section.append(dueDateField);
+  if (weekStart && weekEnd) {
+    const rangePreview = document.createElement('p');
+    rangePreview.className = 'empty-state';
+    rangePreview.textContent = `Covers: ${formatWeekRange(weekStart, weekEnd)} · Due: ${formatDate(dueDate)}`;
+    section.append(rangePreview);
+  }
 
   const classField = createField('Class');
   const classSelect = createSelect('Select class');
@@ -88,7 +89,7 @@ export function createSessionSetup({
   const startBtn = document.createElement('button');
   startBtn.type = 'button';
   startBtn.className = 'btn btn-primary';
-  startBtn.textContent = 'Start New Weekly Assessment Entry';
+  startBtn.textContent = 'Start New Assessment Entry';
   startBtn.addEventListener('click', () => onStartSession());
   actionArea.append(startBtn);
   section.append(actionArea);
@@ -110,7 +111,7 @@ function createDraftSessions(savedSessions, onResumeSession) {
 
   const heading = document.createElement('h3');
   heading.className = 'draft-heading';
-  heading.textContent = 'Unfinished Weeks';
+  heading.textContent = 'Unfinished Periods';
   container.append(heading);
 
   const list = document.createElement('div');
@@ -122,7 +123,7 @@ function createDraftSessions(savedSessions, onResumeSession) {
     item.className = 'draft-item';
     const sess = entry.session;
     const weekInfo = sess.sessionType !== 'legacy' && sess.weekStart
-      ? `Week: ${formatWeekRange(sess.weekStart, sess.weekEnd)} | Due: ${formatDate(sess.dueDate)}`
+      ? `Period: ${formatWeekRange(sess.weekStart, sess.weekEnd)} | Due: ${formatDate(sess.dueDate)}`
       : formatDate(sess.date);
     item.innerHTML = `
       <span class="draft-info">${sess.subject_name} — ${sess.class} — ${weekInfo}</span>
@@ -186,18 +187,11 @@ function formatDate(dateStr) {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-function getWeekStart() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
+function getCurrentPeriodMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function getWeekEnd() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = day === 0 ? 0 : 7 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
+function getCurrentPeriodNumber() {
+  return new Date().getDate() <= 15 ? 1 : 2;
 }

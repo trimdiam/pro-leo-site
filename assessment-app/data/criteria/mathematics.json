@@ -11,11 +11,11 @@
     { "criterion_id": "MATH_WH6", "criterion_name": "Completes work on time",                            "category": "Work Habits",    "max_marks": 5 },
     { "criterion_id": "MATH_WS1", "criterion_name": "Forms letters/numerals correctly",                  "category": "Writing Skills", "max_marks": 5 },
     { "criterion_id": "MATH_WS2", "criterion_name": "Counting numbers",                                  "category": "Writing Skills", "max_marks": 5 },
-    { "criterion_id": "MATH_WS3", "criterion_name": "Recognises and writes nos. ordinals, place value",  "category": "Writing Skills", "max_marks": 5 },
-    { "criterion_id": "MATH_SV1", "criterion_name": "Basic Addition",                                    "category": "Solving Skills", "max_marks": 5 },
-    { "criterion_id": "MATH_SV2", "criterion_name": "Basic Subtraction",                                 "category": "Solving Skills", "max_marks": 5 },
-    { "criterion_id": "MATH_SV3", "criterion_name": "Can solve Word problems",                           "category": "Solving Skills", "max_marks": 5 },
-    { "criterion_id": "MATH_SV4", "criterion_name": "Can identify and understand basic shapes",          "category": "Solving Skills", "max_marks": 5 },
-    { "criterion_id": "MATH_SV5", "criterion_name": "Can understand measurements",                       "category": "Solving Skills", "max_marks": 5 }
+    { "criterion_id": "MATH_WS3", "criterion_name": "Recognise and writes numbers and number name correctly", "category": "Writing Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_SV1", "criterion_name": "Recognise the correct sequence while counting forward and backward", "category": "Solving Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_SV2", "criterion_name": "Complete the forward and backward counting without prompt",         "category": "Solving Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_SV3", "criterion_name": "Can identify and correct mistakes independently",                   "category": "Solving Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_SV4", "criterion_name": "Can identify and understands numbers in real life situations",      "category": "Solving Skills", "max_marks": 5 },
+    { "criterion_id": "MATH_SV5", "criterion_name": "Can complete missing numbers correctly",                            "category": "Solving Skills", "max_marks": 5 }
   ]
 }
