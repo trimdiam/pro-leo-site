@@ -13,6 +13,7 @@
       ".firebaserc",
       "firestore.rules",
       "*.md",
+      "docs/**",
       "node_modules/**",
       "functions/**",
       "scripts/**",
