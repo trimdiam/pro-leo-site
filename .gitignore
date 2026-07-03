@@ -9,3 +9,6 @@ serviceAccountKey.json
 .claude/
 AGENTS.md
 scripts/*backup*.json
+firestore-debug.log
+docs/*.jpeg
+docs/*.jpg
