@@ -170,7 +170,8 @@ function buildRow(card, container, onRefresh) {
     readyBtn.addEventListener('click', async () => {
       readyBtn.disabled = true;
       await updateCardField(card.id, { status: 'ready' });
-      onRefresh();
+      Object.assign(card, { status: 'ready' });
+      tr.replaceWith(buildRow(card, container, onRefresh));
     });
     tdActions.append(readyBtn);
   }
@@ -208,7 +209,8 @@ function buildRow(card, container, onRefresh) {
       };
       if (promotionInput) updates.promotedToClass = promotionInput.value.trim() || null;
       await updateCardField(card.id, updates);
-      onRefresh();
+      Object.assign(card, { ...updates, releasedAt: new Date() });
+      tr.replaceWith(buildRow(card, container, onRefresh));
     });
     tdActions.append(releaseBtn);
   }
@@ -221,7 +223,8 @@ function buildRow(card, container, onRefresh) {
       if (!confirm('Revoke release? The student will no longer see this card.')) return;
       revokeBtn.disabled = true;
       await updateCardField(card.id, { status: 'ready', releasedBy: null, releasedAt: null });
-      onRefresh();
+      Object.assign(card, { status: 'ready', releasedBy: null, releasedAt: null });
+      tr.replaceWith(buildRow(card, container, onRefresh));
     });
     tdActions.append(revokeBtn);
   }
