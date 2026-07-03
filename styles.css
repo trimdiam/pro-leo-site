@@ -3550,6 +3550,16 @@ tr:hover td {
   }
 }
 @media (max-width: 640px) {
+  .tp-assign-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .tp-assign-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
   .tp-assign-table thead {
     display: none;
   }

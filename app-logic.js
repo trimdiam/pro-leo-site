@@ -5868,6 +5868,171 @@ function _arcCalcTotal(academics) {
       wrap.innerHTML = `<p style="color:var(--danger);text-align:center;padding:12px">❌ ${e.message}</p>`;
     }
   }),
+  (window.loadMarksOverview = async function () {
+    const wrap = document.getElementById("mo-body");
+    if (!wrap) return;
+    wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
+    try {
+      const classSnap = await getDocs(collection(db, "classes"));
+      const seen = new Set(), classes = [];
+      classSnap.forEach(d => {
+        const base = d.id.split("-")[0].trim();
+        if (!seen.has(base)) { seen.add(base); classes.push(base); }
+      });
+      classes.sort((a, b) => a.length - b.length || a.localeCompare(b));
+      if (!classes.length) {
+        wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">No classes found.</p>';
+        return;
+      }
+
+      const rows = await Promise.all(classes.map(async cls => {
+        const termData = {};
+        for (const term of ["HY", "FT"]) {
+          try {
+            const snap = await getDocs(collection(db, "marks", `${cls}_${term}`, "students"));
+            const students = [];
+            snap.forEach(d => students.push({ id: d.id, ...d.data() }));
+            const total = students.length;
+            const subjectSet = new Set();
+            students.forEach(s => { if (s.academics) Object.keys(s.academics).forEach(k => subjectSet.add(k)); });
+            let enteredCells = 0, totalCells = 0;
+            subjectSet.forEach(subj => {
+              students.forEach(s => {
+                totalCells++;
+                const rec = s.academics && s.academics[subj];
+                if (rec && rec.total != null) enteredCells++;
+              });
+            });
+            termData[term] = { total, subjectCount: subjectSet.size, enteredCells, totalCells };
+          } catch (e) {
+            termData[term] = { total: 0, subjectCount: 0, enteredCells: 0, totalCells: 0, error: true };
+          }
+        }
+        return { cls, ...termData };
+      }));
+
+      const termCell = (cls, term, d) => {
+        if (!d || d.error) return `<div>—</div>`;
+        if (!d.total) return `<span class="arc-next-action wait">⬜ No data yet</span>`;
+        const pct = d.totalCells ? Math.round((d.enteredCells / d.totalCells) * 100) : 0;
+        return `<button class="arc-next-action act" onclick="openMarksDrilldown('${cls}','${term}')">
+          ${d.total} students · ${d.subjectCount} subjects · ${pct}% entered
+        </button>`;
+      };
+
+      let html = `<div class="arc-pipeline-row arc-pipeline-header">
+        <div>Class</div><div>Half Yearly</div><div>Final Term</div>
+      </div>`;
+      rows.forEach(r => {
+        html += `<div class="arc-pipeline-row">
+          <strong>Class ${r.cls}</strong>
+          <div>${termCell(r.cls, "HY", r.HY)}</div>
+          <div>${termCell(r.cls, "FT", r.FT)}</div>
+        </div>`;
+      });
+      wrap.innerHTML = html;
+    } catch (e) {
+      wrap.innerHTML = `<p style="color:var(--danger);text-align:center;padding:12px">❌ ${e.message}</p>`;
+    }
+  }),
+  (window._moState = {}),
+  (window.closeMarksDrilldown = function () {
+    const ov = document.getElementById("mo-drilldown-overlay");
+    if (ov) ov.style.display = "none";
+  }),
+  (window.openMarksDrilldown = async function (cls, term) {
+    window._moState = { cls, term };
+    const ov = document.getElementById("mo-drilldown-overlay");
+    const title = document.getElementById("mo-drilldown-title");
+    const subtitle = document.getElementById("mo-drilldown-subtitle");
+    const body = document.getElementById("mo-drilldown-body");
+    if (!ov || !body) return;
+    ov.style.display = "block";
+    title.innerHTML = `<i class="fas fa-list-ol" style="margin-right:8px"></i>Class ${cls} — ${term === "HY" ? "Half Yearly" : "Final Term"}`;
+    subtitle.textContent = "Marks entered by subject";
+    body.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:32px"><i class="fas fa-spinner fa-spin"></i> Loading subjects…</p>';
+    try {
+      const snap = await getDocs(collection(db, "marks", `${cls}_${term}`, "students"));
+      const students = [];
+      snap.forEach(d => students.push({ id: d.id, ...d.data() }));
+      const total = students.length;
+      const subjectSet = new Set();
+      students.forEach(s => { if (s.academics) Object.keys(s.academics).forEach(k => subjectSet.add(k)); });
+      if (!total || !subjectSet.size) {
+        body.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:32px">No marks entered for this class/term yet.</p>';
+        return;
+      }
+      const humanize = k => k.replace(/[_-]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      let rowsHtml = "";
+      [...subjectSet].sort().forEach(subj => {
+        let entered = 0, submitted = 0;
+        students.forEach(s => {
+          const rec = s.academics && s.academics[subj];
+          if (rec && rec.total != null) entered++;
+          if (s.submittedSubjects && s.submittedSubjects[subj] && s.submittedSubjects[subj].status === "submitted") submitted++;
+        });
+        rowsHtml += `<tr>
+          <td>${humanize(subj)}</td>
+          <td style="text-align:center">${entered}/${total}</td>
+          <td style="text-align:center">${submitted}/${total}</td>
+          <td style="text-align:center"><button class="btn btn-outline btn-sm" onclick="loadMarksSubjectStudents('${cls}','${term}','${subj}')"><i class="fas fa-eye"></i> View</button></td>
+        </tr>`;
+      });
+      body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="border-bottom:1.5px solid var(--primary)">
+          <th style="text-align:left;padding:8px">Subject</th>
+          <th style="padding:8px">Entered</th>
+          <th style="padding:8px">Submitted</th>
+          <th style="padding:8px">Detail</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>`;
+    } catch (e) {
+      body.innerHTML = `<p style="color:var(--danger);text-align:center;padding:12px">❌ ${e.message}</p>`;
+    }
+  }),
+  (window.loadMarksSubjectStudents = async function (cls, term, subject) {
+    const title = document.getElementById("mo-drilldown-title");
+    const subtitle = document.getElementById("mo-drilldown-subtitle");
+    const body = document.getElementById("mo-drilldown-body");
+    if (!body) return;
+    const humanize = k => k.replace(/[_-]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    title.innerHTML = `<i class="fas fa-list-ol" style="margin-right:8px"></i>Class ${cls} — ${humanize(subject)}`;
+    subtitle.textContent = `${term === "HY" ? "Half Yearly" : "Final Term"} · read-only`;
+    body.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:32px"><i class="fas fa-spinner fa-spin"></i> Loading students…</p>';
+    try {
+      const snap = await getDocs(collection(db, "marks", `${cls}_${term}`, "students"));
+      const students = [];
+      snap.forEach(d => students.push({ id: d.id, ...d.data() }));
+      students.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
+      const hasUT = students.some(s => s.academics && s.academics[subject] && s.academics[subject].UT !== undefined);
+      let rowsHtml = "";
+      students.forEach(s => {
+        const rec = (s.academics && s.academics[subject]) || {};
+        const fmt = v => (v == null ? "—" : v);
+        rowsHtml += `<tr>
+          <td>${s.name || s.id}</td>
+          <td style="text-align:center">${fmt(rec.IA)}</td>
+          ${hasUT ? `<td style="text-align:center">${fmt(rec.UT)}</td>` : ""}
+          <td style="text-align:center">${fmt(rec.TE)}</td>
+          <td style="text-align:center"><strong>${fmt(rec.total)}</strong></td>
+        </tr>`;
+      });
+      body.innerHTML = `<button class="btn btn-outline btn-sm" style="margin-bottom:12px" onclick="openMarksDrilldown('${cls}','${term}')"><i class="fas fa-arrow-left"></i> Back to subjects</button>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="border-bottom:1.5px solid var(--primary)">
+          <th style="text-align:left;padding:8px">Student</th>
+          <th style="padding:8px">IA</th>
+          ${hasUT ? `<th style="padding:8px">UT</th>` : ""}
+          <th style="padding:8px">TE</th>
+          <th style="padding:8px">Total</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>`;
+    } catch (e) {
+      body.innerHTML = `<p style="color:var(--danger);text-align:center;padding:12px">❌ ${e.message}</p>`;
+    }
+  }),
   (window.loadAdminReportCards = async function () {
     await (async function () {
       const sel = document.getElementById("arc-class-select");
