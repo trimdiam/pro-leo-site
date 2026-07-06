@@ -52,6 +52,13 @@ async function getAdminComponents() {
 
 const classes = ['LKG', 'SKG', 'Class I', 'Class II', 'Class 9'];
 
+// auth-service.js prepends the teacher's title (e.g. "Miss") to their login
+// name, but session.teacher_name is stored without it -- strip it before
+// comparing so a teacher's own submissions always match their own login.
+function stripTitle(name) {
+  return String(name || '').replace(/^(mr|mrs|miss|ms|sir|madam)\.?\s+/i, '').trim();
+}
+
 const state = {
   allSubjects: [],
   subjects: [],
@@ -343,7 +350,7 @@ function renderSetup() {
     weekStart: state.weekStart,
     weekEnd: state.weekEnd,
     dueDate: state.dueDate,
-    savedSessions: getAllSessions().filter(s => s.session.teacher_name === state.teacherName),
+    savedSessions: getAllSessions().filter(s => stripTitle(s.session.teacher_name) === stripTitle(state.teacherName)),
     onClassChange: handleClassChange,
     onSubjectChange: handleSubjectChange,
     onTeacherNameChange: handleTeacherNameChange,

@@ -4523,25 +4523,36 @@ function _arcCalcTotal(academics) {
       const ym = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, "0")}`;
       const monthLabel = now.toLocaleString("en-IN", { month: "long", year: "numeric" });
 
-      // Get all subjects for this class
-      const subjSnap = await getDocs(query(collection(db, "subjects"), where("class", "==", cls)));
-      const allSubjects = subjSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // assessment-app stores Class 1/2 as Roman numerals ("Class I"/"Class II"),
+      // unlike every other class field in this app — match its actual write format.
+      const _N2R = { 1: "I", 2: "II" };
+      const sessionClassLabel = _N2R[cls] ? `Class ${_N2R[cls]}` : `Class ${cls}`;
+
+      // The per-class subject list lives in assessment-app's own static registry,
+      // not the Firestore "subjects" collection (that collection is an unrelated
+      // flat subject-code table with no "class" field at all).
+      const subjRegistry = await fetch("/assessment-app/data/subjects.json").then(r => r.json());
+      const allSubjects = subjRegistry.filter(s => Array.isArray(s.classes) && s.classes.includes(sessionClassLabel));
 
       if (!allSubjects.length) {
         wrap.innerHTML = `<p style="color:var(--text-light);font-size:13px">No subjects found for Class ${cls}.</p>`;
         return;
       }
 
-      // Get assessment sessions for this class this month
+      // Get assessment sessions for this class (filter to this month client-side:
+      // session.yearMonth is never written by the assessment-app, so a server-side
+      // filter on it would always return zero results).
       const sessSnap = await getDocs(query(
         collection(db, "assessment_sessions"),
-        where("session.class", "==", `Class ${cls}`),
-        where("session.yearMonth", "==", ym),
-        limit(50)
+        where("session.class", "==", sessionClassLabel),
+        limit(100)
       ));
       const sessionsBySubject = {};
       sessSnap.forEach(d => {
-        const subj = d.data().session?.subject_id || "";
+        const s = d.data().session || {};
+        const sessionDate = s.weekStart || s.date || "";
+        if (!sessionDate.startsWith(ym.replace("_", "-"))) return;
+        const subj = s.subject_id || "";
         if (!sessionsBySubject[subj]) sessionsBySubject[subj] = 0;
         sessionsBySubject[subj]++;
       });
