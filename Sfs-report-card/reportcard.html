@@ -205,20 +205,27 @@
     cfg.subjects.forEach(function(subj) {
       var hyA = (hyData.academics || {})[subj.key] || {};
       var ftA = (ftData.academics || {})[subj.key] || {};
-      var hyT, ftT;
+      var hyT, ftT, hyIa, hyEx, ftIa, ftEx;
       if (subj.isAggregate) {
-        var comps = subj.components || [];
-        hyT = comps.reduce(function(s,k){ return s + (((hyData.academics||{})[k]||{}).total||0); }, 0);
-        ftT = comps.reduce(function(s,k){ return s + (((ftData.academics||{})[k]||{}).total||0); }, 0);
-        hyS[subj.key] = {ia:0,ut:0,exam:0,total:hyT};
-        ftS[subj.key] = {ia:0,ut:0,exam:0,total:ftT};
+        var hyAgg = computeAggregateSubject(hyData.academics, subj);
+        var ftAgg = computeAggregateSubject(ftData.academics, subj);
+        hyT = hyAgg.total; hyIa = hyAgg.ia; hyEx = hyAgg.exam;
+        ftT = ftAgg.total; ftIa = ftAgg.ia; ftEx = ftAgg.exam;
+        hyS[subj.key] = {ia:hyIa, ut:0, exam:hyEx, total:hyT};
+        ftS[subj.key] = {ia:ftIa, ut:0, exam:ftEx, total:ftT};
       } else {
         hyT = hyA.total || 0; ftT = ftA.total || 0;
-        hyS[subj.key] = {ia:hyA.IA||0, ut:hyA.UT||0, exam:hyA.TE||hyA.singleMark||0, total:hyT};
-        ftS[subj.key] = {ia:ftA.IA||0, ut:ftA.UT||0, exam:ftA.TE||ftA.singleMark||0, total:ftT};
-        if (subj.countInTotal) {
-          hyGrand += hyT; ftGrand += ftT;
-          if (hyT < passmark || ftT < passmark) result = 'FAIL';
+        hyIa = hyA.IA||hyA.singleMark||0; hyEx = hyA.TE||0;
+        ftIa = ftA.IA||ftA.singleMark||0; ftEx = ftA.TE||0;
+        hyS[subj.key] = {ia:hyIa, ut:hyA.UT||0, exam:hyEx, total:hyT};
+        ftS[subj.key] = {ia:ftIa, ut:ftA.UT||0, exam:ftEx, total:ftT};
+      }
+      if (subj.countInTotal) {
+        hyGrand += hyT; ftGrand += ftT;
+        if (hyT < passmark || ftT < passmark ||
+            subjectFailsFloor(hyIa, hyEx, cfg, subj) ||
+            subjectFailsFloor(ftIa, ftEx, cfg, subj)) {
+          result = 'FAIL';
         }
       }
       consolS[subj.key] = {term1:hyT, term2:ftT, total:hyT+ftT};

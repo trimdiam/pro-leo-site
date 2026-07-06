@@ -181,6 +181,8 @@ function buildHeader(subjects, isStandard) {
 /* ─── ROWS ────────────────────────────────────────────────────────────────── */
 function buildRows(list, subjects, config, isStandard, termKey) {
   const passmark = config.passmark || 33;
+  const iaFloor   = Math.round(20 * passmark / 100);
+  const examFloor = Math.round(80 * passmark / 100);
   let html = '';
 
   list.forEach((data, idx) => {
@@ -195,7 +197,11 @@ function buildRows(list, subjects, config, isStandard, termKey) {
     for (const subj of subjects) {
       const subjData = termData.subjects[subj.key] || {};
       const total    = subjData.total ?? 0;
-      const fail     = total > 0 && total < passmark;
+      // Senior scheme (class 9/10): total clearing the passmark isn't
+      // enough if IA or Theory individually miss their proportional floor.
+      const componentFail = !isStandard && !subj.singleTotal &&
+        (subjData.ia < iaFloor || subjData.exam < examFloor);
+      const fail     = total > 0 && (total < passmark || componentFail);
       const isAgg    = subj.isAggregate;
 
       if (isStandard) {

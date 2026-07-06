@@ -56,6 +56,50 @@ function computeGrade(total, max = 100) {
   return 'F';
 }
 
+// ─── AGGREGATE / PASS-FLOOR HELPERS (2026-07) ──────────────────────────────────
+// Aggregate subjects (Science P+C+B, S.Science, English I+II) have no Firestore
+// entry of their own — they're derived from their leaf components. Every class
+// (3-10) declares aggregateMethod:'average' in config.js for these, so the
+// average — not a raw sum — is what's compared against the class's passmark
+// (40 for Classes 3-8, 30 for Classes 9-10). This applies uniformly; it is not
+// senior-scheme-specific (only the IA/Theory component floor below is).
+function computeAggregateSubject(academics, subj) {
+  const comps = subj.components || [];
+  let totalSum = 0, iaSum = 0, examSum = 0, count = 0;
+  comps.forEach(k => {
+    const a = academics?.[k];
+    if (!a) return;
+    totalSum += a.total ?? 0;
+    iaSum    += a.IA ?? a.singleMark ?? 0;
+    examSum  += a.TE ?? 0;
+    count++;
+  });
+  if (subj.aggregateMethod === 'average') {
+    return count > 0
+      ? { ia: Math.round(iaSum / count), exam: Math.round(examSum / count), total: Math.round(totalSum / count) }
+      : { ia: 0, exam: 0, total: 0 };
+  }
+  return { ia: iaSum, exam: examSum, total: totalSum };
+}
+
+// Senior-scheme (Class 9/10) component pass floors, proportional to the
+// configured passmark: IA floor = 20 * passmark/100, Exam floor = 80 *
+// passmark/100 (passmark 30 -> IA 6, Exam 24). A subject fails if its total
+// clears the passmark but IA or Exam individually don't (2026-07 rule).
+function getComponentFloors(cfg) {
+  const passmark = cfg.passmark || 40;
+  return {
+    iaFloor:   Math.round(20 * passmark / 100),
+    examFloor: Math.round(80 * passmark / 100)
+  };
+}
+
+function subjectFailsFloor(ia, exam, cfg, subj) {
+  if (cfg.markScheme !== 'senior' || subj.singleTotal) return false;
+  const { iaFloor, examFloor } = getComponentFloors(cfg);
+  return ia < iaFloor || exam < examFloor;
+}
+
 // ─── DOM HELPERS ──────────────────────────────────────────────────────────────
 const $  = id => document.getElementById(id);
 const el = (tag, cls, html) => {
@@ -737,29 +781,39 @@ function validateInput(inp) {
 
 function updateRowTotal(tr, isSingle) {
   const totalCell = tr.querySelector('[data-total]');
-  const cfg = CONFIG[ME.activeClass?.classNum];
+  const classNum  = ME.activeClass?.classNum;
+  const cfg = CONFIG[classNum];
   const passmark = cfg?.passmark ?? 40;
-  let total = null;
+  let total = null, ia = null, te = null;
 
   if (isSingle) {
     const inp = tr.querySelector('[data-field="singleMark"]');
     if (inp.value !== '') total = parseFloat(inp.value) || 0;
   } else {
-    const ia = tr.querySelector('[data-field="IA"]');
+    const iaInp = tr.querySelector('[data-field="IA"]');
     const ut = tr.querySelector('[data-field="UT"]');
-    const te = tr.querySelector('[data-field="TE"]');
-    const fields = [ia, te];
+    const teInp = tr.querySelector('[data-field="TE"]');
+    const fields = [iaInp, teInp];
     if (ut) fields.splice(1, 0, ut);
-    if (fields.some(f => f && f.value !== ''))
+    if (fields.some(f => f && f.value !== '')) {
       total = fields.reduce((sum, f) => sum + (f ? (parseFloat(f.value) || 0) : 0), 0);
+      ia = parseFloat(iaInp?.value) || 0;
+      te = parseFloat(teInp?.value) || 0;
+    }
   }
 
   if (total === null) {
     totalCell.textContent = '—';
     totalCell.className = 'me-total-cell empty';
   } else {
+    // Component-floor check only applies to a subject that counts toward the
+    // grand total directly (not an aggregate component like Physics, whose
+    // own floor doesn't matter — only the Science average's does).
+    const subj = cfg && findSubjectConfig(classNum, ME.activeClass?.subjectKey);
+    const floorFail = subj && subj.countInTotal && !isSingle &&
+      subjectFailsFloor(ia, te, cfg, subj);
     totalCell.textContent = total;
-    totalCell.className = `me-total-cell ${total >= passmark ? 'pass' : 'fail'}`;
+    totalCell.className = `me-total-cell ${(total >= passmark && !floorFail) ? 'pass' : 'fail'}`;
   }
 }
 
@@ -1176,9 +1230,7 @@ function calcStudentTotal(markData, classNum) {
   let total = 0;
   cfg.subjects.filter(s => s.countInTotal).forEach(subj => {
     if (subj.isAggregate) {
-      subj.components.forEach(cKey => {
-        total += (acad[cKey]?.total ?? 0);
-      });
+      total += computeAggregateSubject(acad, subj, cfg).total;
     } else {
       total += (acad[subj.key]?.total ?? 0);
     }
@@ -1233,7 +1285,7 @@ function renderStudentList(students, existingHY, existingFT, hyRanks, ftRanks, m
 
   const cfg      = CONFIG[classNum];
   const subjects = cfg ? cfg.subjects.filter(s => !s.isAggregate && s.countInTotal) : [];
-  const passmark = cfg?.passMarkPerSubject ?? 33;
+  const passmark = cfg?.passmark ?? 33;
   const fmt      = v => (Math.round(v * 10) / 10).toFixed(1);
 
   // ── Build header ──────────────────────────────────────────────────────────
@@ -1277,10 +1329,14 @@ function renderStudentList(students, existingHY, existingFT, hyRanks, ftRanks, m
     const rankDisplay = term === 'HY' ? (hyRanks[student.id] || '—') : (ftRanks[student.id] || '—');
 
     const subjCells = subjects.map(subj => {
-      const hyMark = hyData.academics?.[subj.key]?.total ?? null;
-      const ftMark = ftData.academics?.[subj.key]?.total ?? null;
-      const hyFail = hyMark !== null && hyMark < passmark;
-      const ftFail = ftMark !== null && ftMark < passmark;
+      const hyEntry = hyData.academics?.[subj.key];
+      const ftEntry = ftData.academics?.[subj.key];
+      const hyMark = hyEntry?.total ?? null;
+      const ftMark = ftEntry?.total ?? null;
+      const hyFail = hyMark !== null && (hyMark < passmark ||
+        subjectFailsFloor(hyEntry?.IA ?? hyEntry?.singleMark ?? 0, hyEntry?.TE ?? 0, cfg, subj));
+      const ftFail = ftMark !== null && (ftMark < passmark ||
+        subjectFailsFloor(ftEntry?.IA ?? ftEntry?.singleMark ?? 0, ftEntry?.TE ?? 0, cfg, subj));
       const hyColor = hyMark === null ? 'color:#aaa' : (hyFail ? 'color:#dc2626;font-weight:700' : 'color:#15803d;font-weight:600');
       const ftColor = ftMark === null ? 'color:#aaa' : (ftFail ? 'color:#dc2626;font-weight:700' : 'color:#15803d;font-weight:600');
       return `<td style="text-align:center;font-size:12px;${hyColor}">${hyMark !== null ? hyMark : '—'}</td>
@@ -1387,16 +1443,23 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
       let hyTotal = 0, ftTotal = 0;
 
       if (subj.isAggregate) {
-        // Aggregate subjects have no own Firestore entry — compute from components
-        const comps = subj.components || [];
-        hyTotal = comps.reduce((s, k) => s + (hyAcad[k]?.total ?? 0), 0);
-        ftTotal = comps.reduce((s, k) => s + (ftAcad[k]?.total ?? 0), 0);
-        // No ia/ut keys → marksheet.js will show '—' for those columns
-        hySubjects[subj.key] = { total: hyTotal };
-        ftSubjects[subj.key] = { total: ftTotal };
+        // Aggregate subjects have no own Firestore entry — compute from
+        // components. Senior scheme (9/10) averages, matching calcStudentTotal;
+        // standard scheme (6-8) keeps its original sum (see computeAggregateSubject).
+        const hyAgg = computeAggregateSubject(hyAcad, subj, cfg);
+        const ftAgg = computeAggregateSubject(ftAcad, subj, cfg);
+        hyTotal = hyAgg.total;
+        ftTotal = ftAgg.total;
+        hySubjects[subj.key] = { ia: hyAgg.ia, exam: hyAgg.exam, total: hyTotal };
+        ftSubjects[subj.key] = { ia: ftAgg.ia, exam: ftAgg.exam, total: ftTotal };
         if (subj.countInTotal) {
-          // Grand total uses component totals directly (matching calcStudentTotal)
-          comps.forEach(k => { hyGrand += hyAcad[k]?.total ?? 0; ftGrand += ftAcad[k]?.total ?? 0; });
+          hyGrand += hyTotal;
+          ftGrand += ftTotal;
+          if (hyTotal < passmark || ftTotal < passmark ||
+              subjectFailsFloor(hyAgg.ia, hyAgg.exam, cfg, subj) ||
+              subjectFailsFloor(ftAgg.ia, ftAgg.exam, cfg, subj)) {
+            result = 'FAIL';
+          }
         }
       } else {
         const hyA = hyAcad[subj.key] || {};
@@ -1421,7 +1484,11 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
         if (subj.countInTotal) {
           hyGrand += hyTotal;
           ftGrand += ftTotal;
-          if (hyTotal < passmark || ftTotal < passmark) result = 'FAIL';
+          if (hyTotal < passmark || ftTotal < passmark ||
+              subjectFailsFloor(hyEntry.ia ?? 0, hyEntry.exam ?? 0, cfg, subj) ||
+              subjectFailsFloor(ftEntry.ia ?? 0, ftEntry.exam ?? 0, cfg, subj)) {
+            result = 'FAIL';
+          }
         }
       }
 
@@ -1550,27 +1617,26 @@ function renderAcademicSummary(hyData, ftData, classNum) {
   if (!cfg) { wrap.innerHTML = '<p class="me-empty">Config not found.</p>'; return; }
 
   const subjects = cfg.subjects.filter(s => s.countInTotal);
+  const passmark = cfg.passmark ?? 40;
   let hyGrand = 0, ftGrand = 0;
 
   const rows = subjects.map(subj => {
     const hyAcad = hyData.academics || {};
     const ftAcad = ftData.academics || {};
 
-    let hyTotal = null, ftTotal = null;
+    let hyTotal = null, ftTotal = null, hyIa = null, hyTe = null, ftIa = null, ftTe = null;
 
     if (subj.isAggregate) {
-      // Sum components
-      let hySum = 0, ftSum = 0, hyOk = true, ftOk = true;
-      subj.components.forEach(cKey => {
-        const hc = hyAcad[cKey]?.total; const fc = ftAcad[cKey]?.total;
-        if (hc == null) hyOk = false; else hySum += hc;
-        if (fc == null) ftOk = false; else ftSum += fc;
-      });
-      hyTotal = hyOk ? hySum : null;
-      ftTotal = ftOk ? ftSum : null;
+      const hasAllHy = subj.components.every(k => hyAcad[k]?.total != null);
+      const hasAllFt = subj.components.every(k => ftAcad[k]?.total != null);
+      if (hasAllHy) { const r = computeAggregateSubject(hyAcad, subj, cfg); hyTotal = r.total; hyIa = r.ia; hyTe = r.exam; }
+      if (hasAllFt) { const r = computeAggregateSubject(ftAcad, subj, cfg); ftTotal = r.total; ftIa = r.ia; ftTe = r.exam; }
     } else {
-      hyTotal = hyAcad[subj.key]?.total ?? null;
-      ftTotal = ftAcad[subj.key]?.total ?? null;
+      const hyEntry = hyAcad[subj.key], ftEntry = ftAcad[subj.key];
+      hyTotal = hyEntry?.total ?? null;
+      ftTotal = ftEntry?.total ?? null;
+      hyIa = hyEntry?.IA ?? hyEntry?.singleMark ?? 0; hyTe = hyEntry?.TE ?? 0;
+      ftIa = ftEntry?.IA ?? ftEntry?.singleMark ?? 0; ftTe = ftEntry?.TE ?? 0;
     }
 
     const consol = (hyTotal != null && ftTotal != null) ? hyTotal + ftTotal : null;
@@ -1579,11 +1645,13 @@ function renderAcademicSummary(hyData, ftData, classNum) {
 
     const hyGrade = hyTotal != null ? computeGrade(hyTotal) : '—';
     const ftGrade = ftTotal != null ? computeGrade(ftTotal) : '—';
+    const hyFail  = hyTotal != null && (hyTotal < passmark || subjectFailsFloor(hyIa, hyTe, cfg, subj));
+    const ftFail  = ftTotal != null && (ftTotal < passmark || subjectFailsFloor(ftIa, ftTe, cfg, subj));
 
     return `<tr>
       <td>${escHtml(subj.label)}</td>
-      <td class="${hyTotal != null && hyTotal < 40 ? 'ct-fail-cell' : ''}">${hyTotal ?? '—'}</td>
-      <td class="${ftTotal != null && ftTotal < 40 ? 'ct-fail-cell' : ''}">${ftTotal ?? '—'}</td>
+      <td class="${hyFail ? 'ct-fail-cell' : ''}">${hyTotal ?? '—'}</td>
+      <td class="${ftFail ? 'ct-fail-cell' : ''}">${ftTotal ?? '—'}</td>
       <td>${consol ?? '—'}</td>
       <td><span class="grade-pill">${hyGrade}</span></td>
       <td><span class="grade-pill">${ftGrade}</span></td>
@@ -1825,14 +1893,24 @@ function renderResult(hyData, ftData, classNum) {
   const cfg = CONFIG[classNum];
   if (!cfg) return;
   const passmark  = cfg.passmark ?? 40;
-  const countSubj = cfg.subjects.filter(s => s.countInTotal && !s.isAggregate);
+  const countSubj = cfg.subjects.filter(s => s.countInTotal);
 
   let hyFail = false, ftFail = false;
   countSubj.forEach(subj => {
-    const ht = hyData.academics?.[subj.key]?.total;
-    const ft = ftData.academics?.[subj.key]?.total;
-    if (ht != null && ht < passmark) hyFail = true;
-    if (ft != null && ft < passmark) ftFail = true;
+    let ht, ft, hyIa, hyTe, ftIa, ftTe;
+    if (subj.isAggregate) {
+      const hasAllHy = subj.components.every(k => hyData.academics?.[k]?.total != null);
+      const hasAllFt = subj.components.every(k => ftData.academics?.[k]?.total != null);
+      if (hasAllHy) { const r = computeAggregateSubject(hyData.academics, subj, cfg); ht = r.total; hyIa = r.ia; hyTe = r.exam; }
+      if (hasAllFt) { const r = computeAggregateSubject(ftData.academics, subj, cfg); ft = r.total; ftIa = r.ia; ftTe = r.exam; }
+    } else {
+      const hyA = hyData.academics?.[subj.key], ftA = ftData.academics?.[subj.key];
+      ht = hyA?.total; ft = ftA?.total;
+      hyIa = hyA?.IA ?? hyA?.singleMark ?? 0; hyTe = hyA?.TE ?? 0;
+      ftIa = ftA?.IA ?? ftA?.singleMark ?? 0; ftTe = ftA?.TE ?? 0;
+    }
+    if (ht != null && (ht < passmark || subjectFailsFloor(hyIa, hyTe, cfg, subj))) hyFail = true;
+    if (ft != null && (ft < passmark || subjectFailsFloor(ftIa, ftTe, cfg, subj))) ftFail = true;
   });
 
   let result = 'PASS', cls = 'ct-result-pass';
@@ -1994,24 +2072,33 @@ async function openReportCard() {
   let result = 'PASS';
 
   for (const subj of cfg.subjects) {
-    const hyA = hyData?.academics?.[subj.key] || {};
-    const ftA = ftData?.academics?.[subj.key] || {};
+    let hyTotal, ftTotal, hyIa, hyTe, ftIa, ftTe;
 
-    const hyTotal = hyA.total ?? 0;
-    const ftTotal = ftA.total ?? 0;
-
-    hySubjects[subj.key] = {
-      ia: hyA.IA ?? 0, ut: hyA.UT ?? 0, exam: hyA.TE ?? hyA.singleMark ?? 0, total: hyTotal
-    };
-    ftSubjects[subj.key] = {
-      ia: ftA.IA ?? 0, ut: ftA.UT ?? 0, exam: ftA.TE ?? ftA.singleMark ?? 0, total: ftTotal
-    };
+    if (subj.isAggregate) {
+      const hyAgg = computeAggregateSubject(hyData?.academics, subj, cfg);
+      const ftAgg = computeAggregateSubject(ftData?.academics, subj, cfg);
+      hyTotal = hyAgg.total; hyIa = hyAgg.ia; hyTe = hyAgg.exam;
+      ftTotal = ftAgg.total; ftIa = ftAgg.ia; ftTe = ftAgg.exam;
+      hySubjects[subj.key] = { ia: hyIa, ut: 0, exam: hyTe, total: hyTotal };
+      ftSubjects[subj.key] = { ia: ftIa, ut: 0, exam: ftTe, total: ftTotal };
+    } else {
+      const hyA = hyData?.academics?.[subj.key] || {};
+      const ftA = ftData?.academics?.[subj.key] || {};
+      hyTotal = hyA.total ?? 0; hyIa = hyA.IA ?? hyA.singleMark ?? 0; hyTe = hyA.TE ?? 0;
+      ftTotal = ftA.total ?? 0; ftIa = ftA.IA ?? ftA.singleMark ?? 0; ftTe = ftA.TE ?? 0;
+      hySubjects[subj.key] = { ia: hyIa, ut: hyA.UT ?? 0, exam: hyTe, total: hyTotal };
+      ftSubjects[subj.key] = { ia: ftIa, ut: ftA.UT ?? 0, exam: ftTe, total: ftTotal };
+    }
     consolSubjects[subj.key] = { term1: hyTotal, term2: ftTotal, total: hyTotal + ftTotal };
 
     if (subj.countInTotal) {
       hyGrand += hyTotal;
       ftGrand += ftTotal;
-      if (hyTotal < passmark || ftTotal < passmark) result = 'FAIL';
+      if (hyTotal < passmark || ftTotal < passmark ||
+          subjectFailsFloor(hyIa, hyTe, cfg, subj) ||
+          subjectFailsFloor(ftIa, ftTe, cfg, subj)) {
+        result = 'FAIL';
+      }
     }
   }
 
@@ -2121,19 +2208,30 @@ function openReportCardFromList(studentId, studentData, hyData, ftData, classId,
     const ftTotal = ftA.total ?? 0;
 
     if (subj.isAggregate) {
-      const comps = subj.components || [];
-      const hyAgg = comps.reduce((s, k) => s + (hyData.academics?.[k]?.total ?? 0), 0);
-      const ftAgg = comps.reduce((s, k) => s + (ftData.academics?.[k]?.total ?? 0), 0);
-      hySubjects[subj.key] = { ia: 0, ut: 0, exam: 0, total: hyAgg };
-      ftSubjects[subj.key] = { ia: 0, ut: 0, exam: 0, total: ftAgg };
-      consolSubjects[subj.key] = { term1: hyAgg, term2: ftAgg, total: hyAgg + ftAgg };
+      const hyAgg = computeAggregateSubject(hyData.academics, subj, cfg);
+      const ftAgg = computeAggregateSubject(ftData.academics, subj, cfg);
+      hySubjects[subj.key] = { ia: hyAgg.ia, ut: 0, exam: hyAgg.exam, total: hyAgg.total };
+      ftSubjects[subj.key] = { ia: ftAgg.ia, ut: 0, exam: ftAgg.exam, total: ftAgg.total };
+      consolSubjects[subj.key] = { term1: hyAgg.total, term2: ftAgg.total, total: hyAgg.total + ftAgg.total };
+      if (subj.countInTotal) {
+        hyGrand += hyAgg.total; ftGrand += ftAgg.total;
+        if (hyAgg.total < passmark || ftAgg.total < passmark ||
+            subjectFailsFloor(hyAgg.ia, hyAgg.exam, cfg, subj) ||
+            subjectFailsFloor(ftAgg.ia, ftAgg.exam, cfg, subj)) {
+          result = 'FAIL';
+        }
+      }
     } else {
       hySubjects[subj.key] = { ia: hyA.IA ?? 0, ut: hyA.UT ?? 0, exam: hyA.TE ?? hyA.singleMark ?? 0, total: hyTotal };
       ftSubjects[subj.key] = { ia: ftA.IA ?? 0, ut: ftA.UT ?? 0, exam: ftA.TE ?? ftA.singleMark ?? 0, total: ftTotal };
       consolSubjects[subj.key] = { term1: hyTotal, term2: ftTotal, total: hyTotal + ftTotal };
       if (subj.countInTotal) {
         hyGrand += hyTotal; ftGrand += ftTotal;
-        if (hyTotal < passmark || ftTotal < passmark) result = 'FAIL';
+        if (hyTotal < passmark || ftTotal < passmark ||
+            subjectFailsFloor(hyA.IA ?? hyA.singleMark ?? 0, hyA.TE ?? 0, cfg, subj) ||
+            subjectFailsFloor(ftA.IA ?? ftA.singleMark ?? 0, ftA.TE ?? 0, cfg, subj)) {
+          result = 'FAIL';
+        }
       }
     }
   }
@@ -2251,19 +2349,33 @@ async function generateClassMarksheet() {
       let result = 'PASS';
 
       for (const subj of cfg.subjects) {
-        const hyA = hyData?.academics?.[subj.key] || {};
-        const ftA = ftData?.academics?.[subj.key] || {};
-        const hyTotal = hyA.total ?? 0;
-        const ftTotal = ftA.total ?? 0;
+        let hyTotal, ftTotal, hyIa, hyTe, ftIa, ftTe;
 
-        hySubjects[subj.key] = { ia: hyA.IA ?? 0, ut: hyA.UT ?? 0, exam: hyA.TE ?? 0, total: hyTotal };
-        ftSubjects[subj.key] = { ia: ftA.IA ?? 0, ut: ftA.UT ?? 0, exam: ftA.TE ?? 0, total: ftTotal };
+        if (subj.isAggregate) {
+          const hyAgg = computeAggregateSubject(hyData?.academics, subj, cfg);
+          const ftAgg = computeAggregateSubject(ftData?.academics, subj, cfg);
+          hyTotal = hyAgg.total; hyIa = hyAgg.ia; hyTe = hyAgg.exam;
+          ftTotal = ftAgg.total; ftIa = ftAgg.ia; ftTe = ftAgg.exam;
+          hySubjects[subj.key] = { ia: hyIa, ut: 0, exam: hyTe, total: hyTotal };
+          ftSubjects[subj.key] = { ia: ftIa, ut: 0, exam: ftTe, total: ftTotal };
+        } else {
+          const hyA = hyData?.academics?.[subj.key] || {};
+          const ftA = ftData?.academics?.[subj.key] || {};
+          hyTotal = hyA.total ?? 0; hyIa = hyA.IA ?? hyA.singleMark ?? 0; hyTe = hyA.TE ?? 0;
+          ftTotal = ftA.total ?? 0; ftIa = ftA.IA ?? ftA.singleMark ?? 0; ftTe = ftA.TE ?? 0;
+          hySubjects[subj.key] = { ia: hyIa, ut: hyA.UT ?? 0, exam: hyTe, total: hyTotal };
+          ftSubjects[subj.key] = { ia: ftIa, ut: ftA.UT ?? 0, exam: ftTe, total: ftTotal };
+        }
         consolSubjects[subj.key] = { term1: hyTotal, term2: ftTotal, total: hyTotal + ftTotal };
 
         if (subj.countInTotal) {
           hyGrand += hyTotal;
           ftGrand += ftTotal;
-          if (hyTotal < passmark || ftTotal < passmark) result = 'FAIL';
+          if (hyTotal < passmark || ftTotal < passmark ||
+              subjectFailsFloor(hyIa, hyTe, cfg, subj) ||
+              subjectFailsFloor(ftIa, ftTe, cfg, subj)) {
+            result = 'FAIL';
+          }
         }
       }
 

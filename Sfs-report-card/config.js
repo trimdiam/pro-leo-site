@@ -345,6 +345,52 @@ function getClassConfig(classNum) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Shared aggregate / component-floor helpers (2026-07)
+// Any page that renders a III-X report card from raw Firestore {academics}
+// data (not already-computed subject rows) should use these instead of
+// reimplementing the sum/average and pass-floor logic locally.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Aggregate subject {ia, exam, total} from its components' academics entries,
+// honoring aggregateMethod (average, per this file's own config) — matches
+// grandTotalMax, which is sized for a 100-point average per counted subject.
+function computeAggregateSubject(academics, subj) {
+  const comps = subj.components || [];
+  let totalSum = 0, iaSum = 0, examSum = 0, count = 0;
+  comps.forEach(k => {
+    const a = academics?.[k];
+    if (!a) return;
+    totalSum += a.total ?? 0;
+    iaSum    += a.IA ?? a.singleMark ?? 0;
+    examSum  += a.TE ?? 0;
+    count++;
+  });
+  if (subj.aggregateMethod === 'average') {
+    return count > 0
+      ? { ia: Math.round(iaSum / count), exam: Math.round(examSum / count), total: Math.round(totalSum / count) }
+      : { ia: 0, exam: 0, total: 0 };
+  }
+  return { ia: iaSum, exam: examSum, total: totalSum };
+}
+
+// Senior-scheme (Class 9/10) component pass floors, proportional to passmark:
+// IA floor = 20 * passmark/100, Exam floor = 80 * passmark/100 (30 -> 6, 24).
+// A subject fails if its total clears the passmark but IA or Exam don't.
+function getComponentFloors(cfg) {
+  const passmark = cfg.passmark || 40;
+  return {
+    iaFloor:   Math.round(20 * passmark / 100),
+    examFloor: Math.round(80 * passmark / 100)
+  };
+}
+
+function subjectFailsFloor(ia, exam, cfg, subj) {
+  if (cfg.markScheme !== 'senior' || subj.singleTotal) return false;
+  const { iaFloor, examFloor } = getComponentFloors(cfg);
+  return ia < iaFloor || exam < examFloor;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Development validation — console.log each class config and verify
 // subject counts / grandTotalMax values match master-prompt requirements.
 // Call validateConfig() in browser console to run.

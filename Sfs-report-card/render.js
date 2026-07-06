@@ -83,8 +83,14 @@ function renderHeader(data, config) {
   const passmark = config.passmark || 40;
   const scaleEl = document.getElementById('rcGradeScale');
   if (scaleEl) {
-    scaleEl.textContent =
+    let scaleText =
       `O ≥90% | A+ 80–89% | A 70–79% | B+ 60–69% | B 50–59% | C 40–49% | D 33–39% | F <33% – Fail | Pass mark: ${passmark}/100`;
+    if (config.markScheme === 'senior') {
+      const iaFloor   = Math.round(20 * passmark / 100);
+      const examFloor = Math.round(80 * passmark / 100);
+      scaleText += ` (IA ≥${iaFloor} & Theory ≥${examFloor} required)`;
+    }
+    scaleEl.textContent = scaleText;
   }
 
   const logo = document.getElementById('rcLogo');
@@ -306,7 +312,16 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
     const subjData = termData.subjects[subj.key] || {};
     const total = subjData.total || 0;
     const grade = getGradeFromMarks(total);
-    const gradeFail = total < passmark ? ' fail' : '';
+
+    // A subject fails if the total misses the passmark, OR (senior scheme
+    // only) the total clears it but IA/Exam individually miss their
+    // proportional floors (2026-07 rule: 30 in combination doesn't qualify
+    // as pass if either component is below its own floor).
+    const componentFail = !isStandard && !subj.singleTotal &&
+      (subjData.ia < iaThreshSen || subjData.exam < examThreshSen);
+    const totalFails = total < passmark || componentFail;
+    const gradeFail = totalFails ? ' fail' : '';
+    const totalFailCls = totalFails ? ' rc-cell-fail' : '';
 
     let cls = 'rc-row-normal';
     if (subj.isAggregate) cls = 'rc-row-aggregate';
@@ -321,7 +336,7 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
     if (subj.isAggregate) {
       const blanks = isStandard ? 3 : 2;
       for (let i = 0; i < blanks; i++) html += '<td>—</td>';
-      html += `<td class="rc-cell-total${failCls(subjData.total, passmark)}">${total}</td>`;
+      html += `<td class="rc-cell-total${totalFailCls}">${total}</td>`;
       if (showConsol) {
         html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${consolTotal}</td>`;
       }
@@ -330,7 +345,7 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
     else if (subj.singleTotal) {
       const blanks = isStandard ? 3 : 2;
       for (let i = 0; i < blanks; i++) html += '<td></td>';
-      html += `<td class="rc-cell-total${failCls(subjData.total, passmark)}">${total}</td>`;
+      html += `<td class="rc-cell-total${totalFailCls}">${total}</td>`;
       if (showConsol) {
         html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${consolTotal}</td>`;
       }
@@ -345,7 +360,7 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
         html += `<td class="${failCls(subjData.ia, iaThreshSen)}">${subjData.ia !== undefined ? subjData.ia : '—'}</td>`;
         html += `<td class="${failCls(subjData.exam, examThreshSen)}">${subjData.exam !== undefined ? subjData.exam : '—'}</td>`;
       }
-      html += `<td class="rc-cell-total${failCls(subjData.total, passmark)}">${total}</td>`;
+      html += `<td class="rc-cell-total${totalFailCls}">${total}</td>`;
       if (showConsol) {
         html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${consolTotal}</td>`;
       }

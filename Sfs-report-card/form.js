@@ -127,6 +127,21 @@ function onClassChange() {
   renderMarksTable('ft');
   renderCoScholastic();
   resetCalculatedDisplays();
+  updateRankEligibilityNote();
+}
+
+function updateRankEligibilityNote() {
+  const noteEl = document.getElementById('rankEligibilityNote');
+  if (!noteEl || !currentConfig) return;
+
+  const passmark = currentConfig.passmark || 40;
+  let text = `Rank is eligible only if student passes all subjects (${passmark}+ in each)`;
+  if (currentConfig.markScheme === 'senior') {
+    const { iaFloor, examFloor } = getComponentFloors(currentConfig);
+    text += `, with IA ≥${iaFloor} and Theory ≥${examFloor} in each`;
+  }
+  text += '. Dense ranking — no rank skipped for ties.';
+  noteEl.textContent = text;
 }
 
 function renderMarksTable(prefix) {
@@ -324,6 +339,56 @@ function calculateSubjectTotal(prefix, subj) {
   return clamp(total, 0, 100);
 }
 
+/**
+ * IA / Exam breakdown for a subject. For an aggregate subject (Science,
+ * S.Science, English) this is the average of its components' IA and
+ * average of its components' Exam — used for the senior-scheme component
+ * pass floors, which are checked against the final average, not per
+ * component (2026-07 decision).
+ */
+function calculateSubjectIAExam(prefix, subj) {
+  if (subj.singleTotal) return { ia: null, exam: null };
+
+  if (subj.isAggregate) {
+    let iaSum = 0, examSum = 0, count = 0;
+    for (const compKey of subj.components) {
+      const comp = currentConfig.subjects.find(s => s.key === compKey);
+      if (comp) {
+        const sub = calculateSubjectIAExam(prefix, comp);
+        iaSum += sub.ia; examSum += sub.exam; count++;
+      }
+    }
+    return count > 0
+      ? { ia: Math.round(iaSum / count), exam: Math.round(examSum / count) }
+      : { ia: 0, exam: 0 };
+  }
+
+  const ia   = parseFloat(document.getElementById(`${prefix}_ia_${subj.key}`)?.value)   || 0;
+  const exam = parseFloat(document.getElementById(`${prefix}_exam_${subj.key}`)?.value) || 0;
+  return { ia, exam };
+}
+
+/**
+ * Senior-scheme (class 9/10) component pass floors, proportional to the
+ * configured passmark: IA floor = 20 * passmark/100, Exam floor = 80 *
+ * passmark/100 (passmark 30 → IA 6, Exam 24). A subject fails if its
+ * combined total clears the passmark but either component doesn't.
+ */
+function getComponentFloors(config) {
+  const passmark = config.passmark || 40;
+  return {
+    iaFloor:   Math.round(20 * passmark / 100),
+    examFloor: Math.round(80 * passmark / 100)
+  };
+}
+
+function subjectFailsComponentFloor(prefix, subj, config) {
+  if (config.markScheme !== 'senior' || subj.singleTotal) return false;
+  const { iaFloor, examFloor } = getComponentFloors(config);
+  const { ia, exam } = calculateSubjectIAExam(prefix, subj);
+  return ia < iaFloor || exam < examFloor;
+}
+
 function recalculateAll() {
   if (!currentConfig) return;
 
@@ -407,6 +472,11 @@ function updateResult(hyTotals, ftTotals) {
       pass = false;
       break;
     }
+    if (subjectFailsComponentFloor('hy', subj, currentConfig) ||
+        subjectFailsComponentFloor('ft', subj, currentConfig)) {
+      pass = false;
+      break;
+    }
   }
 
   if (els.resultBadge) {
@@ -448,11 +518,13 @@ function collectFormData() {
         ia: 0, ut: 0, exam: 0, total: ftTotal
       };
     } else if (subj.isAggregate) {
+      const hyComp = calculateSubjectIAExam('hy', subj);
+      const ftComp = calculateSubjectIAExam('ft', subj);
       hySubjects[subj.key] = {
-        ia: 0, ut: 0, exam: 0, total: hyTotal
+        ia: hyComp.ia, ut: 0, exam: hyComp.exam, total: hyTotal
       };
       ftSubjects[subj.key] = {
-        ia: 0, ut: 0, exam: 0, total: ftTotal
+        ia: ftComp.ia, ut: 0, exam: ftComp.exam, total: ftTotal
       };
     } else {
       const hyIA   = parseFloat(document.getElementById(`hy_ia_${subj.key}`)?.value)   || 0;
@@ -506,6 +578,11 @@ function collectFormData() {
   for (const subj of currentConfig.subjects) {
     if (!subj.countInTotal) continue;
     if (hyTotals[subj.key] < passmark || ftTotals[subj.key] < passmark) {
+      result = 'FAIL';
+      break;
+    }
+    if (subjectFailsComponentFloor('hy', subj, currentConfig) ||
+        subjectFailsComponentFloor('ft', subj, currentConfig)) {
       result = 'FAIL';
       break;
     }

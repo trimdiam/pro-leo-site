@@ -310,6 +310,15 @@ service cloud.firestore {
         && resource.data.status == 'released';
     }
 
+    // ── Parent report-card lookup (temporary, no-login feature) ───────
+    // The lookupReportCard Cloud Function reads/writes this via the Admin
+    // SDK, which bypasses rules entirely — no client may touch it directly.
+    // (settings/report_card_lookup itself is already covered by the generic
+    // /settings/{docId} rule above: public read, admin-only write.)
+    match /lookup_attempts/{docId} {
+      allow read, write: if false;
+    }
+
   }
 
   // ── Helper: has the student's Final Term report card been released? ──

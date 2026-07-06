@@ -1144,3 +1144,113 @@ exports.mirrorSessionToRegistry = onDocumentWritten("sessions/{uid}", async (eve
   await ref.set(data, { merge: true });
   console.log(`[mirrorSession] tracked ${u.name || uid} (${after.platform})`);
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// PARENT REPORT-CARD LOOKUP (no login required) — SKG, LKG, Class 1-2, 3-10
+// ════════════════════════════════════════════════════════════════════════════
+// Public, unauthenticated onCall. Everything else in this file assumes a
+// signed-in caller; this is the one deliberate exception, so every check the
+// rules would normally do (release gate, whose data this is) is re-implemented
+// here server-side via the Admin SDK instead. Two report-card systems exist:
+//   - SKG/LKG/Class 1-2 -> `report_cards` collection, term keys HY1/HY2,
+//     gate: status === 'released'.
+//   - Class 3-10        -> `marks/{classId}_{HY|FT}/students/{studentId}`,
+//     gate: releasedToStudent === true on the _FT doc (mirrors
+//     ftReleasedForStudent() in firestore.rules).
+// A temporary feature for this year only (main app is teacher/admin-only) —
+// tear down `lookup_attempts`/`settings/report_card_lookup` and this export
+// once full student/parent login rolls out next year.
+
+const LOOKUP_ROMAN = { "3": "III", "4": "IV", "5": "V", "6": "VI", "7": "VII", "8": "VIII", "9": "IX", "10": "X" };
+const LOOKUP_PREPRIMARY_CLASSES = new Set(["SKG", "LKG", "1", "2"]);
+const LOOKUP_DAILY_CAP = 10;
+
+function lookupResolveClassId(classRaw, section) {
+  const roman = LOOKUP_ROMAN[String(classRaw)];
+  if (!roman) return null;
+  const sec = section && String(section).trim() ? String(section).trim() : "";
+  return sec ? `${roman}-${sec}` : roman;
+}
+
+exports.lookupReportCard = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    const classRaw = String(request.data?.class || "").trim();
+    const rollNo = parseInt(request.data?.rollNo, 10);
+    const dob = String(request.data?.dob || "").trim();
+    if (!classRaw || !rollNo || !dob) {
+      throw new HttpsError("invalid-argument", "Class, Roll No and Date of Birth are all required.");
+    }
+
+    // ── Kill switch ──────────────────────────────────────────────────────────
+    const settingsSnap = await db.collection("settings").doc("report_card_lookup").get();
+    const settings = settingsSnap.exists ? settingsSnap.data() : null;
+    if (!settings || settings.enabled !== true) {
+      throw new HttpsError("failed-precondition", "Report card lookup is not currently available.");
+    }
+
+    // ── Rate limit: per-IP, per-day cap ─────────────────────────────────────
+    const ip = request.rawRequest?.ip || request.rawRequest?.headers?.["x-forwarded-for"] || "unknown";
+    const dayKey = new Date().toISOString().slice(0, 10);
+    const attemptRef = db.collection("lookup_attempts").doc(`${ip}_${dayKey}`);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(attemptRef);
+      const count = snap.exists ? (snap.data().count || 0) : 0;
+      if (count >= LOOKUP_DAILY_CAP) {
+        throw new HttpsError("resource-exhausted", "Too many attempts today. Please try again tomorrow or contact the school office.");
+      }
+      tx.set(attemptRef, {
+        count: count + 1,
+        lastAttemptAt: new Date().toISOString(),
+      }, { merge: true });
+    });
+
+    // ── Match the student (Admin SDK bypasses rules; students has no public read) ──
+    const studentsSnap = await db.collection("students")
+      .where("class", "==", classRaw)
+      .where("rollNo", "==", rollNo)
+      .get();
+
+    const NO_MATCH = "No matching student found. Please check the Class, Roll No and Date of Birth and try again.";
+    const matches = studentsSnap.docs.filter(d => d.data().dob === dob);
+    if (matches.length !== 1) {
+      throw new HttpsError("not-found", NO_MATCH);
+    }
+    const studentDoc = matches[0];
+    const student = studentDoc.data();
+    const studentId = student.studentId || studentDoc.id;
+
+    // ── Branch by system ─────────────────────────────────────────────────────
+    if (LOOKUP_PREPRIMARY_CLASSES.has(classRaw)) {
+      const term = settings.term === "HY2" ? "HY2" : "HY1";
+      const docId = `${String(studentId).replace(/\//g, "_").replace(/\s+/g, "_")}_${term}`;
+      const cardSnap = await db.collection("report_cards").doc(docId).get();
+      if (!cardSnap.exists || cardSnap.data().status !== "released") {
+        throw new HttpsError("failed-precondition", "No released report card found for this student yet.");
+      }
+      return { system: "report_cards", reportCard: cardSnap.data() };
+    }
+
+    const classId = lookupResolveClassId(classRaw, student.section);
+    if (!classId) {
+      throw new HttpsError("invalid-argument", "Unsupported class.");
+    }
+    const ftSnap = await db.collection("marks").doc(`${classId}_FT`).collection("students").doc(studentId).get();
+    if (!ftSnap.exists || ftSnap.data().releasedToStudent !== true) {
+      throw new HttpsError("failed-precondition", "No released report card found for this student yet.");
+    }
+    const ftData = ftSnap.data();
+    let hyData = {};
+    const hySnap = await db.collection("marks").doc(`${classId}_HY`).collection("students").doc(studentId).get();
+    if (hySnap.exists) hyData = hySnap.data();
+
+    return {
+      system: "marks",
+      classId,
+      studentId,
+      studentInfo: { name: student.name || "", rollNo: student.rollNo || 0, admissionNo: student.admissionNo || "", dob: student.dob || "", house: student.house || "" },
+      hyData,
+      ftData,
+    };
+  }
+);
