@@ -33,6 +33,7 @@ import {
   deleteField,
   writeBatch,
   documentId,
+  runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   getMessaging,
@@ -4589,6 +4590,143 @@ function _arcCalcTotal(academics) {
       console.warn("[AssessmentSummary]", e.message);
     }
   }),
+  (window._classReviewSessionCache = {}),
+  (window._classReviewNameCache = {}),
+  // Class teacher's only allowed transition is submitted -> reviewed. Locking
+  // (reviewed -> locked) is a separate, admin-only gate handled elsewhere —
+  // this function will never be called with currentStatus "reviewed".
+  (window._markAssessmentReviewed = async function (sessionId) {
+    const btn = document.querySelector(`button[data-session-id="${sessionId}"]`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Working…'; }
+    try {
+      // Atomic check-and-set: only write "reviewed" if the doc is still
+      // "submitted" at the moment of the transaction, so a concurrent admin
+      // action (e.g. reviewing/locking it themselves) can never be silently
+      // clobbered by this click.
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, "assessment_sessions", sessionId);
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error("Session no longer exists.");
+        const liveStatus = snap.data().session?.status;
+        if (liveStatus !== "submitted") {
+          throw new Error(`Already moved to "${liveStatus}" by someone else — refreshing.`);
+        }
+        tx.update(ref, {
+          "session.status": "reviewed",
+          "session.updated_at": new Date().toISOString()
+        });
+      });
+      window.showToast?.("✅ Marked reviewed");
+    } catch (e) {
+      window.showToast?.("⚠️ " + e.message);
+    }
+    window.loadClassAssessmentReview && loadClassAssessmentReview();
+  }),
+  (window._toggleAssessmentSessionDetail = async function (sessionId, cls) {
+    const detailEl = document.getElementById(`review-detail-${sessionId}`);
+    if (!detailEl) return;
+    if (detailEl.style.display === "block") { detailEl.style.display = "none"; return; }
+    detailEl.style.display = "block";
+    if (detailEl.dataset.rendered) return;
+    detailEl.dataset.rendered = "1";
+
+    const entry = window._classReviewSessionCache[sessionId];
+    const marks = entry?.marks || {};
+    const studentIds = Object.keys(marks);
+    if (!studentIds.length) {
+      detailEl.innerHTML = `<p style="font-size:12px;color:var(--text-light);padding:8px 0">No marks recorded in this session.</p>`;
+      return;
+    }
+
+    if (!window._classReviewNameCache[cls]) {
+      try {
+        const stuSnap = await getDocs(query(collection(db, "students"), where("class", "==", String(cls))));
+        const map = {};
+        stuSnap.forEach(d => { const v = d.data(); map[v.student_id || d.id] = v.full_name || v.name || d.id; });
+        window._classReviewNameCache[cls] = map;
+      } catch (e) {
+        window._classReviewNameCache[cls] = {};
+      }
+    }
+    const nameMap = window._classReviewNameCache[cls];
+
+    const rows = studentIds.map(sid => {
+      const criteriaMarks = marks[sid] || {};
+      const scores = Object.values(criteriaMarks).filter(v => typeof v === "number");
+      const absent = Object.values(criteriaMarks).some(v => v && typeof v === "object" && v.attendance === "absent");
+      const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : null;
+      return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0">
+        <span>${nameMap[sid] || sid}</span>
+        <span>${absent ? '<span style="color:var(--danger)">Absent noted</span>' : (avg !== null ? `avg ${avg}/5` : "—")}</span>
+      </div>`;
+    }).join("");
+
+    detailEl.innerHTML = `<div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;margin:6px 0">${rows}</div>`;
+  }),
+  (window.loadClassAssessmentReview = async function () {
+    const card = document.getElementById("t-dash-class-review-card");
+    const wrap = document.getElementById("t-dash-class-review");
+    if (!card || !wrap) return;
+    const cls = window._currentTeacherClass || "";
+    if (!cls) { card.style.display = "none"; return; }
+    card.style.display = "";
+
+    try {
+      const _N2R = { 1: "I", 2: "II" };
+      const sessionClassLabel = _N2R[cls] ? `Class ${_N2R[cls]}` : `Class ${cls}`;
+
+      const sessSnap = await getDocs(query(
+        collection(db, "assessment_sessions"),
+        where("session.class", "==", sessionClassLabel),
+        limit(100)
+      ));
+      const needsReview = [];
+      let lockedCount = 0;
+      window._classReviewSessionCache = {};
+      sessSnap.forEach(d => {
+        const s = d.data().session || {};
+        if (s.status === "submitted" || s.status === "reviewed") {
+          needsReview.push({ id: d.id, ...s });
+          window._classReviewSessionCache[d.id] = d.data();
+        } else if (s.status === "locked") {
+          lockedCount++;
+        }
+      });
+      needsReview.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+      if (!needsReview.length) {
+        wrap.innerHTML = `<p style="color:var(--success);font-weight:700;font-size:13px"><i class="fas fa-check-circle" style="margin-right:6px"></i>Nothing waiting for review.${lockedCount ? ` (${lockedCount} already locked)` : ""}</p>`;
+        return;
+      }
+
+      const rows = needsReview.map(s => {
+        const badgeColor = s.status === "submitted" ? "#e67e22" : "#2980b9";
+        const actionHtml = s.status === "submitted"
+          ? `<button class="btn btn-sm btn-primary" data-session-id="${s.id}" style="font-size:11px;white-space:nowrap" onclick="window._markAssessmentReviewed('${s.id}')"><i class="fas fa-check"></i> Mark Reviewed</button>`
+          : `<span style="font-size:11px;color:var(--text-light);font-style:italic">Awaiting admin lock</span>`;
+        return `
+        <div style="border-bottom:1px solid var(--border);padding:10px 0">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div style="font-size:13px">
+              <strong>${s.subject_name || s.subject_id}</strong> · ${s.teacher_name || "—"}
+              <br><span style="font-size:11px;color:var(--text-light)">Week of ${s.weekStart || s.date || "—"}
+              &nbsp;<span style="background:${badgeColor};color:#fff;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;text-transform:uppercase">${s.status}</span></span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;white-space:nowrap">
+              <button class="btn btn-sm btn-outline" style="font-size:11px" onclick="window._toggleAssessmentSessionDetail('${s.id}','${cls}')"><i class="fas fa-eye"></i> View Submitted</button>
+              ${actionHtml}
+            </div>
+          </div>
+          <div id="review-detail-${s.id}" style="display:none"></div>
+        </div>`;
+      }).join("");
+
+      wrap.innerHTML = `<div>${rows}</div>` + (lockedCount ? `<p style="font-size:11px;color:var(--text-light);margin-top:10px">${lockedCount} session${lockedCount > 1 ? "s" : ""} already locked this class.</p>` : "");
+    } catch (e) {
+      wrap.innerHTML = `<p style="color:var(--text-light);font-size:13px"><i class="fas fa-info-circle" style="margin-right:6px"></i>Review data unavailable.</p>`;
+      console.warn("[ClassAssessmentReview]", e.message);
+    }
+  }),
   (window.loadTeacherGlance = async function () {
     const attEl = document.getElementById("t-glance-att"),
       hwEl  = document.getElementById("t-glance-hw"),
@@ -4661,7 +4799,8 @@ function _arcCalcTotal(academics) {
       ),
       _checkHolidayBanner("t-holiday-banner"),
       window.loadTeacherGlance && loadTeacherGlance(),
-      window.loadAssessmentSummary && loadAssessmentSummary());
+      window.loadAssessmentSummary && loadAssessmentSummary(),
+      window.loadClassAssessmentReview && loadClassAssessmentReview());
     const holEl = document.getElementById("t-dash-holidays");
     if (holEl)
       try {
