@@ -4692,36 +4692,61 @@ function _arcCalcTotal(academics) {
           lockedCount++;
         }
       });
-      needsReview.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-
       if (!needsReview.length) {
         wrap.innerHTML = `<p style="color:var(--success);font-weight:700;font-size:13px"><i class="fas fa-check-circle" style="margin-right:6px"></i>Nothing waiting for review.${lockedCount ? ` (${lockedCount} already locked)` : ""}</p>`;
         return;
       }
 
-      const rows = needsReview.map(s => {
-        const badgeColor = s.status === "submitted" ? "#e67e22" : "#2980b9";
-        const actionHtml = s.status === "submitted"
-          ? `<button class="btn btn-sm btn-primary" data-session-id="${s.id}" style="font-size:11px;white-space:nowrap" onclick="window._markAssessmentReviewed('${s.id}')"><i class="fas fa-check"></i> Mark Reviewed</button>`
-          : `<span style="font-size:11px;color:var(--text-light);font-style:italic">Awaiting admin lock</span>`;
-        return `
-        <div style="border-bottom:1px solid var(--border);padding:10px 0">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-            <div style="font-size:13px">
+      // Group by calendar month (of weekStart/date) so records read like a
+      // proper monthly log -- April, May, June -- instead of one flat list.
+      const groups = {};
+      needsReview.forEach(s => {
+        const raw = s.weekStart || s.date || "";
+        const ym = raw.slice(0, 7); // "2026-04"
+        (groups[ym] = groups[ym] || []).push(s);
+      });
+      const monthKeys = Object.keys(groups).sort((a, b) => {
+        if (!a) return 1;
+        if (!b) return -1;
+        return a.localeCompare(b);
+      });
+      Object.values(groups).forEach(g => g.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)));
+
+      const monthLabel = (ym) => {
+        if (!ym) return "Undated";
+        const [y, m] = ym.split("-").map(Number);
+        return new Date(y, m - 1, 1).toLocaleString("en-IN", { month: "long", year: "numeric" });
+      };
+
+      const sections = monthKeys.map(ym => {
+        const rows = groups[ym].map(s => {
+          const badgeColor = s.status === "submitted" ? "#e67e22" : "#2980b9";
+          const actionHtml = s.status === "submitted"
+            ? `<button class="btn btn-sm btn-primary" data-session-id="${s.id}" style="font-size:11px;white-space:nowrap" onclick="window._markAssessmentReviewed('${s.id}')"><i class="fas fa-check"></i> Mark Reviewed</button>`
+            : `<span style="font-size:11px;color:var(--text-light);font-style:italic">Awaiting admin lock</span>`;
+          return `
+          <div style="border-bottom:1px solid var(--border);padding:10px 0;display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:13px;min-width:0">
               <strong>${s.subject_name || s.subject_id}</strong> · ${s.teacher_name || "—"}
               <br><span style="font-size:11px;color:var(--text-light)">Week of ${s.weekStart || s.date || "—"}
               &nbsp;<span style="background:${badgeColor};color:#fff;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;text-transform:uppercase">${s.status}</span></span>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;white-space:nowrap">
-              <button class="btn btn-sm btn-outline" style="font-size:11px" onclick="window._toggleAssessmentSessionDetail('${s.id}','${cls}')"><i class="fas fa-eye"></i> View Submitted</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-sm btn-outline" style="font-size:11px;white-space:nowrap" onclick="window._toggleAssessmentSessionDetail('${s.id}','${cls}')"><i class="fas fa-eye"></i> View Submitted</button>
               ${actionHtml}
             </div>
-          </div>
-          <div id="review-detail-${s.id}" style="display:none"></div>
+            <div id="review-detail-${s.id}" style="display:none"></div>
+          </div>`;
+        }).join("");
+
+        return `
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;font-weight:800;color:var(--accent-dark);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;padding-bottom:4px;border-bottom:2px solid var(--accent)">${monthLabel(ym)} <span style="font-weight:600;color:var(--text-light);text-transform:none">(${groups[ym].length})</span></div>
+          ${rows}
         </div>`;
       }).join("");
 
-      wrap.innerHTML = `<div>${rows}</div>` + (lockedCount ? `<p style="font-size:11px;color:var(--text-light);margin-top:10px">${lockedCount} session${lockedCount > 1 ? "s" : ""} already locked this class.</p>` : "");
+      wrap.innerHTML = sections + (lockedCount ? `<p style="font-size:11px;color:var(--text-light);margin-top:10px">${lockedCount} session${lockedCount > 1 ? "s" : ""} already locked this class.</p>` : "");
     } catch (e) {
       wrap.innerHTML = `<p style="color:var(--text-light);font-size:13px"><i class="fas fa-info-circle" style="margin-right:6px"></i>Review data unavailable.</p>`;
       console.warn("[ClassAssessmentReview]", e.message);
