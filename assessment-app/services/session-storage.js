@@ -32,16 +32,9 @@ export async function syncSessionsFromFirestore() {
     const remote = await fetchSessions();
     if (remote.length === 0) return;
 
-    // Merge remote into local — keep demo sessions, overwrite real ones
-    const local = getAllSessions();
-    const demoSessions = local.filter(s => s.session.session_id.startsWith('demo_'));
-    const merged = [...remote];
-    demoSessions.forEach(demo => {
-      if (!merged.find(s => s.session.session_id === demo.session.session_id)) {
-        merged.push(demo);
-      }
-    });
-    writeLocalCache(merged);
+    // Firestore is the source of truth — overwrite local cache entirely,
+    // including any leftover demo_/drillDemo_ sessions from local generation.
+    writeLocalCache(remote);
   } catch (err) {
     console.warn('Firestore sync failed, using local cache:', err.message);
   }
