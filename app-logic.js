@@ -1,3 +1,4 @@
+import { FIRESTORE_TO_DISPLAY_CLASS } from "./assessment-app/services/student-loader.js";
 import {
   initializeApp,
   getApps,
@@ -4524,10 +4525,9 @@ function _arcCalcTotal(academics) {
       const ym = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, "0")}`;
       const monthLabel = now.toLocaleString("en-IN", { month: "long", year: "numeric" });
 
-      // assessment-app stores Class 1/2 as Roman numerals ("Class I"/"Class II"),
-      // unlike every other class field in this app — match its actual write format.
-      const _N2R = { 1: "I", 2: "II" };
-      const sessionClassLabel = _N2R[cls] ? `Class ${_N2R[cls]}` : `Class ${cls}`;
+      // assessment-app stores Class 1/2 as Roman numerals ("Class I"/"Class II")
+      // and SKG/LKG verbatim — reuse the canonical map so all classes resolve.
+      const sessionClassLabel = FIRESTORE_TO_DISPLAY_CLASS[String(cls)] || `Class ${cls}`;
 
       // The per-class subject list lives in assessment-app's own static registry,
       // not the Firestore "subjects" collection (that collection is an unrelated
@@ -4672,8 +4672,7 @@ function _arcCalcTotal(academics) {
     card.style.display = "";
 
     try {
-      const _N2R = { 1: "I", 2: "II" };
-      const sessionClassLabel = _N2R[cls] ? `Class ${_N2R[cls]}` : `Class ${cls}`;
+      const sessionClassLabel = FIRESTORE_TO_DISPLAY_CLASS[String(cls)] || `Class ${cls}`;
 
       const sessSnap = await getDocs(query(
         collection(db, "assessment_sessions"),
