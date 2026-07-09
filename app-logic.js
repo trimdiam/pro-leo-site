@@ -4642,7 +4642,10 @@ function _arcCalcTotal(academics) {
       try {
         const stuSnap = await getDocs(query(collection(db, "students"), where("class", "==", String(cls))));
         const map = {};
-        stuSnap.forEach(d => { const v = d.data(); map[v.student_id || d.id] = v.full_name || v.name || d.id; });
+        stuSnap.forEach(d => {
+          const v = d.data();
+          map[v.student_id || d.id] = { name: v.full_name || v.name || d.id, rollNo: v.rollNo };
+        });
         window._classReviewNameCache[cls] = map;
       } catch (e) {
         window._classReviewNameCache[cls] = {};
@@ -4650,18 +4653,32 @@ function _arcCalcTotal(academics) {
     }
     const nameMap = window._classReviewNameCache[cls];
 
-    const rows = studentIds.map(sid => {
-      const criteriaMarks = marks[sid] || {};
-      const scores = Object.values(criteriaMarks).filter(v => typeof v === "number");
-      const absent = Object.values(criteriaMarks).some(v => v && typeof v === "object" && v.attendance === "absent");
-      const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : null;
-      return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0">
-        <span>${nameMap[sid] || sid}</span>
-        <span>${absent ? '<span style="color:var(--danger)">Absent noted</span>' : (avg !== null ? `avg ${avg}/5` : "—")}</span>
-      </div>`;
-    }).join("");
+    const rows = studentIds
+      .map(sid => {
+        const criteriaMarks = marks[sid] || {};
+        const scores = Object.values(criteriaMarks).filter(v => typeof v === "number");
+        const absent = Object.values(criteriaMarks).some(v => v && typeof v === "object" && v.attendance === "absent");
+        const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : null;
+        const info = nameMap[sid] || {};
+        return { sid, rollNo: info.rollNo, name: info.name || sid, absent, avg };
+      })
+      .sort((a, b) => {
+        const ra = typeof a.rollNo === "number" ? a.rollNo : parseInt(a.rollNo, 10);
+        const rb = typeof b.rollNo === "number" ? b.rollNo : parseInt(b.rollNo, 10);
+        if (!isNaN(ra) && !isNaN(rb)) return ra - rb;
+        if (!isNaN(ra)) return -1;
+        if (!isNaN(rb)) return 1;
+        return a.name.localeCompare(b.name);
+      })
+      .map(r => `
+        <div style="display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;font-size:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+          <span style="color:var(--text-light);font-weight:700">${r.rollNo != null && r.rollNo !== "" ? r.rollNo : "—"}</span>
+          <span style="min-width:0;overflow-wrap:break-word">${r.name}</span>
+          <span style="white-space:nowrap;text-align:right">${r.absent ? '<span style="color:var(--danger)">Absent noted</span>' : (r.avg !== null ? `avg ${r.avg}/5` : "—")}</span>
+        </div>`)
+      .join("");
 
-    detailEl.innerHTML = `<div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;margin:6px 0">${rows}</div>`;
+    detailEl.innerHTML = `<div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;margin:6px 0;overflow-x:auto">${rows}</div>`;
   }),
   (window.loadClassAssessmentReview = async function () {
     const card = document.getElementById("t-dash-class-review-card");
