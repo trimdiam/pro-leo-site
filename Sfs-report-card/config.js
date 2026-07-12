@@ -8,6 +8,64 @@
 
 const CONFIG = {
   // ─────────────────────────────────────────────────────────────────────────────
+  // CLASS I
+  // ─────────────────────────────────────────────────────────────────────────────
+  1: {
+    schoolName: "St. Francis De Sales School",
+    grandTotalMax: 700,
+    markScheme: "standard",
+    note: null,
+    subjects: [
+      { key: "mathematics",      label: "Mathematics",      isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "science",          label: "Science",          isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "english_i",        label: "English I",        isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "english_ii",       label: "English II",       isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "hindi",            label: "Hindi",            isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "khasi_alt_english",label: "Khasi/Alt. English",isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "spelling",         label: "Spelling",         isAggregate: false, components: [], countInTotal: true,  singleTotal: true  }
+    ],
+    coScholastic: [
+      { key: "pe",               label: "P.E." },
+      { key: "singing",          label: "Singing" },
+      { key: "discipline",       label: "Discipline" },
+      { key: "gk",               label: "Aptitude" },
+      { key: "arts_craft",       label: "Arts & Craft" },
+      { key: "neatness",         label: "Neatness" },
+      { key: "val_edu_catechism",label: "Val. Edu./Catechism" }
+    ],
+    aggregates: []
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // CLASS II
+  // ─────────────────────────────────────────────────────────────────────────────
+  2: {
+    schoolName: "St. Francis De Sales School",
+    grandTotalMax: 700,
+    markScheme: "standard",
+    note: null,
+    subjects: [
+      { key: "mathematics",      label: "Mathematics",      isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "science",          label: "Science",          isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "english_i",        label: "English I",        isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "english_ii",       label: "English II",       isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "hindi",            label: "Hindi",            isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "khasi_alt_english",label: "Khasi/Alt. English",isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
+      { key: "spelling",         label: "Spelling",         isAggregate: false, components: [], countInTotal: true,  singleTotal: true  }
+    ],
+    coScholastic: [
+      { key: "pe",               label: "P.E." },
+      { key: "singing",          label: "Singing" },
+      { key: "discipline",       label: "Discipline" },
+      { key: "gk",               label: "Aptitude" },
+      { key: "arts_craft",       label: "Arts & Craft" },
+      { key: "neatness",         label: "Neatness" },
+      { key: "val_edu_catechism",label: "Val. Edu./Catechism" }
+    ],
+    aggregates: []
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // CLASS III
   // ─────────────────────────────────────────────────────────────────────────────
   3: {
@@ -397,6 +455,8 @@ function subjectFailsFloor(ia, exam, cfg, subj) {
 // ─────────────────────────────────────────────────────────────────────────────
 function validateConfig() {
   const expected = {
+    1:  { subjects: 7,  grandTotalMax: 700, markScheme: "standard" },
+    2:  { subjects: 7,  grandTotalMax: 700, markScheme: "standard" },
     3:  { subjects: 8,  grandTotalMax: 800, markScheme: "standard" },
     4:  { subjects: 9,  grandTotalMax: 900, markScheme: "standard" },
     5:  { subjects: 9,  grandTotalMax: 900, markScheme: "standard" },
