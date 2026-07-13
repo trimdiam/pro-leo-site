@@ -42,7 +42,7 @@ export async function syncSessionsFromFirestore() {
 
 // ── Write ─────────────────────────────────────────────────────────────────────
 
-export function saveSession(session, marks) {
+function buildEntryAndWriteLocal(session, marks) {
   if (!session || !session.session_id) throw new Error('Invalid session');
 
   const entry = {
@@ -51,7 +51,6 @@ export function saveSession(session, marks) {
     saved_at: new Date().toISOString()
   };
 
-  // 1. Write to localStorage immediately (keeps UI responsive)
   const sessions = getAllSessions();
   const idx = sessions.findIndex(s => s.session.session_id === session.session_id);
   if (idx >= 0) {
@@ -61,12 +60,36 @@ export function saveSession(session, marks) {
   }
   writeLocalCache(sessions);
 
-  // 2. Write to Firestore + refresh student profiles in the background.
+  return entry;
+}
+
+// Fire-and-forget save — local write is immediate, Firestore write happens in
+// the background. Used for autosave, where blocking on the network every
+// ~30s would hurt UX and a missed sync just gets picked up by the next tick.
+export function saveSession(session, marks) {
+  const entry = buildEntryAndWriteLocal(session, marks);
+
   persistSession(entry.session, entry.marks)
     .then(() => refreshProfilesForSession(entry.session, entry.marks))
     .catch(err => console.error('Firestore save failed:', err.message));
 
   return entry;
+}
+
+// Awaited save — local write is still immediate, but the caller gets the real
+// Firestore outcome instead of finding out never. Use this for any action
+// that tells the teacher "submitted" / "saved" — autosave should keep using
+// saveSession() above so it doesn't block typing on network latency.
+export async function saveSessionAndConfirm(session, marks) {
+  const entry = buildEntryAndWriteLocal(session, marks);
+
+  try {
+    await persistSession(entry.session, entry.marks);
+    refreshProfilesForSession(entry.session, entry.marks);
+    return { ok: true, entry };
+  } catch (err) {
+    return { ok: false, entry, error: err.message || 'Could not reach the server.' };
+  }
 }
 
 // ── Dynamic profile refresh ─────────────────────────────────────────────────

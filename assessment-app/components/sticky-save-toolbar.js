@@ -49,6 +49,7 @@ export function createStickySaveToolbar({
   const submitBtn = document.createElement('button');
   submitBtn.type = 'button';
   submitBtn.className = 'btn btn-secondary btn-sm';
+  submitBtn.dataset.action = 'submit';
   submitBtn.textContent = 'Submit';
   submitBtn.addEventListener('click', onSubmit);
 

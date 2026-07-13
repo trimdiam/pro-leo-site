@@ -205,8 +205,10 @@
     cfg.subjects.forEach(function(subj) {
       var hyA = (hyData.academics || {})[subj.key] || {};
       var ftA = (ftData.academics || {})[subj.key] || {};
-      var hyT, ftT, hyIa, hyEx, ftIa, ftEx;
+      var hyT, ftT, hyIa, hyEx, ftIa, ftEx, hyExists, ftExists;
       if (subj.isAggregate) {
+        hyExists = subj.components.every(function(k){ return (hyData.academics || {})[k]?.total != null; });
+        ftExists = subj.components.every(function(k){ return (ftData.academics || {})[k]?.total != null; });
         var hyAgg = computeAggregateSubject(hyData.academics, subj);
         var ftAgg = computeAggregateSubject(ftData.academics, subj);
         hyT = hyAgg.total; hyIa = hyAgg.ia; hyEx = hyAgg.exam;
@@ -214,6 +216,8 @@
         hyS[subj.key] = {ia:hyIa, ut:0, exam:hyEx, total:hyT};
         ftS[subj.key] = {ia:ftIa, ut:0, exam:ftEx, total:ftT};
       } else {
+        hyExists = hyA.total != null;
+        ftExists = ftA.total != null;
         hyT = hyA.total || 0; ftT = ftA.total || 0;
         hyIa = hyA.IA||hyA.singleMark||0; hyEx = hyA.TE||0;
         ftIa = ftA.IA||ftA.singleMark||0; ftEx = ftA.TE||0;
@@ -222,11 +226,11 @@
       }
       if (subj.countInTotal) {
         hyGrand += hyT; ftGrand += ftT;
-        if (hyT < passmark || ftT < passmark ||
-            subjectFailsFloor(hyIa, hyEx, cfg, subj) ||
-            subjectFailsFloor(ftIa, ftEx, cfg, subj)) {
-          result = 'FAIL';
-        }
+        // Only evaluate a term's pass/fail once that term's marks actually
+        // exist — a term with no data yet must never force a FAIL.
+        var hySubjFail = hyExists && (hyT < passmark || subjectFailsFloor(hyIa, hyEx, cfg, subj));
+        var ftSubjFail = ftExists && (ftT < passmark || subjectFailsFloor(ftIa, ftEx, cfg, subj));
+        if (hySubjFail || ftSubjFail) result = 'FAIL';
       }
       consolS[subj.key] = {term1:hyT, term2:ftT, total:hyT+ftT};
     });

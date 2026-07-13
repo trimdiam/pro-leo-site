@@ -16,7 +16,8 @@ import { loadStudentsForClass } from './services/student-loader.js';
 import { createSession, validateMark } from './services/assessment-engine.js';
 import { initializeMarksWithDefault } from './services/fast-entry-engine.js';
 import { calculateSessionProgress } from './services/totals-engine.js';
-import { saveSession, getSession, getAllSessions, syncSessionsFromFirestore } from './services/session-storage.js';
+import { saveSession, saveSessionAndConfirm, getSession, getAllSessions, syncSessionsFromFirestore } from './services/session-storage.js';
+import { fetchSessions } from './services/firestore-service.js';
 import { updateSessionStatus, loadFullSessionData, SESSION_STATUS } from './services/session-review-engine.js';
 import { aggregateByMonth, extractYearMonth, clearAggregationCache } from './services/aggregation-engine.js';
 import { getCurrentUser, isTeacher, isAdmin, isLoggedIn, resolveAuthSession } from './services/auth-service.js';
@@ -109,6 +110,11 @@ const state = {
   expandedCards: {},
   showRemainingOnly: false,
   saveStatus: 'idle',
+  lastSessionSync: null,
+  syncingSessions: false,
+  mySubmissions: null,       // null = not loaded yet; [] = loaded, empty
+  mySubmissionsLoading: false,
+  mySubmissionsError: '',
 
   // Class test (Half-Yearly, 30% of blended score) — Class I/II only
   classTestConfig: null,
@@ -127,6 +133,30 @@ let autosaveTimer = null;
 
 // Read ?student= URL param for deep-link from pro-leo-site
 const _deepLinkStudentId = new URLSearchParams(window.location.search).get('student') || '';
+
+// Sessions were previously only synced from Firestore 3 times in the app's
+// lifetime (page load, login, demo-gen), so review screens reading the local
+// cache could sit stale indefinitely while a tab stayed open. Re-sync whenever
+// the teacher actually looks at a review-type screen, and on tab focus —
+// throttled so switching tabs rapidly doesn't spam Firestore.
+const SYNC_MIN_INTERVAL_MS = 20000;
+async function syncSessionsAndRerender({ force = false } = {}) {
+  if (!isLoggedIn()) return;
+  if (state.syncingSessions) return;
+  if (!force && state.lastSessionSync && (Date.now() - state.lastSessionSync) < SYNC_MIN_INTERVAL_MS) return;
+
+  state.syncingSessions = true;
+  render();
+  try {
+    await syncSessionsFromFirestore();
+  } finally {
+    state.syncingSessions = false;
+    state.lastSessionSync = Date.now();
+    render();
+  }
+}
+
+window.addEventListener('focus', () => { syncSessionsAndRerender(); });
 
 async function init() {
   // Run subjects load and auth resolution in parallel — saves one full round-trip
@@ -149,7 +179,7 @@ async function init() {
     applyDeepLink();
     render();
     // Sync in background; re-render silently when done
-    syncSessionsFromFirestore().finally(() => render());
+    syncSessionsAndRerender({ force: true });
     syncClassTestsFromFirestore().finally(() => render());
   } else {
     import('./services/firebase-config.js').then(({ auth }) => {
@@ -210,6 +240,9 @@ function render() {
   } else if (state.mode === 'classtest') {
     setupRoot.replaceChildren();
     renderClassTest();
+  } else if (state.mode === 'mysubmissions') {
+    setupRoot.replaceChildren();
+    renderMySubmissions();
   }
 }
 
@@ -221,7 +254,7 @@ function renderLogin() {
       if (user?.name) state.teacherName = user.name;
       applyDeepLink();
       render();
-      syncSessionsFromFirestore().finally(() => render());
+      syncSessionsAndRerender({ force: true });
     },
     onLogout: () => render(),
     onGenerateDemo: async () => { const a = await getAdminComponents(); a.generateDemoData(); },
@@ -230,7 +263,7 @@ function renderLogin() {
       const a = await getAdminComponents();
       const n = await a.generateWeeklyMathDemo();
       alert(`Weekly Maths demo loaded: ${n} sessions for Class I. Profiles updated.`);
-      syncSessionsFromFirestore().finally(() => render());
+      syncSessionsAndRerender({ force: true });
     },
     onGenerateClass1DrillDemo: async () => {
       const a = await getAdminComponents();
@@ -274,6 +307,13 @@ function renderNav() {
     testBtn.textContent = 'Class Test';
     testBtn.addEventListener('click', () => switchMode('classtest'));
     nav.append(testBtn);
+
+    const mySubBtn = document.createElement('button');
+    mySubBtn.type = 'button';
+    mySubBtn.className = `nav-btn ${state.mode === 'mysubmissions' ? 'active' : ''}`;
+    mySubBtn.textContent = 'My Submissions';
+    mySubBtn.addEventListener('click', () => switchMode('mysubmissions'));
+    nav.append(mySubBtn);
   }
 
   if (isAdmin()) {
@@ -502,6 +542,127 @@ function renderAssessment() {
   assessmentRoot.append(stickyToolbar);
 }
 
+// ── My Submissions ──────────────────────────────────────────────────────────
+// A subject/class teacher's own durable record of everything they've
+// submitted, independent of the one-time submit alert. Queries Firestore
+// directly (not the local session cache) so it can't lie about a save that
+// never reached the server, and stays accurate even from a different device.
+async function renderMySubmissions() {
+  if (!isTeacher()) {
+    assessmentRoot.replaceChildren(createStatus('Access denied: teacher role required.'));
+    return;
+  }
+
+  assessmentRoot.replaceChildren();
+
+  const panel = document.createElement('section');
+  panel.className = 'panel';
+
+  const headingRow = document.createElement('div');
+  headingRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap';
+  const heading = document.createElement('h2');
+  heading.className = 'section-heading';
+  heading.style.margin = '0';
+  heading.textContent = 'My Submissions';
+  headingRow.append(heading);
+
+  const refreshBtn = document.createElement('button');
+  refreshBtn.type = 'button';
+  refreshBtn.className = 'btn btn-sm btn-secondary';
+  refreshBtn.textContent = state.mySubmissionsLoading ? 'Loading…' : 'Refresh';
+  refreshBtn.disabled = state.mySubmissionsLoading;
+  refreshBtn.addEventListener('click', () => loadMySubmissions());
+  headingRow.append(refreshBtn);
+  panel.append(headingRow);
+
+  const note = document.createElement('p');
+  note.className = 'empty-state';
+  note.style.cssText = 'font-size:0.82rem;margin:6px 0 14px';
+  note.textContent = 'This list is read live from the server — if a submission shows up here, it is confirmed saved, not just saved on this device.';
+  panel.append(note);
+
+  assessmentRoot.append(panel);
+
+  if (state.mySubmissions === null && !state.mySubmissionsLoading) {
+    loadMySubmissions();
+    return;
+  }
+
+  if (state.mySubmissionsLoading) {
+    panel.append(createStatus('Loading your submissions from the server…'));
+    return;
+  }
+
+  if (state.mySubmissionsError) {
+    const err = document.createElement('p');
+    err.className = 'error-state';
+    err.textContent = state.mySubmissionsError;
+    panel.append(err);
+    return;
+  }
+
+  const mine = state.mySubmissions || [];
+  if (mine.length === 0) {
+    panel.append(createStatus("No submissions found for your name yet. If you've submitted something and don't see it here, it did not reach the server — please submit again."));
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'session-list';
+  mine
+    .slice()
+    .sort((a, b) => new Date(b.session.updated_at || 0) - new Date(a.session.updated_at || 0))
+    .forEach(entry => list.append(createMySubmissionRow(entry)));
+  panel.append(list);
+}
+
+async function loadMySubmissions() {
+  state.mySubmissionsLoading = true;
+  state.mySubmissionsError = '';
+  render();
+  try {
+    const all = await fetchSessions();
+    state.mySubmissions = all.filter(s => stripTitle(s.session.teacher_name) === stripTitle(state.teacherName));
+  } catch (err) {
+    state.mySubmissionsError = `Could not load submissions: ${err.message}. Check your connection and try Refresh.`;
+  } finally {
+    state.mySubmissionsLoading = false;
+    render();
+  }
+}
+
+function createMySubmissionRow(entry) {
+  const sess = entry.session;
+  const row = document.createElement('div');
+  row.className = 'session-row';
+
+  const info = document.createElement('div');
+  info.className = 'session-row-info';
+  const title = document.createElement('div');
+  title.className = 'session-row-title';
+  title.textContent = `${sess.subject_name || sess.subject_id} — ${sess.class}`;
+  const meta = document.createElement('div');
+  meta.className = 'session-row-meta';
+  const period = sess.weekStart ? `Week of ${sess.weekStart}` : (sess.date || '');
+  const updated = sess.updated_at ? new Date(sess.updated_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  meta.textContent = `${period}${updated ? ' • last saved ' + updated : ''}`;
+  info.append(title, meta);
+
+  const badgesDiv = document.createElement('div');
+  badgesDiv.className = 'session-badges';
+  const badge = document.createElement('span');
+  badge.className = `status-badge status-${sess.status}`;
+  badge.textContent = capitalize(sess.status || 'draft');
+  badgesDiv.append(badge);
+
+  row.append(info, badgesDiv);
+  return row;
+}
+
+function capitalize(str) {
+  return String(str || '').charAt(0).toUpperCase() + String(str || '').slice(1);
+}
+
 function renderClassTest() {
   if (!isTeacher()) {
     assessmentRoot.replaceChildren(createStatus('Access denied: teacher role required.'));
@@ -594,6 +755,7 @@ function renderAdmin() {
       state.adminView = t.key;
       state.viewingStudentProfile = null;
       render();
+      if (t.key === 'sessions') syncSessionsAndRerender();
     });
     tabs.append(btn);
   });
@@ -767,6 +929,9 @@ function renderAdminSessions() {
     classes,
     subjects: state.allSubjects,
     filters: state.adminFilters,
+    lastSynced: state.lastSessionSync,
+    syncing: state.syncingSessions,
+    onRefresh: () => syncSessionsAndRerender({ force: true }),
     onFilterChange: filters => {
       state.adminFilters = filters;
       render();
@@ -1235,16 +1400,34 @@ function handleAbsentToggle(studentId, criterionId, isAbsent) {
   scheduleAutosave();
 }
 
-function handleSubmitSession() {
+async function handleSubmitSession() {
   if (!state.session) return;
   const progress = calculateSessionProgress(state.marks, state.students, state.criteria);
   if (progress.overallPercentage < 100) {
     const ok = confirm(`Only ${progress.overallPercentage}% complete. Submit anyway?`);
     if (!ok) return;
   }
+
+  const submitBtn = document.querySelector('.sticky-save-toolbar [data-action="submit"]');
+  const toolbarButtons = document.querySelectorAll('.sticky-save-toolbar button');
+  toolbarButtons.forEach(b => b.disabled = true);
+  if (submitBtn) submitBtn.textContent = 'Submitting…';
+
   state.session.status = 'submitted';
-  handleSave();
-  alert('Session submitted successfully.');
+  // Awaited — the teacher must see the REAL outcome, not an optimistic alert.
+  // A failed write here previously looked identical to a successful one.
+  const result = await saveSessionAndConfirm(state.session, state.marks);
+
+  if (!result.ok) {
+    state.session.status = 'draft'; // don't leave it stuck "submitted" locally when the server never saw it
+    toolbarButtons.forEach(b => b.disabled = false);
+    if (submitBtn) submitBtn.textContent = 'Submit';
+    alert(`Could not submit: ${result.error}\n\nYour marks are saved on this device — try Submit again once you're back online. Nothing was lost.`);
+    return;
+  }
+
+  state.lastSaved = new Date();
+  alert('Session submitted successfully — confirmed saved to the server.');
   state.mode = 'setup';
   state.session = null;
   state.marks = {};

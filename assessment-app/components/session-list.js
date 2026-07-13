@@ -4,6 +4,9 @@ export function createSessionList({
   classes = [],
   subjects = [],
   filters = {},
+  lastSynced = null,
+  syncing = false,
+  onRefresh = () => {},
   onFilterChange = () => {},
   onViewSession = () => {},
   onStatusChange = () => {}
@@ -11,10 +14,34 @@ export function createSessionList({
   const section = document.createElement('section');
   section.className = 'panel';
 
+  const headingRow = document.createElement('div');
+  headingRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap';
+
   const heading = document.createElement('h2');
   heading.className = 'section-heading';
+  heading.style.margin = '0';
   heading.textContent = 'Assessments';
-  section.append(heading);
+  headingRow.append(heading);
+
+  const syncBlock = document.createElement('div');
+  syncBlock.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:0.8rem;color:#666';
+
+  const syncLabel = document.createElement('span');
+  syncLabel.textContent = syncing
+    ? 'Syncing…'
+    : (lastSynced ? `Synced ${formatSyncTime(lastSynced)}` : 'Not yet synced');
+  syncBlock.append(syncLabel);
+
+  const refreshBtn = document.createElement('button');
+  refreshBtn.type = 'button';
+  refreshBtn.className = 'btn btn-sm btn-secondary';
+  refreshBtn.textContent = syncing ? 'Refreshing…' : 'Refresh';
+  refreshBtn.disabled = syncing;
+  refreshBtn.addEventListener('click', onRefresh);
+  syncBlock.append(refreshBtn);
+
+  headingRow.append(syncBlock);
+  section.append(headingRow);
 
   const filterBar = document.createElement('div');
   filterBar.className = 'filter-bar';
@@ -208,4 +235,9 @@ function formatDate(dateStr) {
 
 function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function formatSyncTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 }

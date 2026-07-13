@@ -1446,6 +1446,8 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
         // Aggregate subjects have no own Firestore entry — compute from
         // components. Senior scheme (9/10) averages, matching calcStudentTotal;
         // standard scheme (6-8) keeps its original sum (see computeAggregateSubject).
+        const hyExists = subj.components.every(k => hyAcad[k]?.total != null);
+        const ftExists = subj.components.every(k => ftAcad[k]?.total != null);
         const hyAgg = computeAggregateSubject(hyAcad, subj, cfg);
         const ftAgg = computeAggregateSubject(ftAcad, subj, cfg);
         hyTotal = hyAgg.total;
@@ -1455,15 +1457,18 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
         if (subj.countInTotal) {
           hyGrand += hyTotal;
           ftGrand += ftTotal;
-          if (hyTotal < passmark || ftTotal < passmark ||
-              subjectFailsFloor(hyAgg.ia, hyAgg.exam, cfg, subj) ||
-              subjectFailsFloor(ftAgg.ia, ftAgg.exam, cfg, subj)) {
-            result = 'FAIL';
-          }
+          // Only evaluate a term's pass/fail once that term's marks actually
+          // exist — a term with no data yet (e.g. FT not entered on a
+          // Half-Yearly-only marksheet) must never force a FAIL.
+          const hySubjFail = hyExists && (hyTotal < passmark || subjectFailsFloor(hyAgg.ia, hyAgg.exam, cfg, subj));
+          const ftSubjFail = ftExists && (ftTotal < passmark || subjectFailsFloor(ftAgg.ia, ftAgg.exam, cfg, subj));
+          if (hySubjFail || ftSubjFail) result = 'FAIL';
         }
       } else {
         const hyA = hyAcad[subj.key] || {};
         const ftA = ftAcad[subj.key] || {};
+        const hyExists = hyAcad[subj.key]?.total != null;
+        const ftExists = ftAcad[subj.key]?.total != null;
         hyTotal = hyA.total ?? 0;
         ftTotal = ftA.total ?? 0;
 
@@ -1484,11 +1489,9 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
         if (subj.countInTotal) {
           hyGrand += hyTotal;
           ftGrand += ftTotal;
-          if (hyTotal < passmark || ftTotal < passmark ||
-              subjectFailsFloor(hyEntry.ia ?? 0, hyEntry.exam ?? 0, cfg, subj) ||
-              subjectFailsFloor(ftEntry.ia ?? 0, ftEntry.exam ?? 0, cfg, subj)) {
-            result = 'FAIL';
-          }
+          const hySubjFail = hyExists && (hyTotal < passmark || subjectFailsFloor(hyEntry.ia ?? 0, hyEntry.exam ?? 0, cfg, subj));
+          const ftSubjFail = ftExists && (ftTotal < passmark || subjectFailsFloor(ftEntry.ia ?? 0, ftEntry.exam ?? 0, cfg, subj));
+          if (hySubjFail || ftSubjFail) result = 'FAIL';
         }
       }
 
@@ -2208,6 +2211,8 @@ function openReportCardFromList(studentId, studentData, hyData, ftData, classId,
     const ftTotal = ftA.total ?? 0;
 
     if (subj.isAggregate) {
+      const hyExists = subj.components.every(k => hyData.academics?.[k]?.total != null);
+      const ftExists = subj.components.every(k => ftData.academics?.[k]?.total != null);
       const hyAgg = computeAggregateSubject(hyData.academics, subj, cfg);
       const ftAgg = computeAggregateSubject(ftData.academics, subj, cfg);
       hySubjects[subj.key] = { ia: hyAgg.ia, ut: 0, exam: hyAgg.exam, total: hyAgg.total };
@@ -2215,23 +2220,23 @@ function openReportCardFromList(studentId, studentData, hyData, ftData, classId,
       consolSubjects[subj.key] = { term1: hyAgg.total, term2: ftAgg.total, total: hyAgg.total + ftAgg.total };
       if (subj.countInTotal) {
         hyGrand += hyAgg.total; ftGrand += ftAgg.total;
-        if (hyAgg.total < passmark || ftAgg.total < passmark ||
-            subjectFailsFloor(hyAgg.ia, hyAgg.exam, cfg, subj) ||
-            subjectFailsFloor(ftAgg.ia, ftAgg.exam, cfg, subj)) {
-          result = 'FAIL';
-        }
+        // Only evaluate a term's pass/fail once that term's marks actually
+        // exist — a term with no data yet must never force a FAIL.
+        const hySubjFail = hyExists && (hyAgg.total < passmark || subjectFailsFloor(hyAgg.ia, hyAgg.exam, cfg, subj));
+        const ftSubjFail = ftExists && (ftAgg.total < passmark || subjectFailsFloor(ftAgg.ia, ftAgg.exam, cfg, subj));
+        if (hySubjFail || ftSubjFail) result = 'FAIL';
       }
     } else {
+      const hyExists = hyData.academics?.[subj.key]?.total != null;
+      const ftExists = ftData.academics?.[subj.key]?.total != null;
       hySubjects[subj.key] = { ia: hyA.IA ?? 0, ut: hyA.UT ?? 0, exam: hyA.TE ?? hyA.singleMark ?? 0, total: hyTotal };
       ftSubjects[subj.key] = { ia: ftA.IA ?? 0, ut: ftA.UT ?? 0, exam: ftA.TE ?? ftA.singleMark ?? 0, total: ftTotal };
       consolSubjects[subj.key] = { term1: hyTotal, term2: ftTotal, total: hyTotal + ftTotal };
       if (subj.countInTotal) {
         hyGrand += hyTotal; ftGrand += ftTotal;
-        if (hyTotal < passmark || ftTotal < passmark ||
-            subjectFailsFloor(hyA.IA ?? hyA.singleMark ?? 0, hyA.TE ?? 0, cfg, subj) ||
-            subjectFailsFloor(ftA.IA ?? ftA.singleMark ?? 0, ftA.TE ?? 0, cfg, subj)) {
-          result = 'FAIL';
-        }
+        const hySubjFail = hyExists && (hyTotal < passmark || subjectFailsFloor(hyA.IA ?? hyA.singleMark ?? 0, hyA.TE ?? 0, cfg, subj));
+        const ftSubjFail = ftExists && (ftTotal < passmark || subjectFailsFloor(ftA.IA ?? ftA.singleMark ?? 0, ftA.TE ?? 0, cfg, subj));
+        if (hySubjFail || ftSubjFail) result = 'FAIL';
       }
     }
   }
@@ -2349,9 +2354,11 @@ async function generateClassMarksheet() {
       let result = 'PASS';
 
       for (const subj of cfg.subjects) {
-        let hyTotal, ftTotal, hyIa, hyTe, ftIa, ftTe;
+        let hyTotal, ftTotal, hyIa, hyTe, ftIa, ftTe, hyExists, ftExists;
 
         if (subj.isAggregate) {
+          hyExists = subj.components.every(k => hyData?.academics?.[k]?.total != null);
+          ftExists = subj.components.every(k => ftData?.academics?.[k]?.total != null);
           const hyAgg = computeAggregateSubject(hyData?.academics, subj, cfg);
           const ftAgg = computeAggregateSubject(ftData?.academics, subj, cfg);
           hyTotal = hyAgg.total; hyIa = hyAgg.ia; hyTe = hyAgg.exam;
@@ -2361,6 +2368,8 @@ async function generateClassMarksheet() {
         } else {
           const hyA = hyData?.academics?.[subj.key] || {};
           const ftA = ftData?.academics?.[subj.key] || {};
+          hyExists = hyData?.academics?.[subj.key]?.total != null;
+          ftExists = ftData?.academics?.[subj.key]?.total != null;
           hyTotal = hyA.total ?? 0; hyIa = hyA.IA ?? hyA.singleMark ?? 0; hyTe = hyA.TE ?? 0;
           ftTotal = ftA.total ?? 0; ftIa = ftA.IA ?? ftA.singleMark ?? 0; ftTe = ftA.TE ?? 0;
           hySubjects[subj.key] = { ia: hyIa, ut: hyA.UT ?? 0, exam: hyTe, total: hyTotal };
@@ -2371,11 +2380,11 @@ async function generateClassMarksheet() {
         if (subj.countInTotal) {
           hyGrand += hyTotal;
           ftGrand += ftTotal;
-          if (hyTotal < passmark || ftTotal < passmark ||
-              subjectFailsFloor(hyIa, hyTe, cfg, subj) ||
-              subjectFailsFloor(ftIa, ftTe, cfg, subj)) {
-            result = 'FAIL';
-          }
+          // Only evaluate a term's pass/fail once that term's marks actually
+          // exist — a term with no data yet must never force a FAIL.
+          const hySubjFail = hyExists && (hyTotal < passmark || subjectFailsFloor(hyIa, hyTe, cfg, subj));
+          const ftSubjFail = ftExists && (ftTotal < passmark || subjectFailsFloor(ftIa, ftTe, cfg, subj));
+          if (hySubjFail || ftSubjFail) result = 'FAIL';
         }
       }
 

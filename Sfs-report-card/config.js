@@ -72,6 +72,7 @@ const CONFIG = {
     schoolName: "St. Francis De Sales School",
     grandTotalMax: 800,
     markScheme: "standard",
+    passmark: 40,
     note: null,
     subjects: [
       { key: "mathematics",      label: "Mathematics",      isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
@@ -102,6 +103,7 @@ const CONFIG = {
     schoolName: "St. Francis De Sales School",
     grandTotalMax: 900,
     markScheme: "standard",
+    passmark: 40,
     note: null,
     subjects: [
       { key: "mathematics",      label: "Mathematics",      isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
@@ -133,6 +135,7 @@ const CONFIG = {
     schoolName: "St. Francis De Sales School",
     grandTotalMax: 900,
     markScheme: "standard",
+    passmark: 40,
     note: "Computer Practical included in Unit Test column",
     subjects: [
       { key: "mathematics",      label: "Mathematics",      isAggregate: false, components: [], countInTotal: true,  singleTotal: false },
@@ -164,6 +167,7 @@ const CONFIG = {
     schoolName: "St. Francis De Sales School",
     grandTotalMax: 800,
     markScheme: "standard",
+    passmark: 40,
     note: "Computer Practical included in Unit Test column",
     subjects: [
       { key: "mathematics",      label: "Mathematics",           isAggregate: false, components: [],                                 countInTotal: true,  singleTotal: false },
@@ -202,6 +206,7 @@ const CONFIG = {
     schoolName: "St. Francis De Sales School",
     grandTotalMax: 700,
     markScheme: "standard",
+    passmark: 40,
     note: "Computer Practical included in Unit Test column",
     subjects: [
       { key: "mathematics",      label: "Mathematics",           isAggregate: false, components: [],                                 countInTotal: true,  singleTotal: false },
@@ -238,6 +243,7 @@ const CONFIG = {
     schoolName: "St. Francis De Sales Sec. School",
     grandTotalMax: 700,
     markScheme: "standard",
+    passmark: 40,
     note: "Computer Practical included in Unit Test column",
     subjects: [
       { key: "mathematics",      label: "Mathematics",           isAggregate: false, components: [],                                 countInTotal: true,  singleTotal: false },

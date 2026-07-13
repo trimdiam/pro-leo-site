@@ -5602,11 +5602,14 @@ function _arcCalcTotal(academics) {
       let effectiveClass = t.classTeacher || "";
       if (t.classTeacherOf) {
         const ctRoman = t.classTeacherOf.split("-")[0];
-        effectiveClass = _R2N[ctRoman] || parseInt(ctRoman) || effectiveClass;
+        // Non-Roman class identifiers (SKG/LKG/PLG) have no _R2N entry and no
+        // numeric form — keep ctRoman itself instead of falling through to a
+        // stale/empty effectiveClass (see TA_CLASS_MAP for the same pattern).
+        effectiveClass = _R2N[ctRoman] || parseInt(ctRoman) || ctRoman || effectiveClass;
       }
       if (userData.tpClassTeacherOf) {
         const ctRoman = userData.tpClassTeacherOf.split("-")[0];
-        effectiveClass = _R2N[ctRoman] || parseInt(ctRoman) || effectiveClass;
+        effectiveClass = _R2N[ctRoman] || parseInt(ctRoman) || ctRoman || effectiveClass;
       }
       ((window._currentTeacherClass = effectiveClass || ""),
         (window._teacherSubjects = t.subjects || ""));
@@ -13004,7 +13007,8 @@ window.loadTeacherPortal = async function (user) {
         ...userData,
       });
     const classNum = (newCTOf && TA_ROMAN_TO_NUM[newCTOf]) || null,
-      classDisplay = newCTOf ? `Class ${newCTOf}` : "—",
+      _taClassLabel = { PLG: "Play Group", SKG: "SKG", LKG: "LKG" },
+      classDisplay = newCTOf ? (_taClassLabel[newCTOf] || `Class ${newCTOf}`) : "—",
       uniqueSubjects = [...new Set(newAssigns.map((a) => a.subjectLabel))],
       subjectsStr = uniqueSubjects.join(", ") || "—",
       hdrRole = document.querySelector("#page-teacher-dash .dash-role");
