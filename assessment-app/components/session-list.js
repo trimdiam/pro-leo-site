@@ -11,7 +11,8 @@ export function createSessionList({
   onFilterChange = () => {},
   onViewSession = () => {},
   onStatusChange = () => {},
-  onDeleteSession = () => {}
+  onDeleteSession = () => {},
+  onEditPeriod = () => {}
 } = {}) {
   const section = document.createElement('section');
   section.className = 'panel';
@@ -83,7 +84,7 @@ export function createSessionList({
     list.className = 'session-list';
 
     sessions.forEach(entry => {
-      list.append(createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession));
+      list.append(createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession, onEditPeriod));
     });
 
     section.append(list);
@@ -92,10 +93,12 @@ export function createSessionList({
   return section;
 }
 
-function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession) {
+function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession, onEditPeriod) {
   const sess = entry.session;
   const today = new Date().toISOString().split('T')[0];
   const isOverdue = sess.dueDate && today > sess.dueDate && sess.status !== 'locked';
+
+  const wrap = document.createElement('div');
 
   const row = document.createElement('div');
   row.className = 'session-row';
@@ -179,7 +182,21 @@ function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDel
     actions.append(reopenBtn);
   }
 
+  let editForm = null;
+
   if (canDelete) {
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'btn btn-sm btn-secondary';
+    editBtn.textContent = 'Edit Month';
+    editBtn.title = 'Correct the month/period this assessment was recorded against — a teacher picked the wrong one';
+    editBtn.addEventListener('click', () => {
+      if (editForm) { editForm.remove(); editForm = null; return; }
+      editForm = createEditPeriodForm(sess, onEditPeriod, () => { editForm.remove(); editForm = null; });
+      wrap.append(editForm);
+    });
+    actions.append(editBtn);
+
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'btn btn-sm btn-danger';
@@ -190,7 +207,65 @@ function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDel
   }
 
   row.append(info, badgesDiv, actions);
-  return row;
+  wrap.append(row);
+  return wrap;
+}
+
+// Admin-only correction tool: re-dates an existing session (weekStart/weekEnd/
+// dueDate/date) without touching its marks, status, or session_id — for when a
+// teacher picked the wrong month/period when creating it.
+function createEditPeriodForm(sess, onEditPeriod, onClose) {
+  const form = document.createElement('div');
+  form.className = 'session-edit-period-form';
+  form.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px;margin:4px 0 10px;background:rgba(0,0,0,0.03);border-radius:6px';
+
+  const note = document.createElement('span');
+  note.style.cssText = 'font-size:0.8rem;color:#666;width:100%';
+  note.textContent = `Currently: ${formatWeekRange(sess.weekStart, sess.weekEnd) || sess.date || 'undated'}. Pick the correct month — marks and status are kept as-is.`;
+  form.append(note);
+
+  const monthInput = document.createElement('input');
+  monthInput.type = 'month';
+  monthInput.className = 'text-input';
+  monthInput.value = (sess.weekStart || sess.date || '').slice(0, 7);
+  form.append(monthInput);
+
+  const periodSelect = document.createElement('select');
+  periodSelect.className = 'text-input';
+  const currentPeriod = sess.weekStart && Number(sess.weekStart.slice(8, 10)) >= 16 ? '2' : '1';
+  periodSelect.append(createOption('1', 'Period 1 (1st–15th)', currentPeriod === '1'));
+  periodSelect.append(createOption('2', 'Period 2 (16th–end of month)', currentPeriod === '2'));
+  form.append(periodSelect);
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'btn btn-sm btn-primary';
+  saveBtn.textContent = 'Save Correction';
+  saveBtn.addEventListener('click', async () => {
+    if (!monthInput.value) { alert('Pick a month.'); return; }
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+    const result = await onEditPeriod(sess.session_id, {
+      periodMonth: monthInput.value,
+      periodNumber: Number(periodSelect.value)
+    });
+    if (result && result.ok === false) {
+      alert(`Could not save the correction: ${result.error}`);
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Correction';
+    }
+    // On success the caller re-renders the whole list, which discards this form.
+  });
+  form.append(saveBtn);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'btn btn-sm btn-secondary';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', onClose);
+  form.append(cancelBtn);
+
+  return form;
 }
 
 function formatWeekRange(weekStart, weekEnd) {

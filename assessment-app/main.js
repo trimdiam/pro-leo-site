@@ -16,7 +16,7 @@ import { loadStudentsForClass } from './services/student-loader.js';
 import { createSession, validateMark } from './services/assessment-engine.js';
 import { initializeMarksWithDefault } from './services/fast-entry-engine.js';
 import { calculateSessionProgress } from './services/totals-engine.js';
-import { saveSession, saveSessionAndConfirm, getSession, getAllSessions, syncSessionsFromFirestore, deleteSessionAsAdmin } from './services/session-storage.js';
+import { saveSession, saveSessionAndConfirm, getSession, getSessionRemote, getAllSessions, syncSessionsFromFirestore, deleteSessionAsAdmin, findDuplicateSession } from './services/session-storage.js';
 import { fetchSessions } from './services/firestore-service.js';
 import { updateSessionStatus, loadFullSessionData, SESSION_STATUS } from './services/session-review-engine.js';
 import { aggregateByMonth, extractYearMonth, clearAggregationCache } from './services/aggregation-engine.js';
@@ -962,6 +962,48 @@ function renderAdminSessions() {
       } catch (err) {
         alert(`Could not delete: ${err.message}`);
       }
+    },
+    onEditPeriod: async (sessionId, { periodMonth, periodNumber }) => {
+      if (!isAdmin()) return { ok: false, error: 'Admin access required.' }; // firestore.rules is the real gate for the write itself
+
+      // Fetch the live copy, not the local cache — this is a low-frequency
+      // admin correction, worth the round-trip to avoid clobbering a
+      // concurrent change (e.g. a class teacher reviewing it right now).
+      const stored = await getSessionRemote(sessionId);
+      if (!stored) return { ok: false, error: 'Session not found — try Refresh.' };
+
+      const range = getPeriodRange(periodMonth, periodNumber);
+
+      const dup = findDuplicateSession({
+        teacher_name: stored.session.teacher_name,
+        class: stored.session.class,
+        subject_id: stored.session.subject_id,
+        date: range.start
+      });
+      if (dup && dup.session.session_id !== sessionId) {
+        const proceed = confirm(
+          `${stored.session.teacher_name} already has a ${stored.session.subject_name || stored.session.subject_id} assessment for ${stored.session.class} in this exact period (${dup.session.status}).\n\nMove this one there anyway? You'll end up with two entries for the same period.`
+        );
+        if (!proceed) return { ok: false, error: 'Cancelled — a session already exists for that period.' };
+      }
+
+      // Only the date fields change — session_id, status, marks, teacher,
+      // class and subject are untouched, so nothing gets destroyed.
+      const updatedSession = {
+        ...stored.session,
+        weekStart: range.start,
+        weekEnd: range.end,
+        dueDate: range.end,
+        date: range.start
+      };
+
+      const result = await saveSessionAndConfirm(updatedSession, stored.marks);
+      if (result.ok) {
+        clearAggregationCache();
+        render();
+        return { ok: true };
+      }
+      return { ok: false, error: result.error };
     }
   }));
 }
