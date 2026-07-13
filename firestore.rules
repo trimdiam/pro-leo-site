@@ -229,7 +229,10 @@ service cloud.firestore {
       allow read:  if request.auth != null
         && isRole('student')
         && resource.data.session.class == studentAssessmentClass();
-      allow write: if (isTeacherAny() || isAdmin()) && !rolloverLocked(database);
+      allow create, update: if (isTeacherAny() || isAdmin()) && !rolloverLocked(database);
+      // Hard delete is admin-only (e.g. removing test/junk sessions from the
+      // admin Sessions screen) — teachers use status transitions instead.
+      allow delete: if isAdmin() && !rolloverLocked(database);
     }
 
     // ── Monthly analytics ─────────────────────────────────────────────

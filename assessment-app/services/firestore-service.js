@@ -5,6 +5,7 @@ import {
   getDocs,
   getDoc,
   setDoc,
+  deleteDoc,
   query,
   where
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
@@ -92,9 +93,16 @@ export async function fetchSession(sessionId) {
   return { ...data, session: normalizeSession(data.session) };
 }
 
-// Sessions are never hard-deleted per security rules — use status transitions instead.
+// Sessions are never hard-deleted by teachers — status transitions instead.
+// Admins can hard-delete (e.g. junk/test sessions) via deleteSessionRemote;
+// enforced server-side by firestore.rules (admin-only on this collection).
 export async function removeSession(_sessionId) {
-  console.warn('Session deletion is disabled. Use status transitions instead.');
+  console.warn('Session deletion is disabled for this role. Use status transitions instead.');
+}
+
+export async function deleteSessionRemote(sessionId) {
+  if (!sessionId) throw new Error('Invalid session id');
+  await deleteDoc(doc(db, COLLECTION, sessionId));
 }
 
 // ── Monthly analytics ─────────────────────────────────────────────────────────

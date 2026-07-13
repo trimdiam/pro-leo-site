@@ -16,7 +16,7 @@ import { loadStudentsForClass } from './services/student-loader.js';
 import { createSession, validateMark } from './services/assessment-engine.js';
 import { initializeMarksWithDefault } from './services/fast-entry-engine.js';
 import { calculateSessionProgress } from './services/totals-engine.js';
-import { saveSession, saveSessionAndConfirm, getSession, getAllSessions, syncSessionsFromFirestore } from './services/session-storage.js';
+import { saveSession, saveSessionAndConfirm, getSession, getAllSessions, syncSessionsFromFirestore, deleteSessionAsAdmin } from './services/session-storage.js';
 import { fetchSessions } from './services/firestore-service.js';
 import { updateSessionStatus, loadFullSessionData, SESSION_STATUS } from './services/session-review-engine.js';
 import { aggregateByMonth, extractYearMonth, clearAggregationCache } from './services/aggregation-engine.js';
@@ -931,6 +931,7 @@ function renderAdminSessions() {
     filters: state.adminFilters,
     lastSynced: state.lastSessionSync,
     syncing: state.syncingSessions,
+    canDelete: isAdmin(),
     onRefresh: () => syncSessionsAndRerender({ force: true }),
     onFilterChange: filters => {
       state.adminFilters = filters;
@@ -947,6 +948,19 @@ function renderAdminSessions() {
         render();
       } else {
         alert(result.error);
+      }
+    },
+    onDeleteSession: async (sessionId, sess) => {
+      if (!isAdmin()) return; // defense-in-depth; firestore.rules is the real gate
+      const label = `${sess.subject_name || sess.subject_id} — ${sess.class} (${sess.weekStart || sess.date || 'undated'}, by ${sess.teacher_name || 'unknown'})`;
+      const ok = confirm(`Permanently delete this assessment?\n\n${label}\n\nThis cannot be undone.`);
+      if (!ok) return;
+      try {
+        await deleteSessionAsAdmin(sessionId);
+        clearAggregationCache();
+        render();
+      } catch (err) {
+        alert(`Could not delete: ${err.message}`);
       }
     }
   }));

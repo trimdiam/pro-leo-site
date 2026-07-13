@@ -6,10 +6,12 @@ export function createSessionList({
   filters = {},
   lastSynced = null,
   syncing = false,
+  canDelete = false,
   onRefresh = () => {},
   onFilterChange = () => {},
   onViewSession = () => {},
-  onStatusChange = () => {}
+  onStatusChange = () => {},
+  onDeleteSession = () => {}
 } = {}) {
   const section = document.createElement('section');
   section.className = 'panel';
@@ -81,7 +83,7 @@ export function createSessionList({
     list.className = 'session-list';
 
     sessions.forEach(entry => {
-      list.append(createSessionRow(entry, onViewSession, onStatusChange));
+      list.append(createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession));
     });
 
     section.append(list);
@@ -90,7 +92,7 @@ export function createSessionList({
   return section;
 }
 
-function createSessionRow(entry, onViewSession, onStatusChange) {
+function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession) {
   const sess = entry.session;
   const today = new Date().toISOString().split('T')[0];
   const isOverdue = sess.dueDate && today > sess.dueDate && sess.status !== 'locked';
@@ -175,6 +177,16 @@ function createSessionRow(entry, onViewSession, onStatusChange) {
     reopenBtn.textContent = 'Reopen';
     reopenBtn.addEventListener('click', () => onStatusChange(sess.session_id, 'draft'));
     actions.append(reopenBtn);
+  }
+
+  if (canDelete) {
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'btn btn-sm btn-danger';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.title = 'Permanently delete this assessment (cannot be undone) — for removing test/junk data';
+    deleteBtn.addEventListener('click', () => onDeleteSession(sess.session_id, sess));
+    actions.append(deleteBtn);
   }
 
   row.append(info, badgesDiv, actions);

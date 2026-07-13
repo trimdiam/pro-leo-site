@@ -1,4 +1,4 @@
-import { persistSession, fetchSessions, fetchSession, normalizeSession } from './firestore-service.js';
+import { persistSession, fetchSessions, fetchSession, deleteSessionRemote, normalizeSession } from './firestore-service.js';
 
 const STORAGE_KEY = 'sfds_assessment_sessions';
 
@@ -157,7 +157,7 @@ export async function getSessionRemote(sessionId) {
 
 // ── Delete ────────────────────────────────────────────────────────────────────
 
-// Per security rules, sessions are never hard-deleted — use status transitions.
+// Local-cache-only removal — teachers use status transitions, not this.
 export function deleteSession(sessionId) {
   const sessions = getAllSessions().filter(s => s.session.session_id !== sessionId);
   try {
@@ -165,6 +165,14 @@ export function deleteSession(sessionId) {
   } catch (err) {
     console.error('Failed to delete session from cache', err);
   }
+}
+
+// Admin hard-delete — removes from Firestore first (firestore.rules enforces
+// admin-only on this path), then the local cache. Used to clean up junk/test
+// sessions from the admin Sessions screen.
+export async function deleteSessionAsAdmin(sessionId) {
+  await deleteSessionRemote(sessionId);
+  deleteSession(sessionId);
 }
 
 // ── Storage health ────────────────────────────────────────────────────────────
