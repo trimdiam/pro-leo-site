@@ -22,7 +22,7 @@ import { updateSessionStatus, loadFullSessionData, SESSION_STATUS } from './serv
 import { aggregateByMonth, extractYearMonth, clearAggregationCache } from './services/aggregation-engine.js';
 import { getCurrentUser, isTeacher, isAdmin, isLoggedIn, resolveAuthSession } from './services/auth-service.js';
 import { loadClassTestConfig, getClassTestSubjectsForClass } from './services/class-test-loader.js';
-import { saveClassTest, getClassTest, syncClassTestsFromFirestore } from './services/class-test-storage.js';
+import { saveClassTest, saveClassTestAndConfirm, getClassTest, syncClassTestsFromFirestore } from './services/class-test-storage.js';
 
 // ── Heavy admin-only components — lazy loaded on first admin view ─────────
 let _adminLazy = null;
@@ -1181,11 +1181,18 @@ function handleTestMarkChange(studentId, mark) {
   render();
 }
 
-function handleTestSave() {
+async function handleTestSave() {
   if (!state.testClass || !state.testSubject || !state.testTerm) return;
 
+  state.testSaveStatus = 'saving';
+  state.errorMessage = '';
+  render();
+
   try {
-    saveClassTest({
+    // Class test entry has no separate submit step — Save is the final
+    // commit, so it must be awaited and report the real outcome (same
+    // reasoning as the weekly assessment submit fix).
+    const result = await saveClassTestAndConfirm({
       class: state.testClass,
       subject_id: state.testSubject.subject_id,
       subject_name: state.testSubject.subject_name,
@@ -1193,9 +1200,16 @@ function handleTestSave() {
       max_marks: state.testSubject.max_marks,
       teacher_name: state.teacherName
     }, state.testMarks);
-    state.testLastSaved = new Date();
-    state.testSaveStatus = 'idle';
+
+    if (result.ok) {
+      state.testLastSaved = new Date();
+      state.testSaveStatus = 'idle';
+    } else {
+      state.testSaveStatus = 'unsaved';
+      state.errorMessage = `Could not save: ${result.error} — your marks are on this device only, try Save again.`;
+    }
   } catch (error) {
+    state.testSaveStatus = 'unsaved';
     state.errorMessage = error.message || 'Class test save failed.';
   }
   render();

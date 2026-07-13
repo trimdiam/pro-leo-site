@@ -41,7 +41,7 @@ export async function syncClassTestsFromFirestore() {
 
 // ── Write ─────────────────────────────────────────────────────────────────────
 
-export function saveClassTest(test, marks) {
+function buildTestEntryAndWriteLocal(test, marks) {
   if (!test || !test.class || !test.subject_id || !test.term) {
     throw new Error('Invalid class test: class, subject_id and term are required');
   }
@@ -62,11 +62,29 @@ export function saveClassTest(test, marks) {
   }
   writeLocalCache(tests);
 
+  return entry;
+}
+
+// Fire-and-forget — kept for callers that don't need confirmation.
+export function saveClassTest(test, marks) {
+  const entry = buildTestEntryAndWriteLocal(test, marks);
   persistClassTest(entry.test, entry.marks).catch(err =>
     console.error('Class test Firestore save failed:', err.message)
   );
-
   return entry;
+}
+
+// Awaited — class test entry has no separate "submit" step (unlike weekly
+// assessment sessions), so Save IS the final commit here. The teacher must
+// see the real outcome, same reasoning as saveSessionAndConfirm().
+export async function saveClassTestAndConfirm(test, marks) {
+  const entry = buildTestEntryAndWriteLocal(test, marks);
+  try {
+    await persistClassTest(entry.test, entry.marks);
+    return { ok: true, entry };
+  } catch (err) {
+    return { ok: false, entry, error: err.message || 'Could not reach the server.' };
+  }
 }
 
 // ── Read ──────────────────────────────────────────────────────────────────────

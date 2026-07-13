@@ -5,6 +5,8 @@
 import { buildAndSaveReportCard } from '../services/report-card-builder.js';
 import { loadStudentsForClass } from '../services/student-loader.js';
 import { getCurrentAcademicYear, getTermDateRange } from '../services/report-card-grade-engine.js';
+import { syncSessionsFromFirestore } from '../services/session-storage.js';
+import { syncClassTestsFromFirestore } from '../services/class-test-storage.js';
 
 const CLASSES = ['LKG', 'SKG', 'Class I', 'Class II'];
 const TERMS   = [
@@ -245,6 +247,15 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
     singleBtn.disabled = true;
     singleBtn.textContent = '⏳ Generating…';
     progressArea.style.display = 'block';
+    progressArea.textContent = 'Syncing latest submissions from the server…';
+
+    // Report cards read the local session cache — force a fresh sync first so
+    // a recently submitted/reviewed session isn't silently missed.
+    await Promise.all([
+      syncSessionsFromFirestore().catch(err => console.warn('Session sync before report card failed:', err.message)),
+      syncClassTestsFromFirestore().catch(err => console.warn('Class test sync before report card failed:', err.message))
+    ]);
+
     progressArea.textContent = `Generating report card for ${student.full_name}…`;
 
     const result = await runForStudent(student, params);
@@ -274,8 +285,15 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
     classBtn.disabled = true;
     classBtn.textContent = 'Loading students…';
     progressArea.style.display = 'block';
-    progressArea.textContent = '';
+    progressArea.textContent = 'Syncing latest submissions from the server…';
     resultsList.replaceChildren();
+
+    // Report cards read the local session cache — force a fresh sync first so
+    // a recently submitted/reviewed session isn't silently missed.
+    await Promise.all([
+      syncSessionsFromFirestore().catch(err => console.warn('Session sync before report card failed:', err.message)),
+      syncClassTestsFromFirestore().catch(err => console.warn('Class test sync before report card failed:', err.message))
+    ]);
 
     let students = _students;
     if (!students.length) {
