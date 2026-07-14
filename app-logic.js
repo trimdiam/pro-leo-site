@@ -6460,7 +6460,13 @@ function _arcCalcTotal(academics) {
         totalPerfectAtt += r.perfectAttendance.length;
         if (r.girlsAvg != null) { schoolGirlsSum += r.girlsAvg * r.girlsCount; schoolGirlsCount += r.girlsCount; }
         if (r.boysAvg != null) { schoolBoysSum += r.boysAvg * r.boysCount; schoolBoysCount += r.boysCount; }
-        if (r.avgPct != null && (!best || r.avgPct > best.avgPct)) best = r;
+        // "Best-Performing" = highest pass rate (share of students passing every
+        // subject), NOT highest average marks. A class can have high average
+        // marks yet a low pass rate when many students fail a single subject.
+        if (r.assessed > 0) {
+          r.passRate = (r.passCount / r.assessed) * 100;
+          if (!best || r.passRate > best.passRate) best = r;
+        }
       });
 
       const fmtPct = v => v == null ? "—" : v.toFixed(1) + "%";
@@ -6471,7 +6477,7 @@ function _arcCalcTotal(academics) {
         ${window._paCard("Students Assessed", totalAssessed + " / " + totalStudents)}
         ${window._paCard("Whole-School Pass Rate", totalAssessed ? Math.round((totalPass / totalAssessed) * 100) + "%" : "—")}
         ${window._paCard("Whole-School Failures", totalFail + " students")}
-        ${window._paCard("Best-Performing Class", best ? "Class " + best.roman + " (" + fmtPct(best.avgPct) + ")" : "—")}
+        ${window._paCard("Best-Performing Class", best ? "Class " + best.roman + " (" + Math.round(best.passRate) + "% pass)" : "—")}
         ${window._paCard("Girls Avg %", fmtPct(schoolGirlsAvg))}
         ${window._paCard("Boys Avg %", fmtPct(schoolBoysAvg))}
         ${window._paCard("100% Attendance", totalPerfectAtt + " students")}
