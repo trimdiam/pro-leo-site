@@ -228,10 +228,15 @@ function renderCenterPanel(data, config) {
   document.getElementById('rcHyCoscholastic').innerHTML = buildCoScholastic(data.coScholastic, config);
 
   // Remarks — use teacher-entered text if present, otherwise generate intelligently
+  const ftNotAssessed = (data.finalTerm.grandTotal || 0) === 0;
   const hyRemark = (data.remarks && data.remarks.halfYearly) || generateRemark(data, config, 'hy');
-  const ftRemark = (data.remarks && data.remarks.finalTerm)  || generateRemark(data, config, 'ft');
+  // Don't auto-generate a Term 2 remark before the final term is assessed — it
+  // would be computed from zero marks and read as "weak". Use a teacher-entered
+  // remark if one exists, otherwise leave it blank.
+  const ftRemark = (data.remarks && data.remarks.finalTerm)
+    || (ftNotAssessed ? '' : generateRemark(data, config, 'ft'));
   document.getElementById('rcHyRemark').textContent = `"${hyRemark}"`;
-  document.getElementById('rcFtRemark').textContent = `"${ftRemark}"`;
+  document.getElementById('rcFtRemark').textContent = ftRemark ? `"${ftRemark}"` : '—';
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -329,8 +334,11 @@ function renderRightPanel(data, config) {
 
   const principalEl = document.getElementById('rcPrincipalRemark');
   if (principalEl) {
-    const ftRemark = (data.remarks && data.remarks.finalTerm) || generateRemark(data, config, 'ft');
-    principalEl.textContent = `"${ftRemark}"`;
+    // Same rule as the Term 2 class-teacher remark: no auto-generated remark
+    // until the final term is assessed.
+    const ftRemark = (data.remarks && data.remarks.finalTerm)
+      || (ftEmpty ? '' : generateRemark(data, config, 'ft'));
+    principalEl.textContent = ftRemark ? `"${ftRemark}"` : '—';
   }
 }
 
