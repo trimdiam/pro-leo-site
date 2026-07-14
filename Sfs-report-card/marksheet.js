@@ -13,6 +13,16 @@ function formatPct(value) {
   return (Math.round(value * 10) / 10).toFixed(1);
 }
 
+/* Reduced-subject / special-needs students — % is suppressed (misleading
+   against the full-class max). Self-contained copy (this page doesn't load
+   render.js). Keep the name list in sync with render.js / markentry.js.       */
+const REDUCED_SUBJECT_STUDENTS = ['LUCIA LAPDIANGHUN KHARKONOR'];
+function isReducedSubjectStudent(name) {
+  if (!name) return false;
+  const norm = String(name).trim().toUpperCase().replace(/\s+/g, ' ');
+  return REDUCED_SUBJECT_STUDENTS.includes(norm);
+}
+
 function renderMarksheet() {
   const list = loadClassList();
   if (!list.length) {
@@ -241,7 +251,9 @@ function buildRows(list, subjects, config, isStandard, termKey) {
     const rank       = pass ? (termData.rank || '—') : '—';
 
     html += `<td class="ms-grand-total">${grandTotal}</td>`;
-    html += `<td>${formatPct(pct)}%</td>`;
+    // Reduced-subject students: suppress % (misleading against the full-class
+    // max). Helper is defined in render.js, loaded on the same pages.
+    html += `<td>${(typeof isReducedSubjectStudent === 'function' && isReducedSubjectStudent(data.student && data.student.name)) ? '—' : formatPct(pct) + '%'}</td>`;
     html += `<td class="ms-rank">${rank}</td>`;
     html += `<td class="${pass ? 'ms-pass' : 'ms-fail-result'}">${result}</td>`;
     html += '</tr>';

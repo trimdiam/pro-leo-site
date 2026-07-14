@@ -38,6 +38,21 @@ function formatPct(value) {
   return (Math.round(value * 10) / 10).toFixed(1);
 }
 
+/* ── Reduced-subject / special-needs students ────────────────────────────────
+   These students take a reduced subject load, so a percentage computed against
+   the full-class max reads as misleadingly low. For them the overall percentage
+   is suppressed (shown as "—") on the report card and class marksheet. Their
+   marks, totals, grades and pass/fail are otherwise untouched.
+   Matching is case- and whitespace-insensitive; an unmatched name changes
+   nothing, so adding/removing entries here is always safe.
+   To exempt another student, add their full name in UPPERCASE.               */
+const REDUCED_SUBJECT_STUDENTS = ['LUCIA LAPDIANGHUN KHARKONOR'];
+function isReducedSubjectStudent(name) {
+  if (!name) return false;
+  const norm = String(name).trim().toUpperCase().replace(/\s+/g, ' ');
+  return REDUCED_SUBJECT_STUDENTS.includes(norm);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    3. MAIN RENDER
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -149,10 +164,16 @@ function renderLeftPanel(data, config) {
   resultBadge.textContent = consol.result || '—';
   resultBadge.className = 'rc-result-badge ' + (consol.result === 'PASS' ? '' : 'fail');
 
-  document.getElementById('rcOverallGrade').textContent = consol.grade || '—';
-  document.getElementById('rcOverallPct').textContent = formatPct(consol.percentage) + '%';
-  // Rank only for students who passed all subjects.
-  const ovRankEligible = consol.result === 'PASS' || consol.result === 'PROMOTED' || consol.result === 'PROMOTED WITH GRACE';
+  document.getElementById('rcOverallGrade').textContent = isReducedSubjectStudent(s.name)
+    ? '—'
+    : (consol.grade || '—');
+  document.getElementById('rcOverallPct').textContent = isReducedSubjectStudent(s.name)
+    ? '—'
+    : formatPct(consol.percentage) + '%';
+  // Rank only for students who passed all subjects; reduced-subject students are
+  // excluded from the rank pool entirely.
+  const ovRankEligible = !isReducedSubjectStudent(s.name) &&
+    (consol.result === 'PASS' || consol.result === 'PROMOTED' || consol.result === 'PROMOTED WITH GRACE');
   document.getElementById('rcOverallRank').textContent = ovRankEligible && data.finalTerm.rank && data.finalTerm.totalStudents
     ? `${data.finalTerm.rank} / ${data.finalTerm.totalStudents}`
     : '—';
@@ -182,7 +203,8 @@ function renderCenterPanel(data, config) {
   const hyCols = isStandard ? 6 : 5;
   const hyColspan = hyCols - 3;
   // Rank only for students who passed all subjects (gated on the result).
-  const hyRankEligible = data.consolidated && (data.consolidated.result === 'PASS' || data.consolidated.result === 'PROMOTED' || data.consolidated.result === 'PROMOTED WITH GRACE');
+  const hyRankEligible = !isReducedSubjectStudent(data.student && data.student.name) &&
+    data.consolidated && (data.consolidated.result === 'PASS' || data.consolidated.result === 'PROMOTED' || data.consolidated.result === 'PROMOTED WITH GRACE');
   const hyRankStr = (hyRankEligible && data.halfYearly.rank)
     ? `Term 1 Rank: ${data.halfYearly.rank} / ${data.halfYearly.totalStudents || '—'}`
     : '';
@@ -243,11 +265,16 @@ function renderRightPanel(data, config) {
   const consol = data.consolidated;
   document.getElementById('rcSumTotal').textContent = consol.grandTotal;
   document.getElementById('rcSumMax').textContent = (config.grandTotalMax * 2);
-  document.getElementById('rcSumPct').textContent = formatPct(consol.percentage) + '%';
-  document.getElementById('rcSumGrade').textContent = consol.grade;
+  const sumExempt = isReducedSubjectStudent(data.student && data.student.name);
+  document.getElementById('rcSumPct').textContent = sumExempt
+    ? '—'
+    : formatPct(consol.percentage) + '%';
+  document.getElementById('rcSumGrade').textContent = sumExempt ? '—' : consol.grade;
   // Rank shown only for students who passed all subjects — a failed student
   // never displays a rank on the report card, matching the marksheet rule.
-  const rankEligible = consol.result === 'PASS' || consol.result === 'PROMOTED' || consol.result === 'PROMOTED WITH GRACE';
+  // Reduced-subject students are excluded from ranking entirely.
+  const rankEligible = !sumExempt &&
+    (consol.result === 'PASS' || consol.result === 'PROMOTED' || consol.result === 'PROMOTED WITH GRACE');
   document.getElementById('rcSumRank').textContent = (rankEligible && data.finalTerm.rank) ? data.finalTerm.rank : '—';
   document.getElementById('rcSumTotalStudents').textContent = (rankEligible && data.finalTerm.totalStudents) ? data.finalTerm.totalStudents : '—';
 
@@ -319,6 +346,13 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
     const subjData = termData.subjects[subj.key] || {};
     const total = subjData.total || 0;
     const grade = getGradeFromMarks(total);
+    // Reduced-subject student: a subject with no marks entered at all is one
+    // they don't take — render it blank (not 0/F, no fail styling) rather than
+    // as a failed row. Only applies to the exempt student.
+    const notTaken = isReducedSubjectStudent(data.student && data.student.name)
+      && subjData.total === undefined;
+    const totalDisp = notTaken ? '' : total;
+    const gradeDisp = notTaken ? '' : grade;
 
     // A subject fails if the total misses the passmark, OR (senior scheme
     // only) the total clears it but IA/Exam individually miss their
@@ -326,7 +360,7 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
     // as pass if either component is below its own floor).
     const componentFail = !isStandard && !subj.singleTotal &&
       (subjData.ia < iaThreshSen || subjData.exam < examThreshSen);
-    const totalFails = total < passmark || componentFail;
+    const totalFails = !notTaken && (total < passmark || componentFail);
     const gradeFail = totalFails ? ' fail' : '';
     const totalFailCls = totalFails ? ' rc-cell-fail' : '';
 
@@ -343,20 +377,20 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
     if (subj.isAggregate) {
       const blanks = isStandard ? 3 : 2;
       for (let i = 0; i < blanks; i++) html += '<td>—</td>';
-      html += `<td class="rc-cell-total${totalFailCls}">${total}</td>`;
+      html += `<td class="rc-cell-total${totalFailCls}">${totalDisp}</td>`;
       if (showConsol) {
-        html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${consolTotal}</td>`;
+        html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${notTaken ? '' : consolTotal}</td>`;
       }
-      html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${grade}</span></td>`;
+      html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${gradeDisp}</span></td>`;
     }
     else if (subj.singleTotal) {
       const blanks = isStandard ? 3 : 2;
       for (let i = 0; i < blanks; i++) html += '<td></td>';
-      html += `<td class="rc-cell-total${totalFailCls}">${total}</td>`;
+      html += `<td class="rc-cell-total${totalFailCls}">${totalDisp}</td>`;
       if (showConsol) {
-        html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${consolTotal}</td>`;
+        html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${notTaken ? '' : consolTotal}</td>`;
       }
-      html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${grade}</span></td>`;
+      html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${gradeDisp}</span></td>`;
     }
     else {
       if (isStandard) {
@@ -367,11 +401,11 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
         html += `<td class="${failCls(subjData.ia, iaThreshSen)}">${subjData.ia !== undefined ? subjData.ia : '—'}</td>`;
         html += `<td class="${failCls(subjData.exam, examThreshSen)}">${subjData.exam !== undefined ? subjData.exam : '—'}</td>`;
       }
-      html += `<td class="rc-cell-total${totalFailCls}">${total}</td>`;
+      html += `<td class="rc-cell-total${totalFailCls}">${totalDisp}</td>`;
       if (showConsol) {
-        html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${consolTotal}</td>`;
+        html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${notTaken ? '' : consolTotal}</td>`;
       }
-      html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${grade}</span></td>`;
+      html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${gradeDisp}</span></td>`;
     }
 
     html += '</tr>';

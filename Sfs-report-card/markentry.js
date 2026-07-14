@@ -1232,8 +1232,8 @@ async function openStudentList(term) {
     const cfg = CONFIG[classNum];
     const maxMarks = cfg?.grandTotalMax || 0;
 
-    const hyEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingHY[s.id], classNum), fail: studentFailsTerm(existingHY[s.id], classNum) }));
-    const ftEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingFT[s.id], classNum), fail: studentFailsTerm(existingFT[s.id], classNum) }));
+    const hyEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingHY[s.id], classNum), fail: studentFailsTerm(existingHY[s.id], classNum) || isReducedSubjectStudent(s.name) }));
+    const ftEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingFT[s.id], classNum), fail: studentFailsTerm(existingFT[s.id], classNum) || isReducedSubjectStudent(s.name) }));
 
     const hyRanks = computeRanks(hyEntries);
     const ftRanks = computeRanks(ftEntries);
@@ -1302,6 +1302,17 @@ function studentFailsTerm(markData, classNum) {
 //  - Null/incomplete totals are unranked.
 //  - Dense ranking: tied totals share a rank and the next distinct total is +1,
 //    never skipped (matches the "no rank skipped for ties" UI note).
+/* Reduced-subject / special-needs students — excluded from the rank pool
+   (ranking them against full-load students on a smaller total is meaningless).
+   Self-contained copy (this page doesn't load render.js). Keep the name list in
+   sync with render.js / marksheet.js.                                         */
+const REDUCED_SUBJECT_STUDENTS = ['LUCIA LAPDIANGHUN KHARKONOR'];
+function isReducedSubjectStudent(name) {
+  if (!name) return false;
+  const norm = String(name).trim().toUpperCase().replace(/\s+/g, ' ');
+  return REDUCED_SUBJECT_STUDENTS.includes(norm);
+}
+
 function computeRanks(entries) {
   const ranked = entries.filter(e => e.total !== null && e.total !== undefined && !e.fail);
   ranked.sort((a, b) => b.total - a.total);
@@ -1618,8 +1629,8 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
       coScholasticConfig: cfg.coScholastic || [],
       // Rank is recomputed fresh below (assignFreshMarksheetRanks) — these
       // saved-rank values are placeholders and get overwritten.
-      _hyElig: isStudentTotalComplete(hyData, classNum) && !studentFailsTerm(hyData, classNum),
-      _ftElig: isStudentTotalComplete(ftData, classNum) && !studentFailsTerm(ftData, classNum),
+      _hyElig: isStudentTotalComplete(hyData, classNum) && !studentFailsTerm(hyData, classNum) && !isReducedSubjectStudent(student.name),
+      _ftElig: isStudentTotalComplete(ftData, classNum) && !studentFailsTerm(ftData, classNum) && !isReducedSubjectStudent(student.name),
       halfYearly: {
         subjects: hySubjects, grandTotal: hyGrand,
         percentage: parseFloat((Math.round(hyPct * 10) / 10).toFixed(1)),
@@ -2514,8 +2525,8 @@ async function generateClassMarksheet() {
         student:    { name: ftData.studentName || doc.id, rollNo: ftData.rollNo || 0 },
         // Rank recomputed fresh below (assignFreshMarksheetRanks); saved ranks
         // are ignored so failed students never show a rank.
-        _hyElig: isStudentTotalComplete(hyData, classNum) && !studentFailsTerm(hyData, classNum),
-        _ftElig: isStudentTotalComplete(ftData, classNum) && !studentFailsTerm(ftData, classNum),
+        _hyElig: isStudentTotalComplete(hyData, classNum) && !studentFailsTerm(hyData, classNum) && !isReducedSubjectStudent(ftData.studentName),
+        _ftElig: isStudentTotalComplete(ftData, classNum) && !studentFailsTerm(ftData, classNum) && !isReducedSubjectStudent(ftData.studentName),
         halfYearly: {
           subjects:      hySubjects,
           grandTotal:    hyGrand,
