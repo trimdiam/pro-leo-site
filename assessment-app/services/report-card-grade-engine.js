@@ -160,6 +160,23 @@ export function getTermDateRange(term) {
   const year = now.getFullYear();
   const startYear = month >= 4 ? year : year - 1;
 
+  // One-off exception for 2026-27: terms run Apr-Jun / Jul-Nov instead of the
+  // usual Apr-Sep / Oct-Mar. Confirmed with school for this academic year only.
+  if (getCurrentAcademicYear() === '2026-27') {
+    if (term === 'HY1') {
+      return {
+        dateFrom:  `${startYear}-04-01`,
+        dateTo:    `${startYear}-06-30`,
+        termLabel: 'First Half-Yearly'
+      };
+    }
+    return {
+      dateFrom:  `${startYear}-07-01`,
+      dateTo:    `${startYear}-11-30`,
+      termLabel: 'Second Half-Yearly'
+    };
+  }
+
   if (term === 'HY1') {
     return {
       dateFrom:  `${startYear}-04-01`,

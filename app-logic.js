@@ -6073,7 +6073,14 @@ function _arcCalcTotal(academics) {
         const base = d.id.split("-")[0].trim();
         if (!seen.has(base)) { seen.add(base); classes.push(base); }
       });
-      classes.sort((a, b) => a.length - b.length || a.localeCompare(b));
+      const MO_CLASS_ORDER = ["PLG", "LKG", "SKG", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+      classes.sort((a, b) => {
+        const ia = MO_CLASS_ORDER.indexOf(a), ib = MO_CLASS_ORDER.indexOf(b);
+        if (ia === -1 && ib === -1) return a.localeCompare(b);
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
       if (!classes.length) {
         wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">No classes found.</p>';
         return;
@@ -6198,6 +6205,22 @@ function _arcCalcTotal(academics) {
       const snap = await getDocs(collection(db, "marks", `${cls}_${term}`, "students"));
       const students = [];
       snap.forEach(d => students.push({ id: d.id, ...d.data() }));
+
+      // marks/{cls}_{term}/students docs never carry a `name` field (markentry.js
+      // only writes marks/status data) — resolve real names from the `students`
+      // collection so this doesn't fall back to raw doc IDs.
+      const classNum = TA_ROMAN_TO_NUM[cls];
+      if (classNum) {
+        try {
+          const studSnap = await getDocs(query(collection(db, "students"), where("class", "==", String(classNum))));
+          const nameById = {};
+          studSnap.forEach(d => { nameById[d.id] = d.data().name; });
+          students.forEach(s => { if (nameById[s.id]) s.name = nameById[s.id]; });
+        } catch (e) {
+          console.warn("loadMarksSubjectStudents: name lookup failed:", e.message);
+        }
+      }
+
       students.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
       const hasUT = students.some(s => s.academics && s.academics[subject] && s.academics[subject].UT !== undefined);
       let rowsHtml = "";
@@ -6226,6 +6249,294 @@ function _arcCalcTotal(academics) {
     } catch (e) {
       body.innerHTML = `<p style="color:var(--danger);text-align:center;padding:12px">❌ ${e.message}</p>`;
     }
+  }),
+  // ── PERFORMANCE ANALYTICS (Class III–X) ──────────────────────────────────
+  // _paComputeAggregate/_paSubjectFailsFloor are ports of the same-named pure
+  // functions in Sfs-report-card/markentry.js (computeAggregateSubject /
+  // subjectFailsFloor) — that file can't be <script>-included here since it
+  // wires up markentry.html-specific DOM listeners on load. Keep these two in
+  // sync with markentry.js if the PASS/FAIL rule there ever changes.
+  (window._paComputeAggregate = function (academics, subj) {
+    const comps = subj.components || [];
+    let totalSum = 0, iaSum = 0, examSum = 0, count = 0;
+    comps.forEach(k => {
+      const a = academics && academics[k];
+      if (!a) return;
+      totalSum += a.total ?? 0;
+      iaSum += a.IA ?? a.singleMark ?? 0;
+      examSum += a.TE ?? 0;
+      count++;
+    });
+    if (subj.aggregateMethod === "average") {
+      return count > 0
+        ? { ia: Math.round(iaSum / count), exam: Math.round(examSum / count), total: Math.round(totalSum / count) }
+        : { ia: 0, exam: 0, total: 0 };
+    }
+    return { ia: iaSum, exam: examSum, total: totalSum };
+  }),
+  (window._paSubjectFailsFloor = function (ia, exam, cfg, subj) {
+    if (cfg.markScheme !== "senior" || subj.singleTotal) return false;
+    const passmark = cfg.passmark || 40;
+    const iaFloor = Math.round(20 * passmark / 100), examFloor = Math.round(80 * passmark / 100);
+    return ia < iaFloor || exam < examFloor;
+  }),
+  // Ports Sfs-report-card/markentry.js's calcStudentTotal / isStudentTotalComplete
+  // (used for the class teacher's rank column) — "complete" only requires the
+  // non-aggregate leaf subjects to have a total; aggregates are excluded from
+  // that check there too, so this mirrors it exactly rather than tightening it.
+  (window._paTermTotal = function (src, cfg) {
+    const acad = src && src.academics;
+    if (!acad) return { total: null, complete: false };
+    let total = 0;
+    (cfg.subjects || []).filter(s => s.countInTotal).forEach(subj => {
+      total += subj.isAggregate ? window._paComputeAggregate(acad, subj).total : (acad[subj.key]?.total ?? 0);
+    });
+    const leafSubjects = (cfg.subjects || []).filter(s => s.countInTotal && !s.isAggregate);
+    const complete = leafSubjects.length > 0 && leafSubjects.every(subj => acad[subj.key]?.total != null);
+    return { total, complete };
+  }),
+  (window._paCard = function (label, value) {
+    return `<div style="background:#fafaf8;border:1.5px solid var(--primary);border-radius:12px;padding:14px 16px">
+      <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">${label}</div>
+      <div style="font-size:1.3rem;font-weight:700;color:var(--accent-dark)">${value}</div>
+    </div>`;
+  }),
+  (window.loadPerformanceAnalytics = async function () {
+    const body = document.getElementById("pa-body");
+    if (!body) return;
+    body.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px"><i class="fas fa-spinner fa-spin"></i> Crunching marks…</p>';
+    if (typeof CONFIG === "undefined") {
+      body.innerHTML = '<p style="color:var(--danger);text-align:center;padding:12px">❌ Class configuration (Sfs-report-card/config.js) failed to load.</p>';
+      return;
+    }
+    try {
+      const NUM_TO_ROMAN = { 1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI", 7: "VII", 8: "VIII", 9: "IX", 10: "X" };
+      const classNums = Object.keys(CONFIG).map(Number).sort((a, b) => a - b);
+
+      const classResults = await Promise.all(classNums.map(async num => {
+        const roman = NUM_TO_ROMAN[num];
+        const cfg = CONFIG[num];
+        const passmark = cfg.passmark || 40;
+        const maxMarks = cfg.grandTotalMax || 0;
+
+        const [studSnap, hySnap, ftSnap] = await Promise.all([
+          getDocs(query(collection(db, "students"), where("class", "==", String(num)))),
+          getDocs(collection(db, "marks", `${roman}_HY`, "students")),
+          getDocs(collection(db, "marks", `${roman}_FT`, "students"))
+        ]);
+        const hyById = {}; hySnap.forEach(d => hyById[d.id] = d.data());
+        const ftById = {}; ftSnap.forEach(d => ftById[d.id] = d.data());
+
+        let passCount = 0, failCount = 0;
+        let girlsSum = 0, girlsCount = 0, boysSum = 0, boysCount = 0;
+        let classPctSum = 0, classPctCount = 0;
+        const hyCandidates = [], ftCandidates = [];
+        // Every subject total (leaf IA+UT+TE, senior IA+TE, singleTotal, or an
+        // averaged aggregate) is built on a 100-point scale, so subject scores
+        // are directly comparable without a per-subject max lookup.
+        const subjectStats = {};
+        (cfg.subjects || []).filter(s => s.countInTotal).forEach(s => {
+          subjectStats[s.key] = { label: s.label, sum: 0, count: 0, failCount: 0 };
+        });
+
+        const perfectAttendance = [];
+
+        studSnap.forEach(sd => {
+          const meta = sd.data();
+          const id = sd.id;
+          const hy = hyById[id] || {}, ft = ftById[id] || {};
+
+          // Attendance is stored as one merged object (hyPresent/hyTotal/
+          // ftPresent/ftTotal together) on whichever term doc last wrote it —
+          // same lookup render.js uses for the report card's attendance %.
+          const att = hy.attendance || ft.attendance || {};
+          const presentSum = (att.hyPresent || 0) + (att.ftPresent || 0);
+          const totalSum = (att.hyTotal || 0) + (att.ftTotal || 0);
+          if (totalSum > 0 && presentSum === totalSum) {
+            perfectAttendance.push({ name: meta.name || id });
+          }
+
+          const hyRank = window._paTermTotal(hy, cfg);
+          if (hyRank.complete) hyCandidates.push({ name: meta.name || id, total: hyRank.total });
+          const ftRank = window._paTermTotal(ft, cfg);
+          if (ftRank.complete) ftCandidates.push({ name: meta.name || id, total: ftRank.total });
+
+          let grand = 0, termsWithData = 0, fail = false;
+
+          ["HY", "FT"].forEach(term => {
+            const src = term === "HY" ? hy : ft;
+            let termGrand = 0, termHasData = false;
+            (cfg.subjects || []).forEach(subj => {
+              if (!subj.countInTotal) return;
+              let total, ia, exam;
+              if (subj.isAggregate) {
+                const hasAnyComp = (subj.components || []).some(k => src.academics && src.academics[k]);
+                if (!hasAnyComp) return;
+                const agg = window._paComputeAggregate(src.academics, subj);
+                total = agg.total; ia = agg.ia; exam = agg.exam;
+              } else {
+                const a = src.academics && src.academics[subj.key];
+                if (!a || a.total == null) return;
+                total = a.total; ia = a.IA ?? a.singleMark ?? 0; exam = a.TE ?? 0;
+              }
+              termGrand += total; termHasData = true;
+              const subjFail = total < passmark || window._paSubjectFailsFloor(ia, exam, cfg, subj);
+              if (subjFail) fail = true;
+              const stat = subjectStats[subj.key];
+              stat.sum += total; stat.count++;
+              if (subjFail) stat.failCount++;
+            });
+            if (termHasData) { grand += termGrand; termsWithData++; }
+          });
+
+          if (!termsWithData) return; // no marks entered for this student yet — excluded from stats
+          const denom = maxMarks * termsWithData;
+          const pct = denom > 0 ? (grand / denom) * 100 : 0;
+
+          if (fail) failCount++; else passCount++;
+          classPctSum += pct; classPctCount++;
+          const gender = (meta.gender || "").toUpperCase();
+          if (gender === "F") { girlsSum += pct; girlsCount++; }
+          else if (gender === "M") { boysSum += pct; boysCount++; }
+        });
+
+        // Rank off Final Term once any student's FT is complete; otherwise fall
+        // back to Half Yearly. Ties broken by name — computeRanks() in
+        // markentry.js doesn't merge ties either (sequential 1/2/3), matched here.
+        const rankTerm = ftCandidates.length ? "FT" : "HY";
+        const rankPool = (rankTerm === "FT" ? ftCandidates : hyCandidates)
+          .slice()
+          .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+        const topStudents = rankPool.slice(0, 3);
+
+        const subjectRows = Object.values(subjectStats)
+          .filter(s => s.count > 0)
+          .map(s => ({ label: s.label, avg: s.sum / s.count, passRate: ((s.count - s.failCount) / s.count) * 100 }))
+          .sort((a, b) => a.avg - b.avg);
+        const weakestSubject = subjectRows.length ? subjectRows[0] : null;
+
+        return {
+          num, roman,
+          totalStudents: studSnap.size,
+          assessed: classPctCount,
+          passCount, failCount,
+          avgPct: classPctCount ? classPctSum / classPctCount : null,
+          girlsAvg: girlsCount ? girlsSum / girlsCount : null,
+          boysAvg: boysCount ? boysSum / boysCount : null,
+          girlsCount, boysCount,
+          rankTerm, topStudents,
+          subjectRows, weakestSubject,
+          perfectAttendance
+        };
+      }));
+
+      let totalStudents = 0, totalAssessed = 0, totalPass = 0, totalFail = 0, totalPerfectAtt = 0;
+      let schoolGirlsSum = 0, schoolGirlsCount = 0, schoolBoysSum = 0, schoolBoysCount = 0;
+      let best = null;
+      classResults.forEach(r => {
+        totalStudents += r.totalStudents;
+        totalAssessed += r.assessed;
+        totalPass += r.passCount;
+        totalFail += r.failCount;
+        totalPerfectAtt += r.perfectAttendance.length;
+        if (r.girlsAvg != null) { schoolGirlsSum += r.girlsAvg * r.girlsCount; schoolGirlsCount += r.girlsCount; }
+        if (r.boysAvg != null) { schoolBoysSum += r.boysAvg * r.boysCount; schoolBoysCount += r.boysCount; }
+        if (r.avgPct != null && (!best || r.avgPct > best.avgPct)) best = r;
+      });
+
+      const fmtPct = v => v == null ? "—" : v.toFixed(1) + "%";
+      const schoolGirlsAvg = schoolGirlsCount ? schoolGirlsSum / schoolGirlsCount : null;
+      const schoolBoysAvg = schoolBoysCount ? schoolBoysSum / schoolBoysCount : null;
+
+      let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px">
+        ${window._paCard("Students Assessed", totalAssessed + " / " + totalStudents)}
+        ${window._paCard("Whole-School Pass Rate", totalAssessed ? Math.round((totalPass / totalAssessed) * 100) + "%" : "—")}
+        ${window._paCard("Whole-School Failures", totalFail + " students")}
+        ${window._paCard("Best-Performing Class", best ? "Class " + best.roman + " (" + fmtPct(best.avgPct) + ")" : "—")}
+        ${window._paCard("Girls Avg %", fmtPct(schoolGirlsAvg))}
+        ${window._paCard("Boys Avg %", fmtPct(schoolBoysAvg))}
+        ${window._paCard("100% Attendance", totalPerfectAtt + " students")}
+      </div>`;
+
+      html += `<table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="border-bottom:1.5px solid var(--primary)">
+          <th style="text-align:left;padding:8px">Class</th>
+          <th style="padding:8px">Assessed</th>
+          <th style="padding:8px">Pass</th>
+          <th style="padding:8px">Fail</th>
+          <th style="padding:8px">Avg %</th>
+          <th style="padding:8px">Girls Avg</th>
+          <th style="padding:8px">Boys Avg</th>
+        </tr></thead><tbody>`;
+      classResults.forEach(r => {
+        html += `<tr>
+          <td style="padding:8px"><strong>Class ${r.roman}</strong></td>
+          <td style="text-align:center;padding:8px">${r.assessed}/${r.totalStudents}</td>
+          <td style="text-align:center;padding:8px;color:#2E7D32">${r.passCount}</td>
+          <td style="text-align:center;padding:8px;color:#C62828">${r.failCount}</td>
+          <td style="text-align:center;padding:8px">${fmtPct(r.avgPct)}</td>
+          <td style="text-align:center;padding:8px">${fmtPct(r.girlsAvg)}</td>
+          <td style="text-align:center;padding:8px">${fmtPct(r.boysAvg)}</td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+
+      html += `<h4 style="color:var(--accent-dark);margin:24px 0 12px"><i class="fas fa-trophy" style="margin-right:8px;color:var(--accent)"></i>Top 3 Per Class</h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">`;
+      classResults.forEach(r => {
+        const medals = ["🥇", "🥈", "🥉"];
+        const rows = r.topStudents.length
+          ? r.topStudents.map((s, i) => `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px">
+              <span>${medals[i]} ${s.name}</span><span style="font-weight:600">${s.total}</span>
+            </div>`).join("")
+          : `<div style="font-size:13px;color:var(--text-light)">No complete records yet</div>`;
+        html += `<div style="background:#fafaf8;border:1.5px solid var(--primary);border-radius:12px;padding:14px 16px">
+          <div style="font-weight:700;color:var(--accent-dark);margin-bottom:8px">Class ${r.roman} <span style="font-weight:400;font-size:11px;color:var(--text-light)">(${r.rankTerm === "FT" ? "Final Term" : "Half Yearly"})</span></div>
+          ${rows}
+        </div>`;
+      });
+      html += `</div>`;
+
+      html += `<h4 style="color:var(--accent-dark);margin:24px 0 12px"><i class="fas fa-book" style="margin-right:8px;color:var(--accent)"></i>Subject Performance</h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">`;
+      classResults.forEach(r => {
+        const subjRowsHtml = r.subjectRows.length
+          ? r.subjectRows.map(s => `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px${s === r.weakestSubject ? ";color:#C62828;font-weight:700" : ""}">
+              <span>${s === r.weakestSubject ? "⚠ " : ""}${s.label}</span><span>${fmtPct(s.avg)} avg · ${fmtPct(s.passRate)} pass</span>
+            </div>`).join("")
+          : `<div style="font-size:13px;color:var(--text-light)">No subject marks entered yet</div>`;
+        html += `<div style="background:#fafaf8;border:1.5px solid var(--primary);border-radius:12px;padding:14px 16px">
+          <div style="font-weight:700;color:var(--accent-dark);margin-bottom:8px">Class ${r.roman}${r.weakestSubject ? ` <span style="font-weight:400;font-size:11px;color:var(--text-light)">— weakest: ${r.weakestSubject.label}</span>` : ""}</div>
+          ${subjRowsHtml}
+        </div>`;
+      });
+      html += `</div>`;
+
+      html += `<h4 style="color:var(--accent-dark);margin:24px 0 12px"><i class="fas fa-star" style="margin-right:8px;color:var(--accent)"></i>100% Attendance (${totalPerfectAtt} students)</h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">`;
+      classResults.forEach(r => {
+        if (!r.perfectAttendance.length) return;
+        html += `<div style="background:#fafaf8;border:1.5px solid var(--primary);border-radius:12px;padding:14px 16px">
+          <div style="font-weight:700;color:var(--accent-dark);margin-bottom:8px">Class ${r.roman} <span style="font-weight:400;font-size:11px;color:var(--text-light)">(${r.perfectAttendance.length})</span></div>
+          ${r.perfectAttendance.map(s => `<div style="font-size:13px;padding:2px 0">🌟 ${s.name}</div>`).join("")}
+        </div>`;
+      });
+      if (!totalPerfectAtt) html += `<div style="font-size:13px;color:var(--text-light);padding:8px">No students with complete 100% attendance found yet.</div>`;
+      html += `</div>`;
+
+      body.innerHTML = html;
+    } catch (e) {
+      body.innerHTML = `<p style="color:var(--danger);text-align:center;padding:12px">❌ ${e.message}</p>`;
+    }
+  }),
+  (window.printPerformanceAnalytics = function () {
+    const dateEl = document.getElementById("pa-print-date");
+    if (dateEl) dateEl.textContent = "Generated " + new Date().toLocaleString();
+    document.body.classList.add("pa-printing");
+    const cleanup = () => document.body.classList.remove("pa-printing");
+    window.addEventListener("afterprint", cleanup, { once: true });
+    window.print();
+    setTimeout(cleanup, 5000); // afterprint doesn't fire on every browser/webview — fallback
   }),
   (window.loadAdminReportCards = async function () {
     await (async function () {

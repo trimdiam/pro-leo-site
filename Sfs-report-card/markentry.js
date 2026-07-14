@@ -631,7 +631,7 @@ async function openGrid(classId, classNum, section, subjectLabel, subjectKey, te
 }
 
 function renderGrid(students, existing) {
-  const { classNum, subjectKey, term } = ME.activeClass;
+  const { classNum, subjectKey, subjectLabel, term } = ME.activeClass;
   const cfg      = CONFIG[classNum];
   const subj     = findSubjectConfig(classNum, subjectKey);
   const isGrade  = ME.activeClass.entryType === 'grade';
@@ -640,6 +640,30 @@ function renderGrid(students, existing) {
   const slot     = termToCoScholasticSlot(term);
   const wrap     = $('gridTableWrap');
   wrap.innerHTML  = '';
+
+  // Re-derive submit/lock state from Firestore on every (re)load — the button's
+  // disabled/"Submitted" state set at submit time only lived in this tab's DOM
+  // and was lost on refresh or re-navigation, letting an already-submitted
+  // subject look re-editable again even though submittedSubjects[key] was set.
+  const submitKey     = subjectKey || subjectLabel;
+  const isSharedSubj  = subj?.sharedEntry === true;
+  const myUidForCheck = ME.user?.uid;
+  const classLocked   = students.some(s => existing[s.id]?.status === 'locked');
+  // Shared-entry subjects (Khasi/Alt-English, Val-Edu/Catechism) use the SAME
+  // subjectKey for two different teachers who each submit only their own
+  // students. A plain "any student has this flag" check would lock out the
+  // second teacher as soon as the first one submits — so for shared subjects,
+  // only count a submission as "mine" if it's stamped with my own uid.
+  const subjSubmitted = students.some(s => {
+    const sd = existing[s.id]?.submittedSubjects?.[submitKey];
+    if (!sd || sd.status !== 'submitted') return false;
+    return isSharedSubj ? sd.by === myUidForCheck : true;
+  });
+  const btnSubmit = $('btnSubmit');
+  if (btnSubmit) {
+    btnSubmit.disabled    = classLocked || subjSubmitted;
+    btnSubmit.textContent = classLocked ? '🔒 Locked' : (subjSubmitted ? '✓ Submitted' : 'Submit to Class Teacher');
+  }
 
   // Build column headers based on mark scheme
   let colHeaders;
@@ -685,7 +709,7 @@ function renderGrid(students, existing) {
       ? existing[student.id]?.coScholastic?.[subjectKey]?.enteredBy
       : existData.enteredBy;
     const lockedByOther = isShared && !!enteredBy && enteredBy !== myUid;
-    const cellLocked = isLocked || lockedByOther;
+    const cellLocked = isLocked || lockedByOther || subjSubmitted;
     const dis        = cellLocked ? 'disabled' : '';
     const lockTitle  = lockedByOther ? ' title="🔒 Entered by the other assigned teacher"' : '';
 
@@ -1454,12 +1478,17 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
         ftTotal = ftAgg.total;
         hySubjects[subj.key] = { ia: hyAgg.ia, exam: hyAgg.exam, total: hyTotal };
         ftSubjects[subj.key] = { ia: ftAgg.ia, exam: ftAgg.exam, total: ftTotal };
+        // PURE-AVERAGE RULE (Class 9/10, confirmed 2026-07-14): an aggregate
+        // subject passes on its AVERAGED components — avg IA >= 6 AND avg exam
+        // >= 24 (the passmark-30 floors). Individual components (Physics etc.,
+        // countInTotal:false) are NOT independently failed; only countInTotal
+        // subjects (the aggregates + standalone Maths/H.Ed/Khasi) decide pass/
+        // fail. Do NOT re-add a per-component check here.
         if (subj.countInTotal) {
           hyGrand += hyTotal;
           ftGrand += ftTotal;
-          // Only evaluate a term's pass/fail once that term's marks actually
-          // exist — a term with no data yet (e.g. FT not entered on a
-          // Half-Yearly-only marksheet) must never force a FAIL.
+          // Only evaluate a term once its marks actually exist — a term with
+          // no data yet (e.g. FT not entered) must never force a FAIL.
           const hySubjFail = hyExists && (hyTotal < passmark || subjectFailsFloor(hyAgg.ia, hyAgg.exam, cfg, subj));
           const ftSubjFail = ftExists && (ftTotal < passmark || subjectFailsFloor(ftAgg.ia, ftAgg.exam, cfg, subj));
           if (hySubjFail || ftSubjFail) result = 'FAIL';
@@ -1486,6 +1515,10 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
         hySubjects[subj.key] = hyEntry;
         ftSubjects[subj.key] = ftEntry;
 
+        // Only countInTotal subjects decide pass/fail (see PURE-AVERAGE note
+        // above). For Class 9/10 the countInTotal:false components (Physics,
+        // Chemistry, Biology, etc.) are intentionally NOT checked here — they
+        // only matter through their aggregate's average.
         if (subj.countInTotal) {
           hyGrand += hyTotal;
           ftGrand += ftTotal;
@@ -1896,8 +1929,12 @@ function renderResult(hyData, ftData, classNum) {
   const cfg = CONFIG[classNum];
   if (!cfg) return;
   const passmark  = cfg.passmark ?? 40;
-  const countSubj = cfg.subjects.filter(s => s.countInTotal);
 
+  // PURE-AVERAGE RULE (Class 9/10): only countInTotal subjects decide pass/
+  // fail — the aggregates (checked on avg IA >= 6 AND avg exam >= 24) plus
+  // standalone Maths/H.Ed/Khasi. Individual components (Physics etc.) are not
+  // independently failed.
+  const countSubj = cfg.subjects.filter(s => s.countInTotal);
   let hyFail = false, ftFail = false;
   countSubj.forEach(subj => {
     let ht, ft, hyIa, hyTe, ftIa, ftTe;
@@ -2075,9 +2112,11 @@ async function openReportCard() {
   let result = 'PASS';
 
   for (const subj of cfg.subjects) {
-    let hyTotal, ftTotal, hyIa, hyTe, ftIa, ftTe;
+    let hyTotal, ftTotal, hyIa, hyTe, ftIa, ftTe, hyExists, ftExists;
 
     if (subj.isAggregate) {
+      hyExists = subj.components.every(k => hyData?.academics?.[k]?.total != null);
+      ftExists = subj.components.every(k => ftData?.academics?.[k]?.total != null);
       const hyAgg = computeAggregateSubject(hyData?.academics, subj, cfg);
       const ftAgg = computeAggregateSubject(ftData?.academics, subj, cfg);
       hyTotal = hyAgg.total; hyIa = hyAgg.ia; hyTe = hyAgg.exam;
@@ -2087,6 +2126,8 @@ async function openReportCard() {
     } else {
       const hyA = hyData?.academics?.[subj.key] || {};
       const ftA = ftData?.academics?.[subj.key] || {};
+      hyExists = hyData?.academics?.[subj.key]?.total != null;
+      ftExists = ftData?.academics?.[subj.key]?.total != null;
       hyTotal = hyA.total ?? 0; hyIa = hyA.IA ?? hyA.singleMark ?? 0; hyTe = hyA.TE ?? 0;
       ftTotal = ftA.total ?? 0; ftIa = ftA.IA ?? ftA.singleMark ?? 0; ftTe = ftA.TE ?? 0;
       hySubjects[subj.key] = { ia: hyIa, ut: hyA.UT ?? 0, exam: hyTe, total: hyTotal };
@@ -2094,14 +2135,15 @@ async function openReportCard() {
     }
     consolSubjects[subj.key] = { term1: hyTotal, term2: ftTotal, total: hyTotal + ftTotal };
 
+    // PURE-AVERAGE RULE (Class 9/10): only countInTotal subjects decide pass/
+    // fail; components (countInTotal:false) matter only via their aggregate's
+    // average. Only evaluate a term once its marks exist — a term with no data
+    // yet (e.g. FT not entered) must never force a FAIL on its own.
     if (subj.countInTotal) {
-      hyGrand += hyTotal;
-      ftGrand += ftTotal;
-      if (hyTotal < passmark || ftTotal < passmark ||
-          subjectFailsFloor(hyIa, hyTe, cfg, subj) ||
-          subjectFailsFloor(ftIa, ftTe, cfg, subj)) {
-        result = 'FAIL';
-      }
+      hyGrand += hyTotal; ftGrand += ftTotal;
+      const hySubjFail = hyExists && (hyTotal < passmark || subjectFailsFloor(hyIa, hyTe, cfg, subj));
+      const ftSubjFail = ftExists && (ftTotal < passmark || subjectFailsFloor(ftIa, ftTe, cfg, subj));
+      if (hySubjFail || ftSubjFail) result = 'FAIL';
     }
   }
 
@@ -2218,10 +2260,11 @@ function openReportCardFromList(studentId, studentData, hyData, ftData, classId,
       hySubjects[subj.key] = { ia: hyAgg.ia, ut: 0, exam: hyAgg.exam, total: hyAgg.total };
       ftSubjects[subj.key] = { ia: ftAgg.ia, ut: 0, exam: ftAgg.exam, total: ftAgg.total };
       consolSubjects[subj.key] = { term1: hyAgg.total, term2: ftAgg.total, total: hyAgg.total + ftAgg.total };
+      // PURE-AVERAGE RULE (Class 9/10): only countInTotal subjects decide
+      // pass/fail; the aggregate is judged on its averaged IA/exam floors.
+      // Components (countInTotal:false) are never independently failed.
       if (subj.countInTotal) {
         hyGrand += hyAgg.total; ftGrand += ftAgg.total;
-        // Only evaluate a term's pass/fail once that term's marks actually
-        // exist — a term with no data yet must never force a FAIL.
         const hySubjFail = hyExists && (hyAgg.total < passmark || subjectFailsFloor(hyAgg.ia, hyAgg.exam, cfg, subj));
         const ftSubjFail = ftExists && (ftAgg.total < passmark || subjectFailsFloor(ftAgg.ia, ftAgg.exam, cfg, subj));
         if (hySubjFail || ftSubjFail) result = 'FAIL';
@@ -2377,11 +2420,12 @@ async function generateClassMarksheet() {
         }
         consolSubjects[subj.key] = { term1: hyTotal, term2: ftTotal, total: hyTotal + ftTotal };
 
+        // PURE-AVERAGE RULE (Class 9/10): only countInTotal subjects decide
+        // pass/fail; components (countInTotal:false) matter only through their
+        // aggregate's average. Only evaluate a term once its marks exist — a
+        // term with no data yet must never force a FAIL on its own.
         if (subj.countInTotal) {
-          hyGrand += hyTotal;
-          ftGrand += ftTotal;
-          // Only evaluate a term's pass/fail once that term's marks actually
-          // exist — a term with no data yet must never force a FAIL.
+          hyGrand += hyTotal; ftGrand += ftTotal;
           const hySubjFail = hyExists && (hyTotal < passmark || subjectFailsFloor(hyIa, hyTe, cfg, subj));
           const ftSubjFail = ftExists && (ftTotal < passmark || subjectFailsFloor(ftIa, ftTe, cfg, subj));
           if (hySubjFail || ftSubjFail) result = 'FAIL';

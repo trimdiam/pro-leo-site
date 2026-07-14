@@ -148,8 +148,9 @@ function buildHeader(subjects, isStandard) {
       const span = isAgg ? 2 : 4;
       html += `<th colspan="${span}" class="ms-subj-group"><span class="ms-subj-name">${subj.label}</span></th>`;
     } else {
-      // Senior: IA | Total (aggregates: — | Total)
-      html += `<th colspan="2" class="ms-subj-group"><span class="ms-subj-name">${subj.label}</span></th>`;
+      // Senior: IA | Exam | Total (aggregates: — | — | Total)
+      const span = isAgg ? 2 : 3;
+      html += `<th colspan="${span}" class="ms-subj-group"><span class="ms-subj-name">${subj.label}</span></th>`;
     }
   }
 
@@ -170,7 +171,11 @@ function buildHeader(subjects, isStandard) {
         html += '<th>IA</th><th>UT</th><th>TE</th><th>Total</th>';
       }
     } else {
-      html += '<th>IA</th><th>Total</th>';
+      if (isAgg) {
+        html += '<th>—</th><th>Total</th>';
+      } else {
+        html += '<th>IA</th><th>Exam</th><th>Total</th>';
+      }
     }
   }
   html += '</tr>';
@@ -214,10 +219,15 @@ function buildRows(list, subjects, config, isStandard, termKey) {
           html += `<td>${subjData.exam !== undefined ? subjData.exam : '—'}</td>`;
           html += `<td class="${fail ? 'ms-fail' : ''}">${total || '—'}</td>`;
         }
+      } else if (isAgg) {
+        // Senior scheme aggregate: — | Total
+        html += `<td style="color:#aaa">—</td>`;
+        html += `<td class="${fail ? 'ms-fail' : ''}">${total || '—'}</td>`;
       } else {
-        // Senior scheme: IA | Total
-        html += `<td>${isAgg ? '<span style="color:#aaa">—</span>' : (subjData.ia !== undefined ? subjData.ia : '—')}</td>`;
-        html += `<td class="${fail ? 'ms-fail' : ''}">${total || (isAgg ? '—' : '—')}</td>`;
+        // Senior scheme leaf subject: IA | Exam | Total
+        html += `<td>${subjData.ia !== undefined ? subjData.ia : '—'}</td>`;
+        html += `<td>${subjData.exam !== undefined ? subjData.exam : '—'}</td>`;
+        html += `<td class="${fail ? 'ms-fail' : ''}">${total || '—'}</td>`;
       }
     }
 
@@ -273,8 +283,10 @@ function buildAverageRow(list, subjects, config, isStandard, termKey) {
       } else {
         html += `<td>${fmt(s.ia / n)}</td><td>${fmt(s.ut / n)}</td><td>${fmt(s.exam / n)}</td><td>${fmt(s.total / n)}</td>`;
       }
+    } else if (isAgg) {
+      html += `<td>—</td><td>${fmt(s.total / n)}</td>`;
     } else {
-      html += `<td>${isAgg ? '—' : fmt(s.ia / n)}</td><td>${fmt(s.total / n)}</td>`;
+      html += `<td>${fmt(s.ia / n)}</td><td>${fmt(s.exam / n)}</td><td>${fmt(s.total / n)}</td>`;
     }
   }
 

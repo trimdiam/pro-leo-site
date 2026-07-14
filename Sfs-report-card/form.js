@@ -575,6 +575,10 @@ function collectFormData() {
 
   const passmark = currentConfig.passmark || 40;
   let result = 'PASS';
+  // PURE-AVERAGE RULE (Class 9/10): only countInTotal subjects decide pass/
+  // fail. Aggregates are judged on their averaged IA/exam floors (via
+  // subjectFailsComponentFloor, which reads the averaged components).
+  // Individual components (countInTotal:false) are never independently failed.
   for (const subj of currentConfig.subjects) {
     if (!subj.countInTotal) continue;
     if (hyTotals[subj.key] < passmark || ftTotals[subj.key] < passmark) {

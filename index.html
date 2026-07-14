@@ -1852,6 +1852,7 @@
           <button onclick="showDash('a','a-family-mgmt',this)"><i class="fas fa-users"></i> Family / Sibling</button>
           <button onclick="showDash('a','a-teacher-assign',this);loadTeacherAssignList()"><i class="fas fa-user-tag"></i> Teacher Assignments</button>
           <button onclick="showDash('a','a-marks-overview',this);loadMarksOverview()"><i class="fas fa-clipboard-list"></i> All Marks</button>
+          <button onclick="showDash('a','a-performance-analytics',this);loadPerformanceAnalytics()"><i class="fas fa-chart-pie"></i> Performance Analytics</button>
           <button onclick="window.open('routine-app/index.html','_blank')"><i class="fas fa-clock"></i> Routine Manager</button>
           <button onclick="window.open('assessment-app/index.html','_blank')"><i class="fas fa-chart-line"></i> Assessment</button>
         </div>
@@ -2390,6 +2391,39 @@
               <button class="btn btn-sm btn-outline" onclick="loadMarksOverview()"><i class="fas fa-sync-alt"></i> Refresh</button>
             </div>
             <div id="mo-body"><p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px"><i class="fas fa-spinner fa-spin"></i> Loading marks overview…</p></div>
+          </div>
+        </div>
+
+        <style>
+          #pa-print-header { display: none; }
+          @media print {
+            body.pa-printing > *:not(#page-admin-dash) { display: none !important; }
+            body.pa-printing #page-admin-dash * { visibility: hidden; }
+            body.pa-printing #a-performance-analytics,
+            body.pa-printing #a-performance-analytics * { visibility: visible; }
+            body.pa-printing #a-performance-analytics { position: absolute; top: 0; left: 0; width: 100%; padding: 20px; }
+            body.pa-printing #a-performance-analytics .btn { display: none !important; }
+            body.pa-printing #pa-print-header { display: block !important; margin-bottom: 20px; }
+          }
+        </style>
+        <div id="a-performance-analytics" class="dash-section">
+          <div class="card" style="padding:24px">
+            <div id="pa-print-header">
+              <h2 style="margin:0 0 4px">St. Francis De Sales Sec. School, Laitkor</h2>
+              <h3 style="margin:0 0 4px;color:var(--accent-dark)">Performance Analytics Report — Class III–X</h3>
+              <p style="margin:0;font-size:13px" id="pa-print-date"></p>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+              <div>
+                <h4 style="color:var(--accent-dark);margin:0 0 4px"><i class="fas fa-chart-pie" style="margin-right:8px;color:var(--accent)"></i>Performance Analytics — Class III–X</h4>
+                <p style="font-size:13px;color:var(--text-light);margin:0">Whole-school and per-class pass/fail breakdown, combining Half Yearly + Final Term marks entered so far.</p>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-sm btn-outline" onclick="loadPerformanceAnalytics()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <button class="btn btn-sm btn-outline" onclick="printPerformanceAnalytics()"><i class="fas fa-print"></i> Print / Save PDF</button>
+              </div>
+            </div>
+            <div id="pa-body"><p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px"><i class="fas fa-spinner fa-spin"></i> Loading performance analytics…</p></div>
           </div>
         </div>
 
@@ -4423,6 +4457,7 @@
     <script defer src="rc-class-guard.js"></script>
     <script defer src="homepage-content-fix.js"></script>
     <script defer src="capacitor-back.js"></script>
+<script defer src="Sfs-report-card/config.js?v=1"></script>
 <script type="module" src="app-logic.js?v=17"></script>
 <script type="module" src="office-fees.js"></script>
 <script type="module" src="office-notifications.js"></script>

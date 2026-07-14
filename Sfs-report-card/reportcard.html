@@ -224,10 +224,12 @@
         hyS[subj.key] = {ia:hyIa, ut:hyA.UT||0, exam:hyEx, total:hyT};
         ftS[subj.key] = {ia:ftIa, ut:ftA.UT||0, exam:ftEx, total:ftT};
       }
+      // PURE-AVERAGE RULE (Class 9/10): only countInTotal subjects decide
+      // pass/fail; components (countInTotal:false) matter only via their
+      // aggregate's average. Only evaluate a term once its marks exist — a
+      // term with no data yet must never force a FAIL on its own.
       if (subj.countInTotal) {
         hyGrand += hyT; ftGrand += ftT;
-        // Only evaluate a term's pass/fail once that term's marks actually
-        // exist — a term with no data yet must never force a FAIL.
         var hySubjFail = hyExists && (hyT < passmark || subjectFailsFloor(hyIa, hyEx, cfg, subj));
         var ftSubjFail = ftExists && (ftT < passmark || subjectFailsFloor(ftIa, ftEx, cfg, subj));
         if (hySubjFail || ftSubjFail) result = 'FAIL';
