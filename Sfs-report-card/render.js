@@ -151,7 +151,9 @@ function renderLeftPanel(data, config) {
 
   document.getElementById('rcOverallGrade').textContent = consol.grade || '—';
   document.getElementById('rcOverallPct').textContent = formatPct(consol.percentage) + '%';
-  document.getElementById('rcOverallRank').textContent = data.finalTerm.rank && data.finalTerm.totalStudents
+  // Rank only for students who passed all subjects.
+  const ovRankEligible = consol.result === 'PASS' || consol.result === 'PROMOTED' || consol.result === 'PROMOTED WITH GRACE';
+  document.getElementById('rcOverallRank').textContent = ovRankEligible && data.finalTerm.rank && data.finalTerm.totalStudents
     ? `${data.finalTerm.rank} / ${data.finalTerm.totalStudents}`
     : '—';
 }
@@ -179,7 +181,9 @@ function renderCenterPanel(data, config) {
   // Footer
   const hyCols = isStandard ? 6 : 5;
   const hyColspan = hyCols - 3;
-  const hyRankStr = data.halfYearly.rank
+  // Rank only for students who passed all subjects (gated on the result).
+  const hyRankEligible = data.consolidated && (data.consolidated.result === 'PASS' || data.consolidated.result === 'PROMOTED' || data.consolidated.result === 'PROMOTED WITH GRACE');
+  const hyRankStr = (hyRankEligible && data.halfYearly.rank)
     ? `Term 1 Rank: ${data.halfYearly.rank} / ${data.halfYearly.totalStudents || '—'}`
     : '';
   document.getElementById('rcHyTableFoot').innerHTML = `
@@ -241,8 +245,11 @@ function renderRightPanel(data, config) {
   document.getElementById('rcSumMax').textContent = (config.grandTotalMax * 2);
   document.getElementById('rcSumPct').textContent = formatPct(consol.percentage) + '%';
   document.getElementById('rcSumGrade').textContent = consol.grade;
-  document.getElementById('rcSumRank').textContent = data.finalTerm.rank || '—';
-  document.getElementById('rcSumTotalStudents').textContent = data.finalTerm.totalStudents || '—';
+  // Rank shown only for students who passed all subjects — a failed student
+  // never displays a rank on the report card, matching the marksheet rule.
+  const rankEligible = consol.result === 'PASS' || consol.result === 'PROMOTED' || consol.result === 'PROMOTED WITH GRACE';
+  document.getElementById('rcSumRank').textContent = (rankEligible && data.finalTerm.rank) ? data.finalTerm.rank : '—';
+  document.getElementById('rcSumTotalStudents').textContent = (rankEligible && data.finalTerm.totalStudents) ? data.finalTerm.totalStudents : '—';
 
   // ── ADMIN-CONTROLLED FINAL STATUS (all classes III–X) ──────────────────────
   // Fields: data.finalStatus = "PROMOTED" | "DETAINED"

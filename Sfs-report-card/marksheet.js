@@ -233,9 +233,12 @@ function buildRows(list, subjects, config, isStandard, termKey) {
 
     const grandTotal = termData.grandTotal || 0;
     const pct        = termData.percentage ?? 0;
-    const rank       = termData.rank || '—';
     const result     = consol.result || '—';
     const pass       = result === 'PASS' || result === 'PROMOTED' || result === 'PROMOTED WITH GRACE';
+    // Rank is shown only for students who passed all subjects. Belt-and-braces
+    // on top of the fresh recompute in markentry.js — a non-pass result never
+    // displays a rank number, even if stale data carried one.
+    const rank       = pass ? (termData.rank || '—') : '—';
 
     html += `<td class="ms-grand-total">${grandTotal}</td>`;
     html += `<td>${formatPct(pct)}%</td>`;

@@ -1319,6 +1319,25 @@ function computeRanks(entries) {
   return rankMap;
 }
 
+// Recompute HY and FT ranks for an already-built marksheet classList, ranking
+// ONLY students who passed every subject that term (temp _hyElig/_ftElig flags,
+// set by the caller from isStudentTotalComplete + !studentFailsTerm). Dense
+// ranking; ineligible students get rank 0, which renders as '—'. This overrides
+// any stale saved rank, so a failed student never shows a rank on the marksheet
+// regardless of when ranks were last auto-saved to Firestore.
+function assignFreshMarksheetRanks(classList) {
+  const hyRanks = computeRanks(classList.map((e, i) => ({ id: i, total: e.halfYearly.grandTotal, fail: !e._hyElig })));
+  const ftRanks = computeRanks(classList.map((e, i) => ({ id: i, total: e.finalTerm.grandTotal, fail: !e._ftElig })));
+  const hyCount = Object.keys(hyRanks).length, ftCount = Object.keys(ftRanks).length;
+  classList.forEach((e, i) => {
+    e.halfYearly.rank = hyRanks[i] || 0;
+    e.halfYearly.totalStudents = hyCount;
+    e.finalTerm.rank = ftRanks[i] || 0;
+    e.finalTerm.totalStudents = ftCount;
+    delete e._hyElig; delete e._ftElig;
+  });
+}
+
 async function autoSaveRanks(students, existingHY, existingFT, hyRanks, ftRanks, classId) {
   const totalStudents = students.length;
   try {
@@ -1577,7 +1596,6 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
     const hyPct      = maxMarks > 0 ? (hyGrand / maxMarks) * 100 : 0;
     const ftPct      = maxMarks > 0 ? (ftGrand / maxMarks) * 100 : 0;
     const overallPct = (maxMarks * 2) > 0 ? ((hyGrand + ftGrand) / (maxMarks * 2)) * 100 : 0;
-    const rank       = ftData.rank || hyData.rank || {};
 
     // Supplementary report-card data
     const hyAtt = hyData.attendance || {};
@@ -1598,15 +1616,19 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
         finalTerm:  ftData.remarks?.finalTerm   || ''
       },
       coScholasticConfig: cfg.coScholastic || [],
+      // Rank is recomputed fresh below (assignFreshMarksheetRanks) — these
+      // saved-rank values are placeholders and get overwritten.
+      _hyElig: isStudentTotalComplete(hyData, classNum) && !studentFailsTerm(hyData, classNum),
+      _ftElig: isStudentTotalComplete(ftData, classNum) && !studentFailsTerm(ftData, classNum),
       halfYearly: {
         subjects: hySubjects, grandTotal: hyGrand,
         percentage: parseFloat((Math.round(hyPct * 10) / 10).toFixed(1)),
-        grade: _gradeFromPct(hyPct), rank: rank.hyRank || 0, totalStudents: rank.totalStudents || 0
+        grade: _gradeFromPct(hyPct), rank: 0, totalStudents: 0
       },
       finalTerm: {
         subjects: ftSubjects, grandTotal: ftGrand,
         percentage: parseFloat((Math.round(ftPct * 10) / 10).toFixed(1)),
-        grade: _gradeFromPct(ftPct), rank: rank.ftRank || 0, totalStudents: rank.totalStudents || 0
+        grade: _gradeFromPct(ftPct), rank: 0, totalStudents: 0
       },
       consolidated: {
         subjects: consolSubjects, grandTotal: hyGrand + ftGrand,
@@ -1615,6 +1637,11 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
       }
     });
   });
+
+  // Rank only students who passed every subject that term (dense ranking);
+  // failed students get rank 0 → shown as '—'. Fresh, so stale saved ranks
+  // (that predated the pass-all-subjects rule) can't leak onto the marksheet.
+  assignFreshMarksheetRanks(classList);
 
   classList.sort((a, b) => (a.student.rollNo || 999) - (b.student.rollNo || 999));
   sessionStorage.setItem('sfds_classList', JSON.stringify(classList));
@@ -2480,20 +2507,22 @@ async function generateClassMarksheet() {
       const ftPct     = maxMarks > 0 ? (ftGrand / maxMarks) * 100 : 0;
       const overallPct= (maxMarks * 2) > 0 ? ((hyGrand + ftGrand) / (maxMarks * 2)) * 100 : 0;
 
-      const rank = ftData.rank || {};
-
       classList.push({
         class:      classNum,
         schoolName: 'St. Francis De Sales Secondary School',
         session:    '2026–2027',
         student:    { name: ftData.studentName || doc.id, rollNo: ftData.rollNo || 0 },
+        // Rank recomputed fresh below (assignFreshMarksheetRanks); saved ranks
+        // are ignored so failed students never show a rank.
+        _hyElig: isStudentTotalComplete(hyData, classNum) && !studentFailsTerm(hyData, classNum),
+        _ftElig: isStudentTotalComplete(ftData, classNum) && !studentFailsTerm(ftData, classNum),
         halfYearly: {
           subjects:      hySubjects,
           grandTotal:    hyGrand,
           percentage:    parseFloat((Math.round(hyPct * 10) / 10).toFixed(1)),
           grade:         _gradeFromPct(hyPct),
-          rank:          rank.hyRank || 0,
-          totalStudents: rank.totalStudents || 0,
+          rank:          0,
+          totalStudents: 0,
           attendance:    { present: hyData?.attendance?.hyPresent || 0, total: hyData?.attendance?.hyTotal || 0 }
         },
         finalTerm: {
@@ -2501,8 +2530,8 @@ async function generateClassMarksheet() {
           grandTotal:    ftGrand,
           percentage:    parseFloat((Math.round(ftPct * 10) / 10).toFixed(1)),
           grade:         _gradeFromPct(ftPct),
-          rank:          rank.ftRank || 0,
-          totalStudents: rank.totalStudents || 0,
+          rank:          0,
+          totalStudents: 0,
           attendance:    { present: ftData?.attendance?.ftPresent || 0, total: ftData?.attendance?.ftTotal || 0 }
         },
         consolidated: {
@@ -2519,6 +2548,10 @@ async function generateClassMarksheet() {
       alert('No locked student records found. Lock the records first.');
       return;
     }
+
+    // Rank only students who passed every subject that term (dense ranking);
+    // failed students get rank 0 → '—'. Overrides stale saved ranks.
+    assignFreshMarksheetRanks(classList);
 
     // Sort by roll number
     classList.sort((a, b) => (a.student.rollNo || 999) - (b.student.rollNo || 999));
