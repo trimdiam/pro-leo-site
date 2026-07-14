@@ -6293,7 +6293,24 @@ function _arcCalcTotal(academics) {
     });
     const leafSubjects = (cfg.subjects || []).filter(s => s.countInTotal && !s.isAggregate);
     const complete = leafSubjects.length > 0 && leafSubjects.every(subj => acad[subj.key]?.total != null);
-    return { total, complete };
+    // Mirror markentry.js's rank-eligibility rule: a student who fails any
+    // countInTotal subject is not eligible for a merit rank (Top 3), even if
+    // their grand total is high. Same pure-average rule as the report card.
+    const passmark = cfg.passmark || 40;
+    const failed = (cfg.subjects || []).filter(s => s.countInTotal).some(subj => {
+      let t, ia, exam, exists;
+      if (subj.isAggregate) {
+        exists = (subj.components || []).every(k => acad[k]?.total != null);
+        const agg = window._paComputeAggregate(acad, subj);
+        t = agg.total; ia = agg.ia; exam = agg.exam;
+      } else {
+        const a = acad[subj.key];
+        exists = a?.total != null;
+        t = a?.total ?? 0; ia = a?.IA ?? a?.singleMark ?? 0; exam = a?.TE ?? 0;
+      }
+      return exists && (t < passmark || window._paSubjectFailsFloor(ia, exam, cfg, subj));
+    });
+    return { total, complete, failed };
   }),
   (window._paCard = function (label, value) {
     return `<div style="background:#fafaf8;border:1.5px solid var(--primary);border-radius:12px;padding:14px 16px">
@@ -6356,10 +6373,12 @@ function _arcCalcTotal(academics) {
             perfectAttendance.push({ name: meta.name || id });
           }
 
+          // Only rank students who are complete AND passing — failed students
+          // never appear in Top 3, matching the marksheet rank-eligibility rule.
           const hyRank = window._paTermTotal(hy, cfg);
-          if (hyRank.complete) hyCandidates.push({ name: meta.name || id, total: hyRank.total });
+          if (hyRank.complete && !hyRank.failed) hyCandidates.push({ name: meta.name || id, total: hyRank.total });
           const ftRank = window._paTermTotal(ft, cfg);
-          if (ftRank.complete) ftCandidates.push({ name: meta.name || id, total: ftRank.total });
+          if (ftRank.complete && !ftRank.failed) ftCandidates.push({ name: meta.name || id, total: ftRank.total });
 
           let grand = 0, termsWithData = 0, fail = false;
 

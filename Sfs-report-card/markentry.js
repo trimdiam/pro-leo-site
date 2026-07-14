@@ -1232,8 +1232,8 @@ async function openStudentList(term) {
     const cfg = CONFIG[classNum];
     const maxMarks = cfg?.grandTotalMax || 0;
 
-    const hyEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingHY[s.id], classNum) }));
-    const ftEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingFT[s.id], classNum) }));
+    const hyEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingHY[s.id], classNum), fail: studentFailsTerm(existingHY[s.id], classNum) }));
+    const ftEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingFT[s.id], classNum), fail: studentFailsTerm(existingFT[s.id], classNum) }));
 
     const hyRanks = computeRanks(hyEntries);
     const ftRanks = computeRanks(ftEntries);
@@ -1271,13 +1271,51 @@ function isStudentTotalComplete(markData, classNum) {
   return leafSubjects.every(subj => acad[subj.key]?.total != null);
 }
 
-// Compute ranks for all students given a list of { id, total } entries.
-// Students with null/incomplete totals are unranked.
+// Returns true if the student fails ANY countInTotal subject this term, using
+// the same pure-average rule as the report card (Class 9/10 aggregates judged
+// on averaged IA>=6 & exam>=24; standard classes on total>=passmark). Only
+// evaluates subjects whose marks actually exist, so a partially-entered term
+// isn't wrongly flagged as failing.
+function studentFailsTerm(markData, classNum) {
+  const cfg = CONFIG[classNum];
+  if (!cfg || !markData?.academics) return false;
+  const acad = markData.academics;
+  const passmark = cfg.passmark || 40;
+  return cfg.subjects.filter(s => s.countInTotal).some(subj => {
+    let total, ia, exam, exists;
+    if (subj.isAggregate) {
+      exists = subj.components.every(k => acad[k]?.total != null);
+      const agg = computeAggregateSubject(acad, subj, cfg);
+      total = agg.total; ia = agg.ia; exam = agg.exam;
+    } else {
+      const a = acad[subj.key];
+      exists = a?.total != null;
+      total = a?.total ?? 0; ia = a?.IA ?? a?.singleMark ?? 0; exam = a?.TE ?? 0;
+    }
+    return exists && (total < passmark || subjectFailsFloor(ia, exam, cfg, subj));
+  });
+}
+
+// Compute ranks for the given { id, total, fail } entries.
+//  - Students who FAIL any subject are unranked (rank-eligibility rule shown in
+//    the UI note: "eligible only if student passes all subjects").
+//  - Null/incomplete totals are unranked.
+//  - Dense ranking: tied totals share a rank and the next distinct total is +1,
+//    never skipped (matches the "no rank skipped for ties" UI note).
 function computeRanks(entries) {
-  const ranked = entries.filter(e => e.total !== null && e.total !== undefined);
+  const ranked = entries.filter(e => e.total !== null && e.total !== undefined && !e.fail);
   ranked.sort((a, b) => b.total - a.total);
   const rankMap = {};
-  ranked.forEach((e, i) => { rankMap[e.id] = i + 1; });
+  let lastTotal = null, lastRank = 0;
+  ranked.forEach(e => {
+    if (e.total === lastTotal) {
+      rankMap[e.id] = lastRank;          // tie → same rank
+    } else {
+      lastRank += 1;                     // dense → next distinct total is +1
+      rankMap[e.id] = lastRank;
+      lastTotal = e.total;
+    }
+  });
   return rankMap;
 }
 
