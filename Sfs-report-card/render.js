@@ -164,12 +164,18 @@ function renderLeftPanel(data, config) {
   resultBadge.textContent = consol.result || '—';
   resultBadge.className = 'rc-result-badge ' + (consol.result === 'PASS' ? '' : 'fail');
 
-  document.getElementById('rcOverallGrade').textContent = isReducedSubjectStudent(s.name)
+  // When Term 2 isn't assessed yet (half-yearly-only card), the overall grade
+  // and percentage must reflect Half-Yearly figures — the consolidated values
+  // divide by both terms' max and would read as a misleading ~half. The result
+  // badge already reflects HY-only pass/fail (no FT marks → no FT fail).
+  const ovExempt = isReducedSubjectStudent(s.name);
+  const ovFtEmpty = (data.finalTerm.grandTotal || 0) === 0;
+  document.getElementById('rcOverallGrade').textContent = ovExempt
     ? '—'
-    : (consol.grade || '—');
-  document.getElementById('rcOverallPct').textContent = isReducedSubjectStudent(s.name)
+    : (ovFtEmpty ? (data.halfYearly.grade || '—') : (consol.grade || '—'));
+  document.getElementById('rcOverallPct').textContent = ovExempt
     ? '—'
-    : formatPct(consol.percentage) + '%';
+    : (ovFtEmpty ? formatPct(data.halfYearly.percentage) + '%' : formatPct(consol.percentage) + '%');
   // Rank only for students who passed all subjects; reduced-subject students are
   // excluded from the rank pool entirely.
   const ovRankEligible = !isReducedSubjectStudent(s.name) &&
@@ -251,25 +257,31 @@ function renderRightPanel(data, config) {
   // Footer
   const ftCols = isStandard ? 7 : 6;
   const ftColspan = ftCols - 4;
+  // Term 2 not yet assessed → blank the totals row rather than show 0 / F.
+  const ftEmpty = (data.finalTerm.grandTotal || 0) === 0;
   document.getElementById('rcFtTableFoot').innerHTML = `
     <tr class="rc-term-total">
       <td colspan="${ftColspan}" class="rc-tt-label">Term 2 Total</td>
       <td class="rc-tt-max">Max: ${config.grandTotalMax}</td>
-      <td class="rc-tt-val">${data.finalTerm.grandTotal}</td>
-      <td class="rc-tt-consol">${data.halfYearly.grandTotal + data.finalTerm.grandTotal}</td>
-      <td class="rc-tt-grade">${data.finalTerm.grade}</td>
+      <td class="rc-tt-val">${ftEmpty ? '' : data.finalTerm.grandTotal}</td>
+      <td class="rc-tt-consol">${ftEmpty ? '' : (data.halfYearly.grandTotal + data.finalTerm.grandTotal)}</td>
+      <td class="rc-tt-grade">${ftEmpty ? '' : data.finalTerm.grade}</td>
     </tr>
   `;
 
   // Summary
   const consol = data.consolidated;
-  document.getElementById('rcSumTotal').textContent = consol.grandTotal;
-  document.getElementById('rcSumMax').textContent = (config.grandTotalMax * 2);
+  // Half-yearly-only card (Term 2 not assessed): show HY totals/percentage/grade
+  // rather than the consolidated /1800 figures, which would halve the percentage.
+  document.getElementById('rcSumTotal').textContent = ftEmpty ? data.halfYearly.grandTotal : consol.grandTotal;
+  document.getElementById('rcSumMax').textContent = ftEmpty ? config.grandTotalMax : (config.grandTotalMax * 2);
   const sumExempt = isReducedSubjectStudent(data.student && data.student.name);
   document.getElementById('rcSumPct').textContent = sumExempt
     ? '—'
-    : formatPct(consol.percentage) + '%';
-  document.getElementById('rcSumGrade').textContent = sumExempt ? '—' : consol.grade;
+    : (ftEmpty ? formatPct(data.halfYearly.percentage) + '%' : formatPct(consol.percentage) + '%');
+  document.getElementById('rcSumGrade').textContent = sumExempt
+    ? '—'
+    : (ftEmpty ? (data.halfYearly.grade || '—') : consol.grade);
   // Rank shown only for students who passed all subjects — a failed student
   // never displays a rank on the report card, matching the marksheet rule.
   // Reduced-subject students are excluded from ranking entirely.
@@ -351,8 +363,13 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
     // as a failed row. Only applies to the exempt student.
     const notTaken = isReducedSubjectStudent(data.student && data.student.name)
       && subjData.total === undefined;
-    const totalDisp = notTaken ? '' : total;
-    const gradeDisp = notTaken ? '' : grade;
+    // Term 2 (Final Term) not yet assessed → render the whole term blank rather
+    // than 0 / F. Detected by a zero grand total for that term (a real assessed
+    // term always has marks). HY is unaffected (term !== 'ft').
+    const ftEmpty = term === 'ft' && (data.finalTerm.grandTotal || 0) === 0;
+    const blank = notTaken || ftEmpty;
+    const totalDisp = blank ? '' : total;
+    const gradeDisp = blank ? '' : grade;
 
     // A subject fails if the total misses the passmark, OR (senior scheme
     // only) the total clears it but IA/Exam individually miss their
@@ -360,7 +377,7 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
     // as pass if either component is below its own floor).
     const componentFail = !isStandard && !subj.singleTotal &&
       (subjData.ia < iaThreshSen || subjData.exam < examThreshSen);
-    const totalFails = !notTaken && (total < passmark || componentFail);
+    const totalFails = !blank && (total < passmark || componentFail);
     const gradeFail = totalFails ? ' fail' : '';
     const totalFailCls = totalFails ? ' rc-cell-fail' : '';
 
@@ -379,7 +396,7 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
       for (let i = 0; i < blanks; i++) html += '<td>—</td>';
       html += `<td class="rc-cell-total${totalFailCls}">${totalDisp}</td>`;
       if (showConsol) {
-        html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${notTaken ? '' : consolTotal}</td>`;
+        html += `<td class="rc-cell-consol${blank ? '' : failCls(consolSubj?.total, passmark * 2)}">${blank ? '' : consolTotal}</td>`;
       }
       html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${gradeDisp}</span></td>`;
     }
@@ -388,22 +405,22 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
       for (let i = 0; i < blanks; i++) html += '<td></td>';
       html += `<td class="rc-cell-total${totalFailCls}">${totalDisp}</td>`;
       if (showConsol) {
-        html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${notTaken ? '' : consolTotal}</td>`;
+        html += `<td class="rc-cell-consol${blank ? '' : failCls(consolSubj?.total, passmark * 2)}">${blank ? '' : consolTotal}</td>`;
       }
       html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${gradeDisp}</span></td>`;
     }
     else {
       if (isStandard) {
-        html += `<td class="${failCls(subjData.ia, iaThreshStd)}">${subjData.ia !== undefined ? subjData.ia : '—'}</td>`;
-        html += `<td class="${failCls(subjData.ut, utThresh)}">${subjData.ut !== undefined ? subjData.ut : '—'}</td>`;
-        html += `<td class="${failCls(subjData.exam, examThreshStd)}">${subjData.exam !== undefined ? subjData.exam : '—'}</td>`;
+        html += `<td class="${blank ? '' : failCls(subjData.ia, iaThreshStd)}">${blank ? '' : (subjData.ia !== undefined ? subjData.ia : '—')}</td>`;
+        html += `<td class="${blank ? '' : failCls(subjData.ut, utThresh)}">${blank ? '' : (subjData.ut !== undefined ? subjData.ut : '—')}</td>`;
+        html += `<td class="${blank ? '' : failCls(subjData.exam, examThreshStd)}">${blank ? '' : (subjData.exam !== undefined ? subjData.exam : '—')}</td>`;
       } else {
-        html += `<td class="${failCls(subjData.ia, iaThreshSen)}">${subjData.ia !== undefined ? subjData.ia : '—'}</td>`;
-        html += `<td class="${failCls(subjData.exam, examThreshSen)}">${subjData.exam !== undefined ? subjData.exam : '—'}</td>`;
+        html += `<td class="${blank ? '' : failCls(subjData.ia, iaThreshSen)}">${blank ? '' : (subjData.ia !== undefined ? subjData.ia : '—')}</td>`;
+        html += `<td class="${blank ? '' : failCls(subjData.exam, examThreshSen)}">${blank ? '' : (subjData.exam !== undefined ? subjData.exam : '—')}</td>`;
       }
       html += `<td class="rc-cell-total${totalFailCls}">${totalDisp}</td>`;
       if (showConsol) {
-        html += `<td class="rc-cell-consol${failCls(consolSubj?.total, passmark * 2)}">${notTaken ? '' : consolTotal}</td>`;
+        html += `<td class="rc-cell-consol${blank ? '' : failCls(consolSubj?.total, passmark * 2)}">${blank ? '' : consolTotal}</td>`;
       }
       html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${gradeDisp}</span></td>`;
     }

@@ -330,14 +330,16 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('rcHySumAtt').textContent = fmt(attPct(hy.attendance)) + '%';
 
       var ft = d.finalTerm;
+      // Term 2 not yet assessed → show blanks instead of 0 / 0.0% / F.
+      var ftEmpty = (ft.grandTotal || 0) === 0;
       var ftPct = max > 0 ? (ft.grandTotal / max) * 100 : 0;
-      document.getElementById('rcFtSumTotal').textContent = ft.grandTotal;
+      document.getElementById('rcFtSumTotal').textContent = ftEmpty ? '—' : ft.grandTotal;
       document.getElementById('rcFtSumMax').textContent = max;
-      document.getElementById('rcFtSumPct').textContent = fmt(ftPct) + '%';
-      document.getElementById('rcFtSumGrade').textContent = ft.grade || '—';
-      document.getElementById('rcFtSumRank').textContent = ft.rank || '—';
-      document.getElementById('rcFtSumStudents').textContent = ft.totalStudents || '—';
-      document.getElementById('rcFtSumAtt').textContent = fmt(attPct(ft.attendance)) + '%';
+      document.getElementById('rcFtSumPct').textContent = ftEmpty ? '—' : fmt(ftPct) + '%';
+      document.getElementById('rcFtSumGrade').textContent = ftEmpty ? '—' : (ft.grade || '—');
+      document.getElementById('rcFtSumRank').textContent = ftEmpty ? '—' : (ft.rank || '—');
+      document.getElementById('rcFtSumStudents').textContent = ftEmpty ? '—' : (ft.totalStudents || '—');
+      document.getElementById('rcFtSumAtt').textContent = ftEmpty ? '—' : fmt(attPct(ft.attendance)) + '%';
     } catch (e) { /* no data yet */ }
   }, 300);
 });
