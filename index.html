@@ -2134,6 +2134,24 @@
               <input type="text" id="teacher-search" placeholder="&#128269; Search by name or subject..." oninput="filterTeacherTable()" style="padding:6px 14px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px;outline:none;background:#fafaf8;min-width:260px">
               <div id="teacher-count" style="font-size:12px;color:var(--text-light);font-weight:600">Loading...</div>
             </div>
+
+            <!-- Teacher Access Lock -->
+            <div class="card" style="padding:18px;margin-bottom:18px;border:1.5px solid #f87171;background:#fef2f2">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+                <div>
+                  <h4 style="color:#b91c1c;margin:0 0 4px"><i class="fas fa-user-lock" style="margin-right:8px"></i>Teacher Access Lock</h4>
+                  <p style="font-size:12px;color:var(--text-light);margin:0">Blocks teacher writes to marks, attendance, and other academic records while you're working on their accounts. Admin writes are never affected. Takes effect on the teacher's next save or page reload.</p>
+                </div>
+                <span id="tlk-status-badge" class="badge badge-success">Unlocked</span>
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:12px;cursor:pointer">
+                <input type="checkbox" id="tlk-lock-all" onchange="tlkToggleAll()"> Lock ALL teachers
+              </label>
+              <div id="tlk-teacher-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px;background:#fff;margin-bottom:12px">
+                <p style="color:var(--text-light);font-size:13px;text-align:center;margin:0">Loading teachers…</p>
+              </div>
+              <button class="btn btn-sm" style="background:#b91c1c;color:#fff;border:none" onclick="saveTeacherLock()"><i class="fas fa-save"></i> Save Lock Settings</button>
+            </div>
             <div class="table-wrap">
               <table id="teacher-table">
                 <thead><tr><th>Login ID</th><th>Title</th><th>Name</th><th>Class Teacher Of</th><th>Subject(s)</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead>

@@ -2077,6 +2077,7 @@ window.showDash = function (prefix, sectionId, btn) {
       window.seedTeachersIfNeeded &&
       window.seedTeachersIfNeeded().then(() => {
         window.loadTeachers && window.loadTeachers();
+        window.loadTeacherLockPanel && window.loadTeacherLockPanel();
       }),
     "a-dashboard" === sectionId &&
       window.loadAdminDashboardStats &&
@@ -8722,6 +8723,85 @@ function updateAttSummary() {
       }
     }
   }));
+(window.loadTeacherLockPanel = async function () {
+  const listEl = document.getElementById("tlk-teacher-list"),
+    allCb = document.getElementById("tlk-lock-all"),
+    badge = document.getElementById("tlk-status-badge");
+  if (!listEl) return;
+  listEl.innerHTML =
+    '<p style="color:var(--text-light);font-size:13px;text-align:center;margin:0">Loading teachers…</p>';
+  try {
+    const [lockSnap, usersSnap] = await Promise.all([
+      getDoc(doc(db, "settings", "teacher_lock")),
+      getDocs(
+        query(
+          collection(db, "users"),
+          where("role", "in", ["teacher", "class_teacher", "subject_teacher"]),
+        ),
+      ),
+    ]);
+    const lock = lockSnap.exists() ? lockSnap.data() : {},
+      lockAll = !0 === lock.lockAll,
+      lockedUids = new Set(lock.lockedUids || []);
+    window._tlkUsers = usersSnap.docs
+      .map((d) => ({ uid: d.id, ...d.data() }))
+      .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    allCb && (allCb.checked = lockAll);
+    listEl.innerHTML = window._tlkUsers.length
+      ? window._tlkUsers
+          .map(
+            (u) => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0;cursor:pointer">
+          <input type="checkbox" class="tlk-uid-cb" value="${u.uid}" ${lockedUids.has(u.uid) ? "checked" : ""} ${lockAll ? "disabled" : ""}>
+          ${u.name || u.teacherId || u.uid} ${u.teacherId ? `<span style="color:var(--text-light);font-size:11px">(${u.teacherId})</span>` : ""}
+        </label>`,
+          )
+          .join("")
+      : '<p style="color:var(--text-light);font-size:13px;text-align:center;margin:0">No teacher accounts found.</p>';
+    if (badge) {
+      const anyLocked = lockAll || lockedUids.size > 0;
+      badge.className = "badge " + (anyLocked ? "badge-danger" : "badge-success");
+      badge.textContent = lockAll
+        ? "ALL LOCKED"
+        : lockedUids.size > 0
+          ? `${lockedUids.size} Locked`
+          : "Unlocked";
+    }
+  } catch (e) {
+    listEl.innerHTML = `<p style="color:var(--danger);font-size:13px;text-align:center;margin:0">❌ ${e.message}</p>`;
+  }
+}),
+  (window.tlkToggleAll = function () {
+    const allCb = document.getElementById("tlk-lock-all"),
+      checked = !!allCb?.checked;
+    document
+      .querySelectorAll(".tlk-uid-cb")
+      .forEach((cb) => (cb.disabled = checked));
+  }),
+  (window.saveTeacherLock = async function () {
+    const allCb = document.getElementById("tlk-lock-all"),
+      lockAll = !!allCb?.checked,
+      lockedUids = lockAll
+        ? []
+        : Array.from(document.querySelectorAll(".tlk-uid-cb:checked")).map(
+            (cb) => cb.value,
+          );
+    try {
+      (await setDoc(
+        doc(db, "settings", "teacher_lock"),
+        {
+          lockAll,
+          lockedUids,
+          updatedAt: new Date().toISOString(),
+          updatedBy: window._firebaseAuth?.currentUser?.uid || "",
+        },
+        { merge: !0 },
+      ),
+        showToast("✅ Teacher lock settings saved."),
+        window.loadTeacherLockPanel && window.loadTeacherLockPanel());
+    } catch (e) {
+      showToast("❌ " + e.message);
+    }
+  });
 let _tlpCurrentTeacherId = null;
 async function _loadTeacherLeaves(teacherId) {
   const tbody = document.getElementById("tlp-tbody");
