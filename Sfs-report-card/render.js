@@ -421,8 +421,18 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
     const consolTotal = consolSubj?.total || 0;
 
     if (subj.isAggregate) {
-      const blanks = isStandard ? 3 : 2;
-      for (let i = 0; i < blanks; i++) html += '<td>—</td>';
+      // An aggregate's IA/Exam are the average of its components (already
+      // computed to derive `total` and the floor-fail check above) — show
+      // them instead of a dash so the Total column is visibly justified by
+      // the two figures next to it, not an unexplained jump from "—".
+      if (isStandard) {
+        html += `<td class="${blank ? '' : markCls(subjData.ia, iaThreshStd, 10)}">${blank ? '' : (subjData.ia !== undefined ? subjData.ia : '—')}</td>`;
+        html += '<td>—</td>'; // aggregates don't track a UT component
+        html += `<td class="${blank ? '' : markCls(subjData.exam, examThreshStd, 60)}">${blank ? '' : (subjData.exam !== undefined ? subjData.exam : '—')}</td>`;
+      } else {
+        html += `<td class="${blank ? '' : markCls(subjData.ia, iaThreshSen, 20)}">${blank ? '' : (subjData.ia !== undefined ? subjData.ia : '—')}</td>`;
+        html += `<td class="${blank ? '' : markCls(subjData.exam, examThreshSen, 80)}">${blank ? '' : (subjData.exam !== undefined ? subjData.exam : '—')}</td>`;
+      }
       html += `<td class="rc-cell-total${totalMarkCls}">${totalDisp}</td>`;
       if (showConsol) {
         html += `<td class="rc-cell-consol${blank ? '' : markCls(consolSubj?.total, passmark * 2, 200)}">${blank ? '' : consolTotal}</td>`;
