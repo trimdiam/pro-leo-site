@@ -813,9 +813,18 @@ function updateRowTotal(tr, isSingle) {
   const passmark = cfg?.passmark ?? 40;
   let total = null, ia = null, te = null;
 
+  // Clamp to the field's data-max so the live preview matches what
+  // collectRowData() actually saves — otherwise a teacher could see an
+  // inflated preview total that silently drops on blur/save.
+  const clamped = f => {
+    if (!f || f.value === '') return 0;
+    const max = parseFloat(f.dataset.max);
+    return Math.min(Math.max(parseFloat(f.value) || 0, 0), isNaN(max) ? Infinity : max);
+  };
+
   if (isSingle) {
     const inp = tr.querySelector('[data-field="singleMark"]');
-    if (inp.value !== '') total = parseFloat(inp.value) || 0;
+    if (inp.value !== '') total = clamped(inp);
   } else {
     const iaInp = tr.querySelector('[data-field="IA"]');
     const ut = tr.querySelector('[data-field="UT"]');
@@ -823,9 +832,9 @@ function updateRowTotal(tr, isSingle) {
     const fields = [iaInp, teInp];
     if (ut) fields.splice(1, 0, ut);
     if (fields.some(f => f && f.value !== '')) {
-      total = fields.reduce((sum, f) => sum + (f ? (parseFloat(f.value) || 0) : 0), 0);
-      ia = parseFloat(iaInp?.value) || 0;
-      te = parseFloat(teInp?.value) || 0;
+      total = fields.reduce((sum, f) => sum + clamped(f), 0);
+      ia = clamped(iaInp);
+      te = clamped(teInp);
     }
   }
 
@@ -876,19 +885,29 @@ function collectRowData(tr, isSingle) {
     return isShared ? { grade, enteredBy: ME.user.uid } : { grade };
   }
 
+  // Clamp every field to its real max at the one place all save paths
+  // converge (blur, Save Draft, subject submit). The <input max="..."> HTML
+  // attribute is decorative only — it never blocked an out-of-range value
+  // from being typed and saved, which could silently inflate a subject's
+  // (and therefore the whole class's) total past 100% (2026-07-15 bug).
+  const clampField = (tr, field, max) => {
+    const raw = parseFloat(tr.querySelector(`[data-field="${field}"]`).value);
+    return isNaN(raw) ? NaN : Math.min(Math.max(raw, 0), max);
+  };
+
   const academic = {};
   if (isSingle) {
-    const val = parseFloat(tr.querySelector('[data-field="singleMark"]').value);
+    const val = clampField(tr, 'singleMark', 100);
     academic[subjectKey] = { singleMark: isNaN(val) ? null : val, total: isNaN(val) ? null : val };
   } else if (isSenior) {
-    const ia = parseFloat(tr.querySelector('[data-field="IA"]').value);
-    const te = parseFloat(tr.querySelector('[data-field="TE"]').value);
+    const ia = clampField(tr, 'IA', 20);
+    const te = clampField(tr, 'TE', 80);
     const total = (!isNaN(ia)||!isNaN(te)) ? (isNaN(ia)?0:ia)+(isNaN(te)?0:te) : null;
     academic[subjectKey] = { IA: isNaN(ia)?null:ia, TE: isNaN(te)?null:te, total };
   } else {
-    const ia = parseFloat(tr.querySelector('[data-field="IA"]').value);
-    const ut = parseFloat(tr.querySelector('[data-field="UT"]').value);
-    const te = parseFloat(tr.querySelector('[data-field="TE"]').value);
+    const ia = clampField(tr, 'IA', 10);
+    const ut = clampField(tr, 'UT', 30);
+    const te = clampField(tr, 'TE', 60);
     const total = (!isNaN(ia)||!isNaN(ut)||!isNaN(te))
       ? (isNaN(ia)?0:ia)+(isNaN(ut)?0:ut)+(isNaN(te)?0:te) : null;
     academic[subjectKey] = { IA: isNaN(ia)?null:ia, UT: isNaN(ut)?null:ut, TE: isNaN(te)?null:te, total };
@@ -1202,6 +1221,43 @@ $('ctBtnLogout').addEventListener('click', () => auth.signOut());
 $('ctBtnRefresh').addEventListener('click', async () => { await renderCTDashboard(); });
 
 // ─── STUDENT LIST ─────────────────────────────────────────────────────────────
+// Recomputes HY+FT ranks for every student in a class from their current
+// totals and saves them to Firestore. Previously this only ever ran when a
+// class teacher opened the Student List screen — so a mark corrected after
+// that (e.g. via the per-student lock screen) left the report card's stored
+// rank stale until someone happened to reopen the list (2026-07-15 bug:
+// a lower-scoring student showing rank 1 over a higher-scoring one). Now
+// also called from lockSingleRecord() so a single-student lock keeps the
+// whole class's ranks current too, not just "Lock All".
+async function recomputeAndSaveClassRanks(classId, classNum) {
+  const ctClassStr = String(classNumFromId(classId));
+  const studSnap = await db.collection('students')
+    .where('class', '==', ctClassStr)
+    .get();
+
+  const students = studSnap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0));
+
+  const [hySnaps, ftSnaps] = await Promise.all([
+    Promise.all(students.map(s => db.collection('marks').doc(`${classId}_HY`).collection('students').doc(s.id).get())),
+    Promise.all(students.map(s => db.collection('marks').doc(`${classId}_FT`).collection('students').doc(s.id).get()))
+  ]);
+  const existingHY = {}, existingFT = {};
+  hySnaps.forEach((snap, i) => { if (snap.exists) existingHY[students[i].id] = snap.data(); });
+  ftSnaps.forEach((snap, i) => { if (snap.exists) existingFT[students[i].id] = snap.data(); });
+
+  const hyEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingHY[s.id], classNum), fail: studentFailsTerm(existingHY[s.id], classNum) || isReducedSubjectStudent(s.name) }));
+  const ftEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingFT[s.id], classNum), fail: studentFailsTerm(existingFT[s.id], classNum) || isReducedSubjectStudent(s.name) }));
+
+  const hyRanks = computeRanks(hyEntries);
+  const ftRanks = computeRanks(ftEntries);
+
+  await autoSaveRanks(students, existingHY, existingFT, hyRanks, ftRanks, classId);
+
+  return { students, existingHY, existingFT, hyRanks, ftRanks };
+}
+
 async function openStudentList(term) {
   const classId  = ME.ctClassId;
   const classNum = ME.ctClassNum;
@@ -1213,36 +1269,11 @@ async function openStudentList(term) {
   $('slTableBody').innerHTML  = '<tr><td colspan="8" class="me-loading"><div class="me-spinner"></div><br>Loading…</td></tr>';
 
   try {
-    const ctClassStr = String(classNumFromId(classId));
-    const studSnap = await db.collection('students')
-      .where('class', '==', ctClassStr)
-      .get();
-
-    const students = studSnap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0));
-
-    // Fetch BOTH terms for all students in parallel
-    const [hySnaps, ftSnaps] = await Promise.all([
-      Promise.all(students.map(s => db.collection('marks').doc(`${classId}_HY`).collection('students').doc(s.id).get())),
-      Promise.all(students.map(s => db.collection('marks').doc(`${classId}_FT`).collection('students').doc(s.id).get()))
-    ]);
-    const existingHY = {}, existingFT = {};
-    hySnaps.forEach((snap, i) => { if (snap.exists) existingHY[students[i].id] = snap.data(); });
-    ftSnaps.forEach((snap, i) => { if (snap.exists) existingFT[students[i].id] = snap.data(); });
-
-    // Compute grand totals for every student
     const cfg = CONFIG[classNum];
     const maxMarks = cfg?.grandTotalMax || 0;
 
-    const hyEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingHY[s.id], classNum), fail: studentFailsTerm(existingHY[s.id], classNum) || isReducedSubjectStudent(s.name) }));
-    const ftEntries = students.map(s => ({ id: s.id, total: calcStudentTotal(existingFT[s.id], classNum), fail: studentFailsTerm(existingFT[s.id], classNum) || isReducedSubjectStudent(s.name) }));
-
-    const hyRanks = computeRanks(hyEntries);
-    const ftRanks = computeRanks(ftEntries);
-
-    // Auto-save computed ranks to Firestore
-    await autoSaveRanks(students, existingHY, existingFT, hyRanks, ftRanks, classId);
+    const { students, existingHY, existingFT, hyRanks, ftRanks } =
+      await recomputeAndSaveClassRanks(classId, classNum);
 
     renderStudentList(students, existingHY, existingFT, hyRanks, ftRanks, maxMarks, term, classNum);
   } catch (err) {
@@ -2116,7 +2147,7 @@ $('btnConfirmLock').addEventListener('click', async () => {
 });
 
 async function lockSingleRecord(studentId) {
-  const { classId } = ME.activeStudent;
+  const { classId, classNum } = ME.activeStudent;
   const student = ME.activeStudent.student || {};
   showSaveIndicator('Locking…');
   const batch = db.batch();
@@ -2139,6 +2170,17 @@ async function lockSingleRecord(studentId) {
     }, { merge: true });
   }
   await batch.commit();
+
+  // Locking one student changes the class's rank picture for everyone (dense
+  // ranking shifts). Previously ranks only refreshed when someone opened the
+  // Student List screen, so a rank shown on a report card could go stale
+  // between edits — a lower-scoring student could keep showing rank 1 over a
+  // higher-scoring one (2026-07-15 bug). Recompute for the whole class now.
+  try {
+    await recomputeAndSaveClassRanks(classId, classNum);
+  } catch (e) {
+    console.warn('Rank recompute after single lock failed:', e.message);
+  }
 }
 
 async function lockAllRecords() {
