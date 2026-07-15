@@ -1832,6 +1832,49 @@ function renderAcademicSummary(hyData, ftData, classNum) {
         </tr>
       </tfoot>
     </table>
+    ${buildEditableMarksTable(cfg, hyData, ftData)}
+  `;
+}
+
+// Per-leaf-subject correction table for the class teacher. Aggregates
+// (Science P+C+B, S.Science, English I+II) have no Firestore entry of their
+// own — only their leaf components do — so this only ever lists leaves,
+// matching what collectRowData()/flushSaves() actually persist.
+function buildEditableMarksTable(cfg, hyData, ftData) {
+  const isSenior = cfg.markScheme === 'senior';
+  const leafSubjects = cfg.subjects.filter(s => !s.isAggregate);
+  const hyAcad = hyData.academics || {};
+  const ftAcad = ftData.academics || {};
+
+  const fieldsHtml = (term, acad, subj) => {
+    const existing = acad[subj.key] || {};
+    const input = (field, max, val) =>
+      `<td><input type="number" class="me-mark-input ct-mark-edit" data-term="${term}" data-subject="${subj.key}" data-field="${field}" data-max="${max}" value="${val}" min="0" max="${max}"></td>`;
+    if (subj.singleTotal) {
+      return input('singleMark', 100, existing.singleMark ?? '') + '<td>—</td><td>—</td>';
+    }
+    if (isSenior) {
+      return input('IA', 20, existing.IA ?? '') + input('TE', 80, existing.TE ?? '');
+    }
+    return input('IA', 10, existing.IA ?? '') + input('UT', 30, existing.UT ?? '') + input('TE', 60, existing.TE ?? '');
+  };
+
+  const hyHead = isSenior ? '<th>HY IA</th><th>HY TE</th>' : '<th>HY IA</th><th>HY UT</th><th>HY TE</th>';
+  const ftHead = isSenior ? '<th>FT IA</th><th>FT TE</th>' : '<th>FT IA</th><th>FT UT</th><th>FT TE</th>';
+
+  const rows = leafSubjects.map(subj => `
+    <tr data-subject-row="${subj.key}">
+      <td>${escHtml(subj.label)}</td>
+      ${fieldsHtml('hy', hyAcad, subj)}
+      ${fieldsHtml('ft', ftAcad, subj)}
+    </tr>
+  `).join('');
+
+  return `
+    <table class="me-table ct-academic-table" id="sfEditableMarksTable" style="margin-top:0.75rem">
+      <thead><tr><th>Subject (correction)</th>${hyHead}${ftHead}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
   `;
 }
 
@@ -2120,6 +2163,90 @@ async function saveCTData() {
     }, { merge: true });
   }
   await batch.commit();
+}
+
+// Class-teacher mark correction (2026-07-16). Writes straight to
+// academics.{subjectKey} regardless of lock status — the whole point is
+// fixing a subject teacher's entry after the record (and often the class)
+// has already been locked. Deliberately never touches `status`: a correction
+// must not silently re-open a locked record for subject teachers or drop it
+// out of the class marksheet/admin release list.
+$('btnSaveMarks').addEventListener('click', async () => {
+  await saveMarkCorrections();
+});
+
+async function saveMarkCorrections() {
+  const { studentId, classId, classNum, hyData, ftData } = ME.activeStudent;
+  const cfg = CONFIG[classNum];
+  if (!cfg) return;
+  const isSenior = cfg.markScheme === 'senior';
+
+  const clamp = (raw, max) => {
+    const v = parseFloat(raw);
+    return isNaN(v) ? null : Math.min(Math.max(v, 0), max);
+  };
+  const val = (tr, term, field) => tr.querySelector(`[data-term="${term}"][data-field="${field}"]`)?.value;
+
+  // Only write subjects the teacher actually changed. Writing every row
+  // unconditionally would create {IA:null,...} entries (and even whole FT
+  // docs) for subjects/terms never entered — noise that downstream
+  // completeness checks and the admin release list don't expect.
+  const originals = { hy: hyData?.academics || {}, ft: ftData?.academics || {} };
+  const norm = v => (v === undefined ? null : v);
+  const sameEntry = (a, b) =>
+    ['IA', 'UT', 'TE', 'singleMark', 'total'].every(f => norm(a?.[f]) === norm(b?.[f]));
+
+  const payload = { hy: {}, ft: {} };
+  let changed = 0;
+  document.querySelectorAll('#sfEditableMarksTable tr[data-subject-row]').forEach(tr => {
+    const subj = cfg.subjects.find(s => s.key === tr.dataset.subjectRow);
+    if (!subj) return;
+    ['hy', 'ft'].forEach(term => {
+      let entry;
+      if (subj.singleTotal) {
+        const v = clamp(val(tr, term, 'singleMark'), 100);
+        entry = { singleMark: v, total: v };
+      } else if (isSenior) {
+        const ia = clamp(val(tr, term, 'IA'), 20), te = clamp(val(tr, term, 'TE'), 80);
+        entry = { IA: ia, TE: te, total: (ia !== null || te !== null) ? (ia ?? 0) + (te ?? 0) : null };
+      } else {
+        const ia = clamp(val(tr, term, 'IA'), 10), ut = clamp(val(tr, term, 'UT'), 30), te = clamp(val(tr, term, 'TE'), 60);
+        entry = { IA: ia, UT: ut, TE: te, total: (ia !== null || ut !== null || te !== null) ? (ia ?? 0) + (ut ?? 0) + (te ?? 0) : null };
+      }
+      if (!sameEntry(entry, originals[term][subj.key])) {
+        payload[term][subj.key] = entry;
+        changed++;
+      }
+    });
+  });
+
+  if (!changed) { hideSaveIndicator('No changes to save'); return; }
+
+  showSaveIndicator('Saving corrections…');
+  try {
+    const batch = db.batch();
+    for (const term of ['hy', 'ft']) {
+      if (!Object.keys(payload[term]).length) continue;
+      const ref = db.collection('marks').doc(`${classId}_${term.toUpperCase()}`).collection('students').doc(studentId);
+      batch.set(ref, {
+        academics:     payload[term],
+        lastUpdatedBy: ME.user.uid,
+        lastUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+    await batch.commit();
+
+    // A corrected mark can shift the whole class's rank picture — refresh now
+    // rather than waiting for the next lock (2026-07-15 stale-rank bug).
+    await recomputeAndSaveClassRanks(classId, classNum);
+
+    hideSaveIndicator('Corrections saved ✓');
+    await openStudentForm(studentId, ME.ctData.students, null);
+  } catch (err) {
+    console.error('Save mark corrections failed:', err);
+    hideSaveIndicator('Save failed ✗');
+    alert('Failed to save corrections: ' + (err.message || err.code || 'unknown error'));
+  }
 }
 
 $('btnLockRecord').addEventListener('click', () => {

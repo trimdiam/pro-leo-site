@@ -311,11 +311,17 @@
         <div id="sfLockStatus" style="display:none;" class="status-badge status-locked">&#128274; Record Locked</div>
       </div>
 
-      <!-- Section A: Academic Summary (READ ONLY) -->
+      <!-- Section A: Academic Summary (class teacher can correct any subject's marks) -->
       <div class="me-card">
-        <div class="me-strip">&#9658; A &nbsp; Academic Summary <span style="font-weight:400;font-size:0.72rem;opacity:0.7;margin-left:0.5rem;">(Read Only — entered by subject teachers)</span></div>
+        <div class="me-strip">
+          &#9658; A &nbsp; Academic Marks
+          <span style="font-weight:400;font-size:0.72rem;opacity:0.7;margin-left:0.5rem;">(editable — corrections apply to any subject teacher's entry)</span>
+        </div>
         <div style="overflow-x:auto;padding:0.75rem 1rem;" id="sfAcademicTable">
           <div class="me-loading"><div class="me-spinner"></div></div>
+        </div>
+        <div style="padding:0 1rem 0.75rem;text-align:right;">
+          <button class="btn btn-primary btn-sm" id="btnSaveMarks">Save Mark Corrections</button>
         </div>
       </div>
 
