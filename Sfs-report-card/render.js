@@ -276,17 +276,19 @@ function renderRightPanel(data, config) {
 
   // Summary
   const consol = data.consolidated;
-  // Half-yearly-only card (Term 2 not assessed): show HY totals/percentage/grade
-  // rather than the consolidated /1800 figures, which would halve the percentage.
-  document.getElementById('rcSumTotal').textContent = ftEmpty ? data.halfYearly.grandTotal : consol.grandTotal;
-  document.getElementById('rcSumMax').textContent = ftEmpty ? config.grandTotalMax : (config.grandTotalMax * 2);
+  // Half-yearly-only card (Term 2 not assessed): the Final Result Summary is a
+  // final-term/annual judgment, so it stays blank until Term 2 is assessed —
+  // matching the Term 2 Summary block above, rather than showing a HY-basis
+  // result that could be mistaken for the final outcome.
+  document.getElementById('rcSumTotal').textContent = ftEmpty ? '—' : consol.grandTotal;
+  document.getElementById('rcSumMax').textContent = ftEmpty ? '—' : (config.grandTotalMax * 2);
   const sumExempt = isReducedSubjectStudent(data.student && data.student.name);
-  document.getElementById('rcSumPct').textContent = sumExempt
+  document.getElementById('rcSumPct').textContent = (sumExempt || ftEmpty)
     ? '—'
-    : (ftEmpty ? formatPct(data.halfYearly.percentage) + '%' : formatPct(consol.percentage) + '%');
-  document.getElementById('rcSumGrade').textContent = sumExempt
+    : formatPct(consol.percentage) + '%';
+  document.getElementById('rcSumGrade').textContent = (sumExempt || ftEmpty)
     ? '—'
-    : (ftEmpty ? (data.halfYearly.grade || '—') : consol.grade);
+    : consol.grade;
   // Rank shown only for students who passed all subjects — a failed student
   // never displays a rank on the report card, matching the marksheet rule.
   // Reduced-subject students are excluded from ranking entirely.
@@ -302,7 +304,13 @@ function renderRightPanel(data, config) {
   const resultEl   = document.getElementById('rcSumResult');
   const finalStatus = data.finalStatus;
 
-  if (finalStatus === 'PROMOTED') {
+  if (ftEmpty) {
+    resultEl.textContent      = '—';
+    resultEl.style.color      = '';
+    resultEl.style.fontSize   = '';
+    resultEl.style.letterSpacing = '';
+    resultEl.dataset.status   = '';
+  } else if (finalStatus === 'PROMOTED') {
     const toClass = (data.promotedToClass || '').toString().trim().toUpperCase();
     resultEl.textContent  = toClass ? 'PROMOTED TO CLASS ' + toClass : 'PROMOTED';
     resultEl.style.color      = '#1B6B2F';
@@ -479,148 +487,240 @@ function buildCoScholastic(coData, config) {
  *
  * Rules:
  *  - Observational only — no promotion / detention language
- *  - Max 300 characters
- *  - Class 3–5: 3–4 sentences  |  Class 6–8: 2–3  |  Class 9–10: max 2 (strict)
+ *  - Max 420 characters
+ *  - Sentence budget: Class ≤8 up to 5 sentences | Class 9–10 up to 4 (stays a
+ *    notch terser/more formal)
+ *  - Bands: excellent / vgood / good / average / weak / critical. 'critical'
+ *    triggers when at least half the scorable subjects individually miss the
+ *    pass mark, even if the aggregate % looks passable/weak — the aggregate
+ *    can hide a majority-fail. In 'critical', the engine never cites a
+ *    failing subject as a "strength"; it names the subjects most in need of
+ *    attention (max 2) and anchors the encouraging line on something
+ *    genuinely true (attendance or a real co-scholastic strength) instead.
  */
 function generateRemark(data, config, term) {
-  const cls       = parseInt(data.class, 10);
-  const termData  = term === 'hy' ? data.halfYearly : data.finalTerm;
-  const isStd     = config.markScheme === 'standard';
+  const cls      = parseInt(data.class, 10);
+  const termData = term === 'hy' ? data.halfYearly : data.finalTerm;
+  const isStd    = config.markScheme === 'standard';
+  const passmark = config.passmark || 40;
+  const pmRatio  = passmark / 100;
+  const iaThreshSen   = Math.round(20 * pmRatio);
+  const examThreshSen = Math.round(80 * pmRatio);
 
-  // ── 1. Performance band ──────────────────────────────────────────────────
+  // ── 1. Per-subject analysis — pass/fail against the real passmark rule,
+  //       not just the aggregate percentage ─────────────────────────────────
+  const scorable = config.subjects.filter(s => s.countInTotal);
+  const analyzed = [];
+  for (const subj of scorable) {
+    const sd = termData.subjects[subj.key];
+    if (!sd || sd.total == null) continue;
+    const componentFail = !isStd && !subj.singleTotal &&
+      (sd.ia < iaThreshSen || sd.exam < examThreshSen);
+    const fails = sd.total < passmark || componentFail;
+    analyzed.push({ subj, total: sd.total, ia: sd.ia, exam: sd.exam, fails });
+  }
+  const failed = analyzed.filter(a => a.fails);
+  const byTotalDesc = [...analyzed].sort((a, b) => b.total - a.total);
+  const byTotalAsc  = [...analyzed].sort((a, b) => a.total - b.total);
+
+  // ── 2. Performance band ────────────────────────────────────────────────────
   const termPct = config.grandTotalMax > 0
     ? (termData.grandTotal / config.grandTotalMax) * 100
     : 0;
-
-  const band = termPct >= 90 ? 'excellent'
+  const majorityFailing = analyzed.length > 0 && (failed.length / analyzed.length) >= 0.5;
+  const band = majorityFailing ? 'critical'
+             : termPct >= 90 ? 'excellent'
              : termPct >= 80 ? 'vgood'
              : termPct >= 70 ? 'good'
              : termPct >= 40 ? 'average'
              :                 'weak';
 
-  // ── 2. Subject analysis — use subjects that count toward the total ────────
-  const scorable = config.subjects.filter(s => s.countInTotal);
-  let best = null, worst = null, bestVal = -1, worstVal = 101;
+  // ── 3. Best subject (cited only for non-critical bands) & focus subjects ──
+  const best      = byTotalDesc[0] || null;
+  const bestLabel = best ? best.subj.label : 'core subjects';
+  const bestPct   = best ? Math.round(best.total) : null;
 
-  for (const subj of scorable) {
-    const sd = termData.subjects[subj.key];
-    if (!sd || sd.total == null) continue;
-    if (sd.total > bestVal)  { bestVal  = sd.total; best  = subj; }
-    if (sd.total < worstVal) { worstVal = sd.total; worst = subj; }
-  }
-  if (best && worst && best.key === worst.key) worst = null;
+  // Critical/weak: only ever name a subject that's an actual fail (never
+  // dress up a fail as the "best" subject). Other bands: still call out the
+  // relatively weakest subject even if it's technically passing — that's
+  // useful, honest feedback and matches how this always worked.
+  const worstCandidate = byTotalAsc[0] || null;
+  const focusSubjects = (band === 'critical' || band === 'weak')
+    ? byTotalAsc.filter(a => a.fails).slice(0, 2)
+    : (worstCandidate && best && worstCandidate.subj.key !== best.subj.key)
+      ? [worstCandidate]
+      : [];
+  const focusLabels = focusSubjects.map(a => a.subj.label);
 
-  const bestLabel  = best  ? best.label  : 'core subjects';
-  const worstLabel = worst ? worst.label : null;
+  // ── 4. Attendance ──────────────────────────────────────────────────────────
+  const att     = termData.attendance || { present: 0, total: 0 };
+  const attPct  = att.total > 0 ? (att.present / att.total) * 100 : 100;
+  const lowAtt  = attPct < 75;
+  const highAtt = attPct >= 95;
 
-  // ── 3. Attendance ────────────────────────────────────────────────────────
-  const att    = termData.attendance || { present: 0, total: 0 };
-  const attPct = att.total > 0 ? (att.present / att.total) * 100 : 100;
-  const lowAtt = attPct < 75;
-
-  // ── 4. UT vs TE pattern (standard scheme only) ───────────────────────────
-  // Requires ≥ 2 non-aggregate, non-singleTotal subjects to be meaningful.
-  let utPattern = '';
+  // ── 5. UT vs TE — per-subject, so the remark can name the actual subject
+  //       instead of speaking only in aggregate terms (standard scheme only) ─
+  let utInsight = '';
   if (isStd) {
     const normal = scorable.filter(s => !s.isAggregate && !s.singleTotal);
-    let sumUT = 0, sumTE = 0, n = 0;
+    let widestSubj = null, widestGap = 0, sumUT = 0, sumTE = 0, n = 0;
     for (const subj of normal) {
       const sd = termData.subjects[subj.key];
-      if (sd && sd.ut != null && sd.exam != null) {
-        sumUT += (sd.ut  / 30) * 100;   // normalise to %
-        sumTE += (sd.exam / 60) * 100;
-        n++;
-      }
+      if (!sd || sd.ut == null || sd.exam == null) continue;
+      const utPctN = (sd.ut / 30) * 100, tePctN = (sd.exam / 60) * 100;
+      sumUT += utPctN; sumTE += tePctN; n++;
+      const gap = utPctN - tePctN;
+      if (Math.abs(gap) > Math.abs(widestGap)) { widestGap = gap; widestSubj = subj; }
     }
-    if (n >= 2) {
+    if (n >= 2 && widestSubj && Math.abs(widestGap) > 15) {
+      utInsight = widestGap > 0
+        ? `Classwork in ${widestSubj.label} is steady, but marks drop in the term exam — focused exam preparation would help.`
+        : `${widestSubj.label} shows stronger exam results than classwork — more consistent classwork effort would help.`;
+    } else if (n >= 2) {
       const diff = (sumUT / n) - (sumTE / n);
-      utPattern = diff > 12 ? 'exam' : diff < -12 ? 'improve' : 'consistent';
+      if (diff > 12) utInsight = 'Consistent preparation for examinations is advised.';
+      else if (diff < -12) utInsight = 'Improvement in the term examination is commendable.';
     }
   }
 
-  // ── 5. Personalisation ───────────────────────────────────────────────────
-  const firstName  = (data.student && data.student.name)
+  // ── 6. Term-over-term trend (Final Term remarks only) ──────────────────────
+  let trendLine = '';
+  if (term === 'ft' && config.grandTotalMax > 0 && (data.halfYearly.grandTotal || 0) > 0) {
+    const hyPct  = (data.halfYearly.grandTotal / config.grandTotalMax) * 100;
+    const delta  = termPct - hyPct;
+    if (delta >= 8) trendLine = 'This marks a clear improvement over the half-yearly result.';
+    else if (delta <= -8) trendLine = 'This is a dip compared to the half-yearly performance, worth addressing early next session.';
+  }
+
+  // ── 7. Personalisation & deterministic phrasing seed ───────────────────────
+  // Seeded (not random) so the same student/term always reproduces the exact
+  // same remark on reprint, while varying phrasing across different students.
+  const firstName = (data.student && data.student.name)
     ? data.student.name.trim().split(/\s+/)[0]
     : 'The student';
+  const seedStr = `${(data.student && data.student.name) || firstName}|${cls}|${term}`;
+  let seed = 0;
+  for (let i = 0; i < seedStr.length; i++) seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0;
 
-  // Deterministic variant: avoids identical openers for same band across terms/classes
-  const v = (firstName.length + cls + (term === 'hy' ? 0 : 1)) % 2;
-
-  // ── 6. Opening sentence pools ────────────────────────────────────────────
+  // ── 8. Opening sentence pools ───────────────────────────────────────────────
   const s1Pool = {
     excellent: [
-      `${firstName} has delivered an excellent performance this term, excelling particularly in ${bestLabel}.`,
-      `An outstanding term — ${firstName} shows exceptional ability in ${bestLabel} and maintains a high academic standard.`
+      `${firstName} has delivered an excellent performance this term, excelling particularly in ${bestLabel}${bestPct ? ` (${bestPct}%)` : ''}.`,
+      `An outstanding term — ${firstName} shows exceptional ability in ${bestLabel} and maintains a high academic standard throughout.`,
+      `${firstName} has set a strong benchmark this term, with ${bestLabel} standing out as a particular highlight.`,
+      `A truly impressive term for ${firstName}, marked by consistent excellence and standout results in ${bestLabel}.`
     ],
     vgood: [
-      `${firstName} has performed very well this term, demonstrating notable strength in ${bestLabel}.`,
-      `A commendable term for ${firstName}, who shows strong aptitude in ${bestLabel} across assessments.`
+      `${firstName} has performed very well this term, demonstrating notable strength in ${bestLabel}${bestPct ? ` (${bestPct}%)` : ''}.`,
+      `A commendable term for ${firstName}, who shows strong aptitude in ${bestLabel} across assessments.`,
+      `${firstName} continues to perform strongly, with ${bestLabel} a clear area of confidence this term.`,
+      `Solid, consistent work from ${firstName} this term, particularly in ${bestLabel}.`
     ],
     good: [
       `${firstName} has shown a good performance this term with commendable results in ${bestLabel}.`,
-      `A solid effort this term; ${firstName} performs well in ${bestLabel} and has scope for further growth.`
+      `A solid effort this term; ${firstName} performs well in ${bestLabel} and has scope for further growth.`,
+      `${firstName} is building a good academic foundation, with encouraging results in ${bestLabel} this term.`,
+      `A steady term overall for ${firstName}, with ${bestLabel} among the stronger subjects.`
     ],
     average: [
       `${firstName} has shown moderate performance this term, with relative strength observed in ${bestLabel}.`,
-      `This term, ${firstName} demonstrates an average standard; some strength is seen in ${bestLabel}.`
+      `This term, ${firstName} demonstrates an average standard; some strength is seen in ${bestLabel}.`,
+      `${firstName}'s results this term are around the class average, with ${bestLabel} a comparative bright spot.`,
+      `A middling term for ${firstName} overall, though ${bestLabel} shows promise.`
     ],
     weak: [
-      `${firstName} requires greater academic effort this term; relative strength is noted in ${bestLabel}.`,
-      `Academic performance this term calls for improvement; ${firstName} shows some engagement with ${bestLabel}.`
+      `${firstName} has good potential still to unlock this term, with a promising start shown in ${bestLabel}.`,
+      `There is real room to grow this term for ${firstName}, who shows encouraging effort in ${bestLabel}.`,
+      `${firstName} is finding their footing this term, with ${bestLabel} a nice sign of what's possible.`,
+      `This term calls for a bit more support for ${firstName}, though ${bestLabel} shows a genuine spark.`
+    ],
+    critical: [
+      `${firstName} has a clear opportunity to grow this term, with results currently below the pass mark in ${failed.length} of ${analyzed.length} subjects.`,
+      `This term has been a tough stretch for ${firstName}, with ${failed.length} of ${analyzed.length} subjects yet to reach the pass mark.`,
+      `${firstName} is at an important turning point this term, with ${failed.length} of ${analyzed.length} subjects needing a bit more support to reach the pass mark.`
     ]
   };
+  const pool1 = s1Pool[band];
+  const s1 = pool1[seed % pool1.length];
 
-  const s1 = s1Pool[band][v];
-
-  // ── 7. Second sentence: weakness + UT/TE + attendance ───────────────────
-  const s2Parts = [];
-
-  if (worstLabel) {
-    s2Parts.push(`Focused attention to ${worstLabel} is needed to strengthen overall results.`);
+  // ── 9. Focus / weakness sentence — names subjects gently, frames as
+  //       opportunity rather than deficiency ────────────────────────────────
+  let s2 = '';
+  if (band === 'critical' || band === 'weak') {
+    const focusPool = focusLabels.length === 2
+      ? [
+          `${focusLabels[0]} and ${focusLabels[1]} would benefit most from some extra practice and support.`,
+          `With a little extra help in ${focusLabels[0]} and ${focusLabels[1]}, real progress is within reach.`
+        ]
+      : focusLabels.length === 1
+        ? [
+            `${focusLabels[0]} would benefit most from some extra practice and support.`,
+            `A bit more support in ${focusLabels[0]} could make a real difference.`
+          ]
+        : [];
+    if (focusPool.length) s2 = focusPool[seed % focusPool.length];
+  } else if (focusLabels.length) {
+    const gentlePool = [
+      `A little more focus on ${focusLabels[0]} could help ${firstName} shine there too.`,
+      `With some extra practice, ${focusLabels[0]} has good potential to become another strong area.`,
+      `${focusLabels[0]} offers good room to grow further with a bit more attention.`
+    ];
+    s2 = gentlePool[seed % gentlePool.length];
   }
-  if (utPattern === 'exam') {
-    s2Parts.push('Consistent preparation for examinations is advised.');
-  } else if (utPattern === 'improve') {
-    s2Parts.push('Improvement in the term examination is commendable.');
+
+  // ── 10. Closing encouragement — present for every band, effort-calibrated ─
+  const encPool = {
+    excellent: ['Sustaining this standard with the same discipline will serve well ahead.', 'Continuing this level of consistency will keep results at the very top.'],
+    vgood:     ['With the same consistency, an even stronger result is well within reach.', 'Continued focus on this momentum will bring excellent results ahead.'],
+    good:      ['With consistent effort and regular revision, much more can be achieved.', 'Continued dedication will lead to further progress and success.'],
+    average:   ['Steady effort and focused study will bring noticeably better results ahead.', 'A more consistent study routine would help translate effort into results.'],
+    weak:      ['With focused revision and consistent support, a much stronger result is achievable next term.', 'Regular practice and additional support at home will help build a stronger foundation.'],
+    critical:  ['With focused revision and additional support, a much stronger result is well within reach next term.', 'Consistent daily practice and extra support in the weaker subjects can turn this around next term.']
+  };
+  const encList = encPool[band];
+  const s3 = encList[seed % encList.length];
+
+  // ── 11. Positive anchor for the critical band — keeps the tone encouraging
+  //        even when no subject can honestly be called a strength ──────────
+  let anchorLine = '';
+  if (band === 'critical') {
+    anchorLine = attPct >= 85
+      ? 'Regular attendance this term is a good foundation to build from.'
+      : `${firstName} has the ability to turn this around with the right support and consistent effort.`;
   }
-  if (lowAtt) {
-    s2Parts.push('Irregular attendance has affected academic progress.');
+
+  // ── 12. Attendance sentence for non-critical bands (critical uses the
+  //        anchor line above instead) ────────────────────────────────────────
+  let attLine = '';
+  if (band !== 'critical') {
+    if (lowAtt) attLine = 'More regular attendance would help support stronger progress.';
+    else if (highAtt) attLine = 'Regular attendance this term is commendable.';
   }
-  const s2 = s2Parts.join(' ');
 
-  // ── 8. Encouragement sentence (class 3–5 only) ──────────────────────────
-  const encPool = [
-    'With consistent effort and regular revision, much more can be achieved.',
-    'Continued dedication will lead to further progress and success.',
-    'Steady effort and focused study will bring excellent results ahead.'
-  ];
-  const s3 = cls <= 5 ? encPool[cls % encPool.length] : '';
-
-  // ── 9. Assemble by class tier ────────────────────────────────────────────
-  const parts = [s1];
-
-  if (cls >= 9) {
-    // Class 9–10: strict maximum 2 sentences
-    if (s2) parts.push(s2);
-  } else if (cls >= 6) {
-    // Class 6–8: 2–3 sentences
-    if (s2) parts.push(s2);
-  } else {
-    // Class 3–5: 3–4 sentences, more descriptive
-    if (s2) parts.push(s2);
-    if (s3) parts.push(s3);
+  // ── 13. Assemble, priority-ordered, capped by class tier ───────────────────
+  // Class 9–10 stays a notch terser/more formal; Class ≤8 gets more room.
+  const maxSentences = cls >= 9 ? 4 : 5;
+  const candidates = band === 'critical'
+    ? [s1, s2, utInsight, trendLine, anchorLine, s3]
+    : [s1, s2, utInsight, trendLine, attLine, s3];
+  const parts = candidates.filter(Boolean).slice(0, maxSentences);
+  // The closing encouragement line always survives the cap, even if lower-
+  // priority filler (e.g. attendance) has to give way for it.
+  if (parts.length === maxSentences && parts[parts.length - 1] !== s3) {
+    parts[parts.length - 1] = s3;
   }
 
   let remark = parts.join(' ');
 
-  // ── 10. Enforce 300-character limit ─────────────────────────────────────
-  if (remark.length > 300) {
-    while (parts.length > 1 && remark.length > 300) {
-      parts.pop();
+  // ── 14. Enforce a hard character ceiling ────────────────────────────────
+  const CHAR_LIMIT = 420;
+  if (remark.length > CHAR_LIMIT) {
+    while (parts.length > 2 && remark.length > CHAR_LIMIT) {
+      parts.splice(parts.length - 2, 1); // drop from the middle, keep opener + closer
       remark = parts.join(' ');
     }
-    if (remark.length > 300) {
-      remark = remark.slice(0, 297) + '...';
+    if (remark.length > CHAR_LIMIT) {
+      remark = remark.slice(0, CHAR_LIMIT - 3) + '...';
     }
   }
 
