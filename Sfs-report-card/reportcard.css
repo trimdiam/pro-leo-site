@@ -20,6 +20,7 @@
   --rc-border:  #C8C0A8;
   --rc-border2: #D8D0B8;
   --rc-fail:    #C62828;
+  --rc-good:    #1B7A3D;
 
   /* Page dimensions — Legal landscape */
   --rc-page-w: 355.6mm; /* 14in */
@@ -627,15 +628,31 @@ body {
 /* Row types */
 .rc-row-aggregate td {
   background: #EDE8D4 !important;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--rc-dark);
   border-top: 1.5px solid var(--rc-border);
   border-bottom: 1.5px solid var(--rc-border);
 }
 
+/* .rc-marks-table td:first-child (font-weight:700) outranks .rc-row-aggregate
+   td on specificity alone, so the label column needs its own override to
+   actually pick up the bolder 800 weight. */
+.rc-row-aggregate td:first-child {
+  font-weight: 800;
+}
+
+/* Sub-components of an aggregate (Physics, Chemistry, Biology, etc.) render
+   visibly lighter/smaller than the averaged subject they roll up into, so the
+   two are never mistaken for peer subjects at a glance. */
+.rc-row-component td {
+  font-weight: 400;
+  color: var(--rc-olive);
+  font-size: 9.5px;
+}
+
 .rc-row-component td:first-child {
   padding-left: 14px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--rc-olive);
   font-size: 9.5px;
 }
@@ -644,9 +661,18 @@ body {
   font-weight: 600;
 }
 
-/* Fail cell */
+/* Fail cell — red + underline so a failing mark reads clearly even in a
+   quick scan or a black-and-white photocopy. */
 .rc-cell-fail {
   color: var(--rc-fail) !important;
+  font-weight: 800 !important;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* High-scoring cell (>=80% of that field's own max) — green highlight. */
+.rc-cell-high {
+  color: var(--rc-good) !important;
   font-weight: 800 !important;
 }
 

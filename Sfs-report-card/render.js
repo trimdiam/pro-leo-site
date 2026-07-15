@@ -373,8 +373,15 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
   const iaThreshSen   = Math.round(20 * pmRatio);
   const examThreshSen = Math.round(80 * pmRatio);
 
-  const failCls = (val, threshold) =>
-    (val !== undefined && val !== null && val !== '' && val < threshold) ? ' rc-cell-fail' : '';
+  // Combined mark styling: red+underline below the field's fail threshold,
+  // green when the mark is >=80% of that field's own max (IA/UT/Exam each
+  // have a different max, so this is computed per field, not on raw value).
+  const markCls = (val, threshold, max) => {
+    if (val === undefined || val === null || val === '') return '';
+    if (val < threshold) return ' rc-cell-fail';
+    if (max > 0 && (val / max) * 100 >= 80) return ' rc-cell-high';
+    return '';
+  };
 
   for (const subj of subjects) {
     const subjData = termData.subjects[subj.key] || {};
@@ -401,7 +408,7 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
       (subjData.ia < iaThreshSen || subjData.exam < examThreshSen);
     const totalFails = !blank && (total < passmark || componentFail);
     const gradeFail = totalFails ? ' fail' : '';
-    const totalFailCls = totalFails ? ' rc-cell-fail' : '';
+    const totalMarkCls = blank ? '' : (totalFails ? ' rc-cell-fail' : (total >= 80 ? ' rc-cell-high' : ''));
 
     let cls = 'rc-row-normal';
     if (subj.isAggregate) cls = 'rc-row-aggregate';
@@ -416,33 +423,33 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
     if (subj.isAggregate) {
       const blanks = isStandard ? 3 : 2;
       for (let i = 0; i < blanks; i++) html += '<td>—</td>';
-      html += `<td class="rc-cell-total${totalFailCls}">${totalDisp}</td>`;
+      html += `<td class="rc-cell-total${totalMarkCls}">${totalDisp}</td>`;
       if (showConsol) {
-        html += `<td class="rc-cell-consol${blank ? '' : failCls(consolSubj?.total, passmark * 2)}">${blank ? '' : consolTotal}</td>`;
+        html += `<td class="rc-cell-consol${blank ? '' : markCls(consolSubj?.total, passmark * 2, 200)}">${blank ? '' : consolTotal}</td>`;
       }
       html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${gradeDisp}</span></td>`;
     }
     else if (subj.singleTotal) {
       const blanks = isStandard ? 3 : 2;
       for (let i = 0; i < blanks; i++) html += '<td></td>';
-      html += `<td class="rc-cell-total${totalFailCls}">${totalDisp}</td>`;
+      html += `<td class="rc-cell-total${totalMarkCls}">${totalDisp}</td>`;
       if (showConsol) {
-        html += `<td class="rc-cell-consol${blank ? '' : failCls(consolSubj?.total, passmark * 2)}">${blank ? '' : consolTotal}</td>`;
+        html += `<td class="rc-cell-consol${blank ? '' : markCls(consolSubj?.total, passmark * 2, 200)}">${blank ? '' : consolTotal}</td>`;
       }
       html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${gradeDisp}</span></td>`;
     }
     else {
       if (isStandard) {
-        html += `<td class="${blank ? '' : failCls(subjData.ia, iaThreshStd)}">${blank ? '' : (subjData.ia !== undefined ? subjData.ia : '—')}</td>`;
-        html += `<td class="${blank ? '' : failCls(subjData.ut, utThresh)}">${blank ? '' : (subjData.ut !== undefined ? subjData.ut : '—')}</td>`;
-        html += `<td class="${blank ? '' : failCls(subjData.exam, examThreshStd)}">${blank ? '' : (subjData.exam !== undefined ? subjData.exam : '—')}</td>`;
+        html += `<td class="${blank ? '' : markCls(subjData.ia, iaThreshStd, 10)}">${blank ? '' : (subjData.ia !== undefined ? subjData.ia : '—')}</td>`;
+        html += `<td class="${blank ? '' : markCls(subjData.ut, utThresh, 30)}">${blank ? '' : (subjData.ut !== undefined ? subjData.ut : '—')}</td>`;
+        html += `<td class="${blank ? '' : markCls(subjData.exam, examThreshStd, 60)}">${blank ? '' : (subjData.exam !== undefined ? subjData.exam : '—')}</td>`;
       } else {
-        html += `<td class="${blank ? '' : failCls(subjData.ia, iaThreshSen)}">${blank ? '' : (subjData.ia !== undefined ? subjData.ia : '—')}</td>`;
-        html += `<td class="${blank ? '' : failCls(subjData.exam, examThreshSen)}">${blank ? '' : (subjData.exam !== undefined ? subjData.exam : '—')}</td>`;
+        html += `<td class="${blank ? '' : markCls(subjData.ia, iaThreshSen, 20)}">${blank ? '' : (subjData.ia !== undefined ? subjData.ia : '—')}</td>`;
+        html += `<td class="${blank ? '' : markCls(subjData.exam, examThreshSen, 80)}">${blank ? '' : (subjData.exam !== undefined ? subjData.exam : '—')}</td>`;
       }
-      html += `<td class="rc-cell-total${totalFailCls}">${totalDisp}</td>`;
+      html += `<td class="rc-cell-total${totalMarkCls}">${totalDisp}</td>`;
       if (showConsol) {
-        html += `<td class="rc-cell-consol${blank ? '' : failCls(consolSubj?.total, passmark * 2)}">${blank ? '' : consolTotal}</td>`;
+        html += `<td class="rc-cell-consol${blank ? '' : markCls(consolSubj?.total, passmark * 2, 200)}">${blank ? '' : consolTotal}</td>`;
       }
       html += `<td class="rc-cell-grade"><span class="rc-grade-pill${gradeFail}">${gradeDisp}</span></td>`;
     }
