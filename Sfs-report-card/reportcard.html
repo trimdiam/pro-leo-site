@@ -72,7 +72,7 @@
             <div class="rc-coscholastic" id="rcHyCoscholastic"></div>
 
             <div class="rc-strip rc-strip-thin">▸ SCHOOL SEAL</div>
-            <div class="rc-seal-box"></div>
+            <div class="rc-seal-box rc-has-seal"><img src="../assets/images/schoolsea.jpeg" alt="School Seal" class="rc-seal-img"></div>
 
             <div class="rc-left-bottom">
                 <div class="rc-date-issue">Date of Issue: ___ / ___ / ____</div>
@@ -165,7 +165,7 @@
     <!-- FOOTER (full width) -->
     <footer class="rc-footer">
         <div class="rc-grade-scale" id="rcGradeScale">
-            O ≥90% &nbsp;|&nbsp; A+ 80–89% &nbsp;|&nbsp; A 70–79% &nbsp;|&nbsp; B+ 60–69% &nbsp;|&nbsp; B 50–59% &nbsp;|&nbsp; C 40–49% &nbsp;|&nbsp; D 33–39% &nbsp;|&nbsp; F &lt;33% – Fail &nbsp;|&nbsp; Pass mark: 40/100
+            O ≥90% &nbsp;|&nbsp; A+ 80–89% &nbsp;|&nbsp; A 70–79% &nbsp;|&nbsp; B+ 60–69% &nbsp;|&nbsp; B 50–59% &nbsp;|&nbsp; C 40–49% &nbsp;|&nbsp; F &lt;40% – Fail &nbsp;|&nbsp; Pass mark: 40/100
         </div>
         <div class="rc-bottom-strip">
             <span>St. Francis De Sales School · Laitkor, Shillong, Meghalaya</span>
@@ -245,7 +245,7 @@
     var hyPct = maxMarks > 0 ? (hyGrand/maxMarks)*100 : 0;
     var ftPct = maxMarks > 0 ? (ftGrand/maxMarks)*100 : 0;
     var ovPct = (maxMarks*2) > 0 ? ((hyGrand+ftGrand)/(maxMarks*2))*100 : 0;
-    function gfp(p){if(p>=90)return'O';if(p>=80)return'A+';if(p>=70)return'A';if(p>=60)return'B+';if(p>=50)return'B';if(p>=40)return'C';if(p>=33)return'D';return'F';}
+    function gfp(p){if(p>=90)return'O';if(p>=80)return'A+';if(p>=70)return'A';if(p>=60)return'B+';if(p>=50)return'B';if(p>=40)return'C';if(p>=passmark)return'D';return'F';}
     function fmtp(p){return parseFloat((Math.round(p*10)/10).toFixed(1));}
 
     var coSch = {}, csSrc = hyData.coScholastic || ftData.coScholastic || {};

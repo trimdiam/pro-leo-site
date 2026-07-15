@@ -44,7 +44,10 @@ const ME = {
 // ─── GRADES ───────────────────────────────────────────────────────────────────
 const GRADES = ['O','A+','A','B+','B','C'];
 
-function computeGrade(total, max = 100) {
+// passmark: 40 for Classes 3-8, 30 for Classes 9-10. The 'D' band only
+// exists below 40 when the class's own pass mark is lower than 40 — for
+// Classes 3-8 (passmark 40), anything under 40 is a straight fail.
+function computeGrade(total, max = 100, passmark = 40) {
   const pct = (total / max) * 100;
   if (pct >= 90) return 'O';
   if (pct >= 80) return 'A+';
@@ -52,7 +55,7 @@ function computeGrade(total, max = 100) {
   if (pct >= 60) return 'B+';
   if (pct >= 50) return 'B';
   if (pct >= 40) return 'C';
-  if (pct >= 33) return 'D';
+  if (pct >= passmark) return 'D';
   return 'F';
 }
 
@@ -1634,17 +1637,17 @@ function viewCTMarksheet(students, existingHY, existingFT, classNum, term) {
       halfYearly: {
         subjects: hySubjects, grandTotal: hyGrand,
         percentage: parseFloat((Math.round(hyPct * 10) / 10).toFixed(1)),
-        grade: _gradeFromPct(hyPct), rank: 0, totalStudents: 0
+        grade: _gradeFromPct(hyPct, cfg.passmark), rank: 0, totalStudents: 0
       },
       finalTerm: {
         subjects: ftSubjects, grandTotal: ftGrand,
         percentage: parseFloat((Math.round(ftPct * 10) / 10).toFixed(1)),
-        grade: _gradeFromPct(ftPct), rank: 0, totalStudents: 0
+        grade: _gradeFromPct(ftPct, cfg.passmark), rank: 0, totalStudents: 0
       },
       consolidated: {
         subjects: consolSubjects, grandTotal: hyGrand + ftGrand,
         percentage: parseFloat((Math.round(overallPct * 10) / 10).toFixed(1)),
-        grade: _gradeFromPct(overallPct), result
+        grade: _gradeFromPct(overallPct, cfg.passmark), result
       }
     });
   });
@@ -1755,8 +1758,8 @@ function renderAcademicSummary(hyData, ftData, classNum) {
     if (hyTotal != null) hyGrand += hyTotal;
     if (ftTotal != null) ftGrand += ftTotal;
 
-    const hyGrade = hyTotal != null ? computeGrade(hyTotal) : '—';
-    const ftGrade = ftTotal != null ? computeGrade(ftTotal) : '—';
+    const hyGrade = hyTotal != null ? computeGrade(hyTotal, 100, passmark) : '—';
+    const ftGrade = ftTotal != null ? computeGrade(ftTotal, 100, passmark) : '—';
     const hyFail  = hyTotal != null && (hyTotal < passmark || subjectFailsFloor(hyIa, hyTe, cfg, subj));
     const ftFail  = ftTotal != null && (ftTotal < passmark || subjectFailsFloor(ftIa, ftTe, cfg, subj));
 
@@ -1772,8 +1775,8 @@ function renderAcademicSummary(hyData, ftData, classNum) {
 
   const grandTotalMax = cfg.grandTotalMax || 0;
   const fmtPct = v => grandTotalMax > 0 ? (Math.round((v / grandTotalMax) * 1000) / 10).toFixed(1) + '%' : '—';
-  const hyGrade  = computeGrade(hyGrand, grandTotalMax);
-  const ftGrade  = computeGrade(ftGrand, grandTotalMax);
+  const hyGrade  = computeGrade(hyGrand, grandTotalMax, passmark);
+  const ftGrade  = computeGrade(ftGrand, grandTotalMax, passmark);
 
   wrap.innerHTML = `
     <table class="me-table ct-academic-table">
@@ -2237,7 +2240,7 @@ async function openReportCard() {
   function gradeFromPct(p) {
     if (p >= 90) return 'O'; if (p >= 80) return 'A+'; if (p >= 70) return 'A';
     if (p >= 60) return 'B+'; if (p >= 50) return 'B'; if (p >= 40) return 'C';
-    if (p >= 33) return 'D'; return 'F';
+    if (p >= passmark) return 'D'; return 'F';
   }
   function fmtPct(p) { return parseFloat((Math.round(p * 10) / 10).toFixed(1)); }
 
@@ -2371,7 +2374,7 @@ function openReportCardFromList(studentId, studentData, hyData, ftData, classId,
   function gfp(p) {
     if (p >= 90) return 'O'; if (p >= 80) return 'A+'; if (p >= 70) return 'A';
     if (p >= 60) return 'B+'; if (p >= 50) return 'B'; if (p >= 40) return 'C';
-    if (p >= 33) return 'D'; return 'F';
+    if (p >= passmark) return 'D'; return 'F';
   }
   function fmtp(p) { return parseFloat((Math.round(p * 10) / 10).toFixed(1)); }
 
@@ -2531,7 +2534,7 @@ async function generateClassMarksheet() {
           subjects:      hySubjects,
           grandTotal:    hyGrand,
           percentage:    parseFloat((Math.round(hyPct * 10) / 10).toFixed(1)),
-          grade:         _gradeFromPct(hyPct),
+          grade:         _gradeFromPct(hyPct, cfg.passmark),
           rank:          0,
           totalStudents: 0,
           attendance:    { present: hyData?.attendance?.hyPresent || 0, total: hyData?.attendance?.hyTotal || 0 }
@@ -2540,7 +2543,7 @@ async function generateClassMarksheet() {
           subjects:      ftSubjects,
           grandTotal:    ftGrand,
           percentage:    parseFloat((Math.round(ftPct * 10) / 10).toFixed(1)),
-          grade:         _gradeFromPct(ftPct),
+          grade:         _gradeFromPct(ftPct, cfg.passmark),
           rank:          0,
           totalStudents: 0,
           attendance:    { present: ftData?.attendance?.ftPresent || 0, total: ftData?.attendance?.ftTotal || 0 }
@@ -2549,7 +2552,7 @@ async function generateClassMarksheet() {
           subjects:   consolSubjects,
           grandTotal: hyGrand + ftGrand,
           percentage: parseFloat((Math.round(overallPct * 10) / 10).toFixed(1)),
-          grade:      _gradeFromPct(overallPct),
+          grade:      _gradeFromPct(overallPct, cfg.passmark),
           result
         }
       });
@@ -2577,10 +2580,10 @@ async function generateClassMarksheet() {
   }
 }
 
-function _gradeFromPct(p) {
+function _gradeFromPct(p, passmark = 40) {
   if (p >= 90) return 'O'; if (p >= 80) return 'A+'; if (p >= 70) return 'A';
   if (p >= 60) return 'B+'; if (p >= 50) return 'B'; if (p >= 40) return 'C';
-  if (p >= 33) return 'D'; return 'F';
+  if (p >= passmark) return 'D'; return 'F';
 }
 
 // ─── ADMIN: VIEW REPORT CARD (from admin panel sessionStorage payload) ────────

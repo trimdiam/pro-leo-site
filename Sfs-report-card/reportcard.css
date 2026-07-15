@@ -514,7 +514,8 @@ body {
   flex-shrink: 0;
 }
 
-/* FLAW 7 FIX — two-line "OFFICIAL SEAL" text */
+/* FLAW 7 FIX — two-line "OFFICIAL SEAL" text (placeholder, hidden once a
+   real seal image is present via .rc-has-seal) */
 .rc-seal-box::after {
   content: "OFFICIAL\A SEAL";
   white-space: pre;
@@ -524,6 +525,22 @@ body {
   letter-spacing: 1.5px;
   color: var(--rc-border);
   text-transform: uppercase;
+}
+
+.rc-seal-box.rc-has-seal {
+  border-style: solid;
+  border-color: transparent;
+  background: transparent;
+  overflow: hidden;
+}
+.rc-seal-box.rc-has-seal::after {
+  content: none;
+}
+.rc-seal-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
 }
 
 /* ── LEFT COLUMN BOTTOM ────────────────────────────────────── */

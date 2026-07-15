@@ -23,14 +23,17 @@ function loadData() {
 /* ═══════════════════════════════════════════════════════════════════════════
    2. GRADE HELPERS
    ═══════════════════════════════════════════════════════════════════════════ */
-function getGradeFromMarks(marks) {
+// passmark: 40 for Class III-VIII, 30 for Class IX-X (config.passmark). The
+// 'D' band only exists below 40 when the class's own pass mark is lower than
+// 40 (senior classes) — otherwise anything under 40 is a fail, full stop.
+function getGradeFromMarks(marks, passmark = 40) {
   if (marks >= 90) return 'O';
   if (marks >= 80) return 'A+';
   if (marks >= 70) return 'A';
   if (marks >= 60) return 'B+';
   if (marks >= 50) return 'B';
   if (marks >= 40) return 'C';
-  if (marks >= 33) return 'D';
+  if (marks >= passmark) return 'D';
   return 'F';
 }
 
@@ -98,8 +101,11 @@ function renderHeader(data, config) {
   const passmark = config.passmark || 40;
   const scaleEl = document.getElementById('rcGradeScale');
   if (scaleEl) {
+    // D band only exists below 40 when the pass mark itself is under 40
+    // (senior classes, passmark 30) — otherwise anything under 40 is F.
+    const dBand = passmark < 40 ? ` | D ${passmark}–39%` : '';
     let scaleText =
-      `O ≥90% | A+ 80–89% | A 70–79% | B+ 60–69% | B 50–59% | C 40–49% | D 33–39% | F <33% – Fail | Pass mark: ${passmark}/100`;
+      `O ≥90% | A+ 80–89% | A 70–79% | B+ 60–69% | B 50–59% | C 40–49%${dBand} | F <${passmark}% – Fail | Pass mark: ${passmark}/100`;
     if (config.markScheme === 'senior') {
       const iaFloor   = Math.round(20 * passmark / 100);
       const examFloor = Math.round(80 * passmark / 100);
@@ -373,7 +379,7 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
   for (const subj of subjects) {
     const subjData = termData.subjects[subj.key] || {};
     const total = subjData.total || 0;
-    const grade = getGradeFromMarks(total);
+    const grade = getGradeFromMarks(total, passmark);
     // Reduced-subject student: a subject with no marks entered at all is one
     // they don't take — render it blank (not 0/F, no fail styling) rather than
     // as a failed row. Only applies to the exempt student.

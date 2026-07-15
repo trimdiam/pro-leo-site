@@ -12,9 +12,7 @@ const GRADE_SCALE = [
   { min: 70, grade: 'A'   },
   { min: 60, grade: 'B+'  },
   { min: 50, grade: 'B'   },
-  { min: 40, grade: 'C'   },
-  { min: 33, grade: 'D'   },
-  { min: 0,  grade: 'F'   }
+  { min: 40, grade: 'C'   }
 ];
 
 const CO_SCHOLASTIC_GRADES = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D'];
@@ -77,10 +75,15 @@ const els = {
 /* ═══════════════════════════════════════════════════════════════════════════
    3. HELPERS
    ═══════════════════════════════════════════════════════════════════════════ */
+// passmark: 40 for Classes 3-8, 30 for Classes 9-10 (currentConfig.passmark).
+// The 'D' band only exists below 40 when the class's own pass mark is lower
+// than 40 — for Classes 3-8, anything under 40 is a straight fail.
 function getGradeFromMarks(marks) {
   for (const g of GRADE_SCALE) {
     if (marks >= g.min) return g.grade;
   }
+  const passmark = currentConfig?.passmark ?? 40;
+  if (marks >= passmark) return 'D';
   return 'F';
 }
 

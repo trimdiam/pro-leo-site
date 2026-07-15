@@ -70,7 +70,7 @@ function renderMarksheet() {
 
   // Co-scholastic and remarks tables
   buildCoScholasticTable(list, config);
-  buildRemarksTable(list);
+  buildRemarksTable(list, config);
 }
 
 /* ─── CO-SCHOLASTIC TABLE ─────────────────────────────────────────────────── */
@@ -126,13 +126,17 @@ function buildCoScholasticTable(list, config) {
 }
 
 /* ─── REMARKS TABLE ───────────────────────────────────────────────────────── */
-function buildRemarksTable(list) {
+// Falls back to the auto-generated remark when no teacher-entered remark
+// exists, same as the individual report card (render.js). Self-contained
+// copy of generateRemark() below — this page doesn't load render.js.
+function buildRemarksTable(list, config) {
   const body = document.getElementById('msRemarksBody');
   if (!body) return;
   let html = '';
   list.forEach((data, idx) => {
-    const hy = (data.remarks?.halfYearly || '').replace(/[<>]/g, '');
-    const ft = (data.remarks?.finalTerm   || '').replace(/[<>]/g, '');
+    const ftNotAssessed = (data.finalTerm?.grandTotal || 0) === 0;
+    const hy = ((data.remarks?.halfYearly || generateRemark(data, config, 'hy')) || '').replace(/[<>]/g, '');
+    const ft = ((data.remarks?.finalTerm || (ftNotAssessed ? '' : generateRemark(data, config, 'ft'))) || '').replace(/[<>]/g, '');
     html += `<tr>
       <td>${idx + 1}</td>
       <td>${data.student.rollNo}</td>
@@ -142,6 +146,212 @@ function buildRemarksTable(list) {
     </tr>`;
   });
   body.innerHTML = html;
+}
+
+/**
+ * generateRemark(data, config, term) — self-contained copy of the remark
+ * engine in render.js. Keep in sync with that file if the engine changes.
+ * term: 'hy' (Half Yearly) | 'ft' (Final Term)
+ */
+function generateRemark(data, config, term) {
+  const cls      = parseInt(data.class, 10);
+  const termData = term === 'hy' ? data.halfYearly : data.finalTerm;
+  const isStd    = config.markScheme === 'standard';
+  const passmark = config.passmark || 40;
+  const pmRatio  = passmark / 100;
+  const iaThreshSen   = Math.round(20 * pmRatio);
+  const examThreshSen = Math.round(80 * pmRatio);
+
+  const scorable = config.subjects.filter(s => s.countInTotal);
+  const analyzed = [];
+  for (const subj of scorable) {
+    const sd = termData.subjects[subj.key];
+    if (!sd || sd.total == null) continue;
+    const componentFail = !isStd && !subj.singleTotal &&
+      (sd.ia < iaThreshSen || sd.exam < examThreshSen);
+    const fails = sd.total < passmark || componentFail;
+    analyzed.push({ subj, total: sd.total, ia: sd.ia, exam: sd.exam, fails });
+  }
+  const failed = analyzed.filter(a => a.fails);
+  const byTotalDesc = [...analyzed].sort((a, b) => b.total - a.total);
+  const byTotalAsc  = [...analyzed].sort((a, b) => a.total - b.total);
+
+  const termPct = config.grandTotalMax > 0
+    ? (termData.grandTotal / config.grandTotalMax) * 100
+    : 0;
+  const majorityFailing = analyzed.length > 0 && (failed.length / analyzed.length) >= 0.5;
+  const band = majorityFailing ? 'critical'
+             : termPct >= 90 ? 'excellent'
+             : termPct >= 80 ? 'vgood'
+             : termPct >= 70 ? 'good'
+             : termPct >= 40 ? 'average'
+             :                 'weak';
+
+  const best      = byTotalDesc[0] || null;
+  const bestLabel = best ? best.subj.label : 'core subjects';
+  const bestPct   = best ? Math.round(best.total) : null;
+
+  const worstCandidate = byTotalAsc[0] || null;
+  const focusSubjects = (band === 'critical' || band === 'weak')
+    ? byTotalAsc.filter(a => a.fails).slice(0, 2)
+    : (worstCandidate && best && worstCandidate.subj.key !== best.subj.key)
+      ? [worstCandidate]
+      : [];
+  const focusLabels = focusSubjects.map(a => a.subj.label);
+
+  const att     = termData.attendance || { present: 0, total: 0 };
+  const attPct  = att.total > 0 ? (att.present / att.total) * 100 : 100;
+  const lowAtt  = attPct < 75;
+  const highAtt = attPct >= 95;
+
+  let utInsight = '';
+  if (isStd) {
+    const normal = scorable.filter(s => !s.isAggregate && !s.singleTotal);
+    let widestSubj = null, widestGap = 0, sumUT = 0, sumTE = 0, n = 0;
+    for (const subj of normal) {
+      const sd = termData.subjects[subj.key];
+      if (!sd || sd.ut == null || sd.exam == null) continue;
+      const utPctN = (sd.ut / 30) * 100, tePctN = (sd.exam / 60) * 100;
+      sumUT += utPctN; sumTE += tePctN; n++;
+      const gap = utPctN - tePctN;
+      if (Math.abs(gap) > Math.abs(widestGap)) { widestGap = gap; widestSubj = subj; }
+    }
+    if (n >= 2 && widestSubj && Math.abs(widestGap) > 15) {
+      utInsight = widestGap > 0
+        ? `Classwork in ${widestSubj.label} is steady, but marks drop in the term exam — focused exam preparation would help.`
+        : `${widestSubj.label} shows stronger exam results than classwork — more consistent classwork effort would help.`;
+    } else if (n >= 2) {
+      const diff = (sumUT / n) - (sumTE / n);
+      if (diff > 12) utInsight = 'Consistent preparation for examinations is advised.';
+      else if (diff < -12) utInsight = 'Improvement in the term examination is commendable.';
+    }
+  }
+
+  let trendLine = '';
+  if (term === 'ft' && config.grandTotalMax > 0 && (data.halfYearly.grandTotal || 0) > 0) {
+    const hyPct  = (data.halfYearly.grandTotal / config.grandTotalMax) * 100;
+    const delta  = termPct - hyPct;
+    if (delta >= 8) trendLine = 'This marks a clear improvement over the half-yearly result.';
+    else if (delta <= -8) trendLine = 'This is a dip compared to the half-yearly performance, worth addressing early next session.';
+  }
+
+  const firstName = (data.student && data.student.name)
+    ? data.student.name.trim().split(/\s+/)[0]
+    : 'The student';
+  const seedStr = `${(data.student && data.student.name) || firstName}|${cls}|${term}`;
+  let seed = 0;
+  for (let i = 0; i < seedStr.length; i++) seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0;
+
+  const s1Pool = {
+    excellent: [
+      `${firstName} has delivered an excellent performance this term, excelling particularly in ${bestLabel}${bestPct ? ` (${bestPct}%)` : ''}.`,
+      `An outstanding term — ${firstName} shows exceptional ability in ${bestLabel} and maintains a high academic standard throughout.`,
+      `${firstName} has set a strong benchmark this term, with ${bestLabel} standing out as a particular highlight.`,
+      `A truly impressive term for ${firstName}, marked by consistent excellence and standout results in ${bestLabel}.`
+    ],
+    vgood: [
+      `${firstName} has performed very well this term, demonstrating notable strength in ${bestLabel}${bestPct ? ` (${bestPct}%)` : ''}.`,
+      `A commendable term for ${firstName}, who shows strong aptitude in ${bestLabel} across assessments.`,
+      `${firstName} continues to perform strongly, with ${bestLabel} a clear area of confidence this term.`,
+      `Solid, consistent work from ${firstName} this term, particularly in ${bestLabel}.`
+    ],
+    good: [
+      `${firstName} has shown a good performance this term with commendable results in ${bestLabel}.`,
+      `A solid effort this term; ${firstName} performs well in ${bestLabel} and has scope for further growth.`,
+      `${firstName} is building a good academic foundation, with encouraging results in ${bestLabel} this term.`,
+      `A steady term overall for ${firstName}, with ${bestLabel} among the stronger subjects.`
+    ],
+    average: [
+      `${firstName} has shown moderate performance this term, with relative strength observed in ${bestLabel}.`,
+      `This term, ${firstName} demonstrates an average standard; some strength is seen in ${bestLabel}.`,
+      `${firstName}'s results this term are around the class average, with ${bestLabel} a comparative bright spot.`,
+      `A middling term for ${firstName} overall, though ${bestLabel} shows promise.`
+    ],
+    weak: [
+      `${firstName} has good potential still to unlock this term, with a promising start shown in ${bestLabel}.`,
+      `There is real room to grow this term for ${firstName}, who shows encouraging effort in ${bestLabel}.`,
+      `${firstName} is finding their footing this term, with ${bestLabel} a nice sign of what's possible.`,
+      `This term calls for a bit more support for ${firstName}, though ${bestLabel} shows a genuine spark.`
+    ],
+    critical: [
+      `${firstName} has a clear opportunity to grow this term, with results currently below the pass mark in ${failed.length} of ${analyzed.length} subjects.`,
+      `This term has been a tough stretch for ${firstName}, with ${failed.length} of ${analyzed.length} subjects yet to reach the pass mark.`,
+      `${firstName} is at an important turning point this term, with ${failed.length} of ${analyzed.length} subjects needing a bit more support to reach the pass mark.`
+    ]
+  };
+  const pool1 = s1Pool[band];
+  const s1 = pool1[seed % pool1.length];
+
+  let s2 = '';
+  if (band === 'critical' || band === 'weak') {
+    const focusPool = focusLabels.length === 2
+      ? [
+          `${focusLabels[0]} and ${focusLabels[1]} would benefit most from some extra practice and support.`,
+          `With a little extra help in ${focusLabels[0]} and ${focusLabels[1]}, real progress is within reach.`
+        ]
+      : focusLabels.length === 1
+        ? [
+            `${focusLabels[0]} would benefit most from some extra practice and support.`,
+            `A bit more support in ${focusLabels[0]} could make a real difference.`
+          ]
+        : [];
+    if (focusPool.length) s2 = focusPool[seed % focusPool.length];
+  } else if (focusLabels.length) {
+    const gentlePool = [
+      `A little more focus on ${focusLabels[0]} could help ${firstName} shine there too.`,
+      `With some extra practice, ${focusLabels[0]} has good potential to become another strong area.`,
+      `${focusLabels[0]} offers good room to grow further with a bit more attention.`
+    ];
+    s2 = gentlePool[seed % gentlePool.length];
+  }
+
+  const encPool = {
+    excellent: ['Sustaining this standard with the same discipline will serve well ahead.', 'Continuing this level of consistency will keep results at the very top.'],
+    vgood:     ['With the same consistency, an even stronger result is well within reach.', 'Continued focus on this momentum will bring excellent results ahead.'],
+    good:      ['With consistent effort and regular revision, much more can be achieved.', 'Continued dedication will lead to further progress and success.'],
+    average:   ['Steady effort and focused study will bring noticeably better results ahead.', 'A more consistent study routine would help translate effort into results.'],
+    weak:      ['With focused revision and consistent support, a much stronger result is achievable next term.', 'Regular practice and additional support at home will help build a stronger foundation.'],
+    critical:  ['With focused revision and additional support, a much stronger result is well within reach next term.', 'Consistent daily practice and extra support in the weaker subjects can turn this around next term.']
+  };
+  const encList = encPool[band];
+  const s3 = encList[seed % encList.length];
+
+  let anchorLine = '';
+  if (band === 'critical') {
+    anchorLine = attPct >= 85
+      ? 'Regular attendance this term is a good foundation to build from.'
+      : `${firstName} has the ability to turn this around with the right support and consistent effort.`;
+  }
+
+  let attLine = '';
+  if (band !== 'critical') {
+    if (lowAtt) attLine = 'More regular attendance would help support stronger progress.';
+    else if (highAtt) attLine = 'Regular attendance this term is commendable.';
+  }
+
+  const maxSentences = cls >= 9 ? 4 : 5;
+  const candidates = band === 'critical'
+    ? [s1, s2, utInsight, trendLine, anchorLine, s3]
+    : [s1, s2, utInsight, trendLine, attLine, s3];
+  const parts = candidates.filter(Boolean).slice(0, maxSentences);
+  if (parts.length === maxSentences && parts[parts.length - 1] !== s3) {
+    parts[parts.length - 1] = s3;
+  }
+
+  let remark = parts.join(' ');
+
+  const CHAR_LIMIT = 420;
+  if (remark.length > CHAR_LIMIT) {
+    while (parts.length > 2 && remark.length > CHAR_LIMIT) {
+      parts.splice(parts.length - 2, 1);
+      remark = parts.join(' ');
+    }
+    if (remark.length > CHAR_LIMIT) {
+      remark = remark.slice(0, CHAR_LIMIT - 3) + '...';
+    }
+  }
+
+  return remark;
 }
 
 /* ─── HEADER ──────────────────────────────────────────────────────────────── */
@@ -195,7 +405,7 @@ function buildHeader(subjects, isStandard) {
 
 /* ─── ROWS ────────────────────────────────────────────────────────────────── */
 function buildRows(list, subjects, config, isStandard, termKey) {
-  const passmark = config.passmark || 33;
+  const passmark = config.passmark || 40;
   const iaFloor   = Math.round(20 * passmark / 100);
   const examFloor = Math.round(80 * passmark / 100);
   let html = '';
