@@ -191,6 +191,7 @@
   try {
     var p = JSON.parse(raw);
     var hyData = p.hyData || {}, ftData = p.ftData || {}, classId = p.classId || '';
+    var studentData = p.studentData || {};
     var ROMAN = {I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10};
     var base  = String(classId).split('-')[0].trim().toUpperCase();
     var cn    = ROMAN[base] || parseInt(base) || null;
@@ -265,11 +266,11 @@
       section:      (classId.split('-')[1]||'').trim(),
       classTeacher: '',
       student: {
-        name:        ftData.studentName || hyData.studentName || '',
-        rollNo:      ftData.rollNo      || hyData.rollNo      || 0,
-        admissionNo: ftData.admissionNo || '',
-        dob:         ftData.dob         || '',
-        house:       ftData.house       || ''
+        name:        studentData.name        || ftData.studentName || hyData.studentName || '',
+        rollNo:      studentData.rollNo      || ftData.rollNo      || hyData.rollNo      || 0,
+        admissionNo: studentData.admissionNo || ftData.admissionNo || '',
+        dob:         studentData.dob         || ftData.dob         || '',
+        house:       studentData.house       || ftData.house       || ''
       },
       halfYearly:  {subjects:hyS, grandTotal:hyGrand, percentage:fmtp(hyPct), grade:gfp(hyPct), rank:rank.hyRank||0, totalStudents:rank.totalStudents||0, attendance:{present:att.hyPresent||0, total:att.hyTotal||0}},
       finalTerm:   {subjects:ftS, grandTotal:ftGrand, percentage:fmtp(ftPct), grade:gfp(ftPct), rank:rank.ftRank||0, totalStudents:rank.totalStudents||0, attendance:{present:att.ftPresent||0, total:att.ftTotal||0}},

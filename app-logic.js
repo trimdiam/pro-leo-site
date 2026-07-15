@@ -6621,13 +6621,34 @@ function _arcCalcTotal(academics) {
       tbody.innerHTML =
         '<tr><td colspan="8" style="text-align:center;padding:18px"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>';
       try {
-        const ftSnap = await getDocs(
+        const ROMAN = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10 },
+          classNumForRoster = ROMAN[classId] || parseInt(classId) || null,
+          ftSnap = await getDocs(
             collection(db, "marks", `${classId}_FT`, "students"),
           ),
           hySnap = await getDocs(
             collection(db, "marks", `${classId}_HY`, "students"),
           ),
-          hyMap = {};
+          // Mark docs don't reliably carry studentName/rollNo (only recently
+          // started being denormalized at lock time) — join against the real
+          // student roster so the table never shows a blank Roll/Name.
+          rosterMap = {};
+        if (classNumForRoster) {
+          try {
+            const rosterSnap = await getDocs(
+              query(
+                collection(db, "students"),
+                where("class", "==", String(classNumForRoster)),
+              ),
+            );
+            rosterSnap.forEach((d) => {
+              rosterMap[d.id] = d.data();
+            });
+          } catch (e) {
+            console.warn("loadAdminReportCards: roster fetch failed", e.message);
+          }
+        }
+        const hyMap = {};
         if (
           (hySnap.forEach((d) => {
             hyMap[d.id] = d.data();
@@ -6642,12 +6663,21 @@ function _arcCalcTotal(academics) {
           );
         const rows = [];
         (ftSnap.forEach((d) =>
-          rows.push({ id: d.id, ft: d.data(), hy: hyMap[d.id] || {} }),
+          rows.push({
+            id: d.id,
+            ft: d.data(),
+            hy: hyMap[d.id] || {},
+            roster: rosterMap[d.id] || {},
+          }),
         ),
-          rows.sort((a, b) => (a.ft.rollNo || 999) - (b.ft.rollNo || 999)),
+          rows.sort(
+            (a, b) =>
+              (a.roster.rollNo || a.ft.rollNo || 999) -
+              (b.roster.rollNo || b.ft.rollNo || 999),
+          ),
           (tbody.innerHTML = ""));
         let lockedCount = 0;
-        (rows.forEach(({ id: id, ft: ft, hy: hy }) => {
+        (rows.forEach(({ id: id, ft: ft, hy: hy, roster: roster }) => {
           if ("locked" !== ft.status) return;
           lockedCount++;
           const hyTotal = _arcCalcTotal(hy.academics),
@@ -6679,7 +6709,7 @@ function _arcCalcTotal(academics) {
               ? '<i class="fas fa-check-circle" style="color:#16a34a"></i> Yes'
               : '<i class="fas fa-times-circle" style="color:#9ca3af"></i> No',
             tr = document.createElement("tr");
-          ((tr.innerHTML = `\n          <td>${ft.rollNo || "—"}</td>\n          <td>${ft.studentName || id}</td>\n          <td>${null !== hyTotal ? hyTotal : "—"}</td>\n          <td>${null !== ftTotal ? ftTotal : "—"}</td>\n          <td>${resultLabel}</td>\n          <td>${decisionSelect}</td>\n          <td>${relIcon}</td>\n          <td>\n            <button class="btn btn-sm btn-outline" style="font-size:11px" onclick="arcViewReportCard('${id}','${classId}')"><i class="fas fa-eye"></i> View</button>\n            ${released ? "" : `<button class="btn btn-sm" style="font-size:11px;background:#2563eb;color:#fff;border:none;margin-left:4px" onclick="arcReleaseOne('${id}','${classId}')"><i class="fas fa-unlock"></i> Release</button>`}\n          </td>\n        `),
+          ((tr.innerHTML = `\n          <td>${roster.rollNo || ft.rollNo || "—"}</td>\n          <td>${roster.name || ft.studentName || id}</td>\n          <td>${null !== hyTotal ? hyTotal : "—"}</td>\n          <td>${null !== ftTotal ? ftTotal : "—"}</td>\n          <td>${resultLabel}</td>\n          <td>${decisionSelect}</td>\n          <td>${relIcon}</td>\n          <td>\n            <button class="btn btn-sm btn-outline" style="font-size:11px" onclick="arcViewReportCard('${id}','${classId}')"><i class="fas fa-eye"></i> View</button>\n            ${released ? `<button class="btn btn-sm" style="font-size:11px;background:#b91c1c;color:#fff;border:none;margin-left:4px" onclick="arcRecallOne('${id}','${classId}')"><i class="fas fa-undo"></i> Recall</button>` : `<button class="btn btn-sm" style="font-size:11px;background:#2563eb;color:#fff;border:none;margin-left:4px" onclick="arcReleaseOne('${id}','${classId}')"><i class="fas fa-unlock"></i> Release</button>`}\n          </td>\n        `),
             tbody.appendChild(tr));
         }),
           0 === lockedCount &&
@@ -6725,7 +6755,27 @@ function _arcCalcTotal(academics) {
     } catch (e) {
       showToast("❌ " + e.message);
     }
-  }));
+  }),
+    (window.arcRecallOne = async function (studentId, classId) {
+      if (
+        !confirm(
+          "Recall this report card? The student/parent will no longer be able to view or download it via the lookup portal.",
+        )
+      )
+        return;
+      try {
+        const ref = doc(db, "marks", `${classId}_FT`, "students", studentId);
+        (await setDoc(
+          ref,
+          { releasedToStudent: !1, recalledAt: new Date().toISOString() },
+          { merge: !0 },
+        ),
+          showToast("↩️ Report card recalled."),
+          loadAdminReportCards());
+      } catch (e) {
+        showToast("❌ " + e.message);
+      }
+    }));
 let _arcRMStudents = [],
   _arcRMClassId = "";
 function _arcRMRender() {
@@ -6927,11 +6977,22 @@ function updateAttSummary() {
           doc(db, "marks", `${classId}_FT`, "students", studentId),
         );
       if (!ftDoc.exists()) return void showToast("❌ No FT data found.");
+      // Mark docs never carry the student's name/roll/admission/DOB/house —
+      // markentry.js only writes {academics, status, ...} to them. Fetch the
+      // real student profile so the report card doesn't show a blank name.
+      let studentData = {};
+      try {
+        const studentDoc = await getDoc(doc(db, "students", studentId));
+        if (studentDoc.exists()) studentData = studentDoc.data();
+      } catch (e) {
+        console.warn("arcViewReportCard: student profile fetch failed", e.message);
+      }
       (sessionStorage.setItem(
         "sfds_adminRC",
         JSON.stringify({
           hyData: hyDoc.data() || {},
           ftData: ftDoc.data() || {},
+          studentData: studentData,
           classId: classId,
         }),
       ),

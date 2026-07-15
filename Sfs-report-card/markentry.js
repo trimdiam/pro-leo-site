@@ -2117,13 +2117,23 @@ $('btnConfirmLock').addEventListener('click', async () => {
 
 async function lockSingleRecord(studentId) {
   const { classId } = ME.activeStudent;
+  const student = ME.activeStudent.student || {};
   showSaveIndicator('Locking…');
   const batch = db.batch();
   for (const t of ['HY','FT']) {
     const ref = db.collection('marks').doc(`${classId}_${t}`)
                   .collection('students').doc(studentId);
+    // Denormalize identity onto the mark doc at lock time — the doc otherwise
+    // never carries the student's name/roll/admission/DOB/house (only
+    // 'academics' gets written during entry), which left report-card views
+    // and the admin release table showing a blank name (2026-07-15 bug).
     batch.set(ref, {
       status:        'locked',
+      studentName:   student.name        || '',
+      rollNo:        student.rollNo      || 0,
+      admissionNo:   student.admissionNo || '',
+      dob:           student.dob         || '',
+      house:         student.house       || '',
       lastUpdatedBy: ME.user.uid,
       lastUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
@@ -2135,13 +2145,26 @@ async function lockAllRecords() {
   const classId = ME.ctClassId;
   showSaveIndicator('Locking all…');
   try {
+    // Denormalize identity onto each mark doc at lock time — see comment in
+    // lockSingleRecord(). Fetched once and reused for both HY and FT.
+    const classStr = String(ME.ctClassNum || classNumFromId(classId));
+    const studSnap  = await db.collection('students').where('class', '==', classStr).get();
+    const rosterById = {};
+    studSnap.forEach(d => { rosterById[d.id] = d.data(); });
+
     for (const t of ['HY','FT']) {
       const termKey = `${classId}_${t}`;
       const snap    = await db.collection('marks').doc(termKey).collection('students').get();
       const batch   = db.batch();
       snap.forEach(doc => {
+        const student = rosterById[doc.id] || {};
         batch.update(doc.ref, {
           status:        'locked',
+          studentName:   student.name        || '',
+          rollNo:        student.rollNo      || 0,
+          admissionNo:   student.admissionNo || '',
+          dob:           student.dob         || '',
+          house:         student.house       || '',
           lastUpdatedBy: ME.user.uid,
           lastUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
