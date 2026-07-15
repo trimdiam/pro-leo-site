@@ -6377,9 +6377,9 @@ function _arcCalcTotal(academics) {
           // Only rank students who are complete AND passing — failed students
           // never appear in Top 3, matching the marksheet rank-eligibility rule.
           const hyRank = window._paTermTotal(hy, cfg);
-          if (hyRank.complete && !hyRank.failed) hyCandidates.push({ name: meta.name || id, total: hyRank.total });
+          if (hyRank.complete && !hyRank.failed) hyCandidates.push({ name: meta.name || id, total: hyRank.total, pct: maxMarks > 0 ? (hyRank.total / maxMarks) * 100 : 0 });
           const ftRank = window._paTermTotal(ft, cfg);
-          if (ftRank.complete && !ftRank.failed) ftCandidates.push({ name: meta.name || id, total: ftRank.total });
+          if (ftRank.complete && !ftRank.failed) ftCandidates.push({ name: meta.name || id, total: ftRank.total, pct: maxMarks > 0 ? (ftRank.total / maxMarks) * 100 : 0 });
 
           let grand = 0, termsWithData = 0, fail = false;
 
@@ -6508,31 +6508,48 @@ function _arcCalcTotal(academics) {
       html += `</tbody></table>`;
 
       html += `<h4 style="color:var(--accent-dark);margin:24px 0 12px"><i class="fas fa-trophy" style="margin-right:8px;color:var(--accent)"></i>Top 3 Per Class</h4>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">`;
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px">`;
       classResults.forEach(r => {
         const medals = ["🥇", "🥈", "🥉"];
         const rows = r.topStudents.length
-          ? r.topStudents.map((s, i) => `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px">
-              <span>${medals[i]} ${s.name}</span><span style="font-weight:600">${s.total}</span>
+          ? r.topStudents.map((s, i) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 8px;border-radius:8px;margin-bottom:2px${i === 0 ? ";background:linear-gradient(90deg,#fff6df,transparent)" : ""}">
+              <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                <span style="font-size:17px;flex-shrink:0;line-height:1">${medals[i]}</span>
+                <span style="font-size:13px;font-weight:${i === 0 ? 700 : 500};color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</span>
+              </div>
+              <span style="font-weight:700;color:var(--accent-dark);font-size:13.5px;flex-shrink:0">${fmtPct(s.pct)}%</span>
             </div>`).join("")
-          : `<div style="font-size:13px;color:var(--text-light)">No complete records yet</div>`;
+          : `<div style="font-size:13px;color:var(--text-light);padding:4px 0">No complete records yet</div>`;
         html += `<div style="background:#fafaf8;border:1.5px solid var(--primary);border-radius:12px;padding:14px 16px">
-          <div style="font-weight:700;color:var(--accent-dark);margin-bottom:8px">Class ${r.roman} <span style="font-weight:400;font-size:11px;color:var(--text-light)">(${r.rankTerm === "FT" ? "Final Term" : "Half Yearly"})</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+            <span style="font-weight:700;color:var(--accent-dark);font-size:14px">Class ${r.roman}</span>
+            <span style="font-size:10px;font-weight:700;color:var(--accent-dark);background:#fff3d6;padding:3px 9px;border-radius:10px;text-transform:uppercase;letter-spacing:0.4px">${r.rankTerm === "FT" ? "Final Term" : "Half Yearly"}</span>
+          </div>
           ${rows}
         </div>`;
       });
       html += `</div>`;
 
       html += `<h4 style="color:var(--accent-dark);margin:24px 0 12px"><i class="fas fa-book" style="margin-right:8px;color:var(--accent)"></i>Subject Performance</h4>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">`;
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">`;
       classResults.forEach(r => {
+        const barColor = p => p >= 80 ? "#2E7D32" : p >= 50 ? "#C9A227" : "#C62828";
         const subjRowsHtml = r.subjectRows.length
-          ? r.subjectRows.map(s => `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px${s === r.weakestSubject ? ";color:#C62828;font-weight:700" : ""}">
-              <span>${s === r.weakestSubject ? "⚠ " : ""}${s.label}</span><span>${fmtPct(s.avg)} avg · ${fmtPct(s.passRate)} pass</span>
+          ? r.subjectRows.map(s => `<div style="padding:6px 8px;border-radius:8px;margin-bottom:2px${s === r.weakestSubject ? ";background:#fdf1f1" : ""}">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px">
+                <span style="font-size:12.5px;font-weight:${s === r.weakestSubject ? 700 : 500};color:${s === r.weakestSubject ? "#C62828" : "var(--text)"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s === r.weakestSubject ? "⚠ " : ""}${s.label}</span>
+                <span style="font-size:11px;color:var(--text-light);flex-shrink:0;white-space:nowrap">${fmtPct(s.avg)}% avg · ${fmtPct(s.passRate)}% pass</span>
+              </div>
+              <div style="height:5px;background:#e9e5da;border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${Math.max(0, Math.min(100, s.passRate))}%;background:${barColor(s.passRate)};border-radius:3px"></div>
+              </div>
             </div>`).join("")
-          : `<div style="font-size:13px;color:var(--text-light)">No subject marks entered yet</div>`;
+          : `<div style="font-size:13px;color:var(--text-light);padding:4px 0">No subject marks entered yet</div>`;
         html += `<div style="background:#fafaf8;border:1.5px solid var(--primary);border-radius:12px;padding:14px 16px">
-          <div style="font-weight:700;color:var(--accent-dark);margin-bottom:8px">Class ${r.roman}${r.weakestSubject ? ` <span style="font-weight:400;font-size:11px;color:var(--text-light)">— weakest: ${r.weakestSubject.label}</span>` : ""}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+            <span style="font-weight:700;color:var(--accent-dark);font-size:14px">Class ${r.roman}</span>
+            ${r.weakestSubject ? `<span style="font-size:10px;font-weight:700;color:#C62828;background:#fdeaea;padding:3px 9px;border-radius:10px;text-transform:uppercase;letter-spacing:0.3px">Weakest: ${r.weakestSubject.label}</span>` : ""}
+          </div>
           ${subjRowsHtml}
         </div>`;
       });
