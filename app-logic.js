@@ -6634,9 +6634,14 @@ function _arcCalcTotal(academics) {
           lockedCount++;
           const hyTotal = _arcCalcTotal(hy.academics),
             ftTotal = _arcCalcTotal(ft.academics),
-            autoPass =
-              !!(academics = ft.academics) &&
-              Object.values(academics).every((v) => !v || v.total >= 30);
+            ftAssessed = null !== ftTotal && ftTotal > 0,
+            hyAutoPass =
+              !!hy.academics &&
+              Object.values(hy.academics).every((v) => !v || v.total >= 30),
+            autoPass = ftAssessed
+              ? !!(academics = ft.academics) &&
+                Object.values(academics).every((v) => !v || v.total >= 30)
+              : hyAutoPass;
           var academics;
           const decision = ft.adminDecision || "",
             released = !0 === ft.releasedToStudent,
@@ -6645,10 +6650,11 @@ function _arcCalcTotal(academics) {
               : autoPass
                 ? '<span style="color:#16a34a;font-weight:600">PASS</span>'
                 : '<span style="color:#ef4444;font-weight:600">FAIL</span>',
-            decisionSelect =
-              (!autoPass && !decision) ||
-              "Detained" === decision ||
-              "Promoted with Grace" === decision
+            decisionSelect = !ftAssessed
+              ? '<span style="color:#6b7280;font-size:12px">—</span>'
+              : (!autoPass && !decision) ||
+                  "Detained" === decision ||
+                  "Promoted with Grace" === decision
                 ? `<select onchange="arcSetDecision('${id}','${classId}',this.value)" style="padding:4px 8px;border-radius:6px;border:1.5px solid #ccc;font-size:12px">\n               <option value="" ${decision ? "" : "selected"}>— Set Decision —</option>\n               <option value="Promoted with Grace" ${"Promoted with Grace" === decision ? "selected" : ""}>Promoted with Grace</option>\n               <option value="Detained" ${"Detained" === decision ? "selected" : ""}>Detained</option>\n             </select>`
                 : `<span style="color:#6b7280;font-size:12px">${decision || "Auto-Promoted"}</span>`,
             relIcon = released
