@@ -77,9 +77,10 @@ form.addEventListener('submit', async (e) => {
     // direct click, so avoid depending on window.open() entirely.
     if (data.system === 'marks') {
       sessionStorage.setItem('sfds_adminRC', JSON.stringify({
-        hyData:  data.hyData,
-        ftData:  data.ftData,
-        classId: data.classId
+        hyData:      data.hyData,
+        ftData:      data.ftData,
+        classId:     data.classId,
+        studentData: data.studentInfo
       }));
       window.location.href = '../Sfs-report-card/reportcard.html';
     } else if (data.system === 'report_cards') {
