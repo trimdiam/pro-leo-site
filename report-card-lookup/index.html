@@ -7,31 +7,85 @@
 <meta name="robots" content="noindex, nofollow">
 <style>
   * { box-sizing: border-box; }
+  :root {
+    --brown:  #8B6F47;
+    --brown-d:#6E5636;
+    --dark:   #2C1F0E;
+    --cream:  #f4f1ea;
+    --line:   #e4ddcf;
+    --muted:  #6b6055;
+  }
   body {
     font-family: 'Segoe UI', Arial, sans-serif;
-    background: #f4f1ea;
+    background: var(--cream);
     margin: 0;
-    padding: 24px 16px;
+    padding: 0 16px 40px;
+    color: var(--dark);
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
   }
+
+  /* ── School header ─────────────────────────────────────────── */
+  .school-header {
+    width: 100%;
+    max-width: 460px;
+    text-align: center;
+    padding: 30px 16px 22px;
+  }
+  .school-header img.logo {
+    width: 74px;
+    height: 74px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--brown);
+    background: #fff;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+  }
+  .school-header .logo-fallback {
+    width: 74px; height: 74px; border-radius: 50%;
+    background: var(--dark); color: #C9A84C;
+    display: none; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 1.1rem; margin: 0 auto;
+    border: 3px solid var(--brown);
+  }
+  .school-header h1 {
+    font-size: 1.5rem;
+    letter-spacing: 0.5px;
+    margin: 14px 0 2px;
+    color: var(--dark);
+    line-height: 1.2;
+  }
+  .school-header .location {
+    font-size: 0.85rem;
+    color: var(--brown-d);
+    font-weight: 600;
+    margin: 0;
+  }
+  .school-header .divider {
+    width: 60px; height: 3px; border-radius: 3px;
+    background: var(--brown); margin: 16px auto 0;
+  }
+
+  /* ── Lookup card ───────────────────────────────────────────── */
   .card {
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    padding: 28px 24px;
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+    padding: 26px 24px;
     width: 100%;
-    max-width: 420px;
+    max-width: 460px;
+    border: 1px solid var(--line);
   }
-  h1 {
-    font-size: 1.15rem;
+  .card h2 {
+    font-size: 1.1rem;
     margin: 0 0 4px;
-    color: #2C1F0E;
+    color: var(--dark);
   }
   p.sub {
     font-size: 0.85rem;
-    color: #6b6055;
-    margin: 0 0 20px;
+    color: var(--muted);
+    margin: 0 0 18px;
   }
   label {
     display: block;
@@ -42,24 +96,31 @@
   }
   select, input {
     width: 100%;
-    padding: 10px 12px;
-    border: 1.5px solid #ddd6c9;
+    padding: 11px 12px;
+    border: 1.5px solid var(--line);
     border-radius: 8px;
     font-size: 0.95rem;
     font-family: inherit;
   }
+  select:focus, input:focus {
+    outline: none;
+    border-color: var(--brown);
+    box-shadow: 0 0 0 3px rgba(139,111,71,0.15);
+  }
   button {
     width: 100%;
-    margin-top: 20px;
-    padding: 12px;
+    margin-top: 22px;
+    padding: 13px;
     border: none;
     border-radius: 8px;
-    background: #8B6F47;
+    background: var(--brown);
     color: #fff;
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 0.98rem;
     cursor: pointer;
+    transition: background 0.15s;
   }
+  button:hover:not(:disabled) { background: var(--brown-d); }
   button:disabled { opacity: 0.6; cursor: not-allowed; }
   #msg {
     margin-top: 14px;
@@ -68,14 +129,72 @@
     border-radius: 8px;
     display: none;
   }
-  #msg.error   { display: block; background: #fdecea; color: #b3261e; }
-  #msg.info    { display: block; background: #eef2f7; color: #2c4a6e; }
+  #msg.error { display: block; background: #fdecea; color: #b3261e; }
+  #msg.info  { display: block; background: #eef2f7; color: #2c4a6e; }
+
+  /* ── Instructions ──────────────────────────────────────────── */
+  .instructions {
+    width: 100%;
+    max-width: 460px;
+    margin-top: 18px;
+    background: #fffdf8;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 22px;
+  }
+  .instructions h3 {
+    font-size: 0.95rem;
+    margin: 0 0 12px;
+    color: var(--brown-d);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .instructions ol {
+    margin: 0; padding: 0; list-style: none; counter-reset: step;
+  }
+  .instructions ol li {
+    position: relative;
+    padding: 0 0 12px 34px;
+    font-size: 0.88rem;
+    color: #4a4038;
+    line-height: 1.45;
+    counter-increment: step;
+  }
+  .instructions ol li:last-child { padding-bottom: 0; }
+  .instructions ol li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 0;
+    width: 22px; height: 22px;
+    background: var(--brown); color: #fff;
+    border-radius: 50%;
+    font-size: 0.75rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .instructions .note {
+    margin: 14px 0 0;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .instructions .note strong { color: #4a4038; }
 </style>
 </head>
 <body>
+
+  <!-- School name on top -->
+  <header class="school-header">
+    <img class="logo" src="../assets/images/logo.jpg" alt="School Logo"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="logo-fallback">SFS</div>
+    <h1>St. Francis De Sales School</h1>
+    <p class="location">Laitkor, Shillong &middot; Meghalaya</p>
+    <div class="divider"></div>
+  </header>
+
   <div class="card">
-    <h1>Report Card Lookup</h1>
-    <p class="sub">Enter your child's Class, Roll No and Date of Birth to view their released Half-Yearly report card. No login required.</p>
+    <h2>Report Card Lookup</h2>
+    <p class="sub">View your child's released Half-Yearly report card. No login required.</p>
 
     <form id="lookupForm">
       <label for="classSel">Class</label>
@@ -106,6 +225,21 @@
 
     <div id="msg"></div>
   </div>
+
+  <!-- Instructions below -->
+  <section class="instructions">
+    <h3>&#9432; How to view your child's report card</h3>
+    <ol>
+      <li>Select your child's <strong>Class</strong> from the list.</li>
+      <li>Enter their <strong>Roll Number</strong>.</li>
+      <li>Enter their <strong>Date of Birth</strong> exactly as recorded at school.</li>
+      <li>Tap <strong>View Report Card</strong> &mdash; it opens below, with an option to download or print.</li>
+    </ol>
+    <p class="note">
+      <strong>Note:</strong> Only <strong>released</strong> Half-Yearly report cards can be viewed.
+      If you see &ldquo;no report card found&rdquo;, please re-check the details or contact the school office.
+    </p>
+  </section>
 
   <iframe id="resultFrame" style="display:none;width:100%;max-width:1100px;height:80vh;border:0;margin-top:20px"></iframe>
 
