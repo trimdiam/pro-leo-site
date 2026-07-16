@@ -400,13 +400,11 @@ function buildTableRows(term, data, config, isStandard, showConsol) {
     const totalDisp = blank ? '' : total;
     const gradeDisp = blank ? '' : grade;
 
-    // A subject fails if the total misses the passmark, OR (senior scheme
-    // only) the total clears it but IA/Exam individually miss their
-    // proportional floors (2026-07 rule: 30 in combination doesn't qualify
-    // as pass if either component is below its own floor).
-    const componentFail = !isStandard && !subj.singleTotal &&
-      (subjData.ia < iaThreshSen || subjData.exam < examThreshSen);
-    const totalFails = !blank && (total < passmark || componentFail);
+    // Total/grade styling reflects the passmark only — a component (IA/Exam)
+    // below its own floor still gets red+underline on its own cell (via
+    // markCls below), but doesn't redden Total/Grade if the total itself
+    // clears the passmark.
+    const totalFails = !blank && total < passmark;
     const gradeFail = totalFails ? ' fail' : '';
     const totalMarkCls = blank ? '' : (totalFails ? ' rc-cell-fail' : (total >= 80 ? ' rc-cell-high' : ''));
 
