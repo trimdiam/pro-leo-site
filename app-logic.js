@@ -6518,7 +6518,7 @@ function _arcCalcTotal(academics) {
                 <span style="font-size:17px;flex-shrink:0;line-height:1">${medals[i]}</span>
                 <span style="font-size:13px;font-weight:${i === 0 ? 700 : 500};color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</span>
               </div>
-              <span style="font-weight:700;color:var(--accent-dark);font-size:13.5px;flex-shrink:0">${fmtPct(s.pct)}%</span>
+              <span style="font-weight:700;color:var(--accent-dark);font-size:13.5px;flex-shrink:0">${fmtPct(s.pct)}</span>
             </div>`).join("")
           : `<div style="font-size:13px;color:var(--text-light);padding:4px 0">No complete records yet</div>`;
         html += `<div style="background:#fafaf8;border:1.5px solid var(--primary);border-radius:12px;padding:14px 16px">
@@ -6539,7 +6539,7 @@ function _arcCalcTotal(academics) {
           ? r.subjectRows.map(s => `<div style="padding:6px 8px;border-radius:8px;margin-bottom:2px${s === r.weakestSubject ? ";background:#fdf1f1" : ""}">
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px">
                 <span style="font-size:12.5px;font-weight:${s === r.weakestSubject ? 700 : 500};color:${s === r.weakestSubject ? "#C62828" : "var(--text)"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s === r.weakestSubject ? "⚠ " : ""}${s.label}</span>
-                <span style="font-size:11px;color:var(--text-light);flex-shrink:0;white-space:nowrap">${fmtPct(s.avg)}% avg · ${fmtPct(s.passRate)}% pass</span>
+                <span style="font-size:11px;color:var(--text-light);flex-shrink:0;white-space:nowrap">${fmtPct(s.avg)} avg · ${fmtPct(s.passRate)} pass</span>
               </div>
               <div style="height:5px;background:#e9e5da;border-radius:3px;overflow:hidden">
                 <div style="height:100%;width:${Math.max(0, Math.min(100, s.passRate))}%;background:${barColor(s.passRate)};border-radius:3px"></div>
@@ -6773,6 +6773,156 @@ function _arcCalcTotal(academics) {
         ),
           showToast("↩️ Report card recalled."),
           loadAdminReportCards());
+      } catch (e) {
+        showToast("❌ " + e.message);
+      }
+    }),
+    // Admin-side "View Class Marksheet" — same marksheet.html the class
+    // teacher's "View Class Marksheet" button opens, just triggered from the
+    // admin Report Cards page instead. Works for any class regardless of who
+    // taught it or whether it's locked; no per-teacher assignment tracking
+    // needed since a marksheet is a class-level artifact.
+    (window.arcViewClassMarksheet = async function () {
+      const rawId = document.getElementById("arc-class-select")?.value,
+        classId = rawId ? rawId.split("-")[0].trim() : "";
+      if (!classId) return void showToast("Select a class first.");
+      showToast("Loading marksheet…");
+      try {
+        const ROMAN = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10 },
+          classNum = ROMAN[classId] || parseInt(classId) || null,
+          cfg = CONFIG[classNum];
+        if (!cfg) return void showToast("❌ Class config not found.");
+
+        const [studSnap, hySnap, ftSnap] = await Promise.all([
+          getDocs(query(collection(db, "students"), where("class", "==", String(classNum)))),
+          getDocs(collection(db, "marks", `${classId}_HY`, "students")),
+          getDocs(collection(db, "marks", `${classId}_FT`, "students")),
+        ]);
+        const students = studSnap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0)),
+          hyById = {},
+          ftById = {};
+        hySnap.forEach((d) => (hyById[d.id] = d.data()));
+        ftSnap.forEach((d) => (ftById[d.id] = d.data()));
+
+        const passmark = cfg.passmark || 40,
+          maxMarks = cfg.grandTotalMax || 0,
+          gradeFromPct = (p) => {
+            if (p >= 90) return "O";
+            if (p >= 80) return "A+";
+            if (p >= 70) return "A";
+            if (p >= 60) return "B+";
+            if (p >= 50) return "B";
+            if (p >= 40) return "C";
+            if (p >= passmark) return "D";
+            return "F";
+          };
+
+        const classList = students.map((student) => {
+          const hyData = hyById[student.id] || {},
+            ftData = ftById[student.id] || {},
+            hyAcad = hyData.academics || {},
+            ftAcad = ftData.academics || {},
+            hySubjects = {},
+            ftSubjects = {},
+            consolSubjects = {};
+          let hyGrand = 0,
+            ftGrand = 0,
+            result = "PASS";
+
+          cfg.subjects.forEach((subj) => {
+            let hyTotal, ftTotal, hyIa, hyTe, ftIa, ftTe, hyExists, ftExists;
+            if (subj.isAggregate) {
+              hyExists = subj.components.every((k) => hyAcad[k]?.total != null);
+              ftExists = subj.components.every((k) => ftAcad[k]?.total != null);
+              const hyAgg = window._paComputeAggregate(hyAcad, subj),
+                ftAgg = window._paComputeAggregate(ftAcad, subj);
+              (hyTotal = hyAgg.total), (hyIa = hyAgg.ia), (hyTe = hyAgg.exam);
+              (ftTotal = ftAgg.total), (ftIa = ftAgg.ia), (ftTe = ftAgg.exam);
+              hySubjects[subj.key] = { ia: hyIa, ut: 0, exam: hyTe, total: hyTotal };
+              ftSubjects[subj.key] = { ia: ftIa, ut: 0, exam: ftTe, total: ftTotal };
+            } else {
+              const hyA = hyAcad[subj.key] || {},
+                ftA = ftAcad[subj.key] || {};
+              hyExists = hyAcad[subj.key]?.total != null;
+              ftExists = ftAcad[subj.key]?.total != null;
+              (hyTotal = hyA.total ?? 0), (hyIa = hyA.IA ?? hyA.singleMark ?? 0), (hyTe = hyA.TE ?? 0);
+              (ftTotal = ftA.total ?? 0), (ftIa = ftA.IA ?? ftA.singleMark ?? 0), (ftTe = ftA.TE ?? 0);
+              hySubjects[subj.key] = { ia: hyIa, ut: hyA.UT ?? 0, exam: hyTe, total: hyTotal };
+              ftSubjects[subj.key] = { ia: ftIa, ut: ftA.UT ?? 0, exam: ftTe, total: ftTotal };
+            }
+            consolSubjects[subj.key] = { term1: hyTotal, term2: ftTotal, total: hyTotal + ftTotal };
+            if (subj.countInTotal) {
+              hyGrand += hyTotal;
+              ftGrand += ftTotal;
+              const hyFail = hyExists && (hyTotal < passmark || window._paSubjectFailsFloor(hyIa, hyTe, cfg, subj)),
+                ftFail = ftExists && (ftTotal < passmark || window._paSubjectFailsFloor(ftIa, ftTe, cfg, subj));
+              if (hyFail || ftFail) result = "FAIL";
+            }
+          });
+
+          const hyPct = maxMarks > 0 ? (hyGrand / maxMarks) * 100 : 0,
+            ftPct = maxMarks > 0 ? (ftGrand / maxMarks) * 100 : 0,
+            overallPct = maxMarks * 2 > 0 ? ((hyGrand + ftGrand) / (maxMarks * 2)) * 100 : 0;
+
+          return {
+            _hyGrand: hyGrand,
+            _ftGrand: ftGrand,
+            class: String(classNum),
+            schoolName: "St. Francis De Sales Secondary School",
+            session: "2026–2027",
+            student: {
+              name: student.name || student.id,
+              rollNo: student.rollNo || 0,
+              admissionNo: student.admissionNo || "",
+              house: student.house || "",
+            },
+            coScholastic: hyData.coScholastic || ftData.coScholastic || {},
+            remarks: {
+              halfYearly: hyData.remarks?.halfYearly || "",
+              finalTerm: ftData.remarks?.finalTerm || "",
+            },
+            halfYearly: {
+              subjects: hySubjects, grandTotal: hyGrand,
+              percentage: parseFloat(hyPct.toFixed(1)), grade: gradeFromPct(hyPct),
+              rank: 0, totalStudents: 0,
+              attendance: { present: hyData.attendance?.hyPresent || 0, total: hyData.attendance?.hyTotal || 0 },
+            },
+            finalTerm: {
+              subjects: ftSubjects, grandTotal: ftGrand,
+              percentage: parseFloat(ftPct.toFixed(1)), grade: gradeFromPct(ftPct),
+              rank: 0, totalStudents: 0,
+              attendance: { present: ftData.attendance?.ftPresent || 0, total: ftData.attendance?.ftTotal || 0 },
+            },
+            consolidated: {
+              subjects: consolSubjects, grandTotal: hyGrand + ftGrand,
+              percentage: parseFloat(overallPct.toFixed(1)), grade: gradeFromPct(overallPct), result,
+            },
+          };
+        });
+
+        // Dense rank, HY and FT independently — excludes any student who
+        // failed that term (result computed above is whole-term, reused here
+        // since this codebase doesn't fail HY/FT independently elsewhere).
+        ["halfYearly", "finalTerm"].forEach((term) => {
+          const eligible = classList
+            .filter((e) => e.consolidated.result === "PASS")
+            .slice()
+            .sort((a, b) => b[term].grandTotal - a[term].grandTotal);
+          let lastTotal = null, lastRank = 0;
+          eligible.forEach((e) => {
+            if (e[term].grandTotal !== lastTotal) { lastRank++; lastTotal = e[term].grandTotal; }
+            e[term].rank = lastRank;
+          });
+          const total = eligible.length;
+          classList.forEach((e) => { if (e.consolidated.result === "PASS") e[term].totalStudents = total; });
+        });
+        classList.forEach((e) => { delete e._hyGrand; delete e._ftGrand; });
+
+        sessionStorage.setItem("sfds_classList", JSON.stringify(classList));
+        sessionStorage.setItem("sfds_marksheetTerm", "halfYearly");
+        window.open("/Sfs-report-card/marksheet.html", "_blank");
       } catch (e) {
         showToast("❌ " + e.message);
       }
