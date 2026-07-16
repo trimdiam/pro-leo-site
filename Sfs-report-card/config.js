@@ -415,9 +415,15 @@ function getClassConfig(classNum) {
 // reimplementing the sum/average and pass-floor logic locally.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Aggregate subject {ia, exam, total} from its components' academics entries,
-// honoring aggregateMethod (average, per this file's own config) — matches
-// grandTotalMax, which is sized for a 100-point average per counted subject.
+// Aggregate subject {ia, exam, total} from its components' academics entries.
+// Every isAggregate subject in this config is averaged (never summed) —
+// matches grandTotalMax, which is sized for a 100-point average per counted
+// subject. Averaging unconditionally rather than gating on an
+// aggregateMethod==='average' flag: that flag has never once been anything
+// else across every class, and requiring an exact string match created a
+// silent-wrong-fallback (summing instead of averaging, inflating totals
+// well past 100%) if the flag was ever missing/stale for any reason
+// (2026-07-15 bug — Class VI-X showed >100% in Performance Analytics).
 function computeAggregateSubject(academics, subj) {
   const comps = subj.components || [];
   let totalSum = 0, iaSum = 0, examSum = 0, count = 0;
@@ -429,12 +435,9 @@ function computeAggregateSubject(academics, subj) {
     examSum  += a.TE ?? 0;
     count++;
   });
-  if (subj.aggregateMethod === 'average') {
-    return count > 0
-      ? { ia: Math.round(iaSum / count), exam: Math.round(examSum / count), total: Math.round(totalSum / count) }
-      : { ia: 0, exam: 0, total: 0 };
-  }
-  return { ia: iaSum, exam: examSum, total: totalSum };
+  return count > 0
+    ? { ia: Math.round(iaSum / count), exam: Math.round(examSum / count), total: Math.round(totalSum / count) }
+    : { ia: 0, exam: 0, total: 0 };
 }
 
 // Senior-scheme (Class 9/10) component pass floors, proportional to passmark:

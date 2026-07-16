@@ -61,11 +61,15 @@ function computeGrade(total, max = 100, passmark = 40) {
 
 // ─── AGGREGATE / PASS-FLOOR HELPERS (2026-07) ──────────────────────────────────
 // Aggregate subjects (Science P+C+B, S.Science, English I+II) have no Firestore
-// entry of their own — they're derived from their leaf components. Every class
-// (3-10) declares aggregateMethod:'average' in config.js for these, so the
-// average — not a raw sum — is what's compared against the class's passmark
-// (40 for Classes 3-8, 30 for Classes 9-10). This applies uniformly; it is not
+// entry of their own — they're derived from their leaf components, always
+// AVERAGED (never summed) so the result is compared against the class's
+// passmark (40 for Classes 3-8, 30 for Classes 9-10) on the same 100-point
+// scale as every other subject. This applies uniformly; it is not
 // senior-scheme-specific (only the IA/Theory component floor below is).
+// Averages unconditionally rather than gating on an aggregateMethod==='average'
+// flag: that flag has never once been anything else across every class, and
+// requiring an exact string match created a silent-wrong-fallback (summing
+// instead of averaging) if it was ever missing/stale (2026-07-15 bug).
 function computeAggregateSubject(academics, subj) {
   const comps = subj.components || [];
   let totalSum = 0, iaSum = 0, examSum = 0, count = 0;
@@ -77,12 +81,9 @@ function computeAggregateSubject(academics, subj) {
     examSum  += a.TE ?? 0;
     count++;
   });
-  if (subj.aggregateMethod === 'average') {
-    return count > 0
-      ? { ia: Math.round(iaSum / count), exam: Math.round(examSum / count), total: Math.round(totalSum / count) }
-      : { ia: 0, exam: 0, total: 0 };
-  }
-  return { ia: iaSum, exam: examSum, total: totalSum };
+  return count > 0
+    ? { ia: Math.round(iaSum / count), exam: Math.round(examSum / count), total: Math.round(totalSum / count) }
+    : { ia: 0, exam: 0, total: 0 };
 }
 
 // Senior-scheme (Class 9/10) component pass floors, proportional to the

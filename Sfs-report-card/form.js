@@ -321,15 +321,15 @@ function calculateSubjectTotal(prefix, subj) {
     return clamp(parseFloat(inp?.value) || 0, 0, 100);
   }
   if (subj.isAggregate) {
+    // Always averaged, never summed — see computeAggregateSubject() in
+    // config.js / markentry.js for why this doesn't gate on an
+    // aggregateMethod==='average' flag (2026-07-15 bug).
     let sum = 0, count = 0;
     for (const compKey of subj.components) {
       const comp = currentConfig.subjects.find(s => s.key === compKey);
       if (comp) { sum += calculateSubjectTotal(prefix, comp); count++; }
     }
-    if (subj.aggregateMethod === 'average') {
-      return count > 0 ? Math.round(sum / count) : 0;
-    }
-    return sum;
+    return count > 0 ? Math.round(sum / count) : 0;
   }
   // Normal subject
   const ia   = parseFloat(document.getElementById(`${prefix}_ia_${subj.key}`)?.value)   || 0;

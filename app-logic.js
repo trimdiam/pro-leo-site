@@ -6257,6 +6257,10 @@ function _arcCalcTotal(academics) {
   // subjectFailsFloor) — that file can't be <script>-included here since it
   // wires up markentry.html-specific DOM listeners on load. Keep these two in
   // sync with markentry.js if the PASS/FAIL rule there ever changes.
+  // Always averaged, never summed — see computeAggregateSubject() in
+  // config.js / markentry.js for why this doesn't gate on an
+  // aggregateMethod==='average' flag (2026-07-15 bug: that flag missing/stale
+  // silently fell back to summing, inflating Class VI-X well past 100%).
   (window._paComputeAggregate = function (academics, subj) {
     const comps = subj.components || [];
     let totalSum = 0, iaSum = 0, examSum = 0, count = 0;
@@ -6268,12 +6272,9 @@ function _arcCalcTotal(academics) {
       examSum += a.TE ?? 0;
       count++;
     });
-    if (subj.aggregateMethod === "average") {
-      return count > 0
-        ? { ia: Math.round(iaSum / count), exam: Math.round(examSum / count), total: Math.round(totalSum / count) }
-        : { ia: 0, exam: 0, total: 0 };
-    }
-    return { ia: iaSum, exam: examSum, total: totalSum };
+    return count > 0
+      ? { ia: Math.round(iaSum / count), exam: Math.round(examSum / count), total: Math.round(totalSum / count) }
+      : { ia: 0, exam: 0, total: 0 };
   }),
   (window._paSubjectFailsFloor = function (ia, exam, cfg, subj) {
     if (cfg.markScheme !== "senior" || subj.singleTotal) return false;
