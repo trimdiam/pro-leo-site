@@ -2215,7 +2215,7 @@ tr:hover td {
 /* ── Report Card Pipeline ── */
 .arc-pipeline-row {
   display: grid;
-  grid-template-columns: 90px 1fr 1fr 1fr 1fr 180px;
+  grid-template-columns: 90px 1fr 1fr 1fr 1fr 1fr 180px;
   gap: 8px;
   align-items: center;
   padding: 10px 0;

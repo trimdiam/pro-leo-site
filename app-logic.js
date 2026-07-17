@@ -6009,7 +6009,11 @@ function _arcCalcTotal(academics) {
           const decisionsComplete = allLocked && needDecision.length === 0;
           const released = students.filter(s => s.releasedToStudent === true).length;
           const allReleased = allLocked && released === locked;
-          return { cls, hasData, total, locked, allLocked, needDecision: needDecision.length, decisionsComplete, released, allReleased };
+          // Unique report cards actually opened by a parent via the lookup link
+          // (read-receipt written by functions/index.js → lookupRecordView).
+          const viewed = students.filter(s => (s.viewCount || 0) > 0).length;
+          const allViewed = released > 0 && viewed === released;
+          return { cls, hasData, total, locked, allLocked, needDecision: needDecision.length, decisionsComplete, released, allReleased, viewed, allViewed };
         } catch(e) { return { cls, hasData: false, error: true }; }
       }));
 
@@ -6020,14 +6024,14 @@ function _arcCalcTotal(academics) {
         </span>`;
 
       let html = `<div class="arc-pipeline-row arc-pipeline-header">
-        <div>Class</div><div>Marks Entered</div><div>Records Locked</div><div>Decisions Made</div><div>Released</div><div>Next Action</div>
+        <div>Class</div><div>Marks Entered</div><div>Records Locked</div><div>Decisions Made</div><div>Released</div><div>Viewed by Parents</div><div>Next Action</div>
       </div>`;
 
       rows.forEach(r => {
         if (!r.hasData) {
           html += `<div class="arc-pipeline-row">
             <strong>Class ${r.cls}</strong>
-            ${step(false,"Not started","")}<div>—</div><div>—</div><div>—</div>
+            ${step(false,"Not started","")}<div>—</div><div>—</div><div>—</div><div>—</div>
             <span class="arc-next-action wait">⬜ No data yet</span>
           </div>`;
           return;
@@ -6054,6 +6058,7 @@ function _arcCalcTotal(academics) {
           ${step(s2, s2 ? `${r.locked} locked` : `${r.locked}/${r.total}`, "fa-lock")}
           ${step(s3, s3 ? "Done" : r.needDecision > 0 ? `${r.needDecision} pending` : "N/A", "fa-user-check")}
           ${step(s4, s4 ? "All released" : r.released > 0 ? `${r.released}/${r.locked}` : "Not yet", "fa-unlock")}
+          ${step(r.allViewed, r.released > 0 ? `${r.viewed}/${r.released} opened` : "—", "fa-eye")}
           ${nextBtn}
         </div>`;
       });
@@ -6677,7 +6682,9 @@ function _arcCalcTotal(academics) {
               (b.roster.rollNo || b.ft.rollNo || 999),
           ),
           (tbody.innerHTML = ""));
-        let lockedCount = 0;
+        let lockedCount = 0,
+          releasedCount = 0,
+          viewedCount = 0;
         (rows.forEach(({ id: id, ft: ft, hy: hy, roster: roster }) => {
           if ("locked" !== ft.status) return;
           lockedCount++;
@@ -6709,20 +6716,34 @@ function _arcCalcTotal(academics) {
             relIcon = released
               ? '<i class="fas fa-check-circle" style="color:#16a34a"></i> Yes'
               : '<i class="fas fa-times-circle" style="color:#9ca3af"></i> No',
+            // Read-receipt written by the parent lookup (functions/index.js →
+            // lookupRecordView). No IP/device data — just whether the card was
+            // opened, how many times, and when it was first seen.
+            viewCount = ft.viewCount || 0,
+            viewedIcon = viewCount
+              ? `<span title="First viewed: ${ft.firstViewedAt ? new Date(ft.firstViewedAt).toLocaleString() : "—"}" style="color:#16a34a;font-weight:600"><i class="fas fa-eye"></i> Yes${viewCount > 1 ? ` (${viewCount})` : ""}</span>`
+              : released
+                ? '<span style="color:#d97706;font-weight:600"><i class="fas fa-eye-slash"></i> Not yet</span>'
+                : '<span style="color:#9ca3af">—</span>',
             tr = document.createElement("tr");
-          ((tr.innerHTML = `\n          <td>${roster.rollNo || ft.rollNo || "—"}</td>\n          <td>${roster.name || ft.studentName || id}</td>\n          <td>${null !== hyTotal ? hyTotal : "—"}</td>\n          <td>${null !== ftTotal ? ftTotal : "—"}</td>\n          <td>${resultLabel}</td>\n          <td>${decisionSelect}</td>\n          <td>${relIcon}</td>\n          <td>\n            <button class="btn btn-sm btn-outline" style="font-size:11px" onclick="arcViewReportCard('${id}','${classId}')"><i class="fas fa-eye"></i> View</button>\n            ${released ? `<button class="btn btn-sm" style="font-size:11px;background:#b91c1c;color:#fff;border:none;margin-left:4px" onclick="arcRecallOne('${id}','${classId}')"><i class="fas fa-undo"></i> Recall</button>` : `<button class="btn btn-sm" style="font-size:11px;background:#2563eb;color:#fff;border:none;margin-left:4px" onclick="arcReleaseOne('${id}','${classId}')"><i class="fas fa-unlock"></i> Release</button>`}\n          </td>\n        `),
+          (released && releasedCount++, viewCount && viewedCount++);
+          ((tr.innerHTML = `\n          <td>${roster.rollNo || ft.rollNo || "—"}</td>\n          <td>${roster.name || ft.studentName || id}</td>\n          <td>${null !== hyTotal ? hyTotal : "—"}</td>\n          <td>${null !== ftTotal ? ftTotal : "—"}</td>\n          <td>${resultLabel}</td>\n          <td>${decisionSelect}</td>\n          <td>${relIcon}</td>\n          <td>${viewedIcon}</td>\n          <td>\n            <button class="btn btn-sm btn-outline" style="font-size:11px" onclick="arcViewReportCard('${id}','${classId}')"><i class="fas fa-eye"></i> View</button>\n            ${released ? `<button class="btn btn-sm" style="font-size:11px;background:#b91c1c;color:#fff;border:none;margin-left:4px" onclick="arcRecallOne('${id}','${classId}')"><i class="fas fa-undo"></i> Recall</button>` : `<button class="btn btn-sm" style="font-size:11px;background:#2563eb;color:#fff;border:none;margin-left:4px" onclick="arcReleaseOne('${id}','${classId}')"><i class="fas fa-unlock"></i> Release</button>`}\n          </td>\n        `),
             tbody.appendChild(tr));
         }),
           0 === lockedCount &&
             (tbody.innerHTML =
-              '<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-light)">No locked records yet. Class teacher must lock the records first.</td></tr>'),
+              '<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--text-light)">No locked records yet. Class teacher must lock the records first.</td></tr>'),
           msg &&
-            (msg.textContent = `${lockedCount} locked student record(s) for Class ${classId}.`),
+            (msg.textContent =
+              `${lockedCount} locked student record(s) for Class ${classId}.` +
+              (releasedCount
+                ? `  ·  Released: ${releasedCount}  ·  Viewed by parents: ${viewedCount} of ${releasedCount}${releasedCount - viewedCount > 0 ? ` (${releasedCount - viewedCount} not yet opened)` : " — all opened"}`
+                : "")),
           relBtn && (relBtn.style.display = lockedCount > 0 ? "" : "none"),
           (relBtn.dataset.classId = classId));
       } catch (e) {
         (console.error("loadAdminReportCards:", e),
-          (tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444;text-align:center;padding:18px">${e.message}</td></tr>`));
+          (tbody.innerHTML = `<tr><td colspan="9" style="color:#ef4444;text-align:center;padding:18px">${e.message}</td></tr>`));
       }
     }
   }),

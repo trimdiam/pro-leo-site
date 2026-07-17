@@ -1172,6 +1172,22 @@ function lookupResolveClassId(classRaw, section) {
   return sec ? `${roman}-${sec}` : roman;
 }
 
+// Record that a report card was viewed, on the student's own record.
+// Deliberately stores NO IP, device fingerprint or viewer identity — only a
+// read-receipt (first/last view + count) so the office can see per class how
+// many cards have actually been opened, and chase the families who haven't.
+// Never allowed to fail a parent's lookup: errors are swallowed.
+async function lookupRecordView(ref, existingData) {
+  try {
+    const now = new Date().toISOString();
+    const payload = { viewCount: FieldValue.increment(1), lastViewedAt: now };
+    if (!existingData || !existingData.firstViewedAt) payload.firstViewedAt = now;
+    await ref.set(payload, { merge: true });
+  } catch (err) {
+    console.warn("lookupRecordView failed:", err);
+  }
+}
+
 exports.lookupReportCard = onCall(
   { region: "asia-south1" },
   async (request) => {
@@ -1228,6 +1244,7 @@ exports.lookupReportCard = onCall(
       if (!cardSnap.exists || cardSnap.data().status !== "released") {
         throw new HttpsError("failed-precondition", "No released report card found for this student yet.");
       }
+      await lookupRecordView(cardSnap.ref, cardSnap.data());
       return { system: "report_cards", reportCard: cardSnap.data() };
     }
 
@@ -1243,6 +1260,8 @@ exports.lookupReportCard = onCall(
     let hyData = {};
     const hySnap = await db.collection("marks").doc(`${classId}_HY`).collection("students").doc(studentId).get();
     if (hySnap.exists) hyData = hySnap.data();
+
+    await lookupRecordView(ftSnap.ref, ftData);
 
     return {
       system: "marks",
