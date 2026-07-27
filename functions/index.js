@@ -1204,6 +1204,12 @@ exports.lookupReportCard = onCall(
     if (!settings || settings.enabled !== true) {
       throw new HttpsError("failed-precondition", "Report card lookup is not currently available.");
     }
+    // Per-system switch: Class III-X (the "marks" system, gated below by
+    // LOOKUP_PREPRIMARY_CLASSES) can be closed independently of SKG/LKG/I/II
+    // (the "report_cards" system) once that class's release window ends.
+    if (!LOOKUP_PREPRIMARY_CLASSES.has(classRaw) && settings.marksLookupEnabled === false) {
+      throw new HttpsError("failed-precondition", "Report card lookup for Class III–X has been closed for this term. Please contact the school office.");
+    }
 
     // ── Rate limit: per-IP, per-day cap ─────────────────────────────────────
     const ip = request.rawRequest?.ip || request.rawRequest?.headers?.["x-forwarded-for"] || "unknown";
