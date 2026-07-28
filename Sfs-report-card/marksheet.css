@@ -305,6 +305,38 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   WIDE-TABLE AUTO-FIT
+   Added by marksheet.js (body.ms-wide) ONLY when the academic table overflows
+   the fixed A3-landscape page width — currently just Class VI, which has the
+   most subjects. Tightens fonts/padding so every column fits and prints; no
+   columns are removed. Classes that already fit never get this class.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ms-wide .ms-table {
+  font-size: 0.58rem;
+}
+.ms-wide .ms-table th {
+  padding: 2px 2px;
+  font-size: 0.5rem;
+}
+.ms-wide .ms-table thead .ms-subheader th {
+  font-size: 0.48rem;
+  padding: 1px 2px;
+}
+.ms-wide .ms-table .ms-subj-name {
+  font-size: 0.5rem;
+}
+.ms-wide .ms-table td {
+  padding: 1px 2px;
+}
+.ms-wide .ms-table th.ms-student-name,
+.ms-wide .ms-table td.ms-student-name {
+  min-width: 74px;
+}
+.ms-wide .ms-table-wrap {
+  padding: 3mm 2mm;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    SCREEN STYLES
    ═══════════════════════════════════════════════════════════════════════════ */
 @media screen {

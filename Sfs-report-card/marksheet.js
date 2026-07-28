@@ -71,6 +71,20 @@ function renderMarksheet() {
   // Co-scholastic and remarks tables
   buildCoScholasticTable(list, config);
   buildRemarksTable(list, config);
+
+  // Auto-fit for print: the academic table is a fixed A3-landscape width, and
+  // the class with the most subjects (currently Class VI — one extra subject,
+  // Hindi, over Classes VII/VIII) overflows that width, so on print its right-
+  // most columns (Total/%/Rank/Result) get clipped. If the table is wider than
+  // its page, add .ms-wide to tighten fonts/padding so every column fits and
+  // prints. Reading scrollWidth forces layout, so this is reliable immediately.
+  // Classes that already fit never get the class — nothing else is touched.
+  const acadWrap  = document.querySelector('.ms-table-wrap');
+  const acadTable = acadWrap && acadWrap.querySelector('.ms-table');
+  document.body.classList.remove('ms-wide');
+  if (acadTable && acadTable.scrollWidth > acadWrap.clientWidth + 2) {
+    document.body.classList.add('ms-wide');
+  }
 }
 
 /* ─── CO-SCHOLASTIC TABLE ─────────────────────────────────────────────────── */
