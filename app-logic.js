@@ -13229,6 +13229,20 @@ function taEsc(s) {
     // admins could never save a subject-teacher assignment for these two
     // classes. Their real subjects live in assessment-app/data/subjects.json
     // instead (the assessment-app pipeline that actually grades SKG/LKG).
+    // No co-scholastic/grade data exists anywhere in the codebase for SKG/LKG
+    // (assessment-app only defines the 4 marked subjects below). Classes I and
+    // II — the nearest neighboring grades — both use this identical 7-item
+    // set, so it's reused here as the default. Flag to the admin if this list
+    // doesn't match what SKG/LKG teachers actually grade.
+    const SKG_LKG_COSCHOLASTIC = [
+      { key: "pe",                label: "P.E." },
+      { key: "singing",           label: "Singing" },
+      { key: "discipline",        label: "Discipline" },
+      { key: "gk",                label: "Aptitude" },
+      { key: "arts_craft",        label: "Arts & Craft" },
+      { key: "neatness",          label: "Neatness" },
+      { key: "val_edu_catechism", label: "Val. Edu./Catechism" },
+    ];
     if (cls === "SKG" || cls === "LKG") {
       try {
         if (!window._skgLkgSubjectsCache) {
@@ -13243,6 +13257,13 @@ function taEsc(s) {
       } catch (e) {
         showToast("⚠️ Could not load SKG/LKG subject list: " + e.message);
       }
+      const grp = document.createElement("optgroup");
+      grp.label = "Co-Scholastic (Grades)";
+      SKG_LKG_COSCHOLASTIC.forEach((s) => {
+        const o = document.createElement("option");
+        ((o.value = s.key), (o.textContent = s.label), (o.dataset.entrytype = "grade"), grp.appendChild(o));
+      });
+      subjSel.appendChild(grp);
       return;
     }
     const cfg = window.CONFIG && window.CONFIG[TA_CLASS_MAP[cls]];
