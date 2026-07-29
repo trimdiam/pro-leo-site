@@ -13219,11 +13219,32 @@ function taEsc(s) {
         }
       } catch (e) {}
   }),
-  (window.onTASubClassChange = function () {
+  (window.onTASubClassChange = async function () {
     const cls = document.getElementById("ta-sub-class").value,
       subjSel = document.getElementById("ta-sub-subject");
     if (((subjSel.innerHTML = '<option value="">— Subject —</option>'), !cls))
       return;
+    // SKG/LKG have no entry in window.CONFIG (Sfs-report-card/config.js only
+    // defines Class I-X) — the dropdown silently stayed empty for them, so
+    // admins could never save a subject-teacher assignment for these two
+    // classes. Their real subjects live in assessment-app/data/subjects.json
+    // instead (the assessment-app pipeline that actually grades SKG/LKG).
+    if (cls === "SKG" || cls === "LKG") {
+      try {
+        if (!window._skgLkgSubjectsCache) {
+          window._skgLkgSubjectsCache = await fetch("assessment-app/data/subjects.json").then((r) => r.json());
+        }
+        window._skgLkgSubjectsCache
+          .filter((s) => Array.isArray(s.classes) && s.classes.includes(cls))
+          .forEach((s) => {
+            const o = document.createElement("option");
+            ((o.value = s.subject_id), (o.textContent = s.subject_name), subjSel.appendChild(o));
+          });
+      } catch (e) {
+        showToast("⚠️ Could not load SKG/LKG subject list: " + e.message);
+      }
+      return;
+    }
     const cfg = window.CONFIG && window.CONFIG[TA_CLASS_MAP[cls]];
     if (!cfg) return;
     cfg.subjects
