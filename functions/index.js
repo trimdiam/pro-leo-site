@@ -411,11 +411,34 @@ async function resolveTeacherMessages(teacherMap, endedPeriod, nextPeriod, nextS
   return { messages, refs };
 }
 
+// ── Shared gate: is this IST date/day-of-week an actual school day? ─────────
+// Reads the same settings/routineNotify.workingDays + holidays/closures the
+// daily routine push already gates on, so "school day" means one thing across
+// the day-advance, the period-end reminder, and the routine push — not three
+// separately-drifting definitions.
+async function isSchoolDay(istNow, dateStr) {
+  const cfgSnap = await db.collection("settings").doc("routineNotify").get();
+  const cfg = cfgSnap.exists ? cfgSnap.data() : {};
+  const workingDays = Array.isArray(cfg.workingDays) ? cfg.workingDays : [1, 2, 3, 4, 5];
+  if (!workingDays.includes(istNow.getDay())) return false; // 0=Sun, 6=Sat by default excluded
+
+  const holSnap  = await db.collection("holidays").doc("closures").get();
+  const holDates = holSnap.exists && Array.isArray(holSnap.data().dates) ? holSnap.data().dates : [];
+  return !holDates.includes(dateStr);
+}
+
 // ── SCHEDULED: Period-end reminder — runs every minute (IST) ─────────────
 exports.periodEndReminder = onSchedule(
   { schedule: "every 1 minutes", timeZone: "Asia/Kolkata", region: "asia-south1" },
   async () => {
     const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const todayStr = `${nowIST.getFullYear()}-${String(nowIST.getMonth() + 1).padStart(2, "0")}-${String(nowIST.getDate()).padStart(2, "0")}`;
+    // Was previously unguarded — fired every minute of every day (including
+    // weekends/holidays), and since the Day cycle was never auto-reset either,
+    // it kept sending period-end pushes off Friday's stale schedule. Bail out
+    // before doing anything else on a non-school day.
+    if (!(await isSchoolDay(nowIST, todayStr))) return;
+
     const currentMinutes = nowIST.getHours() * 60 + nowIST.getMinutes();
 
     // 1. Load period timings
@@ -706,6 +729,50 @@ async function runDailyRoutine(slot, opts = {}) {
   console.log(`[dailyRoutine ${slot}] Day ${day}: sent ${result.successCount}/${_msgs.length} (teachers with routine: ${initialsList.length})`);
   return log;
 }
+
+// ── SCHEDULED: auto-advance the Day Cycle each school morning (05:00 IST) ───
+// Previously settings/schoolDay.currentDay only ever changed via a human
+// admin click in routine-app/admin.js — nothing advanced it automatically, so
+// it silently stayed on whatever day it was last set to ("always on manual").
+// Runs before dailyRoutineMorning1 (07:30) so that push reflects today's day.
+// Skips weekends/holidays via the same isSchoolDay() gate as the routine push
+// and period-end reminder. Idempotent: if schoolDay was already updated today
+// (a manual click, or a prior run of this same function), it does not advance
+// again — so the manual "Advance Day" / "Set Day" admin controls still work
+// as an override without risking a double-advance.
+exports.autoAdvanceSchoolDay = onSchedule(
+  { schedule: "0 5 * * *", timeZone: "Asia/Kolkata", region: "asia-south1" },
+  async () => {
+    const istNow  = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const dateStr = `${istNow.getFullYear()}-${String(istNow.getMonth() + 1).padStart(2, "0")}-${String(istNow.getDate()).padStart(2, "0")}`;
+
+    if (!(await isSchoolDay(istNow, dateStr))) {
+      console.log(`[autoAdvanceSchoolDay] ${dateStr}: not a school day, skipped.`);
+      return;
+    }
+
+    const daySnap = await db.collection("settings").doc("schoolDay").get();
+    const data    = daySnap.exists ? daySnap.data() : { currentDay: 1, lastUpdated: null };
+
+    const lu = data.lastUpdated;
+    if (lu && typeof lu.toDate === "function") {
+      const luIST = new Date(lu.toDate().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+      const luDateStr = `${luIST.getFullYear()}-${String(luIST.getMonth() + 1).padStart(2, "0")}-${String(luIST.getDate()).padStart(2, "0")}`;
+      if (luDateStr === dateStr) {
+        console.log(`[autoAdvanceSchoolDay] ${dateStr}: already advanced today, skipped.`);
+        return;
+      }
+    }
+
+    const current = Number(data.currentDay) || 1;
+    const next    = current >= 7 ? 1 : current + 1;
+    await db.collection("settings").doc("schoolDay").set({
+      currentDay: next,
+      lastUpdated: FieldValue.serverTimestamp(),
+    });
+    console.log(`[autoAdvanceSchoolDay] ${dateStr}: advanced Day ${current} -> Day ${next}`);
+  }
+);
 
 // ── SCHEDULED: 07:30 IST daily ────────────────────────────────────────────
 exports.dailyRoutineMorning1 = onSchedule(

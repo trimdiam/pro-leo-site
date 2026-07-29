@@ -13,9 +13,10 @@ second source of truth for the day cycle or for device tokens.
 
 | Decision | Choice |
 |---|---|
-| **Day Cycle source** | Read `settings/schoolDay.currentDay`. The job **never** advances it — the routine-app admin "day pills" remain the only writer. |
+| **Day Cycle source** | Read `settings/schoolDay.currentDay`. **UPDATED 2026-07-28** (reverses the original decision below): `autoAdvanceSchoolDay` (05:00 IST) now advances it automatically on every school day, gated the same way as the routine push (`isSchoolDay()` — working days + holidays). The routine-app admin "day pills" remain a manual **override** — the auto-advance is idempotent (skips if `schoolDay` was already updated today), so a manual click and the automated run can't double-advance. ~~Originally: the job never advances it — the admin day pills are the only writer.~~ Reversed because the day was staying stuck on manual and teachers' daily routine push showed stale periods. |
 | **Working days** | Admin-configurable, default **Mon–Fri**. |
 | **Holiday source** | A new **machine-readable** ISO-date list (`holidays/closures`). The existing human calendar (`holidays/school_calendar`) is display-only and not parsed. |
+| **Period-end reminder gate** | **NEW 2026-07-28**: `periodEndReminder` (runs every minute, every day) previously had **no** weekend/holiday gate at all — combined with the day never resetting, it kept firing period-end pushes off Friday's stale schedule through the weekend. Now shares the same `isSchoolDay()` check as the routine push and the day-advance. |
 
 ---
 
