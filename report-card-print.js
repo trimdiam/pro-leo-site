@@ -820,9 +820,13 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   const stretchRows = isClassI || isKg;
   const tableRows = buildTableRows(hy1Card, hy2Card, { groupByCategory, gradesOnly });
 
-  // Term date ranges
-  const hy1Range = hy1Card?.dateFrom ? `${hy1Card.dateFrom} – ${hy1Card.dateTo}` : 'Apr – Sep';
-  const hy2Range = hy2Card?.dateFrom ? `${hy2Card.dateFrom} – ${hy2Card.dateTo}` : 'Oct – Mar';
+  // Term date ranges — this file has no imports by design (self-contained
+  // template), so it can't read the live term calendar from
+  // report-card-grade-engine.js. Rather than guess a hardcoded range that can
+  // silently drift out of sync with a one-off yearly exception there, fall
+  // back to a neutral placeholder: this only shows before a card exists.
+  const hy1Range = hy1Card?.dateFrom ? `${hy1Card.dateFrom} – ${hy1Card.dateTo}` : 'Not yet generated';
+  const hy2Range = hy2Card?.dateFrom ? `${hy2Card.dateFrom} – ${hy2Card.dateTo}` : 'Not yet generated';
 
   const safeName = (info.studentName || 'student').replace(/[^a-zA-Z0-9]+/g, '_');
   const safeClass = (info.className || '').replace(/[^a-zA-Z0-9]+/g, '_');

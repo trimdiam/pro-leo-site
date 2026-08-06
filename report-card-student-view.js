@@ -4,6 +4,7 @@
 
 import { buildPrintableHTML } from './report-card-print.js';
 import { isClassIIIToX, renderClassIIIToXReportCard } from './report-card-student-iiix.js';
+import { getCurrentAcademicYear } from './assessment-app/services/report-card-grade-engine.js';
 
 const FB_VERSION = '10.13.0';
 const FB_BASE    = `https://www.gstatic.com/firebasejs/${FB_VERSION}`;
@@ -224,10 +225,14 @@ export async function initReportCardStudentView(studentId) {
     const database = await ensureDb();
     const { collection, query, where, getDocs } = await fsImport();
 
+    // Scope to the current academic year — studentId alone is no longer
+    // unique per term now that report_cards docIds include the year, so
+    // without this a returning student's HY1/HY2 could mix across years.
     const q = query(
       collection(database, 'report_cards'),
       where('studentId', '==', studentId),
-      where('status', '==', 'released')
+      where('status', '==', 'released'),
+      where('academicYear', '==', getCurrentAcademicYear())
     );
     const snap = await getDocs(q);
 

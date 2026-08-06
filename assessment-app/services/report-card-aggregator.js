@@ -74,20 +74,31 @@ export async function aggregateStudentForReportCard(studentId, dateFrom, dateTo,
   // 2. Load all local sessions and filter to finalized ones in the date window
   const allEntries = getAllSessions();
 
-  const finalized = allEntries.filter(entry => {
+  function inWindowWithMarks(entry) {
     const s = entry.session;
     if (!s) return false;
-    if (s.status !== 'reviewed' && s.status !== 'locked') return false;
-
     // Backward compat: sessions without weekStart use date as both start/end
     const start = s.weekStart || s.date;
     const end   = s.weekEnd   || s.date;
     if (!start || !end) return false;
-
     if (start < dateFrom || end > dateTo) return false;
     if (!entry.marks || !entry.marks[studentId]) return false;
     return true;
-  });
+  }
+
+  const finalized = allEntries.filter(entry =>
+    (entry.session.status === 'reviewed' || entry.session.status === 'locked') && inWindowWithMarks(entry)
+  );
+
+  // Sessions with real marks for this student, in this term's window, that
+  // exist but were excluded only because nobody has reviewed/locked them yet
+  // (status still 'draft' or 'submitted'). Surfaced so an admin generating a
+  // report card can tell "no data" apart from "data exists but unreviewed" —
+  // otherwise these silently disappear with no signal.
+  const pendingReview = allEntries.filter(entry =>
+    (entry.session.status === 'draft' || entry.session.status === 'submitted') && inWindowWithMarks(entry)
+  );
+  const subjectsPendingReview = [...new Set(pendingReview.map(e => e.session.subject_id))];
 
   // 3. Build result: for each subject → for each criterion → collect scores
   const subjects = subjectMap.map(subjectDef => {
@@ -152,6 +163,9 @@ export async function aggregateStudentForReportCard(studentId, dateFrom, dateTo,
     dateTo,
     className,
     totalSessionsIncluded: finalized.length,
-    subjects
+    subjects,
+    // Data-completeness signal — see pendingReview above.
+    totalSessionsPendingReview: pendingReview.length,
+    subjectsPendingReview
   };
 }

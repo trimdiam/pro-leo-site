@@ -9,10 +9,19 @@ import { syncSessionsFromFirestore } from '../services/session-storage.js';
 import { syncClassTestsFromFirestore } from '../services/class-test-storage.js';
 
 const CLASSES = ['LKG', 'SKG', 'Class I', 'Class II'];
-const TERMS   = [
-  { key: 'HY1', label: 'First Half-Yearly (Apr – Sep)' },
-  { key: 'HY2', label: 'Second Half-Yearly (Oct – Mar)' }
-];
+const TERM_KEYS = ['HY1', 'HY2'];
+
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Builds the dropdown label from the live term date range instead of a fixed
+// string, so it can't drift out of sync when getTermDateRange() gets a
+// one-off yearly exception (as it did for 2026-27's Mar–Jun/Jul–Nov terms).
+function termOptionLabel(termKey) {
+  const { dateFrom, dateTo, termLabel } = getTermDateRange(termKey);
+  const fromMonth = MONTH_ABBR[Number(dateFrom.slice(5, 7)) - 1];
+  const toMonth   = MONTH_ABBR[Number(dateTo.slice(5, 7)) - 1];
+  return `${termLabel} (${fromMonth} – ${toMonth})`;
+}
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 
@@ -38,7 +47,7 @@ function select(className, options, value) {
 
 // ── Result row ────────────────────────────────────────────────────────────────
 
-function appendResultRow(container, displayName, status, error, onRetry) {
+function appendResultRow(container, displayName, status, error, onRetry, subjectsPendingReview) {
   // Remove existing row for same student if regenerating
   const existing = container.querySelector(`[data-student-name="${CSS.escape(displayName)}"]`);
   if (existing) existing.remove();
@@ -54,6 +63,16 @@ function appendResultRow(container, displayName, status, error, onRetry) {
   if (status === 'error') statusSpan.textContent = `❌ ${error || 'Error'}`;
 
   row.append(nameSpan, statusSpan);
+
+  // Data-completeness warning: marks exist for these subjects but their
+  // sessions aren't reviewed/locked yet, so they were excluded (shown as
+  // Exempt/No Data on the card) rather than actually scored. Without this,
+  // that distinction is invisible to whoever is about to release the card.
+  if (status === 'ok' && subjectsPendingReview && subjectsPendingReview.length > 0) {
+    const warnSpan = el('span', 'rc-result-warning',
+      `⚠ Unreviewed sessions excluded: ${subjectsPendingReview.join(', ')}`);
+    row.append(warnSpan);
+  }
 
   if (status === 'error' && onRetry) {
     const retryBtn = el('button', 'rc-retry-btn', 'Retry');
@@ -111,7 +130,7 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
   const termLabel = el('label', 'rc-label', 'Term');
   const termSelect = select('rc-select', [
     { val: '', label: '— Select term —' },
-    ...TERMS.map(t => ({ val: t.key, label: t.label }))
+    ...TERM_KEYS.map(key => ({ val: key, label: termOptionLabel(key) }))
   ], '');
   termLabel.append(termSelect);
   controls.append(termLabel);
@@ -263,13 +282,14 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
     const displayName = student.full_name || studentId;
     const status = result.ok ? 'ok' : result.skipped ? 'skip' : 'error';
     appendResultRow(resultsList, displayName, status, result.error,
-      status === 'error' ? () => runForStudent(student, params) : null
+      status === 'error' ? () => runForStudent(student, params) : null,
+      result.subjectsPendingReview
     );
 
     progressArea.textContent = result.ok
       ? `✅ Done — report card for ${displayName} saved as draft.`
       : result.skipped
-        ? `⚠ No finalized sessions found for ${displayName} in the selected period.`
+        ? `⚠ ${result.error || `No finalized sessions found for ${displayName} in the selected period.`}`
         : `❌ Failed for ${displayName}: ${result.error}`;
 
     singleBtn.disabled = false;
@@ -314,6 +334,7 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
 
     const total = students.length;
     let done = 0;
+    let withPendingReview = 0;
 
     for (const student of students) {
       const displayName = student.full_name || student.student_id;
@@ -321,14 +342,18 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
 
       const result = await runForStudent(student, params);
       done++;
+      if (result.ok && result.subjectsPendingReview?.length) withPendingReview++;
 
       const status = result.ok ? 'ok' : result.skipped ? 'skip' : 'error';
       appendResultRow(resultsList, displayName, status, result.error,
-        status === 'error' ? () => runForStudent(student, params) : null
+        status === 'error' ? () => runForStudent(student, params) : null,
+        result.subjectsPendingReview
       );
     }
 
-    progressArea.textContent = `Done — ${done} of ${total} processed. Cards are saved as drafts.`;
+    progressArea.textContent = withPendingReview > 0
+      ? `Done — ${done} of ${total} processed. Cards are saved as drafts. ⚠ ${withPendingReview} student(s) have unreviewed sessions excluded — check the warnings below before releasing.`
+      : `Done — ${done} of ${total} processed. Cards are saved as drafts.`;
     classBtn.disabled = false;
     classBtn.textContent = '▶▶ Generate for Entire Class';
   });

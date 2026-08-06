@@ -24,6 +24,7 @@ async function buildAuthUser(uid, email, data, loginId) {
 
   let name = data.name || email;
   const teacherId = (loginId || data.teacherId || data.loginId || data.staffId || '').toUpperCase();
+  let classTeacherOf = null;
 
   if (TEACHER_ROLES.includes(rawRole) && teacherId) {
     try {
@@ -31,11 +32,14 @@ async function buildAuthUser(uid, email, data, loginId) {
       if (tDoc.exists()) {
         const t = tDoc.data();
         name = (t.title ? t.title + ' ' : '') + (t.name || name);
+        // Roman-numeral class ("I".."X") or "LKG"/"SKG"/"PLG" — whichever
+        // class this teacher is the class teacher of, if any.
+        classTeacherOf = t.classTeacherOf || null;
       }
     } catch (e) { /* use fallback */ }
   }
 
-  return { uid, email, name: name.trim(), role, teacherId };
+  return { uid, email, name: name.trim(), role, teacherId, classTeacherOf };
 }
 
 const FRIENDLY_ERRORS = {

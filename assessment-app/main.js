@@ -12,7 +12,7 @@ import { createClassTestEntry } from './components/class-test-entry.js';
 import { showDefaultScorePicker } from './components/default-score-picker.js';
 import { loadCriteriaForSubject } from './services/criteria-loader.js';
 import { getSubjectsForClass, loadSubjects } from './services/subject-loader.js';
-import { loadStudentsForClass } from './services/student-loader.js';
+import { loadStudentsForClass, CLASS_MAP } from './services/student-loader.js';
 import { createSession, validateMark } from './services/assessment-engine.js';
 import { initializeMarksWithDefault } from './services/fast-entry-engine.js';
 import { calculateSessionProgress } from './services/totals-engine.js';
@@ -23,6 +23,30 @@ import { aggregateByMonth, extractYearMonth, clearAggregationCache } from './ser
 import { getCurrentUser, isTeacher, isAdmin, isLoggedIn, resolveAuthSession } from './services/auth-service.js';
 import { loadClassTestConfig, getClassTestSubjectsForClass } from './services/class-test-loader.js';
 import { saveClassTest, saveClassTestAndConfirm, getClassTest, syncClassTestsFromFirestore } from './services/class-test-storage.js';
+
+// ── Class-teacher review permission ────────────────────────────────────────
+// The `teachers` collection stores classTeacherOf as a Roman numeral ("I".."X")
+// or "LKG"/"SKG"/"PLG" directly; CLASS_MAP's display names ("Class I") map to
+// Arabic numerals ("1"). Bridges the two so the UI can match a session's class
+// against the logged-in teacher's classTeacherOf — mirrors the same check
+// enforced server-side in firestore.rules.
+const NUM_TO_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+
+function classNameMatchesClassTeacherOf(className, classTeacherOf) {
+  if (!classTeacherOf) return false;
+  if (className === classTeacherOf) return true; // LKG/SKG/PLG direct match
+  const num = Number(CLASS_MAP[className]);
+  return Number.isInteger(num) && NUM_TO_ROMAN[num] === classTeacherOf;
+}
+
+// Reviewing/locking a session is restricted to that class's class teacher,
+// or admin — enforced here for the UI (hide buttons that would just fail)
+// and again in firestore.rules (the actual security boundary).
+function canReviewClass(className) {
+  if (isAdmin()) return true;
+  const currentUser = getCurrentUser();
+  return classNameMatchesClassTeacherOf(className, currentUser?.classTeacherOf);
+}
 
 // ── Heavy admin-only components — lazy loaded on first admin view ─────────
 let _adminLazy = null;
@@ -932,6 +956,7 @@ function renderAdminSessions() {
     lastSynced: state.lastSessionSync,
     syncing: state.syncingSessions,
     canDelete: isAdmin(),
+    canReviewClass,
     onRefresh: () => syncSessionsAndRerender({ force: true }),
     onFilterChange: filters => {
       state.adminFilters = filters;
@@ -1019,6 +1044,7 @@ async function renderAdminReview() {
 
   assessmentRoot.append(createSessionReview({
     sessionData: data,
+    canReview: canReviewClass(data.session.class),
     onBack: () => {
       state.reviewSessionId = null;
       render();

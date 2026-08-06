@@ -449,6 +449,7 @@
 
 .rc-result-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 7px 12px;
@@ -461,6 +462,17 @@
 .rc-ok    { color: #0a6e3a; }
 .rc-skip  { color: #b87600; }
 .rc-error { color: #cc5500; }
+.rc-result-warning {
+  flex-basis: 100%;
+  color: #b87600;
+  font-size: 12px;
+}
+
+.rc-pending-review-flag {
+  margin-left: 6px;
+  color: #b87600;
+  cursor: help;
+}
 
 .rc-student-row {
   display: flex;

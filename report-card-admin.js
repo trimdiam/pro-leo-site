@@ -127,6 +127,11 @@ function buildRow(card, container, onRefresh) {
   // Card status
   const tdStatus = document.createElement('td');
   tdStatus.append(statusBadge(card.status));
+  if (card.subjectsPendingReview?.length) {
+    const warnIcon = el('span', 'rc-pending-review-flag', '⚠');
+    warnIcon.title = `Excluded (unreviewed sessions): ${card.subjectsPendingReview.join(', ')}`;
+    tdStatus.append(warnIcon);
+  }
   // Actions
   const tdActions = document.createElement('td');
 
@@ -236,7 +241,14 @@ function buildRow(card, container, onRefresh) {
   previewBtn.addEventListener('click', async () => {
     const database = await ensureDb();
     const { collection, query, where, getDocs } = await fsImport();
-    const q = query(collection(database, 'report_cards'), where('studentId', '==', card.studentId));
+    // Scope to this card's own academicYear — studentId alone is no longer
+    // unique per term now that report_cards docIds include the year, so
+    // without this a returning student's HY1/HY2 could mix across years.
+    const q = query(
+      collection(database, 'report_cards'),
+      where('studentId', '==', card.studentId),
+      where('academicYear', '==', card.academicYear)
+    );
     const snap = await getDocs(q);
     let hy1 = null; let hy2 = null;
     snap.docs.forEach(d => {

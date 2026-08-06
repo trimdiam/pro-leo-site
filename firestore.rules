@@ -44,6 +44,39 @@ service cloud.firestore {
       return raw == '1' ? 'Class I' : (raw == '2' ? 'Class II' : raw);
     }
 
+    // ── Class-teacher review gate ─────────────────────────────────────
+    // Reviewing/locking an assessment_sessions doc (or touching one that's
+    // already locked) is restricted to that class's class teacher — not any
+    // teacher. `teachers/{teacherId}` stores classTeacherOf as "LKG"/"SKG"
+    // directly, or a Roman numeral ("I".."X") for numbered classes; session
+    // docs store the display name ("Class I"). Mirrors the UI-side check in
+    // assessment-app/main.js (canReviewClass) which hides the buttons too —
+    // this is the actual enforcement boundary.
+    function classTeacherOfMatchesSessionClass(classTeacherOf, sessionClass) {
+      return classTeacherOf == sessionClass
+        || (sessionClass == 'Class I'   && classTeacherOf == 'I')
+        || (sessionClass == 'Class II'  && classTeacherOf == 'II')
+        || (sessionClass == 'Class III' && classTeacherOf == 'III')
+        || (sessionClass == 'Class IV'  && classTeacherOf == 'IV')
+        || (sessionClass == 'Class V'   && classTeacherOf == 'V')
+        || (sessionClass == 'Class VI'  && classTeacherOf == 'VI')
+        || (sessionClass == 'Class VII' && classTeacherOf == 'VII')
+        || (sessionClass == 'Class VIII' && classTeacherOf == 'VIII')
+        || (sessionClass == 'Class IX'  && classTeacherOf == 'IX')
+        || (sessionClass == 'Class X'   && classTeacherOf == 'X');
+    }
+
+    function isClassTeacherOfSession(sessionClass) {
+      let u = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let teacherId = u.get('teacherId', u.get('loginId', u.get('staffId', '')));
+      return teacherId is string && teacherId.size() > 0
+        && exists(/databases/$(database)/documents/teachers/$(teacherId))
+        && classTeacherOfMatchesSessionClass(
+             get(/databases/$(database)/documents/teachers/$(teacherId)).data.get('classTeacherOf', ''),
+             sessionClass
+           );
+    }
+
     // ── Users ────────────────────────────────────────────────────────
     // Each user manages their own doc; admin can read all.
     match /users/{uid} {
@@ -241,7 +274,29 @@ service cloud.firestore {
       allow read:  if request.auth != null
         && isRole('student')
         && resource.data.session.class == studentAssessmentClass();
-      allow create, update: if ((isTeacherAny() && !teacherLocked(database, request.auth.uid)) || isAdmin()) && !rolloverLocked(database);
+      // Creating/editing a session (draft entry, autosave, draft<->submitted)
+      // stays open to any subject teacher. Moving status to 'reviewed' or
+      // 'locked' — or writing to a doc that's already 'locked' at all
+      // (including reopening it) — is further restricted to that class's
+      // class teacher, since that's the sole reviewer now.
+      allow create: if !rolloverLocked(database) && (
+        isAdmin() ||
+        (
+          isTeacherAny() && !teacherLocked(database, request.auth.uid) &&
+          (request.resource.data.session.status in ['reviewed', 'locked']
+            ? isClassTeacherOfSession(request.resource.data.session.class)
+            : true)
+        )
+      );
+      allow update: if !rolloverLocked(database) && (
+        isAdmin() ||
+        (
+          isTeacherAny() && !teacherLocked(database, request.auth.uid) &&
+          ((request.resource.data.session.status in ['reviewed', 'locked'] || resource.data.session.status == 'locked')
+            ? isClassTeacherOfSession(resource.data.session.class)
+            : true)
+        )
+      );
       // Hard delete is admin-only (e.g. removing test/junk sessions from the
       // admin Sessions screen) — teachers use status transitions instead.
       allow delete: if isAdmin() && !rolloverLocked(database);

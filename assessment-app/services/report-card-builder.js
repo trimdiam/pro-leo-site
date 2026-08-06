@@ -97,9 +97,14 @@ export async function buildAndSaveReportCard(params) {
     // 2. Aggregate session marks
     const aggregated = await aggregateStudentForReportCard(studentId, dateFrom, dateTo, className);
 
-    // If no sessions at all, skip with a clear signal
+    // If no sessions at all, skip with a clear signal — distinguishing "no
+    // data was ever entered" from "data exists but nobody has reviewed it
+    // yet", since the latter is silently invisible otherwise.
     if (aggregated.totalSessionsIncluded === 0) {
-      return { ok: false, docId: null, skipped: true, error: 'No finalized sessions found for this student in the selected period.' };
+      const error = aggregated.totalSessionsPendingReview > 0
+        ? `${aggregated.totalSessionsPendingReview} session(s) with marks exist for this student in the selected period, but none are reviewed/locked yet — nothing to include.`
+        : 'No finalized sessions found for this student in the selected period.';
+      return { ok: false, docId: null, skipped: true, error };
     }
 
     // 3. Grade each subject — blend in the Half-Yearly class test where one
@@ -111,6 +116,12 @@ export async function buildAndSaveReportCard(params) {
 
     // 4. Compute overall performance
     const overall = computeOverallPerformance(gradedSubjects);
+
+    // 4b. Data-completeness signal: subjects that have unreviewed sessions
+    // excluded from this card, so admins can tell "no data" apart from "data
+    // exists but wasn't reviewed/locked yet" instead of it silently vanishing.
+    const subjectNameById = Object.fromEntries(aggregated.subjects.map(s => [s.subject_id, s.subject_name]));
+    const subjectsPendingReviewNames = (aggregated.subjectsPendingReview || []).map(id => subjectNameById[id] || id);
 
     // 5. Generate teacher remark
     const termLabel = getTermLabel(term);
@@ -138,7 +149,10 @@ export async function buildAndSaveReportCard(params) {
     });
 
     // 6. Assemble document
-    const docId = `${sanitizeDocId(studentId)}_${term}`;
+    // academicYear is part of the id — without it, generating this term's
+    // report card again next academic year would overwrite this one, since
+    // studentId stays the same across years (only className changes).
+    const docId = `${sanitizeDocId(studentId)}_${sanitizeDocId(academicYear)}_${term}`;
 
     const reportCard = {
       // Identity
@@ -203,6 +217,11 @@ export async function buildAndSaveReportCard(params) {
       // Promotion (HY2 only — admin fills)
       promotedToClass: null,
 
+      // Data completeness — subjects with real marks entered but excluded
+      // because their sessions aren't reviewed/locked yet. Lets the admin
+      // panel warn before releasing an incomplete card.
+      subjectsPendingReview: subjectsPendingReviewNames,
+
       // Workflow
       status:         'draft',
       feesCleared:    false,
@@ -216,7 +235,7 @@ export async function buildAndSaveReportCard(params) {
     // 7. Write to Firestore
     await setDoc(doc(db, REPORT_CARDS_COL, docId), reportCard, { merge: false });
 
-    return { ok: true, docId, studentName };
+    return { ok: true, docId, studentName, subjectsPendingReview: subjectsPendingReviewNames };
 
   } catch (err) {
     console.error(`buildAndSaveReportCard failed for ${studentId}:`, err);

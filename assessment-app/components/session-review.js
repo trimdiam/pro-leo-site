@@ -5,7 +5,10 @@ export function createSessionReview({
   sessionData,
   onBack = () => {},
   onLock = () => {},
-  onReopen = () => {}
+  onReopen = () => {},
+  // Locking/reopening is restricted to that class's class teacher (or
+  // admin) — mirrors the same check in session-list.js and firestore.rules.
+  canReview = true
 } = {}) {
   const { session, marks, students, criteria } = sessionData;
 
@@ -42,7 +45,7 @@ export function createSessionReview({
   const actions = document.createElement('div');
   actions.className = 'review-actions';
 
-  if (session.status !== 'locked') {
+  if (session.status !== 'locked' && canReview) {
     const lockBtn = document.createElement('button');
     lockBtn.type = 'button';
     lockBtn.className = 'btn btn-danger';
@@ -51,7 +54,7 @@ export function createSessionReview({
     actions.append(lockBtn);
   }
 
-  if (session.status === 'locked') {
+  if (session.status === 'locked' && canReview) {
     const reopenBtn = document.createElement('button');
     reopenBtn.type = 'button';
     reopenBtn.className = 'btn btn-secondary';
@@ -90,7 +93,9 @@ export function createSessionReview({
     th.className = 'review-category-cell';
     categoryRow.append(th);
   });
-  categoryRow.append(createTh(''));
+  const blankTotal = createTh('');
+  blankTotal.colSpan = 2;
+  categoryRow.append(blankTotal);
   thead.append(categoryRow);
 
   const headerRow = document.createElement('tr');
@@ -98,13 +103,15 @@ export function createSessionReview({
   headerRow.append(createTh('Roll No'));
   criteria.forEach(c => headerRow.append(createTh(c.criterion_name)));
   headerRow.append(createTh('Total'));
+  headerRow.append(createTh('Avg (5-pt)'));
   thead.append(headerRow);
   table.append(thead);
 
   const tbody = document.createElement('tbody');
   students.forEach(student => {
     const studentMarks = marks[student.student_id] || {};
-    const { total, max } = calculateStudentTotal(studentMarks, criteria);
+    const { total, max, completed } = calculateStudentTotal(studentMarks, criteria);
+    const avg = completed > 0 ? (total / completed).toFixed(2) : '—';
 
     const tr = document.createElement('tr');
     tr.append(createTd(student.full_name, 'student-cell'));
@@ -116,6 +123,7 @@ export function createSessionReview({
     });
 
     tr.append(createTd(`${total} / ${max}`, 'total-cell'));
+    tr.append(createTd(avg, 'avg-cell'));
     tbody.append(tr);
   });
 

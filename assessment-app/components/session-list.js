@@ -7,6 +7,10 @@ export function createSessionList({
   lastSynced = null,
   syncing = false,
   canDelete = false,
+  // Whether the current user may review/lock sessions for a given class —
+  // restricted to that class's class teacher (or admin). Defaults to
+  // allow-all so existing callers that don't pass it keep prior behavior.
+  canReviewClass = () => true,
   onRefresh = () => {},
   onFilterChange = () => {},
   onViewSession = () => {},
@@ -84,7 +88,7 @@ export function createSessionList({
     list.className = 'session-list';
 
     sessions.forEach(entry => {
-      list.append(createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession, onEditPeriod));
+      list.append(createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession, onEditPeriod, canReviewClass));
     });
 
     section.append(list);
@@ -93,10 +97,15 @@ export function createSessionList({
   return section;
 }
 
-function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession, onEditPeriod) {
+function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession, onEditPeriod, canReviewClass) {
   const sess = entry.session;
   const today = new Date().toISOString().split('T')[0];
   const isOverdue = sess.dueDate && today > sess.dueDate && sess.status !== 'locked';
+  // Reviewing/locking (or touching an already-locked session) is restricted
+  // to that class's class teacher, or admin — mirrors the firestore.rules
+  // enforcement, so a subject teacher never sees a button that would just
+  // fail server-side with a confusing permission error.
+  const canReview = canReviewClass(sess.class);
 
   const wrap = document.createElement('div');
 
@@ -155,7 +164,7 @@ function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDel
     actions.append(submitBtn);
   }
 
-  if (sess.status === 'submitted') {
+  if (sess.status === 'submitted' && canReview) {
     const reviewBtn = document.createElement('button');
     reviewBtn.type = 'button';
     reviewBtn.className = 'btn btn-sm btn-primary';
@@ -164,7 +173,7 @@ function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDel
     actions.append(reviewBtn);
   }
 
-  if (sess.status === 'reviewed') {
+  if (sess.status === 'reviewed' && canReview) {
     const lockBtn = document.createElement('button');
     lockBtn.type = 'button';
     lockBtn.className = 'btn btn-sm btn-danger';
@@ -173,7 +182,10 @@ function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDel
     actions.append(lockBtn);
   }
 
-  if (sess.status !== 'draft') {
+  // Reopening a locked session needs the same permission as locking it did;
+  // reopening a merely-reviewed (not yet locked) session stays open to any
+  // subject teacher, unchanged.
+  if (sess.status !== 'draft' && (sess.status !== 'locked' || canReview)) {
     const reopenBtn = document.createElement('button');
     reopenBtn.type = 'button';
     reopenBtn.className = 'btn btn-sm btn-secondary';
