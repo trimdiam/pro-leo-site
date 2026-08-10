@@ -427,6 +427,13 @@ function buildRows(list, subjects, config, isStandard, termKey) {
   list.forEach((data, idx) => {
     const termData = data[termKey] || { subjects: {}, grandTotal: 0, percentage: 0 };
     const consol   = data.consolidated || {};
+    // Term 2 (Final Term) not yet assessed → render the whole row blank rather
+    // than 0 / 0.0% / a green PASS off an empty term. Detected by a zero grand
+    // total, same test render.js uses on the individual report card. The
+    // builders write `ia: ftA.IA ?? 0`, so the IA/UT/TE cells hold a numeric 0
+    // (not undefined) and the `!== undefined` guards below never catch them.
+    // Only applies to a Final Term marksheet — an HY marksheet is unaffected.
+    const ftEmpty = termKey === 'finalTerm' && (data.finalTerm?.grandTotal || 0) === 0;
 
     html += '<tr>';
     html += `<td>${idx + 1}</td>`;
@@ -440,28 +447,32 @@ function buildRows(list, subjects, config, isStandard, termKey) {
       // enough if IA or Theory individually miss their proportional floor.
       const componentFail = !isStandard && !subj.singleTotal &&
         (subjData.ia < iaFloor || subjData.exam < examFloor);
-      const fail     = total > 0 && (total < passmark || componentFail);
+      const fail     = !ftEmpty && total > 0 && (total < passmark || componentFail);
       const isAgg    = subj.isAggregate;
+      // Blank, not '—', when the term is unassessed: a dash reads as "no mark
+      // for this subject", which is a different claim from "term not held yet".
+      const mark     = v => ftEmpty ? '' : (v !== undefined ? v : '—');
+      const totalCel = ftEmpty ? '' : (total || '—');
 
       if (isStandard) {
         if (isAgg) {
-          html += `<td style="color:#aaa">—</td>`;
-          html += `<td class="${fail ? 'ms-fail' : ''}">${total || '—'}</td>`;
+          html += `<td style="color:#aaa">${ftEmpty ? '' : '—'}</td>`;
+          html += `<td class="${fail ? 'ms-fail' : ''}">${totalCel}</td>`;
         } else {
-          html += `<td>${subjData.ia !== undefined ? subjData.ia : '—'}</td>`;
-          html += `<td>${subjData.ut !== undefined ? subjData.ut : '—'}</td>`;
-          html += `<td>${subjData.exam !== undefined ? subjData.exam : '—'}</td>`;
-          html += `<td class="${fail ? 'ms-fail' : ''}">${total || '—'}</td>`;
+          html += `<td>${mark(subjData.ia)}</td>`;
+          html += `<td>${mark(subjData.ut)}</td>`;
+          html += `<td>${mark(subjData.exam)}</td>`;
+          html += `<td class="${fail ? 'ms-fail' : ''}">${totalCel}</td>`;
         }
       } else if (isAgg) {
         // Senior scheme aggregate: — | Total
-        html += `<td style="color:#aaa">—</td>`;
-        html += `<td class="${fail ? 'ms-fail' : ''}">${total || '—'}</td>`;
+        html += `<td style="color:#aaa">${ftEmpty ? '' : '—'}</td>`;
+        html += `<td class="${fail ? 'ms-fail' : ''}">${totalCel}</td>`;
       } else {
         // Senior scheme leaf subject: IA | Exam | Total
-        html += `<td>${subjData.ia !== undefined ? subjData.ia : '—'}</td>`;
-        html += `<td>${subjData.exam !== undefined ? subjData.exam : '—'}</td>`;
-        html += `<td class="${fail ? 'ms-fail' : ''}">${total || '—'}</td>`;
+        html += `<td>${mark(subjData.ia)}</td>`;
+        html += `<td>${mark(subjData.exam)}</td>`;
+        html += `<td class="${fail ? 'ms-fail' : ''}">${totalCel}</td>`;
       }
     }
 
@@ -474,12 +485,16 @@ function buildRows(list, subjects, config, isStandard, termKey) {
     // displays a rank number, even if stale data carried one.
     const rank       = pass ? (termData.rank || '—') : '—';
 
-    html += `<td class="ms-grand-total">${grandTotal}</td>`;
+    html += `<td class="ms-grand-total">${ftEmpty ? '' : grandTotal}</td>`;
     // Reduced-subject students: suppress % (misleading against the full-class
     // max). Helper is defined in render.js, loaded on the same pages.
-    html += `<td>${(typeof isReducedSubjectStudent === 'function' && isReducedSubjectStudent(data.student && data.student.name)) ? '—' : formatPct(pct) + '%'}</td>`;
-    html += `<td class="ms-rank">${rank}</td>`;
-    html += `<td class="${pass ? 'ms-pass' : 'ms-fail-result'}">${result}</td>`;
+    const pctCell = (typeof isReducedSubjectStudent === 'function' && isReducedSubjectStudent(data.student && data.student.name))
+      ? '—' : formatPct(pct) + '%';
+    html += `<td>${ftEmpty ? '' : pctCell}</td>`;
+    html += `<td class="ms-rank">${ftEmpty ? '' : rank}</td>`;
+    // Result is a whole-year judgment — it stays blank until Term 2 is
+    // assessed rather than printing a PASS earned entirely on Half Yearly.
+    html += `<td class="${ftEmpty ? '' : (pass ? 'ms-pass' : 'ms-fail-result')}">${ftEmpty ? '' : result}</td>`;
     html += '</tr>';
   });
 
@@ -490,6 +505,11 @@ function buildRows(list, subjects, config, isStandard, termKey) {
 function buildAverageRow(list, subjects, config, isStandard, termKey) {
   const n = list.length;
   if (!n) return '';
+
+  // Every student's Term 2 unassessed → averaging produces a row of 0.0s under
+  // an otherwise blank table. Blank the figures and say why instead.
+  const allFtEmpty = termKey === 'finalTerm' &&
+    list.every(d => (d.finalTerm?.grandTotal || 0) === 0);
 
   const sums = {};
   for (const subj of subjects) sums[subj.key] = { ia: 0, ut: 0, exam: 0, total: 0 };
@@ -508,30 +528,32 @@ function buildAverageRow(list, subjects, config, isStandard, termKey) {
     }
   }
 
-  const fmt = v => Number.isFinite(v) ? (Math.round(v * 10) / 10).toFixed(1) : '—';
+  const fmt = v => allFtEmpty ? '' : (Number.isFinite(v) ? (Math.round(v * 10) / 10).toFixed(1) : '—');
 
   let html = '<tr>';
-  html += '<td colspan="3" style="text-align:right;padding-right:6px;font-weight:700">Class Average</td>';
+  html += `<td colspan="3" style="text-align:right;padding-right:6px;font-weight:700">${
+    allFtEmpty ? 'Class Average — Term 2 not yet assessed' : 'Class Average'}</td>`;
 
   for (const subj of subjects) {
     const s   = sums[subj.key];
     const isAgg = subj.isAggregate;
+    const dash = allFtEmpty ? '' : '—';
     if (isStandard) {
       if (isAgg) {
-        html += `<td>—</td><td>${fmt(s.total / n)}</td>`;
+        html += `<td>${dash}</td><td>${fmt(s.total / n)}</td>`;
       } else {
         html += `<td>${fmt(s.ia / n)}</td><td>${fmt(s.ut / n)}</td><td>${fmt(s.exam / n)}</td><td>${fmt(s.total / n)}</td>`;
       }
     } else if (isAgg) {
-      html += `<td>—</td><td>${fmt(s.total / n)}</td>`;
+      html += `<td>${dash}</td><td>${fmt(s.total / n)}</td>`;
     } else {
       html += `<td>${fmt(s.ia / n)}</td><td>${fmt(s.exam / n)}</td><td>${fmt(s.total / n)}</td>`;
     }
   }
 
   html += `<td>${fmt(grandTotalSum / n)}</td>`;
-  html += `<td>${formatPct(pctSum / n)}%</td>`;
-  html += '<td>—</td><td>—</td>';
+  html += `<td>${allFtEmpty ? '' : formatPct(pctSum / n) + '%'}</td>`;
+  html += `<td>${allFtEmpty ? '' : '—'}</td><td>${allFtEmpty ? '' : '—'}</td>`;
   html += '</tr>';
 
   return html;
