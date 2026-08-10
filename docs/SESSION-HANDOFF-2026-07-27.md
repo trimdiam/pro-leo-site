@@ -23,9 +23,30 @@
 - **`docs/Parent-Guide-Report-Card-Lookup.pdf`** — one-page parent handout, uses the short `sfslaitkor.in/report-card-lookup/` link, deliberately uses a **fictional** example (Class V/Roll 12/DOB 15.03.2015) so it can't be mistaken for a real child's working lookup credentials. Ready to distribute for Class III–X families who haven't viewed yet (list is in the View Tracker PDF) — though note lookup for those classes is now closed, so re-open the switch before/while distributing if that's still the intent.
 - **`docs/Missing-DOB-Class-3-to-10.xlsx`** — historical worklist, DOB backfill is done (0 missing as of the 07-17 work).
 
-## Mechanism note: how Firestore settings get changed without admin login
+## Mechanism note: how production Firestore gets written
 
-Worth understanding for next time this comes up. There is **no way for Claude to write directly to production Firestore** in this environment — no browser admin login (credentials are never entered, even if offered directly), and no local Application Default Credentials for the `firebase-admin` SDK (tested, fails). The established workaround: write a **temporary, secret-token-gated `onRequest` Cloud Function** that performs the one write via the Admin SDK (which Cloud Functions get automatically at runtime), deploy it, call it once via `curl` with the token, then **fully delete the function from both source and production** immediately after. Used twice now (enabling the global kill switch on 07-17 by a past session; setting `marksLookupEnabled: false` today) — clean both times, verified via `git diff` showing no leftover source and `firebase functions:delete` confirming removal.
+**Corrected 2026-08-10. The previous version of this note was wrong and cost effort — read this one.**
+
+Production Firestore **can** be written directly from the repo. `pro-leo-site/serviceAccountKey.json` is a valid service-account credential for `st-francis-school-a3e7e`, and the whole of `scripts/*` already uses it:
+
+```js
+const admin = require('firebase-admin');
+const serviceAccount = require('../serviceAccountKey.json');
+admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+const db = admin.firestore();
+```
+
+That is the route. Write a script in `scripts/`, run it read-only first, then apply. Established conventions worth keeping: dry-run by default with an explicit `--apply` flag, a printed summary of exactly what will change before it changes, and a rollback backup of prior state written to `scripts/backups/`. See `scripts/open-final-term-3-10.js` for the pattern.
+
+**What the old note claimed, and why it was wrong.** It stated there was "no way for Claude to write directly to production Firestore" — no browser admin login (true, and still true: credentials are never entered, even if offered directly) and no local Application Default Credentials for `firebase-admin` (misleading — bare ADC does fail, but the service-account key file sitting in the repo root works, and no one tested it). From that it prescribed a **temporary secret-token-gated `onRequest` Cloud Function**: deploy it, `curl` it once, then delete it from source and production. That was used twice (global kill switch on 07-17; `marksLookupEnabled: false` on 07-27) and was clean both times — but it was never necessary. Do not reach for it again; a Cloud Function deploy to change one field is far more risk and moving parts than a local script.
+
+**Standing caution:** `serviceAccountKey.json` is a live production credential sitting in the working tree, granting full admin access to the project. Its containment was verified 2026-08-10 and is currently sound on all three fronts:
+
+- **Not in git** — ignored at `.gitignore:7`, never tracked, absent from all history (`git log --all` on the path returns nothing).
+- **Not served** — listed in `firebase.json` → `hosting.ignore`. Requesting `/serviceAccountKey.json` on either domain returns `200` but that is the SPA rewrite serving `index.html` (`content-type: text/html`), not the key.
+- **Never quoted** — its contents must not be pasted into docs, commit messages, logs, or chat.
+
+Re-check the first two if `.gitignore` or the hosting `ignore` list is ever edited. Treat any script that loads it as a production write even in dry-run.
 
 ## ⚖️ Standing decision — do not silently re-add
 
