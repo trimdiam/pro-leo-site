@@ -42,6 +42,46 @@
        No defer: must run before app-logic.js fires onAuthStateChanged. -->
   <script src="session-coordinator.js"></script>
 
+  <!-- Script preload hints: 31 of the 33 script tags sit in the last 10% of this
+       421KB document, so the parser did not discover them until it had read the
+       whole thing — measured ~2.3s of queue time before those requests even
+       started, on files that then download in 1-15ms. These hints let the
+       preload scanner fetch them immediately, in parallel with HTML parsing.
+       Fetch timing only: defer/module execution order is completely unchanged.
+       Keep each href byte-identical to the script's src (query string included)
+       or the browser treats it as a different URL and fetches the file twice. -->
+  <link rel="modulepreload" href="app-logic.js?v=17">
+  <link rel="modulepreload" href="office-fees.js">
+  <link rel="modulepreload" href="office-notifications.js">
+  <link rel="modulepreload" href="admin-admissions.js">
+  <link rel="modulepreload" href="report-card-admin-init.js">
+  <link rel="modulepreload" href="report-card-student-init.js">
+  <link rel="modulepreload" href="student-progress-init.js">
+  <link rel="modulepreload" href="exam-schedule.js">
+  <link rel="preload" as="script" href="config.js">
+  <link rel="preload" as="script" href="script.js">
+  <link rel="preload" as="script" href="sidebar-swipe.js">
+  <link rel="preload" as="script" href="capacitor-push.js?v=2026-05-23">
+  <link rel="preload" as="script" href="capacitor-native.js?v=2026-06-02">
+  <link rel="preload" as="script" href="routine-push-test.js">
+  <link rel="preload" as="script" href="teacher-attendance-guard.js">
+  <link rel="preload" as="script" href="staff-attendance.js?v=2026-06-02b">
+  <link rel="preload" as="script" href="staff-attendance-admin.js?v=2026-06-02b">
+  <link rel="preload" as="script" href="staff-attendance-report.js?v=2026-06-02b">
+  <link rel="preload" as="script" href="office-attendance.js?v=2026-06-03">
+  <link rel="preload" as="script" href="view-refresh.js">
+  <link rel="preload" as="script" href="rc-class-guard.js">
+  <link rel="preload" as="script" href="homepage-content-fix.js">
+  <link rel="preload" as="script" href="capacitor-back.js">
+  <link rel="preload" as="script" href="Sfs-report-card/config.js?v=1">
+  <link rel="preload" as="script" href="back-button.js">
+  <link rel="preload" as="script" href="login-provisioning-fix.js?v=2026-06-02">
+  <link rel="preload" as="script" href="teacher-export.js?v=2026-06-02">
+  <link rel="preload" as="script" href="single-session.js?v=2026-06-02d">
+  <link rel="preload" as="script" href="single-session-admin.js?v=2026-06-02c">
+  <link rel="preload" as="script" href="sibling-system.js">
+  <link rel="preload" as="script" href="notification-center.js">
+
 </head>
 <body>
 
