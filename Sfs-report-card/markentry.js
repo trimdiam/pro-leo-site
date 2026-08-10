@@ -1076,20 +1076,27 @@ $('btnConfirmSubmit').addEventListener('click', async () => {
     if (isShared && !collected) return;
 
     if (isGrade) {
-      // Grade subject: write coScholastic[key].{slot} to BOTH term docs, plus the
-      // submission flag (keyed by subjectKey, same as scholastic subjects so the
-      // subject-teacher dashboard shows "Submitted").
+      // Grade subject: the GRADE goes to both term docs (shared store — readers
+      // take hyData.coScholastic and fall back to ftData, so both must carry it).
+      // The SUBMISSION FLAG is term-scoped and must land ONLY on the term being
+      // entered. Writing it to both was a real bug: submitting a co-scholastic
+      // grade for Half Yearly also marked that subject "Submitted" for Final
+      // Term, so FT opened showing subjects already submitted with no T2 grade
+      // behind them (1,423 such flags had to be cleaned out on 2026-08-10).
       const grade = collected ? collected.grade || '' : '';
       const leaf  = { [slot]: grade };
       if (collected?.enteredBy) leaf.enteredBy = collected.enteredBy;
       for (const t of ['HY', 'FT']) {
         const ref = db.collection('marks').doc(`${classId}_${t}`).collection('students').doc(sid);
-        batch.set(ref, {
-          coScholastic:      { [subjectKey]: leaf },
-          lastUpdatedBy:     ME.user.uid,
-          lastUpdatedAt:     stamp,
-          submittedSubjects: { [submitKey]: { by: ME.user.uid, at: stamp, status: 'submitted' } }
-        }, { merge: true });
+        const payload = {
+          coScholastic:  { [subjectKey]: leaf },
+          lastUpdatedBy: ME.user.uid,
+          lastUpdatedAt: stamp
+        };
+        if (t === term) {
+          payload.submittedSubjects = { [submitKey]: { by: ME.user.uid, at: stamp, status: 'submitted' } };
+        }
+        batch.set(ref, payload, { merge: true });
       }
       return;
     }

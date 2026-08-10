@@ -1255,6 +1255,44 @@ async function lookupRecordView(ref, existingData) {
   }
 }
 
+// Strips Final Term content from a marks doc until that term is locked.
+//
+// releasedToStudent lives on the _FT doc and gates the WHOLE annual card, so it
+// has been true for every III-X student since the Half-Yearly release. Once
+// Final Term entry opened (2026-08-10), that flag alone would have exposed each
+// Term 2 mark to parents the moment a teacher typed it - unreviewed, unlocked,
+// and with a half-filled term producing a nonsense percentage and result.
+//
+// The class-teacher lock is the review gate, so Term 2 stays hidden until then.
+// Blanking the FT fields drives grandTotal to 0, which the report card renderer
+// already treats as "term not assessed" and blanks throughout - the same path
+// that has rendered these half-yearly-only cards since July.
+//
+// Mirrors gateFinalTerm() in report-card-student-iiix.js. Keep the two in sync.
+// Half-Yearly data is never touched.
+function lookupGateFinalTerm(ftData) {
+  if (!ftData || ftData.status === "locked") return ftData;
+
+  const gated = { ...ftData, academics: {} };
+
+  if (ftData.coScholastic) {
+    gated.coScholastic = {};
+    for (const [k, v] of Object.entries(ftData.coScholastic)) {
+      gated.coScholastic[k] = { ...v, T2: "" };
+    }
+  }
+  if (ftData.attendance) {
+    const rest = { ...ftData.attendance };
+    delete rest.ftPresent;
+    delete rest.ftTotal;
+    gated.attendance = rest;
+  }
+  if (ftData.remarks) gated.remarks = { ...ftData.remarks, finalTerm: "" };
+  if (ftData.rank) gated.rank = { ...ftData.rank, ftRank: null };
+
+  return gated;
+}
+
 exports.lookupReportCard = onCall(
   { region: "asia-south1" },
   async (request) => {
@@ -1329,12 +1367,14 @@ exports.lookupReportCard = onCall(
     if (!ftSnap.exists || ftSnap.data().releasedToStudent !== true) {
       throw new HttpsError("failed-precondition", "No released report card found for this student yet.");
     }
-    const ftData = ftSnap.data();
+    const rawFtData = ftSnap.data();
+    const ftData = lookupGateFinalTerm(rawFtData);
     let hyData = {};
     const hySnap = await db.collection("marks").doc(`${classId}_HY`).collection("students").doc(studentId).get();
     if (hySnap.exists) hyData = hySnap.data();
 
-    await lookupRecordView(ftSnap.ref, ftData);
+    // View receipt is recorded against the real stored doc, not the gated copy.
+    await lookupRecordView(ftSnap.ref, rawFtData);
 
     return {
       system: "marks",

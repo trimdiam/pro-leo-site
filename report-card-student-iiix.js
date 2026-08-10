@@ -43,6 +43,45 @@ function resolveClassId(classRaw, section) {
 const NOT_RELEASED_MSG =
   'No report card has been released for you yet. Please check back after your results are published.';
 
+/**
+ * Strips Final Term content from a marks doc until that term is actually locked.
+ *
+ * `releasedToStudent` lives on the _FT doc and gates the WHOLE annual card, so it
+ * was already true for every III–X student from the Half-Yearly release. Once
+ * Final Term mark entry opened (2026-08-10) that flag alone would have shown
+ * students each Term 2 mark the moment a teacher typed it — before review, before
+ * the class teacher locked anything, and with a half-filled term producing a
+ * nonsense percentage and result.
+ *
+ * The class-teacher lock (status === 'locked') is the review gate, so Term 2 stays
+ * hidden until then. With the FT fields blanked, grandTotal computes to 0 and the
+ * existing "term not assessed" handling in render.js blanks Term 2 throughout the
+ * card — the same path that has been rendering these half-yearly-only cards since
+ * July, so released cards look exactly as they do today.
+ *
+ * Half-Yearly data is never touched by this.
+ */
+export function gateFinalTerm(ftData) {
+  if (!ftData || ftData.status === 'locked') return ftData;
+
+  const gated = { ...ftData, academics: {} };
+
+  if (ftData.coScholastic) {
+    gated.coScholastic = {};
+    for (const [k, v] of Object.entries(ftData.coScholastic)) {
+      gated.coScholastic[k] = { ...v, T2: '' };
+    }
+  }
+  if (ftData.attendance) {
+    const { ftPresent, ftTotal, ...rest } = ftData.attendance;
+    gated.attendance = rest;
+  }
+  if (ftData.remarks)  gated.remarks = { ...ftData.remarks, finalTerm: '' };
+  if (ftData.rank)     gated.rank    = { ...ftData.rank, ftRank: null };
+
+  return gated;
+}
+
 // Opens the III–X report card using the existing reportcard.html + render.js.
 // Mirrors the admin path (arcViewReportCard): stash the data in sessionStorage,
 // then open reportcard.html. New tab on desktop (inherits sessionStorage),
@@ -123,7 +162,7 @@ export async function renderClassIIIToXReportCard(root, studentId, classRaw, sec
       return;
     }
 
-    const ftData = ftSnap.data();
+    const ftData = gateFinalTerm(ftSnap.data());
     let hyData = {};
     try {
       const hySnap = await getDoc(doc(db, 'marks', `${classId}_HY`, 'students', studentId));
