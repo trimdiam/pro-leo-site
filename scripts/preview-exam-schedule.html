@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- Local-only render harness for exam-schedule.js. Not deployed (scripts/** is
+     in firebase.json hosting.ignore). Lets the routine be eyeballed without
+     logging into a portal. -->
+<html><head><meta charset="utf-8"><title>Exam schedule preview</title>
+<style>
+  :root { --accent-dark:#4a3b2a; --accent:#b08d57; --primary:#e0d5c0; --bg:#faf7f2; --text:#333; --text-light:#888; }
+  body { font-family: system-ui, sans-serif; background:#fff; margin:0; padding:20px; }
+  h3 { color:#4a3b2a; margin:24px 0 8px; font-size:14px; text-transform:uppercase; letter-spacing:.05em; }
+  .card { padding:20px; border:1px solid #e0d5c0; border-radius:12px; margin-bottom:24px; }
+</style></head>
+<body>
+  <h3>Admin view — all classes</h3>
+  <div class="card" id="a-exam-schedule-wrap"></div>
+  <h3>Teacher view — class VI and IX only</h3>
+  <div class="card" id="t-exam-schedule-wrap"></div>
+  <h3>Student view — class IX</h3>
+  <div class="card" id="s-exam-schedule-wrap"></div>
+  <h3>Student view — class X (not on this routine)</h3>
+  <div class="card" id="x-exam-schedule-wrap"></div>
+  <script>window._currentTeacherClasses = ['VI','IX']; window._currentStudentClass = 'IX';</script>
+  <script type="module">
+    import { renderFullSchedule, renderClassSchedule, renderTeacherSchedule } from '../exam-schedule.js';
+    renderFullSchedule('a-exam-schedule-wrap');
+    renderTeacherSchedule('t-exam-schedule-wrap', ['VI','IX']);
+    renderClassSchedule('s-exam-schedule-wrap', 'Class IX');
+    renderClassSchedule('x-exam-schedule-wrap', 'Class X');
+  </script>
+</body></html>

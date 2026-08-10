@@ -1,47 +1,53 @@
-// exam-schedule.js — Half-Yearly Examination Schedule 2026-27
+// exam-schedule.js — Unit Test (Final Examination) Schedule 2026-27
 // Renders the exam timetable into any container by class.
 // Called by teacher portal (filtered to their class) and admin/student portals.
+//
+// Updated 2026-08-10: replaced the completed Half-Yearly schedule (June 2026)
+// with the 2nd Unit Test routine (September 2026), transcribed from the signed
+// hard-copy routine issued by the school.
+//
+// NOTE: the issued routine covers Classes III-IX only — Class X is not on it,
+// so it has been removed from EXAM_CLASSES. Class X students see the
+// "not available for your class" message until an X routine is issued.
 
-const EXAM_TITLE = 'Half-Yearly Examination 2026-27';
+const EXAM_TITLE = 'Unit Test — Final Examination 2026-27';
 const EXAM_NOTES = [
-  { label: 'Submission of Question Paper', value: '05-06-2026' },
-  { label: 'Summer Break',                 value: '01-07-2026 till 10-07-2026' },
-  { label: 'School Resume',                value: '13-07-2026' }
+  { label: 'Timing', value: '8:20 am – 9:55 am' }
 ];
 
 // Classes available in this schedule
-const EXAM_CLASSES = ['III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+const EXAM_CLASSES = ['III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
 
 // Full schedule — each row is one date, subjects keyed by class
 const EXAM_ROWS = [
-  { date: '15-06-2026', day: 'Monday',
-    subjects: { III:'SOCIAL', IV:'SCIENCE', V:'ENG-I', VI:'SCIENCE', VII:'SCIENCE', VIII:'ENG-I', IX:'MATHS', X:'MATHS' } },
-  { date: '16-06-2026', day: 'Tuesday',
-    subjects: { VI:'HINDI', IX:'KHASI', X:'KHASI' } },
-  { date: '17-06-2026', day: 'Wednesday',
-    subjects: { III:'ENG-II', IV:'COMP', V:'COMP', VI:'ENG-II', VII:'ENG-I', VIII:'GEO', IX:'H.EDU', X:'H.EDU' } },
-  { date: '18-06-2026', day: 'Thursday',
-    subjects: { IX:'PHYSICS', X:'PHYSICS' } },
-  { date: '19-06-2026', day: 'Friday',
-    subjects: { III:'ENG-I', IV:'ENG-II', V:'SCIENCE', VI:'HISTORY', VII:'HISTORY', VIII:'HISTORY', IX:'ENG-II', X:'ENG-II' } },
-  { date: '20-06-2026', day: 'Saturday', subjects: {} },
-  { date: '21-06-2026', day: 'Sunday',   subjects: {} },
-  { date: '22-06-2026', day: 'Monday',
-    subjects: { III:'MATHS', IV:'SOCIAL', V:'MATHS', VI:'MATHS', VII:'MATHS', VIII:'SCIENCE', IX:'GEO', X:'GEO' } },
-  { date: '23-06-2026', day: 'Tuesday',
-    subjects: { VI:'KHASI', VII:'KHASI', VIII:'CIVICS', IX:'ENG-I', X:'ENG-I' } },
-  { date: '24-06-2026', day: 'Wednesday',
-    subjects: { III:'HINDI', IV:'ENG-I', V:'ENG-II', VI:'GEO', VII:'GEO', VIII:'H.EDU', IX:'CIVICS', X:'CIVICS' } },
-  { date: '25-06-2026', day: 'Thursday',
-    subjects: { VI:'CIVICS', VII:'COMP', VIII:'ENG-II', IX:'CHEMISTRY', X:'CHEMISTRY' } },
-  { date: '26-06-2026', day: 'Friday',
-    subjects: { III:'KHASI', IV:'KHASI', V:'KHASI', VI:'H.EDU', VII:'ENG-II', VIII:'COMP', IX:'BIOLOGY', X:'BIOLOGY' } },
-  { date: '27-06-2026', day: 'Saturday', subjects: {} },
-  { date: '28-06-2026', day: 'Sunday',   subjects: {} },
-  { date: '29-06-2026', day: 'Monday',
-    subjects: { III:'SCIENCE', IV:'MATHS', V:'SOCIAL', VI:'ENG-I', VII:'CIVICS', VIII:'MATHS', IX:'HISTORY', X:'HISTORY' } },
-  { date: '30-06-2026', day: 'Tuesday',
-    subjects: { IV:'HINDI', V:'HINDI', VI:'COMP', VII:'H.EDU', VIII:'KHASI', IX:'ECONOMICS', X:'ECONOMICS' } }
+  { date: '07-09-2026', day: 'Monday',
+    subjects: { III:'SCIENCE', IV:'KHASI', V:'SOCIAL', VI:'SCIENCE', VII:'MATHS', VIII:'SCIENCE', IX:'ENG-I' } },
+  { date: '08-09-2026', day: 'Tuesday',
+    subjects: { III:'HINDI', IV:'COMP', V:'HINDI', VI:'HINDI', VII:'CIVICS', VIII:'ENG-II', IX:'KHASI' } },
+  { date: '09-09-2026', day: 'Wednesday',
+    subjects: { III:'KHASI', IV:'SCIENCE', V:'SCIENCE', VI:'HISTORY', VII:'COMP', VIII:'HISTORY', IX:'CHEMISTRY' } },
+  { date: '10-09-2026', day: 'Thursday',
+    subjects: { III:'ENG-II', IV:'ENG-II', V:'ENG-II', VI:'KHASI', VII:'KHASI', VIII:'COMP', IX:'ENG-II' } },
+  { date: '11-09-2026', day: 'Friday',
+    subjects: { III:'ENG-I', IV:'HINDI', V:'COMP', VI:'ENG-I', VII:'ENG-I', VIII:'ENG-I', IX:'H.EDU' } },
+  { date: '12-09-2026', day: 'Saturday', subjects: {} },
+  { date: '13-09-2026', day: 'Sunday',   subjects: {} },
+  { date: '14-09-2026', day: 'Monday',
+    subjects: { III:'SOCIAL', IV:'SOCIAL', V:'KHASI', VI:'MATHS', VII:'SCIENCE', VIII:'MATHS', IX:'PHYSICS' } },
+  { date: '15-09-2026', day: 'Tuesday',
+    subjects: { III:'MATHS', IV:'ENG-I', V:'ENG-I', VI:'GEO', VII:'GEO', VIII:'GEO', IX:'BIOLOGY' } },
+  { date: '16-09-2026', day: 'Wednesday',
+    subjects: { IV:'MATHS', V:'MATHS', VI:'COMP', VII:'HISTORY', VIII:'CIVICS', IX:'CIVICS' } },
+  { date: '17-09-2026', day: 'Thursday',
+    subjects: { VI:'H.EDU', VII:'H.EDU', VIII:'H.EDU', IX:'GEO' } },
+  { date: '18-09-2026', day: 'Friday',
+    subjects: { VI:'ENG-II', VII:'ENG-II', VIII:'KHASI', IX:'ECONOMICS' } },
+  { date: '19-09-2026', day: 'Saturday', subjects: {} },
+  { date: '20-09-2026', day: 'Sunday',   subjects: {} },
+  { date: '21-09-2026', day: 'Monday',
+    subjects: { VI:'CIVICS', IX:'MATHS' } },
+  { date: '22-09-2026', day: 'Tuesday',
+    subjects: { IX:'HISTORY' } }
 ];
 
 // Subject colour map — matches the physical timetable colours
