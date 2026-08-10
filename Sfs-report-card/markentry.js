@@ -1225,6 +1225,21 @@ async function renderCTDashboard() {
 
 $('ctBtnReviewHY').addEventListener('click', () => openStudentList('HY'));
 $('ctBtnReviewFT').addEventListener('click', () => openStudentList('FT'));
+
+// Attendance is NOT part of subject marking, so it must not sit behind the
+// "Review & Lock" button — that stays disabled until every subject is
+// submitted, which meant a class teacher could not enter Final Term attendance
+// until all FT marks were in. These open the attendance grid for their term
+// directly. Loading goes through openStudentList so ME.ctData and
+// ME.activeClass.term are populated exactly as the existing grid expects; a
+// term whose records are locked still renders read-only (see
+// renderAttendanceGrid), so Half Yearly cannot be edited through this.
+async function openAttendanceForTerm(term) {
+  await openStudentList(term);
+  openClassAttendance();
+}
+$('ctBtnAttHY')?.addEventListener('click', () => openAttendanceForTerm('HY'));
+$('ctBtnAttFT')?.addEventListener('click', () => openAttendanceForTerm('FT'));
 $('ctBtnLogout').addEventListener('click', () => auth.signOut());
 $('ctBtnRefresh').addEventListener('click', async () => { await renderCTDashboard(); });
 
