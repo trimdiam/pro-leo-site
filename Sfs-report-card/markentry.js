@@ -2785,6 +2785,12 @@ async function generateClassMarksheet() {
     // Sort by roll number
     classList.sort((a, b) => (a.student.rollNo || 999) - (b.student.rollNo || 999));
 
+    // Set the term explicitly rather than relying on marksheet.js's default.
+    // This button is only revealed once FT is locked, so it is always the Final
+    // Term sheet — but viewCTMarksheet writes this same key, so a teacher who
+    // viewed the Half Yearly CT marksheet first would otherwise leave
+    // 'halfYearly' in sessionStorage and get HY data under an FT heading.
+    sessionStorage.setItem('sfds_marksheetTerm', 'finalTerm');
     sessionStorage.setItem('sfds_classList', JSON.stringify(classList));
     window.open('marksheet.html', '_blank');
   } catch(e) {
