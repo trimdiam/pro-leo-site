@@ -73,7 +73,6 @@
   <link rel="preload" as="script" href="rc-class-guard.js">
   <link rel="preload" as="script" href="homepage-content-fix.js">
   <link rel="preload" as="script" href="capacitor-back.js">
-  <link rel="preload" as="script" href="Sfs-report-card/config.js?v=1">
   <link rel="preload" as="script" href="back-button.js">
   <link rel="preload" as="script" href="login-provisioning-fix.js?v=2026-06-02">
   <link rel="preload" as="script" href="teacher-export.js?v=2026-06-02">
@@ -4517,7 +4516,16 @@
     <script defer src="rc-class-guard.js"></script>
     <script defer src="homepage-content-fix.js"></script>
     <script defer src="capacitor-back.js"></script>
-<script defer src="Sfs-report-card/config.js?v=1"></script>
+<!-- Sfs-report-card/config.js is NOT loaded here on purpose. It declares a
+     top-level `const CONFIG`, and config.js above already declares the same
+     binding, so as a second classic script it threw
+     "Identifier 'CONFIG' has already been declared" and its whole body never
+     ran - the page has always been running on config.js alone. The two files
+     are identical except that this one carries passmark:40 for Classes 3-8,
+     which config.js leaves undefined and every caller resolves via
+     `cfg.passmark || 40`. Removing the dead tag is therefore behaviour-neutral
+     and clears the console error. If a report-card feature here ever needs the
+     Sfs config, fix the duplicate binding first - do not just re-add this. -->
 <script type="module" src="app-logic.js?v=17"></script>
 <script type="module" src="office-fees.js"></script>
 <script type="module" src="office-notifications.js"></script>
