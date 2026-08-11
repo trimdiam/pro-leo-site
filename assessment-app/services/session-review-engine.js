@@ -1,4 +1,4 @@
-import { getAllSessions, saveSession, getSession } from './session-storage.js';
+import { getAllSessions, saveSessionAndConfirm, getSession } from './session-storage.js';
 import { loadStudentsForClass } from './student-loader.js';
 import { loadCriteriaForSubject } from './criteria-loader.js';
 import { getSubjectsForClass, loadSubjects } from './subject-loader.js';
@@ -81,7 +81,14 @@ export async function updateSessionStatus(sessionId, newStatus) {
   stored.session.updated_at = new Date().toISOString();
 
   try {
-    saveSession(stored.session, stored.marks);
+    // Waits for the actual Firestore outcome (not fire-and-forget) — this is
+    // the review/lock step, now gated by the class-teacher-only permission
+    // in firestore.rules, so a real permission denial must be reported back
+    // instead of silently failing server-side while the UI shows success.
+    const saveResult = await saveSessionAndConfirm(stored.session, stored.marks);
+    if (!saveResult.ok) {
+      return { ok: false, error: saveResult.error || 'Could not save the status change.' };
+    }
 
     // Every status change recomputes analytics + persists every student
     // profile in this class so the portal always reflects current data,

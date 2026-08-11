@@ -967,7 +967,7 @@ function renderAdminSessions() {
       render();
     },
     onStatusChange: async (sessionId, newStatus) => {
-      const result = updateSessionStatus(sessionId, newStatus);
+      const result = await updateSessionStatus(sessionId, newStatus);
       if (result.ok) {
         clearAggregationCache();
         render();
@@ -1049,8 +1049,8 @@ async function renderAdminReview() {
       state.reviewSessionId = null;
       render();
     },
-    onLock: () => {
-      const result = updateSessionStatus(data.session.session_id, SESSION_STATUS.LOCKED);
+    onLock: async () => {
+      const result = await updateSessionStatus(data.session.session_id, SESSION_STATUS.LOCKED);
       if (result.ok) {
         clearAggregationCache();
         data.session.status = SESSION_STATUS.LOCKED;
@@ -1059,8 +1059,8 @@ async function renderAdminReview() {
         alert(result.error);
       }
     },
-    onReopen: () => {
-      const result = updateSessionStatus(data.session.session_id, SESSION_STATUS.DRAFT);
+    onReopen: async () => {
+      const result = await updateSessionStatus(data.session.session_id, SESSION_STATUS.DRAFT);
       if (result.ok) {
         clearAggregationCache();
         data.session.status = SESSION_STATUS.DRAFT;
