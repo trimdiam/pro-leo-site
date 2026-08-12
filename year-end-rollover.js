@@ -55,9 +55,14 @@ export const ACADEMIC_FLAT = [
   'attendance_daily',
   'attendance_monthly',
   'assessment_sessions',
-  // Doc ids are `${term}_${class}` with no year, so without archiving+clearing
-  // here the next academic year's entries would overwrite this year's.
+  // These three carry no year in their doc ids — `${term}_${class}` for
+  // co-scholastic and term analytics, `${term}_${class}_${subject}` for class
+  // tests. Without archiving+clearing here the next academic year's entries
+  // would silently overwrite this year's, the same collision already fixed for
+  // report_cards.
   'coscholastic_marks',
+  'class_test_marks',
+  'term_analytics',
   'monthly_analytics',
   'weak_students',
   'student_profiles',
