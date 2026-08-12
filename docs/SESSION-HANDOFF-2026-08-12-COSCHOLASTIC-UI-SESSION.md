@@ -21,9 +21,10 @@ All work below is **committed, pushed and deployed**. Nothing is half-applied.
 | `f202620` | Stop tracking the firebase local deploy cache |
 | `59bca28` | **Fix: Arts & Craft no longer listed as co-scholastic for LKG/SKG** |
 | `57702a8` | Quick entry — one subject, one tap per student, plus a bulk fill |
+| `f60d0cf` | Kindergarten co-scholastic uses Science and Spelling |
 
-(Plus `ecdd6a4`, `2015c02`, `825413c`, `fa3f347`, `759bcad` — service-worker
-cache bumps, one per deploy.)
+(Plus `ecdd6a4`, `2015c02`, `825413c`, `fa3f347`, `759bcad`, `db1e2de` —
+service-worker cache bumps, one per deploy.)
 
 ---
 
@@ -173,14 +174,40 @@ to LKG/SKG without that check — the same copy-without-checking that produced t
 itself warning against adding LKG/SKG back without first removing `ART` from
 `subjects.json`. A comment in the file is what the next person will actually see.
 
-**"Neatness" was deliberately left.** It overlaps criterion `ART_C14`
-"Neatness / Cleanliness", but that is a criterion inside Arts rather than a
-second subject, and a general neatness-of-work grade is defensibly distinct.
-Change it if the school disagrees.
+A smaller overlap was noted at the time and deliberately left: co-scholastic
+"Neatness" against criterion `ART_C14` "Neatness / Cleanliness". It became moot
+for LKG/SKG later in the session — Neatness was replaced by Spelling for those
+classes (see below). It still stands for Class I/II, where it is harmless: they
+have no academic Arts, so `ART_C14` never appears on their card.
 
 No data risk: reads resolve through the registry, so a stored `arts_craft` value
 for a KG student stops being read rather than breaking anything, and
 `saveCoScholastic` uses `setDoc` without merge so the key drops on the next save.
+
+### Kindergarten now differs from Class I/II on two more subjects
+
+At the school's instruction, for **LKG/SKG only**: Aptitude → **Science**, and
+Neatness → **Spelling**. Class I/II keep all seven unchanged.
+
+| | Co-scholastic subjects |
+|---|---|
+| LKG / SKG | P.E., Singing, Discipline, **Science**, **Spelling**, Val. Edu./Catechism |
+| Class I / II | P.E., Singing, Discipline, Aptitude, Arts & Craft, Neatness, Val. Edu./Catechism |
+
+Both are **new keys** (`science`, `spelling`), not relabelled `gk` and
+`neatness`. Relabelling would have left one stored value meaning two different
+things depending on which class read it — a grade under `gk` rendering as
+"Aptitude" for Class I and "Science" for LKG. Free to do properly because
+nothing is entered yet.
+
+Adding Science was the obvious place to repeat the Arts mistake, so it was
+checked: LKG/SKG have no academic Science, so this is the only Science on a KG
+card. Verified across all four classes that nothing appears on both the academic
+and co-scholastic side, and that no keys collide.
+
+The Class III–X system is untouched — the `gk`/`neatness` entries in `config.js`
+and `Sfs-report-card/` belong to a separate report card keyed by class number,
+with no LKG/SKG entries at all.
 
 ---
 
@@ -252,6 +279,13 @@ still **unmeasured** — the previous handoff's Outstanding section covers Class
 I/II only, and that silence is not a clean bill of health.
 
 **Co-scholastic is still empty.** No grades entered for any class.
+
+**Should kindergarten Science and Spelling be academic instead?** As
+co-scholastic they carry one O–C letter per term and are **excluded from the
+overall average** — treated like Discipline, not like Literacy or Numeracy. If
+the school means them to be properly assessed and counted, they belong in
+`subjects.json` with criteria and fortnightly sessions instead. Raised, not
+answered. Far cheaper to settle now than after a term of grades exists.
 
 **Co-scholastic saves remain all-or-nothing per class+term.** `saveCoScholastic`
 writes the whole grid with `setDoc` and no merge. With quick entry encouraging
