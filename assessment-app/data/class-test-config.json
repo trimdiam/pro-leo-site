@@ -1,7 +1,12 @@
 {
-  "classes": ["Class I", "Class II"],
+  "_note": "Half-Yearly class test. Marks blend into the subject average at 30% against 70% assessment (gradeSubject in report-card-grade-engine.js) for every class listed here — LKG/SKG work exactly as Class I/II do. Subject ids are intersected with data/subjects.json, so each class only ever offers its own subjects: Hindi never appears for Class I, Literacy never appears for Class II.",
+  "classes": ["LKG", "SKG", "Class I", "Class II"],
   "terms": ["HY1", "HY2"],
   "subjects": {
+    "LIT":  { "subject_name": "Literacy", "max_marks": 30 },
+    "NUM":  { "subject_name": "Numeracy", "max_marks": 30 },
+    "RHST": { "subject_name": "Rhymes & Stories", "max_marks": 30 },
+    "ART":  { "subject_name": "Arts/Colouring", "max_marks": 30 },
     "ENG1": { "subject_name": "English I", "max_marks": 30 },
     "ENG2": { "subject_name": "English II", "max_marks": 30 },
     "MATH": { "subject_name": "Mathematics", "max_marks": 30 },
