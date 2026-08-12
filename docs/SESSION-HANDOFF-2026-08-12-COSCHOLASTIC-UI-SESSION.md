@@ -22,9 +22,14 @@ All work below is **committed, pushed and deployed**. Nothing is half-applied.
 | `59bca28` | **Fix: Arts & Craft no longer listed as co-scholastic for LKG/SKG** |
 | `57702a8` | Quick entry — one subject, one tap per student, plus a bulk fill |
 | `f60d0cf` | Kindergarten co-scholastic uses Science and Spelling |
+| `0206cb5` | **Admin-only lock for co-scholastic grades** — includes a `firestore.rules` change |
 
-(Plus `ecdd6a4`, `2015c02`, `825413c`, `fa3f347`, `759bcad`, `db1e2de` —
-service-worker cache bumps, one per deploy.)
+(Plus `ecdd6a4`, `2015c02`, `825413c`, `fa3f347`, `759bcad`, `db1e2de`,
+`4b1b9d0` — service-worker cache bumps, one per deploy.)
+
+**`0206cb5` is the only change this session that touched `firestore.rules`**, and
+therefore the only one deployed with `--only firestore:rules` rather than just
+hosting. Everything else was hosting alone.
 
 ---
 
@@ -256,22 +261,91 @@ and no horizontal scroll; the grid still fits at 1280.
 
 ---
 
-## 8. Outstanding
+## 8. Admin-only lock
 
-**Nothing in this session has been confirmed in the real app.** Four UI changes
-are now deployed but unobserved — none could be exercised without auth and
-Firestore, and screenshots were unavailable throughout. Everything was verified
-in an offline render harness against the real component, registry and roster,
-which is not the same thing.
+Co-scholastic had **no lifecycle at all**. Unlike `assessment_sessions`
+(draft → submitted → reviewed → locked), a `coscholastic_marks` doc had no
+status field, which meant three things nobody had written down:
 
-One check covers most of it, on a phone: open Co-Scholastic, pick a class,
-change the term (expect **one** panel, not two), tap a few grades in Quick
-entry, then switch to Full grid and confirm the same values are there.
+- Saved grades reach a report card **immediately**. Assessments only count when
+  reviewed/locked — the exact opposite model, and the asymmetry was undocumented.
+- The grid stayed editable **forever** by any class teacher of that class,
+  including after report cards were printed.
+- Every save **replaces the whole class+term grid** (`setDoc`, no merge). Two
+  people with the screen open means the second save silently discards all of the
+  first's work, not just the cells that clash. Still true.
+
+Now there is `status` — `'draft'` or `'locked'` — locked **admin only**, per
+instruction. A class teacher fills and refills freely; once locked they can read
+but not change, and they can never set or clear the flag themselves.
+`firestore.rules` splits create from update to enforce it: a teacher may not
+create an already-locked doc, may not update one whose stored status is locked,
+and may not change status at all. **Absent status reads as `'draft'`**, so docs
+written before this stay editable rather than becoming permanently locked.
+
+The control is a new **Co-Scholastic Locks** tab on the admin dashboard, one row
+per class+term. It has to live there: admins never see the entry screen, whose
+nav button is behind `isTeacher()` — the same constraint that ruled out the
+all-classes test account in §9.
+
+Three things that would otherwise have been bugs:
+- `setCoScholasticLock` uses **merge**. `saveCoScholastic` does a full `setDoc`
+  replace, so writing the lock the same way would have wiped the grades.
+- `saveCoScholastic` now **carries `status` forward**. `setDoc` replaces the
+  document, so omitting it would drop the field, read back as draft, and
+  silently clear an admin's lock.
+- A locked grid renders fully but accepts nothing, so the refusal is visible
+  before someone re-enters a class and only then hits a rejected save.
+
+This design turns out to match the house convention: `attendance_monthly` uses
+the same `status: draft|locked` pattern (`isMonthlyUpdateAllowed`, rules ~line
+459). That was found after the fact, not copied.
+
+**Verification status — read this before trusting the lock.** The client half is
+covered: a locked grid shows the banner with all 282 grade buttons, 6 bulk
+buttons and 282 selects disabled, save reading "Locked by admin", and clicking
+through it produced 0 writes against 1 for an open grid. **The rules half is
+not.** `scripts/coschol-emulator-e2e.mjs` needs Java and
+`@firebase/rules-unit-testing`; neither is available on the dev machine and the
+test deps are not in `package.json`. What production confirms so far is only
+that the rules **compiled and released**, and that an anonymous read of
+`coscholastic_marks` returns 403.
+
+The outstanding test, in order — step 5 is the only one that proves anything the
+harness did not:
+1. Admin → Co-Scholastic Locks. A row appears only once grades exist for that
+   class+term.
+2. Lock it; badge flips to LOCKED.
+3. Sign in as that class's teacher, open the same class+term.
+4. Expect banner, everything greyed, save reading "Locked by admin".
+5. **With the teacher's page still open**, have an admin unlock and relock, then
+   have the teacher save without reloading. That save must be rejected by the
+   server. If it succeeds, the rules are not enforcing and the UI is decoration.
+
+---
+
+## 9. Outstanding
+
+**The UI was opened and checked by the user, and reported working** — that
+covers the duplicate-panel fix, the layout, the frozen columns, quick entry and
+the subject lists. It was a "looks okay for now" pass, not a full data-entry
+session, and it happened **before** the admin lock (§8) existed.
+
+**The lock's rules half is still unproven.** See §8 for the exact five-step
+test; step 5 is the one that matters.
 
 **Whether the bulk fill is too frictionless is an open question**, and it can
 only be answered by watching a real teacher use it. If all six SKG subjects can
 be completed in under a minute without looking at a child, the uniform-grade
 warning is too soft.
+
+**Pre-existing bug found in passing, deliberately left alone.** The rules
+compiler warns `[W] 461:9 - Unused variable: tryingToUnlock`.
+`isMonthlyUpdateAllowed` in `firestore.rules` documents "unlock (locked→draft) →
+only super_admin", computes exactly that check, and never uses it — so any
+`admin` can unlock a locked `attendance_monthly` snapshot. Comment and code
+disagree. Untouched because it is attendance access control, unrelated to this
+session, and needs its own rules deploy and decision.
 
 **The gap diagnostic has never run against live data.** It needs the service
 account key and `npm install`. The assessment gaps for LKG/SKG are therefore
@@ -287,11 +361,14 @@ the school means them to be properly assessed and counted, they belong in
 `subjects.json` with criteria and fortnightly sessions instead. Raised, not
 answered. Far cheaper to settle now than after a term of grades exists.
 
-**Co-scholastic saves remain all-or-nothing per class+term.** `saveCoScholastic`
-writes the whole grid with `setDoc` and no merge. With quick entry encouraging
-subject-by-subject work, per-subject saves would fit the flow better and shrink
-the blast radius of a half-finished session. Not changed — it alters how partial
-data is written and deserves a deliberate decision.
+**Co-scholastic saves remain all-or-nothing per class+term, and concurrent saves
+clobber.** `saveCoScholastic` writes the whole grid with `setDoc` and no merge,
+so two people editing the same class means the second save discards the first's
+work entirely — not just the cells that clash. There is no conflict detection;
+the admin lock narrows the window but does not close it. With quick entry
+encouraging subject-by-subject work, per-subject saves would fit the flow better
+and shrink the blast radius. Not changed — it alters how partial data is written
+and deserves a deliberate decision.
 
 **A "mini admin" test account was requested and not built.** It cannot be done
 with data alone: a teacher role plus `tpClassTeacherOf` grants exactly one
