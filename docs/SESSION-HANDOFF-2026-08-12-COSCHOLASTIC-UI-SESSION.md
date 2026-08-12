@@ -19,6 +19,11 @@ All work below is **committed, pushed and deployed**. Nothing is half-applied.
 | `a58265e` | Half-Yearly class test offered for LKG and SKG |
 | `e00def8` | **Fix: rollover archives `class_test_marks` and `term_analytics`** |
 | `f202620` | Stop tracking the firebase local deploy cache |
+| `59bca28` | **Fix: Arts & Craft no longer listed as co-scholastic for LKG/SKG** |
+| `57702a8` | Quick entry — one subject, one tap per student, plus a bulk fill |
+
+(Plus `ecdd6a4`, `2015c02`, `825413c`, `fa3f347`, `759bcad` — service-worker
+cache bumps, one per deploy.)
 
 ---
 
@@ -71,9 +76,10 @@ The name column is also capped below 1024px. Left at its natural 305px of
 nowrap it froze **half** the visible width at tablet size, which would have made
 things worse rather than better.
 
-**This does not make phone entry good.** It is still roughly one grade column at
-a time and still 329 taps. It stops a grade being entered against the wrong
-child. See Outstanding for the real fix.
+**This does not make phone entry good** — it stops a grade being entered against
+the wrong child, nothing more. The grid is no longer the primary way in: see
+§7 for quick entry, which was built later in the session. The grid and its
+frozen columns remain as the review view.
 
 ---
 
@@ -150,38 +156,122 @@ Two traps recorded in the script itself:
 
 ---
 
-## 6. Outstanding
+## 6. Arts was on the LKG/SKG card twice — fixed
 
-**Nothing in this session has been confirmed in the real app.** All three UI
-fixes are deployed but unobserved — they could not be exercised without auth and
-Firestore, and screenshots were unavailable. 30-second check: open
-Co-Scholastic, pick a class, change the term (expect **one** panel); on a phone
-scroll right to Neatness and down past row 10 (name and headers should hold).
+`ART` "Arts/Colouring" is a full **academic** subject for LKG/SKG in
+`subjects.json`: 14 criteria, criteria-scored fortnightly, counted in the
+overall average. Co-scholastic separately listed "Arts & Craft" as a letter
+grade explicitly excluded from that average. Same child, same card, two Arts
+marks on two different scales.
+
+Class I/II never hit this because `ART` is not academic for them, so the
+co-scholastic entry was the only Arts on their card. The list was copied across
+to LKG/SKG without that check — the same copy-without-checking that produced the
+7-subject assumption in the first place.
+
+`arts_craft` is now Class I/II only, and carries a `_why` note on the entry
+itself warning against adding LKG/SKG back without first removing `ART` from
+`subjects.json`. A comment in the file is what the next person will actually see.
+
+**"Neatness" was deliberately left.** It overlaps criterion `ART_C14`
+"Neatness / Cleanliness", but that is a criterion inside Arts rather than a
+second subject, and a general neatness-of-work grade is defensibly distinct.
+Change it if the school disagrees.
+
+No data risk: reads resolve through the registry, so a stored `arts_craft` value
+for a KG student stops being read rather than breaking anything, and
+`saveCoScholastic` uses `setDoc` without merge so the key drops on the next save.
+
+---
+
+## 7. Quick entry — the real fix for 336 dropdowns
+
+Entry was 336 `<select>`s for SKG (48 x 7 at the time), each needing an
+open-scroll-select. Quick entry mirrors `components/quick-entry-grid.js` rather
+than inventing a second pattern: **one subject at a time, every student on
+screen, six grade buttons per row**, one tap to set and the same tap again to
+clear. Reuses `.mark-scale`/`.mark-button` and the `.quick-*` classes so both
+entry screens feel identical and the 44px tap targets carry over. It is the
+default view; the full grid stays behind a toggle for review.
+
+**"Fill blanks with"** sets the whole class for a subject in one tap. It fills
+only **blank** cells — unlike `default-score-picker.js`, which pre-fills
+everything up front. A teacher who has already corrected individual students
+must never have that silently overwritten by a later tap on the bulk row.
+
+Roughly, for SKG's 282 grades: ~850 interactions before, 282 tapping each, ~62
+with the bulk fill and 20% exceptions.
+
+**The bulk fill is the 935-identical-4s mechanism.** That fabrication started as
+an unremarkable default-fill nobody looked at again, was submitted, and nearly
+fed a perfect fortnight into 55 report cards. So a subject that ends up entirely
+one grade now says so — "47 of 47 graded — every student is A+", in warning
+colour. It blocks nothing; it refuses to let it happen silently. **If entry
+turns out to be too frictionless in practice, this is the knob to turn.**
+
+Implementation notes worth keeping:
+- Neither view re-renders on a grade change — `onGradeChange` in `main.js`
+  deliberately does not call `render()`. The DOM is updated in place, which is
+  what lets the chosen subject survive every tap. Do not "fix" that by adding a
+  re-render.
+- Progress is **recomputed**, not incremented. A running counter drifts the
+  first time a cell is cleared.
+- A first version synced the grid's `<select>`s from the per-student tap handler
+  only, so anything written by the bulk fill showed as **blank** in the grid.
+  The sync is now one wholesale pass on view switch — one path, nothing for the
+  next writer to forget.
+
+Verified by driving the component against the real registry and 47-student SKG
+roster: tap sets and clears; bulk fill leaves an already-graded student
+untouched; subject switching preserves grades; all 282 cells agree between the
+two views in both directions; buttons are 45x44px at 375px with all six visible
+and no horizontal scroll; the grid still fits at 1280.
+
+---
+
+## 8. Outstanding
+
+**Nothing in this session has been confirmed in the real app.** Four UI changes
+are now deployed but unobserved — none could be exercised without auth and
+Firestore, and screenshots were unavailable throughout. Everything was verified
+in an offline render harness against the real component, registry and roster,
+which is not the same thing.
+
+One check covers most of it, on a phone: open Co-Scholastic, pick a class,
+change the term (expect **one** panel, not two), tap a few grades in Quick
+entry, then switch to Full grid and confirm the same values are there.
+
+**Whether the bulk fill is too frictionless is an open question**, and it can
+only be answered by watching a real teacher use it. If all six SKG subjects can
+be completed in under a minute without looking at a child, the uniform-grade
+warning is too soft.
 
 **The gap diagnostic has never run against live data.** It needs the service
 account key and `npm install`. The assessment gaps for LKG/SKG are therefore
 still **unmeasured** — the previous handoff's Outstanding section covers Class
 I/II only, and that silence is not a clean bill of health.
 
-**Arts is on the LKG/SKG card twice.** `ART` "Arts/Colouring" is a full academic
-subject for LKG/SKG — 14 criteria, criteria-scored, counts in the overall
-average — while co-scholastic separately adds "Arts & Craft" as a letter grade
-excluded from the average. Same child, same card, two Arts marks on two scales.
-Class I/II never hit this because `ART` is not academic for them; the
-co-scholastic list was copied across without that check. Smaller version:
-co-scholastic "Neatness" vs criterion `ART_C14` "Neatness / Cleanliness".
-**Not fixed** — it is a school-convention call, and a one-line edit to
-`coscholastic.json` either way.
-
 **Co-scholastic is still empty.** No grades entered for any class.
 
-**Phone entry is still 329 taps.** The real fix is subject-at-a-time entry: pick
-one subject, get a single column of students, with a "set all to…" default. No
-horizontal scrolling at any width, and it matches how a teacher actually
-grades — one subject across the class, not one child across seven subjects. The
-storage format does not change; `coscholastic_marks` is already keyed by student
-and subject. Decide first whether saves stay all-or-nothing per class+term or
-become per-subject. **Not started.**
+**Co-scholastic saves remain all-or-nothing per class+term.** `saveCoScholastic`
+writes the whole grid with `setDoc` and no merge. With quick entry encouraging
+subject-by-subject work, per-subject saves would fit the flow better and shrink
+the blast radius of a half-finished session. Not changed — it alters how partial
+data is written and deserves a deliberate decision.
+
+**A "mini admin" test account was requested and not built.** It cannot be done
+with data alone: a teacher role plus `tpClassTeacherOf` grants exactly one
+class, while an `admin` role grants every class in `canReviewClass()` but never
+sees the screen — the Co-Scholastic nav button lives inside `if (isTeacher())`
+at `main.js:337`, and `admin` is not a teacher role. All-classes access for one
+account needs a sentinel (e.g. `tpClassTeacherOf: "ALL"`) honoured in **both**
+`main.js` and `firestore.rules`, since a UI-only change would show the grid and
+have every save rejected server-side. That is a permanent, documented hole in
+the class-teacher gate that `c8135a1` had just fixed, and it needs a
+`firestore.rules` deploy. Judged not worth it; **the zero-code alternative is to
+assign the test account as class teacher of one class at a time** via admin →
+Teacher Assignments, which does not clear the real teacher's own
+`tpClassTeacherOf`.
 
 **`'Class 9'`** sits in the class list at `main.js:83` with no roster file and no
 subjects — a dead option in the co-scholastic dropdown.
@@ -197,15 +287,21 @@ The previous session recorded: gating was "verified" by testing the matching
 logic without ever testing the resolution path, and half-verified was reported
 as verified.
 
-The same trap appeared twice here and was caught both times only by running
-things rather than reading them. The first gap-slot generator produced eight
-fortnights instead of six and would have reported two phantom March gaps in
-every subject of every class. The first layout harness reported a 28px panel
-because it did not reproduce the page wrapper or normalise students, so its
-column measurements were meaningless.
+The same trap appeared three times here and was caught each time only by running
+things rather than reading them:
 
-Neither error was visible by inspection. Both were obvious the moment something
-executed.
+- The first gap-slot generator produced eight fortnights instead of six and
+  would have reported two phantom March gaps in every subject of every class.
+- The first layout harness reported a 28px panel because it did not reproduce
+  the page wrapper or normalise students, so its column measurements were
+  meaningless — a test that lies is worse than no test.
+- Quick entry's first version left the full grid showing **blank** for anything
+  written by the bulk fill. The code read correctly; only clicking the bulk
+  button and switching views exposed it.
+
+None of the three was visible by inspection. All three were obvious the moment
+something executed. The corollary for the next session: a harness is only
+evidence once you have checked that the harness itself is right.
 
 ---
 
