@@ -74,25 +74,74 @@ export function createSessionList({
   filterBar.append(searchInput, classSelect, statusSelect, subjectSelect);
   section.append(filterBar);
 
+  // Status quick-filters. Counts are computed with the status filter removed so
+  // each chip shows how many sessions would appear if you clicked it, rather
+  // than a count of the already-filtered view.
+  const unstatused = getSessionsByFilter({ ...filters, status: '' });
+  const tally = { '': unstatused.length };
+  Object.values(SESSION_STATUS).forEach(s => {
+    tally[s] = unstatused.filter(e => e.session.status === s).length;
+  });
+
+  const chipRow = document.createElement('div');
+  chipRow.className = 'status-chips';
+  [['', 'All'], ...Object.values(SESSION_STATUS).map(s => [s, capitalize(s)])].forEach(([val, label]) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `status-chip${(filters.status || '') === val ? ' active' : ''}${val ? ' chip-' + val : ''}`;
+    chip.innerHTML = `${label}<span class="chip-count">${tally[val] || 0}</span>`;
+    chip.addEventListener('click', () => onFilterChange({ ...filters, status: val }));
+    chipRow.append(chip);
+  });
+  section.append(chipRow);
+
   const sessions = getSessionsByFilter(filters);
 
   const countLabel = document.createElement('div');
   countLabel.className = 'session-count';
-  countLabel.textContent = `${sessions.length} week(s) found`;
+  countLabel.textContent = sessions.length === 1 ? '1 assessment' : `${sessions.length} assessments`;
   section.append(countLabel);
 
   if (sessions.length === 0) {
     section.append(createMessage('No sessions match the filters.'));
-  } else {
-    const list = document.createElement('div');
-    list.className = 'session-list';
+    return section;
+  }
 
-    sessions.forEach(entry => {
-      list.append(createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession, onEditPeriod, canReviewClass));
+  // Group by the month the assessment period falls in, newest month first, and
+  // order within a month by period start then class then subject — so the same
+  // fortnight for every class sits together instead of scattered through a
+  // 100+ row flat list.
+  const groups = new Map();
+  sessions.forEach(entry => {
+    const key = monthKey(entry.session);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(entry);
+  });
+
+  [...groups.keys()].sort().reverse().forEach(key => {
+    const entries = groups.get(key).sort((a, b) => {
+      const as = a.session.weekStart || a.session.date || '';
+      const bs = b.session.weekStart || b.session.date || '';
+      return as.localeCompare(bs)
+        || String(a.session.class).localeCompare(String(b.session.class))
+        || String(a.session.subject_name).localeCompare(String(b.session.subject_name));
     });
 
+    const head = document.createElement('div');
+    head.className = 'session-month-head';
+    const needsAction = entries.filter(e => ['draft', 'submitted'].includes(e.session.status)).length;
+    head.innerHTML = `<span class="month-name">${monthLabel(key)}</span>` +
+      `<span class="month-meta">${entries.length} ${entries.length === 1 ? 'assessment' : 'assessments'}` +
+      (needsAction ? ` &middot; <strong>${needsAction} need action</strong>` : '') + `</span>`;
+    section.append(head);
+
+    const list = document.createElement('div');
+    list.className = 'session-list';
+    entries.forEach(entry => {
+      list.append(createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession, onEditPeriod, canReviewClass));
+    });
     section.append(list);
-  }
+  });
 
   return section;
 }
@@ -100,7 +149,11 @@ export function createSessionList({
 function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession, onEditPeriod, canReviewClass) {
   const sess = entry.session;
   const today = new Date().toISOString().split('T')[0];
-  const isOverdue = sess.dueDate && today > sess.dueDate && sess.status !== 'locked';
+  // Only flag overdue where it still means something. Reviewed/locked work is
+  // finished, so tagging it OVERDUE just puts a red badge on all 100+ rows and
+  // drowns out the ones that genuinely need attention.
+  const isOverdue = sess.dueDate && today > sess.dueDate
+    && (sess.status === 'draft' || sess.status === 'submitted');
   // Reviewing/locking (or touching an already-locked session) is restricted
   // to that class's class teacher, or admin — mirrors the firestore.rules
   // enforcement, so a subject teacher never sees a button that would just
@@ -278,6 +331,20 @@ function createEditPeriodForm(sess, onEditPeriod, onClose) {
   form.append(cancelBtn);
 
   return form;
+}
+
+// Groups on the period the assessment covers (weekStart), not created_at —
+// a session entered in July for an April fortnight belongs under April.
+function monthKey(sess) {
+  const d = sess.weekStart || sess.date || '';
+  return d.slice(0, 7) || '0000-00';
+}
+
+function monthLabel(key) {
+  const [y, m] = key.split('-');
+  const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                  'July', 'August', 'September', 'October', 'November', 'December'];
+  return months[Number(m) - 1] ? `${months[Number(m) - 1]} ${y}` : 'Undated';
 }
 
 function formatWeekRange(weekStart, weekEnd) {

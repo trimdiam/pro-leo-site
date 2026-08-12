@@ -425,6 +425,62 @@ select, .text-input {
   margin-bottom: 10px;
 }
 
+/* Status quick-filters — one tap to see only what needs action */
+.status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.status-chip:hover { border-color: var(--accent, #8B6F47); }
+.status-chip.active {
+  background: var(--accent, #8B6F47);
+  border-color: var(--accent, #8B6F47);
+  color: #fff;
+}
+.chip-count {
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+}
+.status-chip.active .chip-count { background: rgba(255, 255, 255, 0.25); }
+
+/* Month grouping — sticky so you always know which month you're scrolling in */
+.session-month-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 18px 0 8px;
+  padding: 7px 10px;
+  background: var(--panel, #f6efe4);
+  border-left: 3px solid var(--accent, #8B6F47);
+  border-radius: 5px;
+}
+.session-month-head:first-of-type { margin-top: 4px; }
+.month-name { font-weight: 800; font-size: 0.98rem; }
+.month-meta { font-size: 0.8rem; color: var(--muted); }
+
 .session-list {
   display: grid;
   gap: 8px;
@@ -454,6 +510,21 @@ select, .text-input {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+/* Comfortable tap targets — this row carries up to five buttons, and on a
+   phone they previously collapsed into a cramped strip. */
+.session-row-actions .btn {
+  min-height: 38px;
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
+@media (max-width: 659px) {
+  /* Destructive actions get their own line so Delete is never adjacent to
+     Review/Submit on a small screen where a mis-tap is easy. */
+  .session-row-actions .btn-danger { flex-basis: 100%; }
+  .status-chips { gap: 5px; }
+  .status-chip { padding: 7px 11px; }
+  .session-month-head { margin: 14px 0 8px; }
 }
 
 .status-badge {
@@ -1627,9 +1698,15 @@ select, .text-input {
     grid-template-columns: repeat(2, 1fr);
   }
   .session-row {
-    grid-template-columns: 1fr auto auto;
+    /* Floor on the title column so "English II — Class I" never collapses to a
+       few characters wide when the actions column is at full width. */
+    grid-template-columns: minmax(240px, 1fr) auto auto;
     align-items: center;
   }
+  /* Stop the five action buttons stretching to fill the column on desktop —
+     they should size to their labels, not spread across the row. */
+  .session-row-actions { justify-content: flex-end; }
+  .session-row-actions .btn { flex: 0 0 auto; }
   .weak-student-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1639,4 +1716,14 @@ select, .text-input {
   .health-score-card {
     grid-template-columns: 1fr 180px;
   }
+}
+
+/* Tablet / narrow desktop: five action buttons plus two badges alongside the
+   title crushed the subject/class column to ~110px. Keep the row stacked until
+   there is genuinely room for a side-by-side layout. Declared after the
+   min-width:660px block above so it wins the cascade. */
+@media (min-width: 660px) and (max-width: 979px) {
+  .session-row { grid-template-columns: 1fr; }
+  .session-row-actions { justify-content: flex-start; }
+  .session-row-actions .btn { flex: 0 0 auto; }
 }
