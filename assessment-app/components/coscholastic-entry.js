@@ -23,7 +23,10 @@ export function createCoScholasticEntry({
   onSave = () => {}
 } = {}) {
   const section = document.createElement('section');
-  section.className = 'panel selector-panel';
+  // coschol-panel scopes the full-width grid overrides in styles.css. Without
+  // it the 48x7 grid inherits the panel's two-column layout and renders into a
+  // half-width cell, clipping every subject column after the first.
+  section.className = 'panel selector-panel coschol-panel';
 
   const heading = document.createElement('h2');
   heading.className = 'section-heading';

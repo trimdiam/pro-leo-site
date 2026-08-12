@@ -721,6 +721,11 @@ function capitalize(str) {
 }
 
 function renderCoScholastic() {
+  // Every other mode clears the root before appending; this one did not, so each
+  // re-render stacked another copy of the panel on top of the last — the stale
+  // one keeping whatever the user had selected in its now-dead DOM node.
+  assessmentRoot.replaceChildren();
+
   // Registry is data-driven (data/coscholastic.json) — load once, then re-render.
   if (!state.coSchRegistry) {
     assessmentRoot.append(createStatus('Loading co-scholastic subjects…'));

@@ -1727,3 +1727,45 @@ select, .text-input {
   .session-row-actions { justify-content: flex-start; }
   .session-row-actions .btn { flex: 0 0 auto; }
 }
+
+/* Co-scholastic entry grid.
+   .selector-panel goes two-column at >=660px, which suits a pair of Class/Term
+   selects but not a students x subjects table: the grid landed in a single
+   half-width cell and clipped every subject column after the first, with the
+   progress line stranded in the empty cell beside it. Class and Term still
+   share a row; everything else spans the full width.
+   Scoped to .coschol-panel so the other .selector-panel screens are untouched,
+   and declared after the min-width:660px block above so it wins the cascade. */
+@media (min-width: 660px) {
+  .coschol-panel > .section-heading,
+  .coschol-panel > .class-test-subtitle,
+  .coschol-panel > .review-table-wrap,
+  .coschol-panel > .session-count,
+  .coschol-panel > .review-actions,
+  .coschol-panel > .empty-state {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The roll and student columns are the only ones worth pinning; the seven grade
+   selects can scroll if the viewport is genuinely too narrow for all nine. */
+.coschol-panel .review-table {
+  min-width: 640px;
+}
+.coschol-panel .coschol-grade {
+  min-width: 84px;
+}
+
+/* .app-shell caps every panel at 820px, but nine columns of student names and
+   grade selects need ~1140px. Full panel width alone still left the last
+   subjects behind a horizontal scroll, so this one screen breaks out of the
+   shell on large viewports. Width is clamped to the viewport, so the page
+   itself never scrolls sideways; below 1024px it stays in the shell and the
+   table scrolls within its wrap as before. */
+@media (min-width: 1024px) {
+  .coschol-panel {
+    --coschol-w: min(1180px, calc(100vw - 40px));
+    width: var(--coschol-w);
+    margin-left: calc(50% - var(--coschol-w) / 2);
+  }
+}
