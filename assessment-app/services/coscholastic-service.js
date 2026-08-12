@@ -85,7 +85,9 @@ function writeCache(map) {
   }
 }
 
-export async function syncCoScholasticFromFirestore() {
+// See syncSessionsFromFirestore — `strict` rethrows for callers that must not
+// silently proceed on a stale cache.
+export async function syncCoScholasticFromFirestore({ strict = false } = {}) {
   try {
     const snap = await getDocs(collection(db, COLLECTION));
     const map = {};
@@ -94,6 +96,7 @@ export async function syncCoScholasticFromFirestore() {
     return map;
   } catch (err) {
     console.warn('Co-scholastic sync failed, using local cache:', err.message);
+    if (strict) throw err;
     return readCache();
   }
 }

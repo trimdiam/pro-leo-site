@@ -29,13 +29,16 @@ function writeLocalCache(tests) {
 
 // ── Firestore sync ────────────────────────────────────────────────────────────
 
-export async function syncClassTestsFromFirestore() {
+// See syncSessionsFromFirestore — `strict` rethrows for callers that must not
+// silently proceed on a stale cache.
+export async function syncClassTestsFromFirestore({ strict = false } = {}) {
   try {
     const remote = await fetchClassTests();
     if (remote.length === 0) return;
     writeLocalCache(remote);
   } catch (err) {
     console.warn('Class test Firestore sync failed, using local cache:', err.message);
+    if (strict) throw err;
   }
 }
 

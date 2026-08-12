@@ -27,7 +27,11 @@ function writeLocalCache(sessions) {
 // ── Firestore sync ────────────────────────────────────────────────────────────
 
 // Called once on app init — pulls all sessions from Firestore into localStorage.
-export async function syncSessionsFromFirestore() {
+// `strict` makes a sync failure visible to the caller. The default stays
+// best-effort — most callers are happy to fall back to the local cache — but
+// the report card generator must not build from stale data, and it cannot tell
+// that happened unless this rethrows.
+export async function syncSessionsFromFirestore({ strict = false } = {}) {
   try {
     const remote = await fetchSessions();
     if (remote.length === 0) return;
@@ -37,6 +41,7 @@ export async function syncSessionsFromFirestore() {
     writeLocalCache(remote);
   } catch (err) {
     console.warn('Firestore sync failed, using local cache:', err.message);
+    if (strict) throw err;
   }
 }
 

@@ -7,6 +7,43 @@ import { loadStudentsForClass } from '../services/student-loader.js';
 import { getCurrentAcademicYear, getTermDateRange } from '../services/report-card-grade-engine.js';
 import { syncSessionsFromFirestore } from '../services/session-storage.js';
 import { syncClassTestsFromFirestore } from '../services/class-test-storage.js';
+import { syncCoScholasticFromFirestore } from '../services/coscholastic-service.js';
+
+// Everything a report card is built from is read out of a local cache, so a
+// stale or empty cache produces a card that is quietly wrong rather than one
+// that fails. Co-scholastic was missing from this list entirely: its only other
+// sync sits on the teacher's Co-Scholastic screen, which an admin can never
+// open (the nav button is behind isTeacher()), so an admin generating cards had
+// an empty co-scholastic cache and buildCoScholasticSection returned '' — the
+// strip vanished from the card with no error.
+//
+// Failures used to be swallowed with console.warn and generation carried on.
+// That reintroduced exactly the silent omission the sync exists to prevent, so
+// a failure now aborts the run and says which source could not be reached.
+async function syncBeforeGenerate() {
+  const sources = [
+    ['assessment sessions', syncSessionsFromFirestore],
+    ['class tests',         syncClassTestsFromFirestore],
+    ['co-scholastic grades', syncCoScholasticFromFirestore]
+  ];
+  const failed = [];
+  await Promise.all(sources.map(async ([label, sync]) => {
+    try {
+      // strict — all three swallow errors by default and return the local
+      // cache, so without this the abort below could never fire.
+      await sync({ strict: true });
+    } catch (err) {
+      failed.push(`${label} (${err.message || 'unknown error'})`);
+    }
+  }));
+  return failed;
+}
+
+function syncFailureMessage(failed) {
+  return `❌ Could not sync ${failed.join('; ')}. Report cards are built from the ` +
+    `local cache, so generating now could silently leave data off the card. ` +
+    `Check the connection and try again.`;
+}
 
 const CLASSES = ['LKG', 'SKG', 'Class I', 'Class II'];
 const TERM_KEYS = ['HY1', 'HY2'];
@@ -268,12 +305,13 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
     progressArea.style.display = 'block';
     progressArea.textContent = 'Syncing latest submissions from the server…';
 
-    // Report cards read the local session cache — force a fresh sync first so
-    // a recently submitted/reviewed session isn't silently missed.
-    await Promise.all([
-      syncSessionsFromFirestore().catch(err => console.warn('Session sync before report card failed:', err.message)),
-      syncClassTestsFromFirestore().catch(err => console.warn('Class test sync before report card failed:', err.message))
-    ]);
+    const syncFailed = await syncBeforeGenerate();
+    if (syncFailed.length) {
+      progressArea.textContent = syncFailureMessage(syncFailed);
+      singleBtn.disabled = false;
+      singleBtn.textContent = '▶ Generate for This Student';
+      return;
+    }
 
     progressArea.textContent = `Generating report card for ${student.full_name}…`;
 
@@ -308,12 +346,13 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
     progressArea.textContent = 'Syncing latest submissions from the server…';
     resultsList.replaceChildren();
 
-    // Report cards read the local session cache — force a fresh sync first so
-    // a recently submitted/reviewed session isn't silently missed.
-    await Promise.all([
-      syncSessionsFromFirestore().catch(err => console.warn('Session sync before report card failed:', err.message)),
-      syncClassTestsFromFirestore().catch(err => console.warn('Class test sync before report card failed:', err.message))
-    ]);
+    const syncFailed = await syncBeforeGenerate();
+    if (syncFailed.length) {
+      progressArea.textContent = syncFailureMessage(syncFailed);
+      classBtn.disabled = false;
+      classBtn.textContent = '▶▶ Generate for Entire Class';
+      return;
+    }
 
     let students = _students;
     if (!students.length) {
