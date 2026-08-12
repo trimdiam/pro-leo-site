@@ -55,6 +55,9 @@ export const ACADEMIC_FLAT = [
   'attendance_daily',
   'attendance_monthly',
   'assessment_sessions',
+  // Doc ids are `${term}_${class}` with no year, so without archiving+clearing
+  // here the next academic year's entries would overwrite this year's.
+  'coscholastic_marks',
   'monthly_analytics',
   'weak_students',
   'student_profiles',

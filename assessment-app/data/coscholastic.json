@@ -1,0 +1,21 @@
+{
+  "_note": "Co-scholastic subjects for the assessment-app report card (LKG/SKG/Class I/Class II). Unlike academic subjects these are NOT criteria-scored fortnightly — they carry a single letter grade per student per term, matching the Class III-X convention in Sfs-report-card. They are displayed in their own section and are deliberately excluded from the academic overall average.",
+  "gradeScale": ["O", "A+", "A", "B+", "B", "C"],
+  "gradeLabels": {
+    "O": "Outstanding",
+    "A+": "Excellent",
+    "A": "Very Good",
+    "B+": "Good",
+    "B": "Satisfactory",
+    "C": "Needs Improvement"
+  },
+  "subjects": [
+    { "key": "pe",                "label": "P.E.",               "classes": ["LKG", "SKG", "Class I", "Class II"] },
+    { "key": "singing",           "label": "Singing",            "classes": ["LKG", "SKG", "Class I", "Class II"] },
+    { "key": "discipline",        "label": "Discipline",         "classes": ["LKG", "SKG", "Class I", "Class II"] },
+    { "key": "gk",                "label": "Aptitude",           "classes": ["LKG", "SKG", "Class I", "Class II"] },
+    { "key": "arts_craft",        "label": "Arts & Craft",       "classes": ["LKG", "SKG", "Class I", "Class II"] },
+    { "key": "neatness",          "label": "Neatness",           "classes": ["LKG", "SKG", "Class I", "Class II"] },
+    { "key": "val_edu_catechism", "label": "Val. Edu./Catechism","classes": ["LKG", "SKG", "Class I", "Class II"] }
+  ]
+}

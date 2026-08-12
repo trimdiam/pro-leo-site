@@ -326,6 +326,18 @@ service cloud.firestore {
       allow write: if ((isTeacherAny() && !teacherLocked(database, request.auth.uid)) || isAdmin()) && !rolloverLocked(database);
     }
 
+    // ── Co-scholastic grades (LKG/SKG/Class I/II) ─────────────────────
+    // One doc per class+term ("HY1_Class_II") holding a letter grade per
+    // student per co-scholastic subject. Same write scope as class tests:
+    // entry is not the review/lock step, so it is not class-teacher-gated.
+    match /coscholastic_marks/{docId} {
+      allow read:  if isAnyStaff();
+      allow read:  if request.auth != null
+        && isRole('student')
+        && resource.data.class == studentAssessmentClass();
+      allow write: if ((isTeacherAny() && !teacherLocked(database, request.auth.uid)) || isAdmin()) && !rolloverLocked(database);
+    }
+
     // ── Student academic profiles ─────────────────────────────────────
     match /student_profiles/{docId} {
       allow read:  if isAnyStaff() ||

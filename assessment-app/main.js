@@ -9,6 +9,11 @@ import { createLoginForm } from './components/login-form.js';
 import { createStudentProfile } from './components/student-profile.js';
 import { createQuickEntryGrid } from './components/quick-entry-grid.js';
 import { createClassTestEntry } from './components/class-test-entry.js';
+import { createCoScholasticEntry } from './components/coscholastic-entry.js';
+import {
+  loadCoScholasticRegistry, getCoScholasticForClass, getCoScholastic,
+  saveCoScholasticAndConfirm, syncCoScholasticFromFirestore
+} from './services/coscholastic-service.js';
 import { showDefaultScorePicker } from './components/default-score-picker.js';
 import { loadCriteriaForSubject } from './services/criteria-loader.js';
 import { getSubjectsForClass, loadSubjects } from './services/subject-loader.js';
@@ -140,6 +145,15 @@ const state = {
   mySubmissionsLoading: false,
   mySubmissionsError: '',
 
+  // Co-scholastic (letter-graded, one per term, excluded from academic average)
+  coSchRegistry: null,
+  coSchClass: '',
+  coSchTerm: 'HY1',
+  coSchStudents: [],
+  coSchGrades: {},
+  coSchSaveStatus: 'idle',
+  coSchLastSaved: null,
+
   // Class test (Half-Yearly, 30% of blended score) — Class I/II only
   classTestConfig: null,
   testClass: '',
@@ -264,6 +278,9 @@ function render() {
   } else if (state.mode === 'classtest') {
     setupRoot.replaceChildren();
     renderClassTest();
+  } else if (state.mode === 'coscholastic') {
+    setupRoot.replaceChildren();
+    renderCoScholastic();
   } else if (state.mode === 'mysubmissions') {
     setupRoot.replaceChildren();
     renderMySubmissions();
@@ -332,6 +349,13 @@ function renderNav() {
     testBtn.addEventListener('click', () => switchMode('classtest'));
     nav.append(testBtn);
 
+    const coSchBtn = document.createElement('button');
+    coSchBtn.type = 'button';
+    coSchBtn.className = `nav-btn ${state.mode === 'coscholastic' ? 'active' : ''}`;
+    coSchBtn.textContent = 'Co-Scholastic';
+    coSchBtn.addEventListener('click', () => switchMode('coscholastic'));
+    nav.append(coSchBtn);
+
     const mySubBtn = document.createElement('button');
     mySubBtn.type = 'button';
     mySubBtn.className = `nav-btn ${state.mode === 'mysubmissions' ? 'active' : ''}`;
@@ -386,6 +410,15 @@ function switchMode(mode) {
   if (state.mode === 'classtest' && state.testSaveStatus === 'unsaved') {
     const ok = confirm('You have unsaved class test marks. Save before leaving?');
     if (ok) handleTestSave();
+  }
+
+  if (state.mode === 'coscholastic' && state.coSchSaveStatus === 'unsaved') {
+    const ok = confirm('You have unsaved co-scholastic grades. Save before leaving?');
+    if (ok) {
+      saveCoScholasticAndConfirm(state.coSchTerm, state.coSchClass, state.coSchGrades,
+        { enteredBy: getCurrentUser()?.name || 'Unknown' })
+        .then(r => { if (!r.ok) alert(`Could not save co-scholastic grades: ${r.error}`); });
+    }
   }
 
   state.mode = mode;
@@ -685,6 +718,90 @@ function createMySubmissionRow(entry) {
 
 function capitalize(str) {
   return String(str || '').charAt(0).toUpperCase() + String(str || '').slice(1);
+}
+
+function renderCoScholastic() {
+  // Registry is data-driven (data/coscholastic.json) — load once, then re-render.
+  if (!state.coSchRegistry) {
+    assessmentRoot.append(createStatus('Loading co-scholastic subjects…'));
+    Promise.all([
+      loadCoScholasticRegistry(),
+      syncCoScholasticFromFirestore().catch(() => null)
+    ])
+      .then(([reg]) => { state.coSchRegistry = reg; render(); })
+      .catch(err => {
+        state.errorMessage = `Failed to load co-scholastic subjects: ${err.message}`;
+        render();
+      });
+    return;
+  }
+
+  const subjects = getCoScholasticForClass(state.coSchRegistry, state.coSchClass);
+
+  assessmentRoot.append(createCoScholasticEntry({
+    classes,
+    subjects,
+    gradeScale: state.coSchRegistry.gradeScale || [],
+    gradeLabels: state.coSchRegistry.gradeLabels || {},
+    selectedClass: state.coSchClass,
+    selectedTerm: state.coSchTerm,
+    students: state.coSchStudents,
+    grades: state.coSchGrades,
+    saveStatus: state.coSchSaveStatus,
+    lastSaved: state.coSchLastSaved,
+
+    onClassChange: async className => {
+      state.coSchClass = className;
+      state.coSchStudents = [];
+      state.coSchGrades = {};
+      state.coSchLastSaved = null;
+      if (className) {
+        state.coSchStudents = await loadStudentsForClass(className).catch(() => []);
+        loadCoSchGrades();
+      }
+      render();
+    },
+
+    onTermChange: term => {
+      state.coSchTerm = term;
+      loadCoSchGrades();
+      render();
+    },
+
+    onGradeChange: (studentId, key, grade) => {
+      if (!state.coSchGrades[studentId]) state.coSchGrades[studentId] = {};
+      if (grade) state.coSchGrades[studentId][key] = grade;
+      else delete state.coSchGrades[studentId][key];
+      state.coSchSaveStatus = 'unsaved';
+      // No re-render: the <select> already shows the new value, and re-rendering
+      // mid-entry would steal focus from the grid.
+    },
+
+    onSave: async () => {
+      state.coSchSaveStatus = 'saving';
+      render();
+      const result = await saveCoScholasticAndConfirm(
+        state.coSchTerm, state.coSchClass, state.coSchGrades,
+        { enteredBy: getCurrentUser()?.name || 'Unknown' }
+      );
+      if (result.ok) {
+        state.coSchSaveStatus = 'idle';
+        state.coSchLastSaved = new Date().toISOString();
+      } else {
+        state.coSchSaveStatus = 'unsaved';
+        alert(`Could not save: ${result.error}`);
+      }
+      render();
+    }
+  }));
+}
+
+// Pulls the saved grid for the current class+term out of the local cache.
+function loadCoSchGrades() {
+  const rec = getCoScholastic(state.coSchTerm, state.coSchClass);
+  state.coSchGrades = rec?.grades ? JSON.parse(JSON.stringify(rec.grades)) : {};
+  state.coSchLastSaved = rec?.updated_at || null;
+  state.coSchSaveStatus = 'idle';
 }
 
 function renderClassTest() {

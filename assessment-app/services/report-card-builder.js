@@ -14,6 +14,7 @@ import { generateTeacherRemark } from './report-card-remark-engine.js';
 import { loadStudentsForClass } from './student-loader.js';
 import { getTermAttendance } from './report-card-attendance.js';
 import { getClassTest } from './class-test-storage.js';
+import { loadCoScholasticForClass, getStudentCoScholastic } from './coscholastic-service.js';
 
 const REPORT_CARDS_COL = 'report_cards';
 
@@ -117,6 +118,20 @@ export async function buildAndSaveReportCard(params) {
     // 4. Compute overall performance
     const overall = computeOverallPerformance(gradedSubjects);
 
+    // 4a. Co-scholastic — letter-graded per term, not criteria-scored. Kept out
+    // of `overall` on purpose: Sfs-report-card marks these countInTotal:false
+    // for Class III-X, so including them here would make Class I/II inconsistent
+    // with the rest of the school and let conduct grades move an academic grade.
+    let coScholastic = [];
+    try {
+      const csSubjects = await loadCoScholasticForClass(className);
+      if (csSubjects.length) {
+        coScholastic = getStudentCoScholastic(term, className, studentId, csSubjects);
+      }
+    } catch (err) {
+      console.warn(`Co-scholastic unavailable for ${studentId}:`, err.message);
+    }
+
     // 4b. Data-completeness signal: subjects that have unreviewed sessions
     // excluded from this card, so admins can tell "no data" apart from "data
     // exists but wasn't reviewed/locked yet" instead of it silently vanishing.
@@ -213,6 +228,15 @@ export async function buildAndSaveReportCard(params) {
       // exists for the term (admin can then fill it in manually).
       attendancePresentDays: attendance.attendancePresentDays,
       attendanceWorkingDays: attendance.attendanceWorkingDays,
+
+      // Co-scholastic — letter grades, reported separately from academics and
+      // excluded from overallAverageScore by design (see step 4a).
+      coScholastic: coScholastic.map(c => ({
+        key:   c.key,
+        label: c.label,
+        grade: c.grade || null
+      })),
+      coScholasticPending: coScholastic.filter(c => !c.grade).map(c => c.label),
 
       // Promotion (HY2 only — admin fills)
       promotedToClass: null,

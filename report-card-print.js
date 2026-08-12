@@ -301,6 +301,18 @@ const BASE_CSS = `
   .remark::before { content:'“'; color:var(--cd-400); font-weight:800; font-size:14px; line-height:0; vertical-align:-2px; margin-right:1px; }
   .remark::after  { content:'”'; color:var(--cd-400); font-weight:800; font-size:14px; line-height:0; vertical-align:-4px; margin-left:1px; }
 
+  /* Co-scholastic strip — letter grades, sits between the body and the footer */
+  .coschol { border-top:2px solid var(--edge); background:var(--cream); flex-shrink:0; padding:5px 22px 6px; }
+  .cs-head { display:flex; align-items:baseline; gap:12px; margin-bottom:4px; }
+  .cs-title { font-size:8.5px; font-weight:800; color:var(--cd-700); letter-spacing:1.4px; text-transform:uppercase; white-space:nowrap; }
+  .cs-legend { font-size:8px; color:var(--txt-mid); letter-spacing:0.3px; }
+  .cs-grid { display:flex; gap:6px; flex-wrap:nowrap; }
+  .cs-item { flex:1 1 0; min-width:0; border:1px solid var(--cd-200); border-radius:4px; padding:3px 5px; background:#fff; }
+  .cs-name { font-size:7.5px; font-weight:700; color:var(--txt); line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cs-grades { display:flex; gap:4px; margin-top:2px; }
+  .cs-g { flex:1 1 0; text-align:center; font-size:10px; font-weight:800; color:var(--txt); font-variant-numeric:tabular-nums;
+          background:var(--cream-3); border-radius:3px; padding:1px 0; }
+
   /* Footer */
   .footer { border-top:2px solid var(--edge); background:var(--cream-3); flex-shrink:0; display:flex; flex-direction:column; }
   .scale-row { padding:6px 22px 7px; display:flex; align-items:center; gap:18px; border-bottom:1px solid var(--cd-200); }
@@ -422,6 +434,13 @@ const MOBILE_CSS = `
     .stat .eyebrow { font-size: 8px; }
     .stat .value   { font-size: 13px; }
     .remark { font-size: 11px; line-height: 1.6; padding-top: 8px; }
+
+    /* Co-scholastic — wrap to a grid instead of one squeezed row */
+    .coschol { padding: 8px 12px; }
+    .cs-grid { flex-wrap: wrap; gap: 6px; }
+    .cs-item { flex: 1 1 30%; }
+    .cs-name { font-size: 9px; white-space: normal; }
+    .cs-g    { font-size: 11px; }
 
     /* Footer */
     .footer { width: 100%; }
@@ -770,6 +789,45 @@ function buildAnnualPanel(hy1Card, hy2Card, gradesOnly = false) {
  * @param {object}      [opts]      - { logoUrl? }
  * @returns {string}                - Full self-contained HTML
  */
+// Co-scholastic strip. These carry a letter grade per term (O/A+/A/B+/B/C),
+// not the 1-5 achievement scale, and are deliberately kept out of the academic
+// table and the overall average — matching Sfs-report-card's countInTotal:false
+// treatment for Class III-X. Renders nothing at all when a card has no
+// co-scholastic data, so cards generated before this feature are unaffected.
+function buildCoScholasticSection(hy1Card, hy2Card) {
+  const merged = new Map();
+  [[hy1Card, 'hy1'], [hy2Card, 'hy2']].forEach(([card, slot]) => {
+    (card?.coScholastic || []).forEach(item => {
+      if (!item || !item.key) return;
+      const row = merged.get(item.key) || { label: item.label || item.key, hy1: null, hy2: null };
+      if (item.grade) row[slot] = item.grade;
+      if (item.label) row.label = item.label;
+      merged.set(item.key, row);
+    });
+  });
+
+  if (!merged.size) return '';
+
+  const cells = [...merged.values()].map(r => `
+        <div class="cs-item">
+          <div class="cs-name">${esc(r.label)}</div>
+          <div class="cs-grades">
+            <span class="cs-g">${r.hy1 ? esc(r.hy1) : '<span class="dim">&mdash;</span>'}</span>
+            <span class="cs-g">${r.hy2 ? esc(r.hy2) : '<span class="dim">&mdash;</span>'}</span>
+          </div>
+        </div>`).join('');
+
+  return `
+    <section class="coschol">
+      <div class="cs-head">
+        <span class="cs-title">Co-Scholastic</span>
+        <span class="cs-legend">O &middot; A+ &middot; A &middot; B+ &middot; B &middot; C &nbsp;<span class="dim">(HY1 / HY2 &mdash; not counted in the overall grade)</span></span>
+      </div>
+      <div class="cs-grid">${cells}
+      </div>
+    </section>`;
+}
+
 export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   const info = studentInfo || {
     studentName: hy1Card?.studentName || hy2Card?.studentName || '—',
@@ -932,6 +990,8 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
     </aside>
 
   </div>
+
+  ${buildCoScholasticSection(hy1Card, hy2Card)}
 
   <footer class="footer">
     <div class="scale-row">
