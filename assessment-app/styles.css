@@ -1840,6 +1840,66 @@ select, .text-input {
 /* Below 1024px the grid scrolls horizontally, so every pixel the frozen name
    column holds is a pixel of grade columns you cannot see. Left at its natural
    305px of nowrap it took half the visible width at tablet size. */
+/* Quick entry — one subject, every student, one tap per grade. Reuses the
+   assessment .mark-scale/.mark-button and .quick-* classes so the two entry
+   screens feel identical and the 44px tap targets carry over. */
+.coschol-panel .coschol-modes,
+.coschol-panel .coschol-subjects {
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+}
+.coschol-panel .coschol-quick {
+  grid-column: 1 / -1;
+}
+.coschol-panel .coschol-scale {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+.coschol-panel .coschol-bulk {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 0 12px;
+  border-bottom: 1px dashed var(--line);
+  margin-bottom: 10px;
+}
+.coschol-panel .coschol-bulk-label {
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.coschol-panel .coschol-bulk .coschol-scale {
+  flex: 1;
+  min-width: 220px;
+}
+.coschol-panel .coschol-subject-progress {
+  margin-bottom: 8px;
+}
+/* A whole class on one grade is exactly how the 935 identical 4s got in. */
+.coschol-panel .coschol-uniform {
+  color: #856404;
+  font-weight: 700;
+}
+.coschol-panel .quick-student-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 10px 0;
+}
+.coschol-panel .quick-student-row .quick-student-name { grid-column: 1; }
+.coschol-panel .quick-student-row .quick-student-roll { grid-column: 2; text-align: right; }
+.coschol-panel .quick-student-row .coschol-scale { grid-column: 1 / -1; }
+
+@media (min-width: 660px) {
+  .coschol-panel .quick-student-row {
+    grid-template-columns: 1fr 90px minmax(300px, 380px);
+  }
+  .coschol-panel .quick-student-row .coschol-scale { grid-column: 3; }
+}
+
 @media (max-width: 1023px) {
   .coschol-panel .review-table td:nth-child(2) {
     white-space: normal;
@@ -1849,6 +1909,11 @@ select, .text-input {
 }
 
 @media (max-width: 659px) {
+  /* Six grade buttons across a 375px phone came out 43px wide at a 6px gap —
+     just under the 44px tap target. */
+  .coschol-panel .coschol-scale {
+    gap: 4px;
+  }
   .coschol-panel {
     --coschol-roll-w: 38px;
   }

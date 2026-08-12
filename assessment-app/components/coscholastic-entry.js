@@ -69,6 +69,183 @@ export function createCoScholasticEntry({
     return section;
   }
 
+  // ── Entry mode ──────────────────────────────────────────────────────────────
+  // Quick entry mirrors the assessment flow (components/quick-entry-grid.js):
+  // one subject at a time, every student on screen, a single tap per grade
+  // instead of open-scroll-select on a <select>. 336 dropdowns for SKG was the
+  // problem; this is 336 taps, or far fewer with the bulk fill.
+  //
+  // Neither view re-renders on a grade change — onGradeChange deliberately does
+  // not call render(), so the DOM is updated in place here and the chosen
+  // subject survives every tap.
+  let mode = 'quick';
+  let activeKey = subjects[0].key;
+
+  const modeBar = document.createElement('div');
+  modeBar.className = 'status-chips coschol-modes';
+  const quickChip = chip('Quick entry', true);
+  const gridChip  = chip('Full grid', false);
+  modeBar.append(quickChip, gridChip);
+  section.append(modeBar);
+
+  quickChip.addEventListener('click', () => setMode('quick'));
+  gridChip.addEventListener('click', () => setMode('grid'));
+
+  function setMode(next) {
+    mode = next;
+    quickChip.classList.toggle('active', next === 'quick');
+    gridChip.classList.toggle('active', next === 'grid');
+    quickView.hidden = next !== 'quick';
+    wrap.hidden = next !== 'grid';
+    // Rebuild on entry so grades typed into the grid show up here, and vice
+    // versa — the two views must never disagree about the same cell.
+    if (next === 'quick') renderSubjectBlock();
+    else syncGrid();
+  }
+
+  // ── Quick entry: one subject, every student, one tap ────────────────────────
+  const quickView = document.createElement('div');
+  quickView.className = 'quick-entry-panel coschol-quick';
+
+  const subjectBar = document.createElement('div');
+  subjectBar.className = 'status-chips coschol-subjects';
+  const subjectChips = subjects.map(s => {
+    const c = chip(s.label, s.key === activeKey);
+    c.addEventListener('click', () => setSubject(s.key));
+    subjectBar.append(c);
+    return { key: s.key, el: c };
+  });
+  quickView.append(subjectBar);
+
+  const subjectBlock = document.createElement('div');
+  subjectBlock.className = 'quick-criterion-block';
+  quickView.append(subjectBlock);
+  section.append(quickView);
+
+  function setSubject(key) {
+    activeKey = key;
+    subjectChips.forEach(c => c.el.classList.toggle('active', c.key === key));
+    renderSubjectBlock();
+  }
+
+  function gradeOf(studentId, key) {
+    return grades?.[studentId]?.[key] || '';
+  }
+
+  function countFor(key) {
+    const values = students.map(s => gradeOf(s.student_id, key)).filter(Boolean);
+    const distinct = new Set(values);
+    return { done: values.length, uniform: values.length === students.length && distinct.size === 1 ? [...distinct][0] : null };
+  }
+
+  function renderSubjectBlock() {
+    const subject = subjects.find(s => s.key === activeKey) || subjects[0];
+    subjectBlock.replaceChildren();
+
+    const head = document.createElement('div');
+    head.className = 'quick-criterion-header';
+    const idx = subjects.findIndex(s => s.key === subject.key) + 1;
+    head.innerHTML = `<strong>${subject.label}</strong> <span class="quick-progress">${idx}/${subjects.length}</span>`;
+    subjectBlock.append(head);
+
+    // Bulk fill. Deliberately fills only BLANK cells: a teacher who has already
+    // corrected individual students must never have that silently overwritten
+    // by a later tap on the bulk row.
+    const bulk = document.createElement('div');
+    bulk.className = 'coschol-bulk';
+    const bulkLabel = document.createElement('span');
+    bulkLabel.className = 'coschol-bulk-label';
+    bulkLabel.textContent = 'Fill blanks with';
+    bulk.append(bulkLabel);
+
+    const bulkScale = document.createElement('div');
+    bulkScale.className = 'mark-scale coschol-scale';
+    gradeScale.forEach(g => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'mark-button';
+      b.textContent = g;
+      b.title = gradeLabels[g] || g;
+      b.addEventListener('click', () => {
+        students.forEach(stu => {
+          if (!gradeOf(stu.student_id, subject.key)) onGradeChange(stu.student_id, subject.key, g);
+        });
+        renderSubjectBlock();
+        refreshProgress();
+      });
+      bulkScale.append(b);
+    });
+    bulk.append(bulkScale);
+    subjectBlock.append(bulk);
+
+    const counts = countFor(subject.key);
+    const subProgress = document.createElement('div');
+    subProgress.className = 'quick-progress coschol-subject-progress';
+    subProgress.textContent = `${counts.done} of ${students.length} graded`;
+    if (counts.uniform) {
+      // The 935-identical-4s fabrication in Class II Science started as an
+      // unremarkable default-fill that nobody looked at again. Say it out loud.
+      subProgress.textContent += ` — every student is ${counts.uniform}`;
+      subProgress.classList.add('coschol-uniform');
+    }
+    subjectBlock.append(subProgress);
+
+    const list = document.createElement('div');
+    list.className = 'quick-student-grid';
+
+    students.forEach(stu => {
+      const row = document.createElement('div');
+      row.className = 'quick-student-row';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'quick-student-name';
+      nameEl.textContent = stu.full_name;
+
+      const rollEl = document.createElement('div');
+      rollEl.className = 'quick-student-roll';
+      rollEl.textContent = `Roll ${stu.roll_no || '—'}`;
+
+      const scale = document.createElement('div');
+      scale.className = 'mark-scale coschol-scale';
+      const current = gradeOf(stu.student_id, subject.key);
+
+      gradeScale.forEach(g => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'mark-button' + (g === current ? ' selected' : '');
+        b.textContent = g;
+        b.title = gradeLabels[g] || g;
+        b.addEventListener('click', () => {
+          const isSame = b.classList.contains('selected');
+          scale.querySelectorAll('.mark-button').forEach(x => x.classList.remove('selected'));
+          if (!isSame) b.classList.add('selected');
+          onGradeChange(stu.student_id, subject.key, isSame ? '' : g);
+          const c = countFor(subject.key);
+          subProgress.textContent = `${c.done} of ${students.length} graded`
+            + (c.uniform ? ` — every student is ${c.uniform}` : '');
+          subProgress.classList.toggle('coschol-uniform', !!c.uniform);
+          refreshProgress();
+        });
+        scale.append(b);
+      });
+
+      row.append(nameEl, rollEl, scale);
+      list.append(row);
+    });
+
+    subjectBlock.append(list);
+  }
+
+  // Re-points every <select> at the current grades before the grid is shown.
+  // Done wholesale on view switch rather than per keystroke: an earlier version
+  // synced only from the per-student tap handler, so anything written by the
+  // bulk fill silently showed as blank in the grid. One path, nothing to forget.
+  function syncGrid() {
+    wrap.querySelectorAll('select.coschol-grade').forEach(sel => {
+      sel.value = gradeOf(sel.dataset.student, sel.dataset.subject);
+    });
+  }
+
   // ── Grid ────────────────────────────────────────────────────────────────────
   const wrap = document.createElement('div');
   wrap.className = 'review-table-wrap';
@@ -102,8 +279,10 @@ export function createCoScholasticEntry({
         sel.append(opt(g, label, g === current));
       });
 
-      sel.addEventListener('change', e =>
-        onGradeChange(stu.student_id, s.key, e.target.value));
+      sel.addEventListener('change', e => {
+        onGradeChange(stu.student_id, s.key, e.target.value);
+        refreshProgress();
+      });
       cell.append(sel);
       tr.append(cell);
     });
@@ -116,13 +295,25 @@ export function createCoScholasticEntry({
 
   // ── Progress + save ─────────────────────────────────────────────────────────
   const total = students.length * subjects.length;
-  let filled = 0;
-  students.forEach(stu => subjects.forEach(s => { if (grades?.[stu.student_id]?.[s.key]) filled++; }));
 
   const progress = document.createElement('div');
   progress.className = 'session-count';
-  progress.textContent = `${filled} of ${total} grades entered${filled < total ? ` — ${total - filled} still blank` : ''}`;
   section.append(progress);
+
+  // Recomputed rather than incremented: quick entry, the bulk fill and the grid
+  // all write through the same grades object, and a running counter would drift
+  // the first time one of them cleared a cell.
+  function refreshProgress() {
+    let filled = 0;
+    students.forEach(stu => subjects.forEach(s => { if (grades?.[stu.student_id]?.[s.key]) filled++; }));
+    progress.textContent =
+      `${filled} of ${total} grades entered${filled < total ? ` — ${total - filled} still blank` : ''}`;
+  }
+  refreshProgress();
+
+  // Both views exist in the DOM; mode decides which is shown. Quick entry first
+  // — it is the faster path and the only usable one on a phone.
+  setMode('quick');
 
   const actions = document.createElement('div');
   actions.className = 'review-actions';
@@ -185,4 +376,12 @@ function msg(text) {
   p.className = 'empty-state';
   p.textContent = text;
   return p;
+}
+
+function chip(text, active) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'status-chip' + (active ? ' active' : '');
+  b.textContent = text;
+  return b;
 }
