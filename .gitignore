@@ -12,5 +12,9 @@ scripts/*backup*.json
 firestore-debug.log
 firebase-debug.log
 ui-debug.log
+# Local deploy cache the firebase CLI rewrites on every deploy. Tracking it
+# meant every deploy dirtied the tree and two machines deploying would conflict
+# over a file that carries no meaning and regenerates itself.
+.firebase/
 docs/*.jpeg
 docs/*.jpg
