@@ -14,7 +14,8 @@
     { "key": "singing",           "label": "Singing",            "classes": ["LKG", "SKG", "Class I", "Class II"] },
     { "key": "discipline",        "label": "Discipline",         "classes": ["LKG", "SKG", "Class I", "Class II"] },
     { "key": "gk",                "label": "Aptitude",           "classes": ["LKG", "SKG", "Class I", "Class II"] },
-    { "key": "arts_craft",        "label": "Arts & Craft",       "classes": ["LKG", "SKG", "Class I", "Class II"] },
+    { "_why": "Class I/II only. LKG and SKG already carry ART 'Arts/Colouring' as a full academic subject in subjects.json — 14 criteria, criteria-scored fortnightly, counted in the overall average. Listing it here too put two Arts marks on two different scales on the same kindergarten card. Do not add LKG/SKG back without first removing ART from subjects.json.",
+      "key": "arts_craft",        "label": "Arts & Craft",       "classes": ["Class I", "Class II"] },
     { "key": "neatness",          "label": "Neatness",           "classes": ["LKG", "SKG", "Class I", "Class II"] },
     { "key": "val_edu_catechism", "label": "Val. Edu./Catechism","classes": ["LKG", "SKG", "Class I", "Class II"] }
   ]
