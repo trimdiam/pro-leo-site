@@ -15,6 +15,7 @@ export function createCoScholasticEntry({
   selectedTerm = 'HY1',
   students = [],
   grades = {},              // { [studentId]: { [key]: grade } }
+  locked = false,           // admin has locked this class+term — read only
   saveStatus = 'idle',
   lastSaved = null,
   onClassChange = () => {},
@@ -67,6 +68,17 @@ export function createCoScholasticEntry({
   if (!students.length) {
     section.append(msg('No students found for this class.'));
     return section;
+  }
+
+  // A locked grid stays fully visible and navigable — the teacher can still
+  // read what was submitted — but nothing accepts input. firestore.rules is the
+  // real boundary; this exists so the refusal is obvious before someone spends
+  // ten minutes re-entering a class and only then hits a rejected save.
+  if (locked) {
+    const banner = document.createElement('p');
+    banner.className = 'locked-banner coschol-locked';
+    banner.textContent = 'Locked by admin — these grades are final and can no longer be edited. Contact an admin if something needs to change.';
+    section.append(banner);
   }
 
   // ── Entry mode ──────────────────────────────────────────────────────────────
@@ -166,7 +178,9 @@ export function createCoScholasticEntry({
       b.className = 'mark-button';
       b.textContent = g;
       b.title = gradeLabels[g] || g;
+      b.disabled = locked;
       b.addEventListener('click', () => {
+        if (locked) return;
         students.forEach(stu => {
           if (!gradeOf(stu.student_id, subject.key)) onGradeChange(stu.student_id, subject.key, g);
         });
@@ -215,7 +229,9 @@ export function createCoScholasticEntry({
         b.className = 'mark-button' + (g === current ? ' selected' : '');
         b.textContent = g;
         b.title = gradeLabels[g] || g;
+        b.disabled = locked;
         b.addEventListener('click', () => {
+          if (locked) return;
           const isSame = b.classList.contains('selected');
           scale.querySelectorAll('.mark-button').forEach(x => x.classList.remove('selected'));
           if (!isSame) b.classList.add('selected');
@@ -271,6 +287,7 @@ export function createCoScholasticEntry({
       sel.className = 'text-input coschol-grade';
       sel.dataset.student = stu.student_id;
       sel.dataset.subject = s.key;
+      sel.disabled = locked;
 
       const current = grades?.[stu.student_id]?.[s.key] || '';
       sel.append(opt('', '—', !current));
@@ -321,8 +338,10 @@ export function createCoScholasticEntry({
   const saveBtn = document.createElement('button');
   saveBtn.type = 'button';
   saveBtn.className = 'btn btn-primary';
-  saveBtn.textContent = saveStatus === 'saving' ? 'Saving…' : 'Save Co-Scholastic Grades';
-  saveBtn.disabled = saveStatus === 'saving';
+  saveBtn.textContent = locked
+    ? 'Locked by admin'
+    : (saveStatus === 'saving' ? 'Saving…' : 'Save Co-Scholastic Grades');
+  saveBtn.disabled = locked || saveStatus === 'saving';
   saveBtn.addEventListener('click', onSave);
   actions.append(saveBtn);
 

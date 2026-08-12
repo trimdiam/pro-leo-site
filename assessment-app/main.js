@@ -12,7 +12,7 @@ import { createClassTestEntry } from './components/class-test-entry.js';
 import { createCoScholasticEntry } from './components/coscholastic-entry.js';
 import {
   loadCoScholasticRegistry, getCoScholasticForClass, getCoScholastic,
-  saveCoScholasticAndConfirm, syncCoScholasticFromFirestore
+  saveCoScholasticAndConfirm, syncCoScholasticFromFirestore, setCoScholasticLock
 } from './services/coscholastic-service.js';
 import { showDefaultScorePicker } from './components/default-score-picker.js';
 import { loadCriteriaForSubject } from './services/criteria-loader.js';
@@ -153,6 +153,7 @@ const state = {
   coSchGrades: {},
   coSchSaveStatus: 'idle',
   coSchLastSaved: null,
+  coSchLocked: false,
 
   // Class test (Half-Yearly, 30% of blended score) — Class I/II only
   classTestConfig: null,
@@ -774,6 +775,7 @@ function renderCoScholastic() {
     selectedTerm: state.coSchTerm,
     students: state.coSchStudents,
     grades: state.coSchGrades,
+    locked: state.coSchLocked,
     saveStatus: state.coSchSaveStatus,
     lastSaved: state.coSchLastSaved,
 
@@ -828,6 +830,7 @@ function loadCoSchGrades() {
   const rec = getCoScholastic(state.coSchTerm, state.coSchClass);
   state.coSchGrades = rec?.grades ? JSON.parse(JSON.stringify(rec.grades)) : {};
   state.coSchLastSaved = rec?.updated_at || null;
+  state.coSchLocked = (rec?.status || 'draft') === 'locked';
   state.coSchSaveStatus = 'idle';
 }
 
@@ -911,6 +914,7 @@ function renderAdmin() {
     { key: 'weak', label: 'Weak Students' },
     { key: 'analytics', label: 'Analytics' },
     { key: 'reportcards', label: 'Report Cards' },
+    { key: 'coscholastic', label: 'Co-Scholastic Locks' },
     { key: 'demo', label: '🧪 Demo Data' }
   ];
 
@@ -946,9 +950,88 @@ function renderAdmin() {
     renderAdminAnalytics();
   } else if (state.adminView === 'reportcards') {
     renderAdminReportCards();
+  } else if (state.adminView === 'coscholastic') {
+    renderAdminCoScholasticLocks();
   } else if (state.adminView === 'demo') {
     renderAdminDemo();
   }
+}
+
+// Locking co-scholastic is admin-only, and admins never see the entry screen —
+// its nav button lives behind isTeacher(). So the control lives here, one row
+// per class+term, rather than on the grid the teacher uses.
+function renderAdminCoScholasticLocks() {
+  const panel = document.createElement('section');
+  panel.className = 'panel';
+
+  const h = document.createElement('h2');
+  h.className = 'section-heading';
+  h.textContent = 'Co-Scholastic Locks';
+  panel.append(h);
+
+  const p = document.createElement('p');
+  p.className = 'class-test-subtitle';
+  p.textContent = 'Locking makes a class + term final: the class teacher can still read the grades but can no longer change them. Unlock to hand it back. Enforced in firestore.rules, not just here.';
+  panel.append(p);
+
+  const list = document.createElement('div');
+  list.className = 'session-list';
+
+  const terms = ['HY1', 'HY2'];
+  classes.forEach(className => {
+    terms.forEach(term => {
+      const rec = getCoScholastic(term, className);
+      // Nothing entered yet — nothing to lock, and a lock would only create an
+      // empty document that the rollover then has to archive.
+      if (!rec) return;
+
+      const locked = (rec.status || 'draft') === 'locked';
+      const filled = Object.values(rec.grades || {})
+        .reduce((n, g) => n + Object.keys(g || {}).length, 0);
+
+      const row = document.createElement('div');
+      row.className = 'session-row';
+
+      const info = document.createElement('div');
+      info.innerHTML = `<strong>${className}</strong> · ${term === 'HY1' ? 'First' : 'Second'} Half-Yearly` +
+        `<div class="muted" style="font-size:0.85rem">${filled} grade${filled === 1 ? '' : 's'} entered` +
+        `${rec.updated_at ? ` · last saved ${new Date(rec.updated_at).toLocaleString('en-IN')}` : ''}</div>`;
+
+      const badge = document.createElement('span');
+      badge.className = `status-badge ${locked ? 'status-locked' : 'status-draft'}`;
+      badge.textContent = locked ? 'LOCKED' : 'OPEN';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `btn btn-sm ${locked ? 'btn-secondary' : 'btn-primary'}`;
+      btn.textContent = locked ? 'Unlock' : 'Lock';
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = locked ? 'Unlocking…' : 'Locking…';
+        try {
+          await setCoScholasticLock(term, className, !locked, { lockedBy: getCurrentUser()?.uid || null });
+          await syncCoScholasticFromFirestore().catch(() => null);
+        } catch (err) {
+          state.errorMessage = `Could not ${locked ? 'unlock' : 'lock'} ${className} ${term}: ${err.message}`;
+        }
+        render();
+      });
+
+      const actions = document.createElement('div');
+      actions.className = 'session-row-actions';
+      actions.append(badge, btn);
+
+      row.append(info, actions);
+      list.append(row);
+    });
+  });
+
+  if (!list.children.length) {
+    list.append(createStatus('No co-scholastic grades have been saved yet, so there is nothing to lock.'));
+  }
+
+  panel.append(list);
+  assessmentRoot.append(panel);
 }
 
 function renderAdminDemo() {

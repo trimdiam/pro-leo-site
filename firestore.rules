@@ -341,11 +341,26 @@ service cloud.firestore {
       allow read:  if request.auth != null
         && isRole('student')
         && resource.data.class == studentAssessmentClass();
-      allow create, update: if !rolloverLocked(database) && (
+      // `status` is 'draft' or 'locked'. Locking is ADMIN ONLY: a class teacher
+      // can fill and refill their own grid freely, but once an admin locks it
+      // they cannot touch it again, and they can never set or clear the flag
+      // themselves. Absent status reads as 'draft' so documents written before
+      // this existed stay editable.
+      allow create: if !rolloverLocked(database) && (
         isAdmin() ||
         (
           isTeacherAny() && !teacherLocked(database, request.auth.uid) &&
-          isClassTeacherOf(request.resource.data.class)
+          isClassTeacherOf(request.resource.data.class) &&
+          request.resource.data.get('status', 'draft') == 'draft'
+        )
+      );
+      allow update: if !rolloverLocked(database) && (
+        isAdmin() ||
+        (
+          isTeacherAny() && !teacherLocked(database, request.auth.uid) &&
+          isClassTeacherOf(request.resource.data.class) &&
+          resource.data.get('status', 'draft') != 'locked' &&
+          request.resource.data.get('status', 'draft') == resource.data.get('status', 'draft')
         )
       );
       allow delete: if isAdmin() && !rolloverLocked(database);

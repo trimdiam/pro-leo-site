@@ -160,6 +160,11 @@ export async function saveCoScholastic(term, className, grades, meta = {}) {
     // Firestore rejects `undefined` outright, which would fail the whole write.
     // Drop blank/undefined cells instead — "not graded yet" is simply absence.
     grades: pruneBlank(grades),
+    // Carried forward, never set from here. setDoc replaces the whole document,
+    // so omitting status would drop the field and read back as 'draft' — a
+    // teacher's save would silently clear an admin's lock. The rules reject
+    // that too, but the client must not depend on being told no.
+    status: getCoScholastic(term, className)?.status || 'draft',
     enteredBy: meta.enteredBy || null,
     updated_at: now,
     persistedAt: now
@@ -180,4 +185,40 @@ export async function saveCoScholasticAndConfirm(term, className, grades, meta =
   } catch (err) {
     return { ok: false, error: err.message || 'Could not reach the server.' };
   }
+}
+
+// ── Lock (admin only) ─────────────────────────────────────────────────────────
+
+/** True when this class+term has been locked by an admin. */
+export function isCoScholasticLocked(term, className) {
+  return (getCoScholastic(term, className)?.status || 'draft') === 'locked';
+}
+
+/**
+ * Locks or unlocks one class+term. Admin only — firestore.rules is the actual
+ * boundary; a teacher calling this is rejected server-side.
+ *
+ * Uses merge so it only ever touches the status fields: locking must never
+ * rewrite the grades, and there is no reason for the lock button to hold a copy
+ * of the whole grid to put back.
+ */
+export async function setCoScholasticLock(term, className, locked, meta = {}) {
+  if (!term || !className) throw new Error('Invalid lock: term and class are required');
+  const docId = coScholasticDocId(term, className);
+  const now = new Date().toISOString();
+  const patch = {
+    status: locked ? 'locked' : 'draft',
+    lockedBy: locked ? (meta.lockedBy || null) : null,
+    lockedAt: locked ? now : null,
+    updated_at: now
+  };
+
+  await setDoc(doc(db, COLLECTION, docId), patch, { merge: true });
+
+  const cache = readCache();
+  if (cache[docId]) {
+    cache[docId] = { ...cache[docId], ...patch };
+    writeCache(cache);
+  }
+  return patch;
 }
