@@ -1769,3 +1769,98 @@ select, .text-input {
     margin-left: calc(50% - var(--coschol-w) / 2);
   }
 }
+
+/* Sticky roll/student columns and header row.
+   On a phone the grid is ~1136px wide inside a ~316px viewport, so scrolling
+   right to reach Neatness pushed the student's name off the left edge, and
+   scrolling down pushed the subject headers off the top — you end up grading a
+   cell with no idea which child or which subject it belongs to.
+
+   The wrap has to become a scroll container on BOTH axes for this to work:
+   overflow-x:auto already computes overflow-y to auto, but with no height
+   constraint it never scrolls vertically, so a sticky header would anchor to a
+   box that never moves and never stick. Hence the max-height.
+
+   Sticky cells must be opaque or the scrolled content shows through. .panel is
+   rgba(255,255,255,0.7) over --bg, so --coschol-cell-bg is that blend flattened;
+   headers already use the opaque --bg. border-collapse:separate because
+   collapsed borders are not painted on sticky cells — the separator is drawn
+   with an inset box-shadow instead. */
+.coschol-panel {
+  --coschol-cell-bg: #f7f2e8;
+  --coschol-roll-w: 52px;
+}
+.coschol-panel .review-table-wrap {
+  max-height: 70vh;
+  overflow: auto;
+}
+.coschol-panel .review-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.coschol-panel .review-table th,
+.coschol-panel .review-table td {
+  border: 0;
+  box-shadow: inset -1px -1px 0 var(--line);
+}
+.coschol-panel .review-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+}
+.coschol-panel .review-table th:nth-child(1),
+.coschol-panel .review-table td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: var(--coschol-roll-w);
+  min-width: var(--coschol-roll-w);
+  background: var(--coschol-cell-bg);
+}
+.coschol-panel .review-table th:nth-child(2),
+.coschol-panel .review-table td:nth-child(2) {
+  position: sticky;
+  left: var(--coschol-roll-w);
+  z-index: 1;
+  background: var(--coschol-cell-bg);
+}
+/* The two corner cells sit in both sticky planes, so they need to outrank
+   the header row and the frozen columns alike. */
+.coschol-panel .review-table thead th:nth-child(1),
+.coschol-panel .review-table thead th:nth-child(2) {
+  z-index: 3;
+  background: var(--bg);
+}
+
+/* The name column is 305px of nowrap on its own — more than a phone viewport.
+   Let it wrap and cap it. The frozen roll+name pair is dead space as far as
+   entry goes, so keep it tight: at 150px + a 52px roll it ate two thirds of a
+   375px screen and left room for a single grade column at a time. */
+/* Below 1024px the grid scrolls horizontally, so every pixel the frozen name
+   column holds is a pixel of grade columns you cannot see. Left at its natural
+   305px of nowrap it took half the visible width at tablet size. */
+@media (max-width: 1023px) {
+  .coschol-panel .review-table td:nth-child(2) {
+    white-space: normal;
+    max-width: 160px;
+    line-height: 1.25;
+  }
+}
+
+@media (max-width: 659px) {
+  .coschol-panel {
+    --coschol-roll-w: 38px;
+  }
+  .coschol-panel .review-table th,
+  .coschol-panel .review-table td {
+    padding: 8px 6px;
+  }
+  .coschol-panel .review-table td:nth-child(2) {
+    max-width: 118px;
+    font-size: 0.85rem;
+  }
+  .coschol-panel .coschol-grade {
+    min-width: 76px;
+  }
+}
