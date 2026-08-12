@@ -24,7 +24,15 @@ async function buildAuthUser(uid, email, data, loginId) {
 
   let name = data.name || email;
   const teacherId = (loginId || data.teacherId || data.loginId || data.staffId || '').toUpperCase();
-  let classTeacherOf = null;
+
+  // Class-teacher assignment is read from the users doc, NOT the teachers
+  // collection. `teachers` is keyed by staff initials ("IOH", "DOL"), but all
+  // we have here is the staff id ("SFST015"), so teachers/<staffId> never
+  // resolves — it silently returned null for every teacher. The users doc
+  // carries the same value (tpClassTeacherOf) and is the only source
+  // firestore.rules can read by uid, so both layers now agree.
+  // Roman numeral ("I".."X") or "LKG"/"SKG"/"PLG".
+  const classTeacherOf = data.tpClassTeacherOf || data.classTeacherOf || null;
 
   if (TEACHER_ROLES.includes(rawRole) && teacherId) {
     try {
@@ -32,9 +40,6 @@ async function buildAuthUser(uid, email, data, loginId) {
       if (tDoc.exists()) {
         const t = tDoc.data();
         name = (t.title ? t.title + ' ' : '') + (t.name || name);
-        // Roman-numeral class ("I".."X") or "LKG"/"SKG"/"PLG" — whichever
-        // class this teacher is the class teacher of, if any.
-        classTeacherOf = t.classTeacherOf || null;
       }
     } catch (e) { /* use fallback */ }
   }

@@ -66,15 +66,19 @@ service cloud.firestore {
         || (className == 'Class X'   && classTeacherOf == 'X');
     }
 
+    // Reads the assignment straight off the user's own doc. It must NOT go via
+    // the `teachers` collection: that is keyed by staff initials ("IOH"), while
+    // the only id available here is the staff id ("SFST015"), so
+    // teachers/<staffId> never exists and this returned false for every
+    // teacher — locking all of them out of review/lock and co-scholastic.
+    // users/{uid}.tpClassTeacherOf holds the same value and is already fetched
+    // by isRole(), so this is also one document read instead of two.
     function isClassTeacherOf(className) {
       let u = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      let teacherId = u.get('teacherId', u.get('loginId', u.get('staffId', '')));
-      return teacherId is string && teacherId.size() > 0
-        && exists(/databases/$(database)/documents/teachers/$(teacherId))
-        && classTeacherOfMatchesClass(
-             get(/databases/$(database)/documents/teachers/$(teacherId)).data.get('classTeacherOf', ''),
-             className
-           );
+      return classTeacherOfMatchesClass(
+        u.get('tpClassTeacherOf', u.get('classTeacherOf', '')),
+        className
+      );
     }
 
     // ── Users ────────────────────────────────────────────────────────
