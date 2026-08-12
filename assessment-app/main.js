@@ -738,8 +738,30 @@ function renderCoScholastic() {
 
   const subjects = getCoScholasticForClass(state.coSchRegistry, state.coSchClass);
 
+  // Co-scholastic is a class-teacher form, so only offer classes this user is
+  // actually responsible for — mirrors the firestore.rules gate, which is the
+  // real boundary. Admin keeps all classes.
+  const allowedClasses = classes.filter(c => canReviewClass(c));
+
+  if (!allowedClasses.length) {
+    assessmentRoot.append(createStatus(
+      'Co-scholastic grades are entered by the class teacher. You are not currently ' +
+      'set as the class teacher for any class, so there is nothing to enter here.'
+    ));
+    return;
+  }
+
+  // A previously-selected class could fall outside the allowed set (e.g. the
+  // teacher's assignment changed) — clear it rather than render a grid whose
+  // save would be rejected server-side.
+  if (state.coSchClass && !allowedClasses.includes(state.coSchClass)) {
+    state.coSchClass = '';
+    state.coSchStudents = [];
+    state.coSchGrades = {};
+  }
+
   assessmentRoot.append(createCoScholasticEntry({
-    classes,
+    classes: allowedClasses,
     subjects,
     gradeScale: state.coSchRegistry.gradeScale || [],
     gradeLabels: state.coSchRegistry.gradeLabels || {},

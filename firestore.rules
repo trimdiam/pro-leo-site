@@ -44,7 +44,7 @@ service cloud.firestore {
       return raw == '1' ? 'Class I' : (raw == '2' ? 'Class II' : raw);
     }
 
-    // ── Class-teacher review gate ─────────────────────────────────────
+    // ── Class-teacher gate ────────────────────────────────────────────
     // Reviewing/locking an assessment_sessions doc (or touching one that's
     // already locked) is restricted to that class's class teacher — not any
     // teacher. `teachers/{teacherId}` stores classTeacherOf as "LKG"/"SKG"
@@ -52,28 +52,28 @@ service cloud.firestore {
     // docs store the display name ("Class I"). Mirrors the UI-side check in
     // assessment-app/main.js (canReviewClass) which hides the buttons too —
     // this is the actual enforcement boundary.
-    function classTeacherOfMatchesSessionClass(classTeacherOf, sessionClass) {
-      return classTeacherOf == sessionClass
-        || (sessionClass == 'Class I'   && classTeacherOf == 'I')
-        || (sessionClass == 'Class II'  && classTeacherOf == 'II')
-        || (sessionClass == 'Class III' && classTeacherOf == 'III')
-        || (sessionClass == 'Class IV'  && classTeacherOf == 'IV')
-        || (sessionClass == 'Class V'   && classTeacherOf == 'V')
-        || (sessionClass == 'Class VI'  && classTeacherOf == 'VI')
-        || (sessionClass == 'Class VII' && classTeacherOf == 'VII')
-        || (sessionClass == 'Class VIII' && classTeacherOf == 'VIII')
-        || (sessionClass == 'Class IX'  && classTeacherOf == 'IX')
-        || (sessionClass == 'Class X'   && classTeacherOf == 'X');
+    function classTeacherOfMatchesClass(classTeacherOf, className) {
+      return classTeacherOf == className
+        || (className == 'Class I'   && classTeacherOf == 'I')
+        || (className == 'Class II'  && classTeacherOf == 'II')
+        || (className == 'Class III' && classTeacherOf == 'III')
+        || (className == 'Class IV'  && classTeacherOf == 'IV')
+        || (className == 'Class V'   && classTeacherOf == 'V')
+        || (className == 'Class VI'  && classTeacherOf == 'VI')
+        || (className == 'Class VII' && classTeacherOf == 'VII')
+        || (className == 'Class VIII' && classTeacherOf == 'VIII')
+        || (className == 'Class IX'  && classTeacherOf == 'IX')
+        || (className == 'Class X'   && classTeacherOf == 'X');
     }
 
-    function isClassTeacherOfSession(sessionClass) {
+    function isClassTeacherOf(className) {
       let u = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       let teacherId = u.get('teacherId', u.get('loginId', u.get('staffId', '')));
       return teacherId is string && teacherId.size() > 0
         && exists(/databases/$(database)/documents/teachers/$(teacherId))
-        && classTeacherOfMatchesSessionClass(
+        && classTeacherOfMatchesClass(
              get(/databases/$(database)/documents/teachers/$(teacherId)).data.get('classTeacherOf', ''),
-             sessionClass
+             className
            );
     }
 
@@ -284,7 +284,7 @@ service cloud.firestore {
         (
           isTeacherAny() && !teacherLocked(database, request.auth.uid) &&
           (request.resource.data.session.status in ['reviewed', 'locked']
-            ? isClassTeacherOfSession(request.resource.data.session.class)
+            ? isClassTeacherOf(request.resource.data.session.class)
             : true)
         )
       );
@@ -293,7 +293,7 @@ service cloud.firestore {
         (
           isTeacherAny() && !teacherLocked(database, request.auth.uid) &&
           ((request.resource.data.session.status in ['reviewed', 'locked'] || resource.data.session.status == 'locked')
-            ? isClassTeacherOfSession(resource.data.session.class)
+            ? isClassTeacherOf(resource.data.session.class)
             : true)
         )
       );
@@ -328,14 +328,23 @@ service cloud.firestore {
 
     // ── Co-scholastic grades (LKG/SKG/Class I/II) ─────────────────────
     // One doc per class+term ("HY1_Class_II") holding a letter grade per
-    // student per co-scholastic subject. Same write scope as class tests:
-    // entry is not the review/lock step, so it is not class-teacher-gated.
+    // student per co-scholastic subject. Filled in as a single class-teacher
+    // form covering all subjects, so writes are restricted to that class's
+    // class teacher (or admin) — not any teacher. Mirrored in the UI by
+    // main.js only offering classes the signed-in teacher is responsible for.
     match /coscholastic_marks/{docId} {
       allow read:  if isAnyStaff();
       allow read:  if request.auth != null
         && isRole('student')
         && resource.data.class == studentAssessmentClass();
-      allow write: if ((isTeacherAny() && !teacherLocked(database, request.auth.uid)) || isAdmin()) && !rolloverLocked(database);
+      allow create, update: if !rolloverLocked(database) && (
+        isAdmin() ||
+        (
+          isTeacherAny() && !teacherLocked(database, request.auth.uid) &&
+          isClassTeacherOf(request.resource.data.class)
+        )
+      );
+      allow delete: if isAdmin() && !rolloverLocked(database);
     }
 
     // ── Student academic profiles ─────────────────────────────────────
