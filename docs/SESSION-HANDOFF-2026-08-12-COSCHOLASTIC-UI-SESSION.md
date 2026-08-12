@@ -23,9 +23,10 @@ All work below is **committed, pushed and deployed**. Nothing is half-applied.
 | `57702a8` | Quick entry — one subject, one tap per student, plus a bulk fill |
 | `f60d0cf` | Kindergarten co-scholastic uses Science and Spelling |
 | `0206cb5` | **Admin-only lock for co-scholastic grades** — includes a `firestore.rules` change |
+| `824ac14` | **Fix: report cards never synced co-scholastic, and sync failures were unreachable** |
 
 (Plus `ecdd6a4`, `2015c02`, `825413c`, `fa3f347`, `759bcad`, `db1e2de`,
-`4b1b9d0` — service-worker cache bumps, one per deploy.)
+`4b1b9d0`, `c122649` — service-worker cache bumps, one per deploy.)
 
 **`0206cb5` is the only change this session that touched `firestore.rules`**, and
 therefore the only one deployed with `--only firestore:rules` rather than just
@@ -286,7 +287,7 @@ written before this stay editable rather than becoming permanently locked.
 The control is a new **Co-Scholastic Locks** tab on the admin dashboard, one row
 per class+term. It has to live there: admins never see the entry screen, whose
 nav button is behind `isTeacher()` — the same constraint that ruled out the
-all-classes test account in §9.
+all-classes test account in §10.
 
 Three things that would otherwise have been bugs:
 - `setCoScholasticLock` uses **merge**. `saveCoScholastic` does a full `setDoc`
@@ -324,7 +325,52 @@ harness did not:
 
 ---
 
-## 9. Outstanding
+## 9. How the LKG/SKG report card links to its data
+
+Traced end to end after the question was asked. Two of the three links were
+fine; the third was broken and is fixed in `824ac14`.
+
+**Attendance — correct.** `attendance_monthly` docs are keyed
+`{class}_{yyyy}_{mm}`. The portal's attendance class dropdown (`index.html`,
+`am-class-sel`) offers `LKG`/`SKG` as literal values, and `CLASS_MAP` maps them
+straight through, so `report-card-attendance.js` asks for `LKG_2026_04` and that
+is exactly what `generateMonthlySnapshot` writes. Students are stored under
+`studentId || String(rollNo)` and read back with the same pair as fallback.
+Present days = present + late; working days summed across the term's months.
+A missing snapshot returns null and the card prints `___ / ___ days` — a blank
+for an admin to fill, not a wrong number.
+
+**Assessment — correct.** LKG/SKG resolve to their four subjects, all with
+criteria files, and only `reviewed`/`locked` sessions count.
+
+**Co-scholastic — was silently missing from every admin-generated card.** The
+builder reads co-scholastic from the **local cache**, but the report card
+generator synced only sessions and class tests. The only two callers of
+`syncCoScholasticFromFirestore` are on the teacher's Co-Scholastic screen, whose
+nav button is behind `isTeacher()` — **an admin can never open it**. So an admin
+generating cards had an empty cache, `buildCoScholasticSection` received nothing
+and returned `''`, and the strip vanished with no error, no warning and no blank
+row. Correct data in Firestore the whole time. It had not bitten anyone only
+because no co-scholastic grades exist yet.
+
+**The related defect was worse than it looked.** The call sites ended in
+`.catch(err => console.warn(...))`, which reads like a swallowed failure — but
+**all three sync functions already catch internally and never reject**, so those
+handlers were dead code. An abort added at the call site alone would also never
+have fired. The three services now accept `{ strict: true }` and rethrow; the
+default stays best-effort, which is right for the teacher screens falling back
+to a cache, and wrong for a report card. The generator now aborts naming the
+source that failed.
+
+**Not verified:** the strict rejection has never been executed. It needs a real
+failing Firestore call, and the browser available here has no outbound network —
+the SDK retried instead of rejecting and the probe never completed. Open the
+report card generator with DevTools set to offline and press Generate: expect a
+red "Could not sync…" naming the source, not a card.
+
+---
+
+## 10. Outstanding
 
 **The UI was opened and checked by the user, and reported working** — that
 covers the duplicate-panel fix, the layout, the frozen columns, quick entry and
@@ -352,7 +398,11 @@ account key and `npm install`. The assessment gaps for LKG/SKG are therefore
 still **unmeasured** — the previous handoff's Outstanding section covers Class
 I/II only, and that silence is not a clean bill of health.
 
-**Co-scholastic is still empty.** No grades entered for any class.
+**Co-scholastic is still empty.** No grades entered for any class. Nothing has
+therefore ever printed on a report card, so the co-scholastic strip has never
+been seen on a real card even now that the sync gap (§9) is closed. First
+end-to-end check once a teacher fills a class: generate one card and confirm the
+strip appears.
 
 **Should kindergarten Science and Spelling be academic instead?** As
 co-scholastic they carry one O–C letter per term and are **excluded from the
@@ -413,6 +463,14 @@ things rather than reading them:
 None of the three was visible by inspection. All three were obvious the moment
 something executed. The corollary for the next session: a harness is only
 evidence once you have checked that the harness itself is right.
+
+A fourth instance arrived later and is worth its own note, because reading was
+what caught it — but only on the second reading. The report card sync call sites
+ended in `.catch(err => console.warn(...))`, which was described, believed, and
+about to be "fixed" by adding an abort at the call site. The functions never
+reject; those handlers were dead code and the abort would have been dead too.
+The fix looked complete and would have changed nothing. **Check that the failure
+path you are hardening can actually be reached before hardening it.**
 
 ---
 
