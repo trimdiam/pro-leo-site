@@ -271,6 +271,11 @@ service cloud.firestore {
     }
 
     // ── Assessment sessions ───────────────────────────────────────────
+    // Locking co-scholastic for a class+term (below) also locks every
+    // REVIEWED session for that class+term from the client — see
+    // lockReviewedSessionsForClassTerm in session-review-engine.js. That's a
+    // burst of admin-authored status writes, not a new permission: isAdmin()
+    // already allows it below, same as any other admin status change.
     match /assessment_sessions/{docId} {
       allow read:  if isAnyStaff();
       // A student may read sessions for their own class only (powers the

@@ -23,7 +23,7 @@ import { initializeMarksWithDefault } from './services/fast-entry-engine.js';
 import { calculateSessionProgress } from './services/totals-engine.js';
 import { saveSession, saveSessionAndConfirm, getSession, getSessionRemote, getAllSessions, syncSessionsFromFirestore, deleteSessionAsAdmin, findDuplicateSession } from './services/session-storage.js';
 import { fetchSessions } from './services/firestore-service.js';
-import { updateSessionStatus, loadFullSessionData, SESSION_STATUS } from './services/session-review-engine.js';
+import { updateSessionStatus, loadFullSessionData, SESSION_STATUS, lockReviewedSessionsForClassTerm } from './services/session-review-engine.js';
 import { aggregateByMonth, extractYearMonth, clearAggregationCache } from './services/aggregation-engine.js';
 import { getCurrentUser, isTeacher, isAdmin, isLoggedIn, resolveAuthSession } from './services/auth-service.js';
 import { loadClassTestConfig, getClassTestSubjectsForClass } from './services/class-test-loader.js';
@@ -971,8 +971,22 @@ function renderAdminCoScholasticLocks() {
 
   const p = document.createElement('p');
   p.className = 'class-test-subtitle';
-  p.textContent = 'Locking makes a class + term final: the class teacher can still read the grades but can no longer change them. Unlock to hand it back. Enforced in firestore.rules, not just here.';
+  p.textContent = 'Locking makes a class + term final: the class teacher can still read the grades but can no longer change them. Locking also locks every reviewed assessment session for that class + term — draft/submitted sessions are left open. Unlock hands co-scholastic back but does not reopen sessions. Enforced in firestore.rules, not just here.';
   panel.append(p);
+
+  if (state.errorMessage) {
+    const err = document.createElement('p');
+    err.className = 'error-state';
+    err.textContent = state.errorMessage;
+    panel.append(err);
+  }
+
+  if (state.infoMessage) {
+    const info = document.createElement('p');
+    info.className = 'info-state';
+    info.textContent = state.infoMessage;
+    panel.append(info);
+  }
 
   const list = document.createElement('div');
   list.className = 'session-list';
@@ -1008,9 +1022,26 @@ function renderAdminCoScholasticLocks() {
       btn.addEventListener('click', async () => {
         btn.disabled = true;
         btn.textContent = locked ? 'Unlocking…' : 'Locking…';
+        state.errorMessage = '';
+        state.infoMessage = '';
         try {
           await setCoScholasticLock(term, className, !locked, { lockedBy: getCurrentUser()?.uid || null });
           await syncCoScholasticFromFirestore().catch(() => null);
+
+          // Cascade only on lock, not unlock — see the comment on
+          // lockReviewedSessionsForClassTerm for why the reverse doesn't happen.
+          if (!locked) {
+            await syncSessionsFromFirestore().catch(() => null);
+            const result = await lockReviewedSessionsForClassTerm(term, className);
+            const parts = [`Locked. ${result.lockedCount} reviewed session${result.lockedCount === 1 ? '' : 's'} also locked for ${className} ${term}.`];
+            if (result.skippedUnreviewed > 0) {
+              parts.push(`${result.skippedUnreviewed} session${result.skippedUnreviewed === 1 ? '' : 's'} still in draft/submitted were left open.`);
+            }
+            state.infoMessage = parts.join(' ');
+            if (result.failures.length) {
+              state.errorMessage = `${result.failures.length} session(s) failed to lock: ${result.failures.map(f => f.error).join('; ')}`;
+            }
+          }
         } catch (err) {
           state.errorMessage = `Could not ${locked ? 'unlock' : 'lock'} ${className} ${term}: ${err.message}`;
         }

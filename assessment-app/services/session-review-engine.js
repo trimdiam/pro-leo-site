@@ -5,6 +5,7 @@ import { getSubjectsForClass, loadSubjects } from './subject-loader.js';
 import { aggregateByMonth, extractYearMonth, clearAggregationCache } from './aggregation-engine.js';
 import { detectAndPersistWeakStudents } from './weak-student-engine.js';
 import { getStudentProfile } from './student-profile-engine.js';
+import { getTermDateRange } from './report-card-grade-engine.js';
 
 export const SESSION_STATUS = Object.freeze({
   DRAFT: 'draft',
@@ -115,6 +116,55 @@ export async function updateSessionStatus(sessionId, newStatus) {
 
 export function lockSession(sessionId) {
   return updateSessionStatus(sessionId, SESSION_STATUS.LOCKED);
+}
+
+// Sessions in this class whose date falls inside the term's window — same
+// weekStart/weekEnd-falls-back-to-date rule report-card-aggregator.js uses,
+// so "in this term" means the same thing everywhere it's asked.
+function getSessionsInTermWindow(className, term) {
+  const { dateFrom, dateTo } = getTermDateRange(term);
+  return getAllSessions().filter(entry => {
+    const s = entry.session;
+    if (!s || s.class !== className) return false;
+    const start = s.weekStart || s.date;
+    const end = s.weekEnd || s.date;
+    if (!start || !end) return false;
+    return start >= dateFrom && end <= dateTo;
+  });
+}
+
+/**
+ * Cascades an admin's co-scholastic term-lock onto assessment sessions: every
+ * REVIEWED session for this class in this term's window also becomes LOCKED.
+ * Draft/submitted sessions are left untouched — STATUS_FLOW has no direct path
+ * to 'locked' for them, and force-locking incomplete data would let it count
+ * as final on a report card. Call sites must sync sessions from Firestore
+ * first; this reads only the local cache.
+ *
+ * One-directional by design: this never runs on co-scholastic *unlock*, so
+ * reopening the co-scholastic grid does not silently reopen tests a teacher
+ * already finalized.
+ */
+export async function lockReviewedSessionsForClassTerm(term, className) {
+  const inWindow = getSessionsInTermWindow(className, term);
+  const toLock = inWindow.filter(e => e.session.status === SESSION_STATUS.REVIEWED);
+  const alreadyLocked = inWindow.filter(e => e.session.status === SESSION_STATUS.LOCKED).length;
+  const skippedUnreviewed = inWindow.filter(e =>
+    e.session.status === SESSION_STATUS.DRAFT || e.session.status === SESSION_STATUS.SUBMITTED
+  ).length;
+
+  const failures = [];
+  for (const entry of toLock) {
+    const result = await lockSession(entry.session.session_id);
+    if (!result.ok) failures.push({ sessionId: entry.session.session_id, error: result.error });
+  }
+
+  return {
+    lockedCount: toLock.length - failures.length,
+    alreadyLocked,
+    skippedUnreviewed,
+    failures
+  };
 }
 
 export function reopenSession(sessionId) {
