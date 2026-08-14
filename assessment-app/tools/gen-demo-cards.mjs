@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { buildPrintableHTML } from '../../report-card-print.js';
 import { generateTeacherRemark, generateAnnualRemark } from '../services/report-card-remark-engine.js';
+import { gradeSubject } from '../services/report-card-grade-engine.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT      = resolve(__dirname, '..');           // assessment-app/
@@ -18,6 +19,17 @@ const DATA      = resolve(ROOT, 'data');
 const OUT       = resolve(__dirname, 'demo-output');
 
 mkdirSync(OUT, { recursive: true });
+
+// Base64-embedded so the demo cards are genuinely standalone files (open
+// directly via file://, no dev server, no network) — a bare relative path
+// like 'assets/images/logo.webp' only resolves against a real origin, which
+// is why this previously shipped with the logo disabled entirely.
+function toDataUri(relPath, mime) {
+  const buf = readFileSync(resolve(SITE, relPath));
+  return `data:${mime};base64,${buf.toString('base64')}`;
+}
+const logoDataUri = toDataUri('assets/images/logo.webp', 'image/webp');
+const sealDataUri = toDataUri('assets/images/schoolsea.jpeg', 'image/jpeg');
 
 // ── Grade scale (mirrors report-card-print.js gradeCode) ───────────────────────
 function gradeCode(avg) {
@@ -30,8 +42,10 @@ function gradeCode(avg) {
 }
 const GRADE_WORD = { Adv: 'Advanced', Prof: 'Proficient', Dev: 'Developing', Beg: 'Beginning', NY: 'Not Yet', Ex: 'Exempt' };
 
-// ── Load real curriculum ───────────────────────────────────────────────────────
+// ── Load real curriculum + registries ──────────────────────────────────────────
 const subjects = JSON.parse(readFileSync(resolve(DATA, 'subjects.json'), 'utf8'));
+const classTestConfig = JSON.parse(readFileSync(resolve(DATA, 'class-test-config.json'), 'utf8'));
+const coscholasticRegistry = JSON.parse(readFileSync(resolve(DATA, 'coscholastic.json'), 'utf8'));
 
 function loadCriteria(criteriaPath) {
   const raw = readFileSync(resolve(ROOT, criteriaPath), 'utf8').replace(/^﻿/, '');
@@ -43,6 +57,18 @@ function subjectsForClass(className) {
   return subjects.filter(s => s.classes.includes(className));
 }
 
+// Mirrors getClassTestSubjectsForClass(): class-test subject ids intersected
+// with this class's real academic subject ids, same rule the app enforces.
+function classTestSubjectIdsForClass(className) {
+  if (!classTestConfig.classes.includes(className)) return [];
+  const ids = new Set(subjectsForClass(className).map(s => s.subject_id));
+  return Object.keys(classTestConfig.subjects).filter(id => ids.has(id));
+}
+
+function coScholasticSubjectsForClass(className) {
+  return coscholasticRegistry.subjects.filter(s => (s.classes || []).includes(className));
+}
+
 // ── Synthetic score generator ──────────────────────────────────────────────────
 // Deterministic wave so each criterion gets a believable, varied score.
 // HY2 trends slightly upward from HY1 to make the annual "improving" trend show.
@@ -52,33 +78,72 @@ function scoreFor(seed, term) {
   return Math.max(0.5, Math.min(5, Math.round((wave + bump) * 10) / 10));
 }
 
+const classTestSubjectIds = classTestConfig.subjects; // { ENG1: { max_marks }, ... }
+
 function buildSubjectsForTerm(className, term) {
+  const testSubjectIds = classTestSubjectIdsForClass(className);
+
   return subjectsForClass(className).map((subj, si) => {
     const criteriaDefs = loadCriteria(subj.criteria_path);
-    const criteria = criteriaDefs.map((c, ci) => {
-      const avg = scoreFor(si * 10 + ci + 1, term);
-      return {
+    const criteria = criteriaDefs.map((c, ci) => ({
+      criterion_id:   c.criterion_id,
+      criterion_name: c.criterion_name,
+      category:       c.category || 'General',
+      averageScore:   scoreFor(si * 10 + ci + 1, term),
+      sessionCount:   6,
+      absentCount:    0
+    }));
+
+    // Half-Yearly class test — only where this class+subject has one
+    // configured (mirrors getClassTestForSubject in report-card-builder.js).
+    let classTest = null;
+    if (testSubjectIds.includes(subj.subject_id)) {
+      const maxMarks = classTestSubjectIds[subj.subject_id].max_marks;
+      const marksObtained = Math.round((scoreFor(si * 7 + 3, term) / 5) * maxMarks);
+      classTest = { marksObtained, maxMarks };
+    }
+
+    // Real blend logic (70% assessment / 30% class test where present) —
+    // same function report-card-builder.js calls in production.
+    const graded = gradeSubject({ subject_id: subj.subject_id, subject_name: subj.subject_name, criteria }, classTest);
+
+    return {
+      subject_id:        subj.subject_id,
+      subject_name:      subj.subject_name,
+      subjectAverage:    graded.subjectAverage,
+      subjectGrade:      graded.subjectGrade?.code || 'Ex',
+      assessmentAverage: graded.assessmentAverage ?? null,
+      classTestScore:    graded.classTestScore ?? null,
+      classTestMarks:    classTest ? `${classTest.marksObtained}/${classTest.maxMarks}` : null,
+      criteria: graded.criteria.map(c => ({
         criterion_id:   c.criterion_id,
         criterion_name: c.criterion_name,
-        category:       c.category || 'General',
-        averageScore:   avg,
-        grade:          gradeCode(avg),
-        label:          GRADE_WORD[gradeCode(avg)],
-        sessionCount:   6,
-        absentCount:    0
-      };
-    });
-    const subjAvg = Math.round(
-      (criteria.reduce((a, c) => a + c.averageScore, 0) / criteria.length) * 100
-    ) / 100;
-    return {
-      subject_id:     subj.subject_id,
-      subject_name:   subj.subject_name,
-      subjectAverage: subjAvg,
-      subjectGrade:   gradeCode(subjAvg),
-      criteria
+        category:       c.category,
+        averageScore:   c.averageScore,
+        grade:          c.grade?.code || 'Ex',
+        label:          c.grade?.label || 'Exempt / No Data',
+        sessionCount:   c.sessionCount,
+        absentCount:    c.absentCount
+      }))
     };
   });
+}
+
+// Deterministic letter grade for co-scholastic — same wave, mapped onto the
+// registry's O/A+/A/B+/B/C scale instead of the 1-5 academic one.
+function coScholasticGradeFor(seed, term) {
+  const scale = coscholasticRegistry.gradeScale; // ['O','A+','A','B+','B','C'] — index 0 best
+  const avg = scoreFor(seed, term); // ~0.5..5
+  const idx = Math.min(scale.length - 1, Math.max(0, Math.round((5 - avg) / 5 * (scale.length - 1))));
+  return scale[idx];
+}
+
+function buildCoScholasticForTerm(className, term) {
+  return coScholasticSubjectsForClass(className).map((s, i) => ({
+    key:   s.key,
+    label: s.label,
+    grade: coScholasticGradeFor(i * 5 + 2, term)
+  }));
 }
 
 function buildCard(className, term, dateFrom, dateTo, firstName) {
@@ -112,6 +177,7 @@ function buildCard(className, term, dateFrom, dateTo, firstName) {
     term: term.toUpperCase(),
     dateFrom, dateTo,
     subjects: subs,
+    coScholastic: buildCoScholasticForTerm(className, term),
     overallAverageScore: overallAvg,
     overallGrade,
     overallLabel: GRADE_WORD[overallGrade],
@@ -163,7 +229,7 @@ for (const d of DEMO) {
     className:   d.className,
     rollNo:      d.rollNo,
     studentId:   d.studentId
-  }, { logoUrl: '' });   // empty logo → "SFDS CREST" placeholder, no network dependency
+  }, { logoUrl: logoDataUri, sealUrl: sealDataUri });
 
   const file = `demo_${d.className.replace(/\s+/g, '_')}.html`;
   writeFileSync(resolve(OUT, file), html, 'utf8');

@@ -128,7 +128,7 @@ export function computeAnnualSummary(hy1Card, hy2Card) {
 
 const BASE_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-  @page { size: A4 landscape; margin: 0; }
+  @page { size: 14in 8.5in; margin: 0; }
 
   :root {
     --cd-900:#2B270A; --cd-700:#4E471A; --cd-500:#7A7030;
@@ -322,19 +322,37 @@ const BASE_CSS = `
   .scale-item .ach   { font-size:8.5px; padding:1px 6px; }
   .scale-item .sname { font-weight:700; color:var(--txt); }
   .scale-item .range { color:var(--txt-dim); font-variant-numeric:tabular-nums; }
-  .sign-row  { padding:18px 32px 16px; display:flex; flex-direction:row; gap:48px; }
+  .sign-row  { padding:18px 32px 16px; display:flex; flex-direction:row; align-items:flex-end; gap:48px; }
   .sign-row > .sign { flex:1 1 0; min-width:0; }
   .sign      { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:8px; min-height:36px; }
   .sign-line { width:100%; border-top:1px solid var(--edge); }
   .sign-label { font-size:9px; font-weight:700; color:var(--cd-700); text-transform:uppercase; letter-spacing:1.4px; }
+  /* Seal — same asset + placeholder convention as Sfs-report-card (Class III-X),
+     so both report card systems read as one family. Sits with the signatures,
+     not the header crest: a seal is a stamp of authenticity applied at
+     sign-off, distinct from the school's identifying logo up top. */
+  .seal      { flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; min-height:36px; }
+  .seal-box  { width:46px; height:46px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; position:relative; }
+  .seal-box.placeholder { border:1.5px dashed var(--cd-400); background:var(--cream-3); }
+  .seal-box.placeholder::after {
+    content:"OFFICIAL\A SEAL"; white-space:pre; text-align:center;
+    font-size:5.5px; font-weight:700; letter-spacing:0.8px; color:var(--cd-400); text-transform:uppercase;
+  }
+  .seal-img  { width:100%; height:100%; object-fit:contain; }
   .disclaimer { padding:0 22px 8px; font-size:7.5px; color:var(--txt-dim); letter-spacing:0.4px; text-align:center; font-weight:500; }
+  .doc-meta  { padding:0 22px 6px; font-size:7px; color:var(--cd-400); letter-spacing:0.3px; text-align:center; }
 
   @media print {
     html, body { background:#fff !important; padding:0; display:block; }
     .print-bar { display:none !important; }
-    /* Card was designed for 14×8.5in (legal landscape). Scale to A4 landscape
-       (297mm × 210mm ≈ 11.69×8.27in) — single-page fit on most printers. */
-    .rc { box-shadow:none !important; margin:0; width:14in; height:8.5in; zoom:0.835; }
+    /* @page above is 14x8.5in — the card's real size — so no scaling is
+       needed here. zoom was previously used to shrink onto an A4 @page, but
+       zoom isn't honored by every print/print-to-pdf engine, which clipped
+       the card instead of scaling it. Printing this onto A4 paper is a
+       printer-driver "fit to page" setting now, not something this CSS does. */
+    .rc { box-shadow:none !important; margin:0; width:14in; height:8.5in; }
+    .rc-wrap { padding:0 !important; overflow:visible !important; }
   }
 `;
 
@@ -850,6 +868,14 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
     ? `<div class="crest-wrap"><img src="${esc(logoUrl)}" alt="School crest" /></div>`
     : `<div class="crest-wrap"><div class="no-img">SFDS<br>CREST</div></div>`;
 
+  // Same seal asset and default-on-unless-explicitly-empty convention as the
+  // logo above — 'sealUrl' in opts (not just falsy logoUrl) lets a caller
+  // suppress it (e.g. the offline demo generator) without guessing a path.
+  const sealUrl = 'sealUrl' in opts ? opts.sealUrl : (baseOrigin + 'assets/images/schoolsea.jpeg');
+  const sealHTML = sealUrl
+    ? `<div class="seal-box"><img class="seal-img" src="${esc(sealUrl)}" alt="School seal" /></div>`
+    : `<div class="seal-box placeholder"></div>`;
+
   // Attendance values
   const hy1Present = hy1Card?.attendancePresentDays ?? null;
   const hy1Working = hy1Card?.attendanceWorkingDays ?? null;
@@ -1008,7 +1034,9 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
       <div class="sign"><div class="sign-line"></div><div class="sign-label">Class Teacher</div></div>
       <div class="sign"><div class="sign-line"></div><div class="sign-label">Parent / Guardian</div></div>
       <div class="sign"><div class="sign-line"></div><div class="sign-label">Principal</div></div>
+      <div class="seal">${sealHTML}<div class="sign-label">School Seal</div></div>
     </div>
+    <div class="doc-meta">Doc ID: ${esc(hy1Card?.docId || hy2Card?.docId || `${info.studentId}_${academicYear}`)} &nbsp;·&nbsp; Generated ${esc(new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }))}</div>
     <div class="disclaimer">Computer-generated document &nbsp;|&nbsp; Verify with school records &nbsp;|&nbsp; No signature required for validity</div>
   </footer>
 
@@ -1175,7 +1203,7 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   </div>
 </div>
 
-<div style="width:100%;box-sizing:border-box;padding:20px;overflow:auto;-webkit-overflow-scrolling:touch">
+<div class="rc-wrap" style="width:100%;box-sizing:border-box;padding:20px;overflow:auto;-webkit-overflow-scrolling:touch">
 ${cardHTML}
 </div>
 
