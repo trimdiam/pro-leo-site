@@ -281,22 +281,28 @@ const BASE_CSS = `
   .panel-bar {
     background:var(--cd-700); color:var(--cream);
     font-size:9px; font-weight:800; letter-spacing:2px; text-transform:uppercase;
-    padding:5px 12px; border-bottom:1px solid var(--edge); display:flex; align-items:center; gap:6px;
+    padding:4px 12px; border-bottom:1px solid var(--edge); display:flex; align-items:center; gap:6px;
   }
   .panel-bar::before { content:'▸'; color:var(--cd-200); font-size:10px; }
   .panel-bar.annual  { background:var(--cd-900); }
-  .panel-body { padding:7px 12px 9px; background:var(--cream); display:flex; flex-direction:column; gap:6px; flex:1; }
-  .stat-row { display:flex; flex-direction:row; flex-wrap:wrap; gap:6px; }
-  .stat-row > .stat { flex:1 1 calc(50% - 6px); min-width:0; }
-  .stat { background:var(--cd-050); border:1px solid var(--cd-200); border-radius:3px; padding:5px 8px; display:flex; flex-direction:column; gap:2px; }
+  .panel-body { padding:5px 12px 6px; background:var(--cream); display:flex; flex-direction:column; gap:4px; flex:1; }
+  .stat-row { display:flex; flex-direction:row; flex-wrap:wrap; gap:4px; }
+  .stat-row > .stat { flex:1 1 calc(50% - 4px); min-width:0; }
+  .stat { background:var(--cd-050); border:1px solid var(--cd-200); border-radius:3px; padding:4px 7px; display:flex; flex-direction:column; gap:1px; }
   .stat .eyebrow { font-size:7.5px; font-weight:700; letter-spacing:1.2px; color:var(--cd-500); text-transform:uppercase; }
   .stat .value   { font-size:12px; font-weight:800; color:var(--txt); line-height:1.15; display:flex; align-items:baseline; gap:4px; }
   .stat .value .ach { font-size:9.5px; padding:1.5px 6px; }
   .arrow    { color:var(--adv-c); font-weight:800; }
   .arrow.dn { color:var(--ny-c); }
   .remark {
-    font-size:9.5px; font-style:italic; color:var(--cd-900); line-height:1.5;
-    border-top:1px dashed var(--cd-200); padding-top:6px; text-wrap:pretty;
+    font-size:9.5px; font-style:italic; color:var(--cd-900); line-height:1.4;
+    border-top:1px dashed var(--cd-200); padding-top:4px; text-wrap:pretty;
+    /* Hard cap, not just a style choice: .rc is a fixed 8.5in page with
+       overflow:hidden, so remark length was the one variable-height piece
+       pushing the summary panels past their budget and silently clipping the
+       bottom of the Annual panel. Capping it guarantees that can't recur
+       regardless of what the remark engine generates. */
+    display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
   }
   .remark::before { content:'“'; color:var(--cd-400); font-weight:800; font-size:14px; line-height:0; vertical-align:-2px; margin-right:1px; }
   .remark::after  { content:'”'; color:var(--cd-400); font-weight:800; font-size:14px; line-height:0; vertical-align:-4px; margin-left:1px; }
@@ -322,26 +328,27 @@ const BASE_CSS = `
   .scale-item .ach   { font-size:8.5px; padding:1px 6px; }
   .scale-item .sname { font-weight:700; color:var(--txt); }
   .scale-item .range { color:var(--txt-dim); font-variant-numeric:tabular-nums; }
-  .sign-row  { padding:18px 32px 16px; display:flex; flex-direction:row; align-items:flex-end; gap:48px; }
+  .sign-row  { padding:10px 32px 8px; display:flex; flex-direction:row; align-items:flex-end; gap:48px; }
   .sign-row > .sign { flex:1 1 0; min-width:0; }
-  .sign      { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:8px; min-height:36px; }
+  .sign      { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; min-height:30px; }
   .sign-line { width:100%; border-top:1px solid var(--edge); }
   .sign-label { font-size:9px; font-weight:700; color:var(--cd-700); text-transform:uppercase; letter-spacing:1.4px; }
   /* Seal — same asset + placeholder convention as Sfs-report-card (Class III-X),
      so both report card systems read as one family. Sits with the signatures,
      not the header crest: a seal is a stamp of authenticity applied at
-     sign-off, distinct from the school's identifying logo up top. */
-  .seal      { flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; min-height:36px; }
-  .seal-box  { width:46px; height:46px; border-radius:50%; flex-shrink:0;
+     sign-off, distinct from the school's identifying logo up top. Sized to
+     .sign's 30px min-height budget so adding it doesn't grow the footer and
+     starve the summary panels above (it did once — this is the fix for that). */
+  .seal      { flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; min-height:30px; }
+  .seal-box  { width:30px; height:30px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center; position:relative; }
   .seal-box.placeholder { border:1.5px dashed var(--cd-400); background:var(--cream-3); }
   .seal-box.placeholder::after {
     content:"OFFICIAL\A SEAL"; white-space:pre; text-align:center;
-    font-size:5.5px; font-weight:700; letter-spacing:0.8px; color:var(--cd-400); text-transform:uppercase;
+    font-size:4px; font-weight:700; letter-spacing:0.5px; color:var(--cd-400); text-transform:uppercase;
   }
   .seal-img  { width:100%; height:100%; object-fit:contain; }
-  .disclaimer { padding:0 22px 8px; font-size:7.5px; color:var(--txt-dim); letter-spacing:0.4px; text-align:center; font-weight:500; }
-  .doc-meta  { padding:0 22px 6px; font-size:7px; color:var(--cd-400); letter-spacing:0.3px; text-align:center; }
+  .disclaimer { padding:0 22px 4px; font-size:7px; color:var(--txt-dim); letter-spacing:0.3px; text-align:center; font-weight:500; }
 
   @media print {
     html, body { background:#fff !important; padding:0; display:block; }
@@ -926,7 +933,7 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
     ${crestHTML}
     <div class="hdr-school">
       <div class="hdr-name">St. Francis De Sales School</div>
-      <div class="hdr-loc">Laitkor, Shillong — Meghalaya · Affiliated to CBSE</div>
+      <div class="hdr-loc">Laitkor, Shillong — Meghalaya</div>
       <div class="hdr-meta">Ph: 9612946550</div>
     </div>
     <div class="hdr-right">
@@ -1036,8 +1043,7 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
       <div class="sign"><div class="sign-line"></div><div class="sign-label">Principal</div></div>
       <div class="seal">${sealHTML}<div class="sign-label">School Seal</div></div>
     </div>
-    <div class="doc-meta">Doc ID: ${esc(hy1Card?.docId || hy2Card?.docId || `${info.studentId}_${academicYear}`)} &nbsp;·&nbsp; Generated ${esc(new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }))}</div>
-    <div class="disclaimer">Computer-generated document &nbsp;|&nbsp; Verify with school records &nbsp;|&nbsp; No signature required for validity</div>
+    <div class="disclaimer">Doc ID: ${esc(hy1Card?.docId || hy2Card?.docId || `${info.studentId}_${academicYear}`)} &nbsp;·&nbsp; Generated ${esc(new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }))} &nbsp;|&nbsp; Computer-generated document &nbsp;|&nbsp; Verify with school records &nbsp;|&nbsp; No signature required for validity</div>
   </footer>
 
 </main>`;
