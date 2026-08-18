@@ -262,6 +262,19 @@ const BASE_CSS = `
   .marks-tbl tr.subj-head td.subj-col { padding-left:10px; }
   .score { font-weight:700; color:var(--txt); font-variant-numeric:tabular-nums; }
 
+  /* Category-row detail expand — screen only, see @media print below.
+     .crit-row is the individual-criterion rows a category rolls up from;
+     hidden until the parent .cat-row is clicked. */
+  .marks-tbl tr.cat-row { cursor:pointer; }
+  .marks-tbl tr.cat-row td.subj-col::before {
+    content:'▸'; display:inline-block; width:11px; color:var(--cd-500); font-size:8px;
+    transition:transform 0.15s ease;
+  }
+  .marks-tbl tr.cat-row.expanded td.subj-col::before { transform:rotate(90deg); }
+  .marks-tbl tr.crit-row { display:none; }
+  .marks-tbl tr.crit-row td.subj-col { padding-left:30px; font-size:9px; color:var(--txt-dim); }
+  .marks-tbl tr.crit-row td { font-size:9px; }
+
   /* Achievement pill */
   .ach {
     display:inline-block; font-size:9px; font-weight:800;
@@ -360,6 +373,11 @@ const BASE_CSS = `
        printer-driver "fit to page" setting now, not something this CSS does. */
     .rc { box-shadow:none !important; margin:0; width:14in; height:8.5in; }
     .rc-wrap { padding:0 !important; overflow:visible !important; }
+    /* Detail expand is an on-screen-only affordance — force it collapsed for
+       print/PDF regardless of what a parent had expanded on screen, so the
+       printed card always stays the same compact size it was fixed to be. */
+    .marks-tbl tr.crit-row { display:none !important; }
+    .marks-tbl tr.cat-row td.subj-col::before { display:none !important; }
   }
 `;
 
@@ -637,31 +655,54 @@ function buildTableRows(hy1Card, hy2Card, opts = {}) {
         <td>${ach(annSCode)}</td>
       </tr>`;
 
-      // Build category → criteria map from both terms
-      const catMap = new Map(); // category → { hy1Scores[], hy2Scores[] }
+      // Build category → criteria map from both terms. Individual criteria are
+      // kept (not just averaged away) so the on-screen view can expand a
+      // category into the criteria behind it — see .cat-row/.crit-row above.
+      const catMap = new Map(); // category → { hy1Scores[], hy2Scores[], criteria: Map(critId -> {name, hy1Score, hy2Score}) }
       const addToCat = (criteria, term) => {
         (criteria || []).forEach(c => {
           const cat = c.category || inferCategory(c.criterion_id) || 'General';
-          if (!catMap.has(cat)) catMap.set(cat, { hy1Scores: [], hy2Scores: [] });
-          if (term === 'hy1' && c.averageScore != null) catMap.get(cat).hy1Scores.push(c.averageScore);
-          if (term === 'hy2' && c.averageScore != null) catMap.get(cat).hy2Scores.push(c.averageScore);
+          if (!catMap.has(cat)) catMap.set(cat, { hy1Scores: [], hy2Scores: [], criteria: new Map() });
+          const bucket = catMap.get(cat);
+          if (term === 'hy1' && c.averageScore != null) bucket.hy1Scores.push(c.averageScore);
+          if (term === 'hy2' && c.averageScore != null) bucket.hy2Scores.push(c.averageScore);
+          if (!bucket.criteria.has(c.criterion_id)) {
+            bucket.criteria.set(c.criterion_id, { name: c.criterion_name, hy1Score: null, hy2Score: null });
+          }
+          const crit = bucket.criteria.get(c.criterion_id);
+          if (term === 'hy1') crit.hy1Score = c.averageScore ?? null;
+          if (term === 'hy2') crit.hy2Score = c.averageScore ?? null;
         });
       };
       addToCat(hy1Subj?.criteria, 'hy1');
       addToCat(hy2Subj?.criteria, 'hy2');
 
+      let catIdx = 0;
       catMap.forEach((cat, catName) => {
+        catIdx++;
+        const catId = `cat-${subjId}-${catIdx}`;
         const hy1Avg = cat.hy1Scores.length ? cat.hy1Scores.reduce((a, b) => a + b, 0) / cat.hy1Scores.length : null;
         const hy2Avg = cat.hy2Scores.length ? cat.hy2Scores.reduce((a, b) => a + b, 0) / cat.hy2Scores.length : null;
         const annAvgs = [hy1Avg, hy2Avg].filter(v => v !== null);
         const annAvg  = annAvgs.length ? annAvgs.reduce((a, b) => a + b, 0) / annAvgs.length : null;
 
-        rows += `<tr>
+        rows += `<tr class="cat-row" data-target="${catId}">
           <td class="subj-col" style="padding-left:18px">${esc(catName)}</td>
           ${termCell(hy1Avg)}
           ${termCell(hy2Avg)}
           <td>${ach(gradeCode(annAvg))}</td>
         </tr>`;
+
+        cat.criteria.forEach(c => {
+          const ca = [c.hy1Score, c.hy2Score].filter(v => v !== null);
+          const annCAvg = ca.length ? ca.reduce((a, b) => a + b, 0) / ca.length : null;
+          rows += `<tr class="crit-row" data-group="${catId}">
+            <td class="subj-col">${esc(c.name)}</td>
+            ${termCell(c.hy1Score)}
+            ${termCell(c.hy2Score)}
+            <td>${ach(gradeCode(annCAvg))}</td>
+          </tr>`;
+        });
       });
     } else {
       // All other classes: subject header + individual criteria rows
@@ -1021,6 +1062,21 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
         </thead>
         <tbody>${tableRows}</tbody>
       </table>
+      <script>
+        // Category-row detail expand — on screen only (forced hidden for
+        // print/PDF via @media print above). Data was already sent to the
+        // browser for the collapsed rollup; this just reveals rows that were
+        // rendered but hidden, no extra fetch.
+        document.querySelectorAll('.marks-tbl tr.cat-row').forEach(function (row) {
+          row.addEventListener('click', function () {
+            var target = row.getAttribute('data-target');
+            var expanded = row.classList.toggle('expanded');
+            document.querySelectorAll('.crit-row[data-group="' + target + '"]').forEach(function (cr) {
+              cr.style.display = expanded ? 'table-row' : 'none';
+            });
+          });
+        });
+      </script>
     </section>
 
     <aside class="summary">
