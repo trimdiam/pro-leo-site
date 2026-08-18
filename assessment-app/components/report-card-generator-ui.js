@@ -210,15 +210,18 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
 
   section.append(studentRow);
 
-  // Attendance — typed in directly, same procedure as Sfs-report-card's
-  // Class III-X mark-entry form (hyPresent/hyTotalDays): no automated
-  // attendance_daily/attendance_monthly pull for this class of card either.
-  // Single-student only — there's no reasonable one-click way to enter 50+
-  // students' individual attendance for the bulk "Generate for Entire Class"
-  // path, same as Class III-X has no bulk mode at all (one form per student).
+  // Attendance is normally read automatically from the Class Attendance grid
+  // (Sfs-report-card → Class Attendance), the same source Class III-X uses.
+  // These inputs are an OVERRIDE for the single-student flow — leave both blank
+  // to use the grid's value, which is what should happen almost always.
   const attRow = el('div', 'rc-student-row');
 
-  const presentLabel = el('label', 'rc-label', 'Present Days (optional)');
+  const attNote = el('p', 'panel-desc',
+    'Attendance comes from the Class Attendance grid automatically. Only fill these in to override it for this one student.');
+  attNote.style.gridColumn = '1 / -1';
+  attRow.append(attNote);
+
+  const presentLabel = el('label', 'rc-label', 'Present Days (override)');
   const presentInput = document.createElement('input');
   presentInput.type = 'number';
   presentInput.min = '0';
@@ -227,7 +230,7 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
   presentLabel.append(presentInput);
   attRow.append(presentLabel);
 
-  const workingLabel = el('label', 'rc-label', 'Total Working Days (optional)');
+  const workingLabel = el('label', 'rc-label', 'Total Working Days (override)');
   const workingInput = document.createElement('input');
   workingInput.type = 'number';
   workingInput.min = '0';

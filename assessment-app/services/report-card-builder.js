@@ -12,6 +12,7 @@ import { aggregateStudentForReportCard } from './report-card-aggregator.js';
 import { gradeSubject, computeOverallPerformance, getTermLabel } from './report-card-grade-engine.js';
 import { generateTeacherRemark } from './report-card-remark-engine.js';
 import { loadStudentsForClass } from './student-loader.js';
+import { getTermAttendance } from './report-card-attendance.js';
 import { getClassTest } from './class-test-storage.js';
 import { loadCoScholasticForClass, getStudentCoScholastic } from './coscholastic-service.js';
 
@@ -162,11 +163,18 @@ export async function buildAndSaveReportCard(params) {
     };
     const teacherRemark = generateTeacherRemark(remarkProfile);
 
-    // 5b. Attendance — manually entered by whoever generates the card, same
-    // procedure as Sfs-report-card's Class III-X (typed present/total days on
-    // the mark-entry form, no automated attendance_daily/attendance_monthly
-    // pull). Blank when omitted, same as before this class had any value.
-    const attendance = { attendancePresentDays, attendanceWorkingDays };
+    // 5b. Attendance — read from the same Class Attendance grid the Class III-X
+    // system uses (marks/{classId}_{HY|FT}/students/{id}.attendance). An
+    // explicitly passed value still wins, so the admin panel's Edit Attendance
+    // can correct a card without the grid overwriting it on regeneration.
+    let attendance = { attendancePresentDays, attendanceWorkingDays };
+    if (attendancePresentDays === null && attendanceWorkingDays === null) {
+      attendance = await getTermAttendance({ studentId, className, term })
+        .catch(err => {
+          console.warn(`Attendance lookup failed for ${studentId}:`, err.message);
+          return { attendancePresentDays: null, attendanceWorkingDays: null };
+        });
+    }
 
     // 6. Assemble document
     // academicYear is part of the id — without it, generating this term's
