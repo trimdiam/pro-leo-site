@@ -1350,11 +1350,28 @@ exports.lookupReportCard = onCall(
     // ── Branch by system ─────────────────────────────────────────────────────
     if (LOOKUP_PREPRIMARY_CLASSES.has(classRaw)) {
       const term = settings.term === "HY2" ? "HY2" : "HY1";
-      const docId = `${String(studentId).replace(/\//g, "_").replace(/\s+/g, "_")}_${term}`;
-      const cardSnap = await db.collection("report_cards").doc(docId).get();
-      if (!cardSnap.exists || cardSnap.data().status !== "released") {
+      // Queried by field rather than by a reconstructed document id. The id
+      // format is owned by report-card-builder.js and has already drifted once:
+      // it became `${studentId}_${academicYear}_${term}` (2026-08-06, "report
+      // card year collision") while this function still rebuilt the older
+      // `${studentId}_${term}`, so every pre-primary lookup missed and reported
+      // "no released report card" no matter what had been released. Rebuilding
+      // it here can't be made safe either — the academic year would have to come
+      // from this server's clock at LOOKUP time, which stops matching the year
+      // baked in at GENERATION time as soon as the year rolls over.
+      // One equality filter, so the automatic single-field index covers it.
+      const cardsSnap = await db.collection("report_cards")
+        .where("studentId", "==", studentId)
+        .get();
+      const released = cardsSnap.docs
+        .filter((d) => d.data().term === term && d.data().status === "released")
+        // Newest academic year first, so a returning student gets the current
+        // card rather than whichever one happened to come back first.
+        .sort((a, b) => String(b.data().academicYear || "").localeCompare(String(a.data().academicYear || "")));
+      if (!released.length) {
         throw new HttpsError("failed-precondition", "No released report card found for this student yet.");
       }
+      const cardSnap = released[0];
       await lookupRecordView(cardSnap.ref, cardSnap.data());
       return { system: "report_cards", reportCard: cardSnap.data() };
     }
@@ -1363,14 +1380,27 @@ exports.lookupReportCard = onCall(
     if (!classId) {
       throw new HttpsError("invalid-argument", "Unsupported class.");
     }
-    const ftSnap = await db.collection("marks").doc(`${classId}_FT`).collection("students").doc(studentId).get();
+    // Mark documents are keyed by the student's Firestore DOCUMENT id, which is
+    // what markentry.js writes under (it uses the doc id from its roster query).
+    // That is normally identical to studentId, but two records were created with
+    // an auto-generated id — for those, keying off studentId found nothing and
+    // told the family no report card existed while it sat released under the
+    // real doc id. Try the document id first, then fall back to studentId for
+    // any record written the other way round.
+    const marksRef = (term) => db.collection("marks").doc(`${classId}_${term}`).collection("students");
+    let ftSnap = await marksRef("FT").doc(studentDoc.id).get();
+    let marksKey = studentDoc.id;
+    if (!ftSnap.exists && studentId !== studentDoc.id) {
+      ftSnap = await marksRef("FT").doc(studentId).get();
+      marksKey = studentId;
+    }
     if (!ftSnap.exists || ftSnap.data().releasedToStudent !== true) {
       throw new HttpsError("failed-precondition", "No released report card found for this student yet.");
     }
     const rawFtData = ftSnap.data();
     const ftData = lookupGateFinalTerm(rawFtData);
     let hyData = {};
-    const hySnap = await db.collection("marks").doc(`${classId}_HY`).collection("students").doc(studentId).get();
+    const hySnap = await marksRef("HY").doc(marksKey).get();
     if (hySnap.exists) hyData = hySnap.data();
 
     // View receipt is recorded against the real stored doc, not the gated copy.
