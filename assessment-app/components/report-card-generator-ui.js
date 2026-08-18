@@ -210,6 +210,34 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
 
   section.append(studentRow);
 
+  // Attendance — typed in directly, same procedure as Sfs-report-card's
+  // Class III-X mark-entry form (hyPresent/hyTotalDays): no automated
+  // attendance_daily/attendance_monthly pull for this class of card either.
+  // Single-student only — there's no reasonable one-click way to enter 50+
+  // students' individual attendance for the bulk "Generate for Entire Class"
+  // path, same as Class III-X has no bulk mode at all (one form per student).
+  const attRow = el('div', 'rc-student-row');
+
+  const presentLabel = el('label', 'rc-label', 'Present Days (optional)');
+  const presentInput = document.createElement('input');
+  presentInput.type = 'number';
+  presentInput.min = '0';
+  presentInput.className = 'rc-select rc-narrow-input';
+  presentInput.placeholder = 'e.g. 92';
+  presentLabel.append(presentInput);
+  attRow.append(presentLabel);
+
+  const workingLabel = el('label', 'rc-label', 'Total Working Days (optional)');
+  const workingInput = document.createElement('input');
+  workingInput.type = 'number';
+  workingInput.min = '0';
+  workingInput.className = 'rc-select rc-narrow-input';
+  workingInput.placeholder = 'e.g. 100';
+  workingLabel.append(workingInput);
+  attRow.append(workingLabel);
+
+  section.append(attRow);
+
   // Load students into dropdown when class changes
   let _students = [];
 
@@ -286,8 +314,17 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
     };
   }
 
-  async function runForStudent(student, params) {
-    return buildAndSaveReportCard({ studentId: student.student_id, ...params });
+  function readAttendanceInputs() {
+    const present = presentInput.value.trim();
+    const working = workingInput.value.trim();
+    return {
+      attendancePresentDays: present === '' ? null : parseInt(present, 10),
+      attendanceWorkingDays: working === '' ? null : parseInt(working, 10)
+    };
+  }
+
+  async function runForStudent(student, params, attendance = {}) {
+    return buildAndSaveReportCard({ studentId: student.student_id, ...params, ...attendance });
   }
 
   // ── Single student handler ────────────────────────────────────────────────
@@ -315,12 +352,13 @@ export function createReportCardGeneratorUI({ classes = CLASSES, currentUser = {
 
     progressArea.textContent = `Generating report card for ${student.full_name}…`;
 
-    const result = await runForStudent(student, params);
+    const attendance = readAttendanceInputs();
+    const result = await runForStudent(student, params, attendance);
 
     const displayName = student.full_name || studentId;
     const status = result.ok ? 'ok' : result.skipped ? 'skip' : 'error';
     appendResultRow(resultsList, displayName, status, result.error,
-      status === 'error' ? () => runForStudent(student, params) : null,
+      status === 'error' ? () => runForStudent(student, params, attendance) : null,
       result.subjectsPendingReview
     );
 

@@ -168,6 +168,58 @@ function buildRow(card, container, onRefresh) {
 
   tdActions.append(editBtn, remarkWrap);
 
+  // ── Edit Attendance ──
+  // Manually typed present/total days, same procedure as Sfs-report-card's
+  // Class III-X mark-entry form — there's no automated attendance source for
+  // this pipeline, so this is the only way to set it for a card generated via
+  // "Generate for Entire Class" (which has no per-student attendance inputs).
+  const attBtn = el('button', 'rc-action-btn', 'Edit Attendance');
+  attBtn.type = 'button';
+
+  const attWrap = el('div', 'rc-remark-wrap');
+  attWrap.style.display = 'none';
+  const attPresentInput = document.createElement('input');
+  attPresentInput.type = 'number';
+  attPresentInput.min = '0';
+  attPresentInput.className = 'rc-att-input';
+  attPresentInput.placeholder = 'Present days';
+  attPresentInput.value = card.attendancePresentDays ?? '';
+  const attWorkingInput = document.createElement('input');
+  attWorkingInput.type = 'number';
+  attWorkingInput.min = '0';
+  attWorkingInput.className = 'rc-att-input';
+  attWorkingInput.placeholder = 'Total working days';
+  attWorkingInput.value = card.attendanceWorkingDays ?? '';
+  const saveAttBtn = el('button', 'rc-remark-save-btn', 'Save Attendance');
+  attWrap.append(attPresentInput, attWorkingInput, saveAttBtn);
+
+  attBtn.addEventListener('click', () => {
+    attWrap.style.display = attWrap.style.display === 'none' ? 'block' : 'none';
+  });
+
+  saveAttBtn.addEventListener('click', async () => {
+    saveAttBtn.disabled = true;
+    saveAttBtn.textContent = 'Saving…';
+    try {
+      const present = attPresentInput.value.trim();
+      const working = attWorkingInput.value.trim();
+      const fields = {
+        attendancePresentDays: present === '' ? null : parseInt(present, 10),
+        attendanceWorkingDays: working === '' ? null : parseInt(working, 10)
+      };
+      await updateCardField(card.id, fields);
+      Object.assign(card, fields);
+      saveAttBtn.textContent = '✅ Saved';
+      setTimeout(() => { saveAttBtn.disabled = false; saveAttBtn.textContent = 'Save Attendance'; }, 1500);
+    } catch (err) {
+      saveAttBtn.textContent = '❌ Error';
+      saveAttBtn.disabled = false;
+      console.error(err);
+    }
+  });
+
+  tdActions.append(attBtn, attWrap);
+
   // ── Mark Ready ──
   if (card.status === 'draft') {
     const readyBtn = el('button', 'rc-action-btn', 'Mark Ready');

@@ -216,6 +216,23 @@
   border-color: var(--accent, #8B6F47);
 }
 
+.rc-att-input {
+  width: 130px;
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid var(--primary, #D6C3A3);
+  border-radius: 8px;
+  font-family: var(--font-body, 'Nunito', sans-serif);
+  color: var(--text, #2C1F0E);
+  background: #fff;
+  margin-right: 8px;
+}
+
+.rc-att-input:focus {
+  outline: none;
+  border-color: var(--accent, #8B6F47);
+}
+
 .rc-remark-save-btn {
   margin-top: 6px;
   padding: 5px 14px;

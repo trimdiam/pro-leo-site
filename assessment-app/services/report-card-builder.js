@@ -12,7 +12,6 @@ import { aggregateStudentForReportCard } from './report-card-aggregator.js';
 import { gradeSubject, computeOverallPerformance, getTermLabel } from './report-card-grade-engine.js';
 import { generateTeacherRemark } from './report-card-remark-engine.js';
 import { loadStudentsForClass } from './student-loader.js';
-import { getTermAttendance } from './report-card-attendance.js';
 import { getClassTest } from './class-test-storage.js';
 import { loadCoScholasticForClass, getStudentCoScholastic } from './coscholastic-service.js';
 
@@ -82,10 +81,18 @@ function getClassTestForSubject(className, term, subjectId, studentId) {
  * @param {string} params.dateFrom      - ISO date
  * @param {string} params.dateTo        - ISO date
  * @param {string} params.generatedBy   - Admin user name
+ * @param {number} [params.attendancePresentDays] - Manually entered by the admin
+ *   generating the card — same procedure as Sfs-report-card's Class III-X
+ *   markentry.html (plain typed-in present/total days), not pulled from any
+ *   attendance_daily/attendance_monthly snapshot. Omit to leave blank.
+ * @param {number} [params.attendanceWorkingDays]
  * @returns {Promise<{ ok: boolean, docId: string, error?: string }>}
  */
 export async function buildAndSaveReportCard(params) {
-  const { studentId, className, term, academicYear, dateFrom, dateTo, generatedBy } = params;
+  const {
+    studentId, className, term, academicYear, dateFrom, dateTo, generatedBy,
+    attendancePresentDays = null, attendanceWorkingDays = null
+  } = params;
 
   try {
     // 1. Load student info
@@ -155,13 +162,11 @@ export async function buildAndSaveReportCard(params) {
     };
     const teacherRemark = generateTeacherRemark(remarkProfile);
 
-    // 5b. Pull the student's real attendance for this term (best-effort).
-    const attendance = await getTermAttendance({
-      studentId, rollNo, className, dateFrom, dateTo
-    }).catch(err => {
-      console.warn(`Attendance fetch failed for ${studentId}:`, err.message);
-      return { attendancePresentDays: null, attendanceWorkingDays: null };
-    });
+    // 5b. Attendance — manually entered by whoever generates the card, same
+    // procedure as Sfs-report-card's Class III-X (typed present/total days on
+    // the mark-entry form, no automated attendance_daily/attendance_monthly
+    // pull). Blank when omitted, same as before this class had any value.
+    const attendance = { attendancePresentDays, attendanceWorkingDays };
 
     // 6. Assemble document
     // academicYear is part of the id — without it, generating this term's
