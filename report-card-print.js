@@ -819,7 +819,7 @@ function buildAnnualPanel(hy1Card, hy2Card, gradesOnly = false) {
 // table and the overall average — matching Sfs-report-card's countInTotal:false
 // treatment for Class III-X. Renders nothing at all when a card has no
 // co-scholastic data, so cards generated before this feature are unaffected.
-function buildCoScholasticSection(hy1Card, hy2Card) {
+function buildCoScholasticSection(hy1Card, hy2Card, className) {
   const merged = new Map();
   [[hy1Card, 'hy1'], [hy2Card, 'hy2']].forEach(([card, slot]) => {
     (card?.coScholastic || []).forEach(item => {
@@ -842,11 +842,18 @@ function buildCoScholasticSection(hy1Card, hy2Card) {
           </div>
         </div>`).join('');
 
+  // LKG/SKG use a 9-value scale (D/E added below C, plus NA for "not available")
+  // instead of the 6-value scale everyone else uses — mirrors gradeScaleByClass
+  // in assessment-app/data/coscholastic.json.
+  const legendScale = (className === 'LKG' || className === 'SKG')
+    ? 'O &middot; A+ &middot; A &middot; B+ &middot; B &middot; C &middot; D &middot; E &middot; NA'
+    : 'O &middot; A+ &middot; A &middot; B+ &middot; B &middot; C';
+
   return `
     <section class="coschol">
       <div class="cs-head">
         <span class="cs-title">Co-Scholastic</span>
-        <span class="cs-legend">O &middot; A+ &middot; A &middot; B+ &middot; B &middot; C &nbsp;<span class="dim">(HY1 / HY2 &mdash; not counted in the overall grade)</span></span>
+        <span class="cs-legend">${legendScale} &nbsp;<span class="dim">(HY1 / HY2 &mdash; not counted in the overall grade)</span></span>
       </div>
       <div class="cs-grid">${cells}
       </div>
@@ -1024,7 +1031,7 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
 
   </div>
 
-  ${buildCoScholasticSection(hy1Card, hy2Card)}
+  ${buildCoScholasticSection(hy1Card, hy2Card, info.className)}
 
   <footer class="footer">
     <div class="scale-row">
@@ -1040,7 +1047,7 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
     <div class="sign-row">
       <div class="sign"><div class="sign-line"></div><div class="sign-label">Class Teacher</div></div>
       <div class="sign"><div class="sign-line"></div><div class="sign-label">Parent / Guardian</div></div>
-      <div class="sign"><div class="sign-line"></div><div class="sign-label">Principal</div></div>
+      <div class="sign"><div class="sign-line"></div><div class="sign-label">Headmistress</div></div>
       <div class="seal">${sealHTML}<div class="sign-label">School Seal</div></div>
     </div>
     <div class="disclaimer">Doc ID: ${esc(hy1Card?.docId || hy2Card?.docId || `${info.studentId}_${academicYear}`)} &nbsp;·&nbsp; Generated ${esc(new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }))} &nbsp;|&nbsp; Computer-generated document &nbsp;|&nbsp; Verify with school records &nbsp;|&nbsp; No signature required for validity</div>

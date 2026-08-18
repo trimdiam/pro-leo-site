@@ -1852,8 +1852,10 @@ select, .text-input {
   grid-column: 1 / -1;
 }
 .coschol-panel .coschol-scale {
+  /* auto-fill instead of a fixed 6 — LKG/SKG use a 9-value scale (adds D/E/NA),
+     everyone else still uses 6, and this adapts to either without a fixed count. */
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
   gap: 6px;
 }
 .coschol-panel .coschol-bulk {

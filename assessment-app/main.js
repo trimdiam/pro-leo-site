@@ -12,7 +12,8 @@ import { createClassTestEntry } from './components/class-test-entry.js';
 import { createCoScholasticEntry } from './components/coscholastic-entry.js';
 import {
   loadCoScholasticRegistry, getCoScholasticForClass, getCoScholastic,
-  saveCoScholasticAndConfirm, syncCoScholasticFromFirestore, setCoScholasticLock
+  saveCoScholasticAndConfirm, syncCoScholasticFromFirestore, setCoScholasticLock,
+  getCoScholasticGradeScale, getCoScholasticGradeLabels
 } from './services/coscholastic-service.js';
 import { showDefaultScorePicker } from './components/default-score-picker.js';
 import { loadCriteriaForSubject } from './services/criteria-loader.js';
@@ -769,8 +770,8 @@ function renderCoScholastic() {
   assessmentRoot.append(createCoScholasticEntry({
     classes: allowedClasses,
     subjects,
-    gradeScale: state.coSchRegistry.gradeScale || [],
-    gradeLabels: state.coSchRegistry.gradeLabels || {},
+    gradeScale: getCoScholasticGradeScale(state.coSchRegistry, state.coSchClass),
+    gradeLabels: getCoScholasticGradeLabels(state.coSchRegistry, state.coSchClass),
     selectedClass: state.coSchClass,
     selectedTerm: state.coSchTerm,
     students: state.coSchStudents,

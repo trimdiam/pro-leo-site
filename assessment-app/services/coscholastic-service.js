@@ -49,10 +49,22 @@ export async function loadCoScholasticForClass(className, options = {}) {
   return getCoScholasticForClass(reg, className);
 }
 
-/** True when `grade` is one of the configured grades. Blank/undefined = not graded yet. */
-export function isValidGrade(registry, grade) {
+/**
+ * Grade scale for one class — most classes share the base O/A+/A/B+/B/C scale,
+ * but a class can override it (e.g. LKG/SKG add D/E/NA) via gradeScaleByClass.
+ */
+export function getCoScholasticGradeScale(registry, className) {
+  return registry?.gradeScaleByClass?.[className] || registry?.gradeScale || [];
+}
+
+export function getCoScholasticGradeLabels(registry, className) {
+  return registry?.gradeLabelsByClass?.[className] || registry?.gradeLabels || {};
+}
+
+/** True when `grade` is one of the class's configured grades. Blank/undefined = not graded yet. */
+export function isValidGrade(registry, grade, className = null) {
   if (grade === '' || grade === null || grade === undefined) return true;
-  return (registry?.gradeScale || []).includes(grade);
+  return getCoScholasticGradeScale(registry, className).includes(grade);
 }
 
 // ── Doc id ────────────────────────────────────────────────────────────────────

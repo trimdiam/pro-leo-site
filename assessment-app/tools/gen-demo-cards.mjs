@@ -130,9 +130,10 @@ function buildSubjectsForTerm(className, term) {
 }
 
 // Deterministic letter grade for co-scholastic — same wave, mapped onto the
-// registry's O/A+/A/B+/B/C scale instead of the 1-5 academic one.
-function coScholasticGradeFor(seed, term) {
-  const scale = coscholasticRegistry.gradeScale; // ['O','A+','A','B+','B','C'] — index 0 best
+// class's grade scale (LKG/SKG's 9-value O..NA scale, or the base O/A+/A/B+/B/C
+// scale everyone else uses) instead of the 1-5 academic one.
+function coScholasticGradeFor(seed, term, className) {
+  const scale = coscholasticRegistry.gradeScaleByClass?.[className] || coscholasticRegistry.gradeScale;
   const avg = scoreFor(seed, term); // ~0.5..5
   const idx = Math.min(scale.length - 1, Math.max(0, Math.round((5 - avg) / 5 * (scale.length - 1))));
   return scale[idx];
@@ -142,7 +143,7 @@ function buildCoScholasticForTerm(className, term) {
   return coScholasticSubjectsForClass(className).map((s, i) => ({
     key:   s.key,
     label: s.label,
-    grade: coScholasticGradeFor(i * 5 + 2, term)
+    grade: coScholasticGradeFor(i * 5 + 2, term, className)
   }));
 }
 

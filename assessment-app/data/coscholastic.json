@@ -9,6 +9,21 @@
     "B": "Satisfactory",
     "C": "Needs Improvement"
   },
+  "_gradeScaleByClass_why": "LKG/SKG co-scholastic uses the school's percentage-band scale (D/E added below C, plus NA for 'not available') instead of the 6-value word-scale above, which stays as-is for Class I/II. Additive only — O/A+/A/B+/B/C mean the same letters in both scales, so nothing already saved under the base scale is invalidated by this.",
+  "gradeScaleByClass": {
+    "LKG": ["O", "A+", "A", "B+", "B", "C", "D", "E", "NA"],
+    "SKG": ["O", "A+", "A", "B+", "B", "C", "D", "E", "NA"]
+  },
+  "gradeLabelsByClass": {
+    "LKG": {
+      "O": "90-100%", "A+": "80-89%", "A": "70-79%", "B+": "60-69%",
+      "B": "50-59%", "C": "40-49%", "D": "30-39%", "E": "Less than 30%", "NA": "Not available"
+    },
+    "SKG": {
+      "O": "90-100%", "A+": "80-89%", "A": "70-79%", "B+": "60-69%",
+      "B": "50-59%", "C": "40-49%", "D": "30-39%", "E": "Less than 30%", "NA": "Not available"
+    }
+  },
   "subjects": [
     { "key": "pe",                "label": "P.E.",               "classes": ["LKG", "SKG", "Class I", "Class II"] },
     { "key": "singing",           "label": "Singing",            "classes": ["LKG", "SKG", "Class I", "Class II"] },
