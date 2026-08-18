@@ -164,6 +164,7 @@ function fabricationCheck(marks) {
   const slots = fortnightsIn(expected.from, expected.to);
   const subjects = readJson('data/subjects.json');
   const coSchRegistry = readJson('data/coscholastic.json');
+  const classTestConfig = readJson('data/class-test-config.json');
 
   console.log('='.repeat(78));
   console.log(`ASSESSMENT GAP REPORT — ${TERM} — academic year ${getCurrentAcademicYear()}`);
@@ -279,10 +280,13 @@ function fabricationCheck(marks) {
                     ` | status=${o.session.status} | doc=${o.id}`);
       });
 
-      // Class test for this subject+term.
-      const ctId = `${TERM}_${docSuffix}_${subject.subject_id}`;
-      if (!classTestIds.has(ctId)) {
-        console.log(`         class test        MISSING — no class_test_marks/${ctId}`);
+      // Class test for this subject+term — only for classes configured to have one
+      // (e.g. LKG deliberately has none: direct Half-Yearly exam, no class test).
+      if ((classTestConfig.classes || []).includes(className)) {
+        const ctId = `${TERM}_${docSuffix}_${subject.subject_id}`;
+        if (!classTestIds.has(ctId)) {
+          console.log(`         class test        MISSING — no class_test_marks/${ctId}`);
+        }
       }
     }
 
