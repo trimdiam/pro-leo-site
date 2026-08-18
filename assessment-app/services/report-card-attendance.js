@@ -18,7 +18,9 @@
 // attendance, so it is a lookup table rather than a derived string.
 
 import { db } from './firebase-config.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
+import {
+  doc, getDoc, collection, query, where, getDocs, limit
+} from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
 
 const CLASS_TO_MARKS_ID = {
   'SKG':      'SKG',
@@ -49,10 +51,22 @@ export async function getTermAttendance({ studentId, className, term }) {
   const blank = { attendancePresentDays: null, attendanceWorkingDays: null };
   if (!classId || !termCfg || !studentId) return blank;
 
-  const snap = await getDoc(
-    doc(db, 'marks', `${classId}_${termCfg.docSuffix}`, 'students', String(studentId))
-  );
-  if (!snap.exists()) return blank;
+  const termDocId = `${classId}_${termCfg.docSuffix}`;
+  let snap = await getDoc(doc(db, 'marks', termDocId, 'students', String(studentId)));
+
+  // The attendance grid keys mark docs by the student's Firestore DOCUMENT id,
+  // which is normally identical to studentId — but not always (two records were
+  // created with an auto-generated id, e.g. SKG roll 48). Resolve the real
+  // document id before giving up, or that student's card silently loses its
+  // attendance while the rest of the class is fine.
+  if (!snap.exists()) {
+    const alt = await getDocs(query(
+      collection(db, 'students'), where('studentId', '==', String(studentId)), limit(1)
+    ));
+    if (alt.empty || alt.docs[0].id === String(studentId)) return blank;
+    snap = await getDoc(doc(db, 'marks', termDocId, 'students', alt.docs[0].id));
+    if (!snap.exists()) return blank;
+  }
 
   const att = snap.data()?.attendance || {};
   const present = att[termCfg.presentKey];

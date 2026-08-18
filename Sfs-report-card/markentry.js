@@ -16,6 +16,19 @@ function classNumFromId(classId) {
   return ROMAN_TO_INT[raw] || parseInt(raw) || null;
 }
 
+// Convert a class identifier to the value the `students` collection stores in
+// its `class` field. Numbered classes are kept as ARABIC numerals ("III" → "3"),
+// but kindergarten is stored under its own label ("SKG", "LKG", "PLG"), for
+// which classNumFromId() returns null — and String(null) is the literal string
+// "null", which matches no student at all. That silently produced an empty
+// student list for SKG/LKG class teachers, which in turn blocked the Class
+// Attendance grid (it refuses to open without a loaded roster).
+function classStrFromId(classId) {
+  const base = String(classId ?? '').split('-')[0].trim().toUpperCase();
+  const num  = classNumFromId(base);
+  return num != null ? String(num) : base;
+}
+
 // Convert any class identifier to a plain Roman-numeral string — NO section suffix.
 // Source of truth is teacher.classTeacher (admin form, Arabic numerals 1-10).
 // "1" → "I",  "9" → "IX",  "III" → "III",  "IX-A" → "IX"
@@ -602,7 +615,7 @@ async function openGrid(classId, classNum, section, subjectLabel, subjectKey, te
 
   try {
     // Students are stored with separate 'class' and 'section' fields, not a combined classId
-    const classStr = String(classNumInt || classNumFromId(classId));
+    const classStr = classStrFromId(classId);
 
     const studSnap = await db.collection('students')
       .where('class', '==', classStr)
@@ -1253,7 +1266,7 @@ $('ctBtnRefresh').addEventListener('click', async () => { await renderCTDashboar
 // also called from lockSingleRecord() so a single-student lock keeps the
 // whole class's ranks current too, not just "Lock All".
 async function recomputeAndSaveClassRanks(classId, classNum) {
-  const ctClassStr = String(classNumFromId(classId));
+  const ctClassStr = classStrFromId(classId);
   const studSnap = await db.collection('students')
     .where('class', '==', ctClassStr)
     .get();
@@ -2339,7 +2352,7 @@ async function lockAllRecords() {
   try {
     // Denormalize identity onto each mark doc at lock time — see comment in
     // lockSingleRecord(). Fetched once and reused for both HY and FT.
-    const classStr = String(ME.ctClassNum || classNumFromId(classId));
+    const classStr = classStrFromId(classId);
     const studSnap  = await db.collection('students').where('class', '==', classStr).get();
     const rosterById = {};
     studSnap.forEach(d => { rosterById[d.id] = d.data(); });
