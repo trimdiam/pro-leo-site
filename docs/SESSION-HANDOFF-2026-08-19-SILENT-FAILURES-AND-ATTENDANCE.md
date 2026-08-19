@@ -24,7 +24,8 @@
 | `59f499a78` | **Attendance Range Report** — totals days present over any span of months |
 | `be3d1b9f9` | **Co-scholastic grade key spelled out** on the card — letters alone meant nothing |
 | `5b7aa51d6` | **LKG/SKG key switched to words**, percentages kept for the teacher |
-| `551409645`, `7e0ab5593`, `452d46e98`, `af2ea0dc7`, `0a4f5a9fd`, `ac6b59272`, `3d3d06381`, `929f500a5` | Service-worker cache bumps, one per deploy |
+| `fdce215e5` | **Students who leave are flagged, not deleted** (`student-status.js`) |
+| `551409645`, `7e0ab5593`, `452d46e98`, `af2ea0dc7`, `0a4f5a9fd`, `ac6b59272`, `3d3d06381`, `929f500a5`, `033c276bb` | Service-worker cache bumps, one per deploy |
 
 Hosting-only. No Cloud Functions or rules deploys this session.
 
@@ -340,7 +341,92 @@ on the 9-value (SKG) and 6-value (Class II) scales.
 
 ---
 
-## 8. Outstanding
+## 8. Students who leave: a flag, never a deletion
+
+There was no representation of a leaver in the data at all — **all 647 students
+carry no `status` field** — so the only way to remove one was to delete the
+record. That is lossy in a way that is not visible from the UI.
+
+### Why deleting is the wrong tool
+
+Deleting the `students` document removes the roster row **and nothing else**.
+Every reference survives, now pointing at somebody who no longer exists. One LKG
+pupil was traced to **51** of them:
+
+```
+23  assessment_sessions    marks[studentId]      — marks with no owner
+25  attendance_daily       absent / late arrays  — id stays in the array
+ 2  marks/LKG_{HY,FT}/students/{docId}           — incl. the imported attendance
+ 1  coscholastic_marks     grades[studentId]
+```
+
+Nothing crashes, which is precisely the problem. What actually degrades:
+
+- **A released report card becomes permanently unreachable.** `lookupReportCard`
+  matches class + roll + DOB against `students` *before* it will hand the card
+  over. No row, no card — and it reads to a parent as "the school lost it".
+- **The pipeline table counts drift forever.** `loadRCPipeline` counts from the
+  marks subcollection, not the roster, so an orphan mark doc keeps being counted:
+  a class of 44 reads "0/45" and can never reconcile.
+- **Attendance history stops matching.** Each daily record froze `total: 75`; the
+  roster now says 74.
+
+### The convention
+
+```
+status: 'left'  + leftOn: 'YYYY-MM-DD'   → off the roll
+status absent                            → on the roll
+```
+
+**Missing means active, and that must never be inverted** — every one of the 647
+existing records predates the field, so flipping the default would take the whole
+school off the roll at once. The rule lives in exactly one place,
+`student-status.js`, for that reason.
+
+### Blocked vs kept — the split that matters
+
+**Blocked** once marked left (every entry surface): assessment-app new/quick
+entry, class test, co-scholastic, report-card generation (all through
+`loadStudentsForClass`); Sfs-report-card subject grid, class-teacher list, rank
+computation and the Class Attendance grid; the teacher daily-attendance roster
+and its class-strength stat.
+
+**Kept**, deliberately — history has to stay readable:
+
+| Surface | Why |
+|---|---|
+| Marks inside an already-saved session | Hiding them makes real saved marks look ownerless |
+| A card already generated for them | Still needs to resolve their name |
+| Attendance range report, flagged `(left)` | A child who left in April *did* attend Feb–Mar; dropping them shrinks the class and understates days taught |
+| Parent lookup | A released card must stay reachable |
+
+`loadStudentsForClass(className, { includeInactive: true })` is the opt-in for
+those history paths — it exists for history, not convenience.
+
+### Verified against production
+
+Flagged SKG roll 5, checked every surface, then restored:
+
+```
+roster before          48 total / 48 active
+marked left            48 total / 47 active
+entry roster has #5    false     ← blocked
+history roster has #5  true      ← preserved
+attendance record      {hyPresent: 0, hyTotal: 85}  ← untouched
+restored               48 total / 48 active
+```
+
+### Left in place on purpose
+
+The hard **Delete** button still exists in the admin student list, unguarded, at
+the user's decision. It is legitimate for a duplicate row or a student added in
+error with no history. **The rule: if the student has any marks, attendance or a
+report card, mark them as left — never delete.** A guarded delete (refuse when
+references exist) was offered and declined for now.
+
+---
+
+## 9. Outstanding
 
 **LKG/SKG report cards are NOT ready to generate.** Attendance and co-scholastic
 flow correctly, but **51 of 54 sessions are still `submitted`, not
@@ -391,11 +477,20 @@ nine words that `gradeMeaningsByClass` holds in `coscholastic.json`. Both sides
 cross-reference each other in comments, but a wording change must be made in
 **both** or the card and the registry will disagree silently.
 
+**Hard delete is still reachable for students.** The red Delete button remains in
+the admin student list, unguarded, by decision — see §8. A guarded version
+(refuse when marks/attendance/report cards exist) was offered and declined for
+now. If orphaned references ever do appear, §8 lists exactly where to look.
+
+**The five never-present pupils are still on the roll.** LKG rolls 71 and 21, SKG
+rolls 5, 48 and 20 (see the data section above) are the obvious candidates for
+the new "mark as left" flag, if the office confirms they never enrolled.
+
 Everything from the previous handoff's Outstanding section is unchanged.
 
 ---
 
-## 9. Lessons — the ones specific to this session
+## 10. Lessons — the ones specific to this session
 
 **1. `node --check` is not a syntax gate for browser code.** It exited 0 on a
 file Chrome refused to parse, and that shipped a production outage. Use the
@@ -432,6 +527,10 @@ students. Both times, listing what *is* there found it immediately.
 
 - `attendance-range.js` — the range report (new); `computeRange()` is the whole
   calculation and is exported for reuse
+- `student-status.js` — the single definition of "still on the roll".
+  `isStudentActive()` / `filterActiveStudentDocs()`. **Missing status = active**;
+  inverting that default takes all 647 students off the roll at once. Loaded as a
+  classic script BEFORE `app-logic.js`, which calls it
 - `assessment-app/services/report-card-attendance.js` — report-card attendance
   reader; `CLASS_TO_MARKS_ID` maps display name → Roman-numeral marks id, and the
   docId fallback lives here
