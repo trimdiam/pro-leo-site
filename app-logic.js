@@ -3118,7 +3118,8 @@ function setVal(id, val) {
                     : "F" === s.gender
                       ? "Female"
                       : s.gender || "—";
-              return `<tr data-name="${(s.name || "").toLowerCase()}">\n        <td><strong style="color:var(--accent)">${s.studentId || "—"}</strong></td>\n        <td style="text-align:center">${s.rollNo || "—"}</td>\n        <td>${s.name || "—"}</td>\n        <td style="text-align:center">${cls}</td>\n        <td style="text-align:center">${gender}</td>\n        <td style="text-align:center"><span class="badge badge-info">${s.bloodGroup || "—"}</span></td>\n        <td style="text-align:center">${s.house ? houseMap[s.house] || s.house : "—"}</td>\n        <td style="font-size:12px">${s.whatsapp || s.contact || "—"}</td>\n        <td><div style="display:flex;gap:6px;flex-wrap:wrap">\n          <button class="btn btn-sm btn-outline" title="View" onclick='viewStudentDetails(${JSON.stringify(s)})'><i class="fas fa-eye"></i></button>\n          <button class="btn btn-sm btn-outline" title="Edit" onclick='editStudent("${docId}",${JSON.stringify(s)})'><i class="fas fa-edit"></i></button>\n          <button class="btn btn-sm" title="Login" onclick='openStudentLoginModal("${(s.studentId || "").replace(/"/g, "")}", "${(s.name || "").replace(/"/g, "")}", "${s.gender || "F"}", "${(s.email || "").replace(/"/g, "")}")' style="background:#1a4a8a;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px"><i class="fas fa-key"></i></button>\n          <button class="btn btn-sm" title="Link Siblings" onclick='openFamilyLinkModal("${(s.studentId || "").replace(/"/g, "")}", "${(s.name || "").replace(/"/g, "")}")' style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px"><i class="fas fa-link"></i></button>\n          <button class="btn btn-sm btn-danger" title="Delete" onclick='promptDeleteStudent("${docId}","${(s.name || "").replace(/"/g, "")}")'><i class="fas fa-trash"></i></button>\n        </div></td>\n      </tr>`;
+              return `<tr data-name="${(s.name || "").toLowerCase()}">\n        <td><strong style="color:var(--accent)">${s.studentId || "—"}</strong></td>\n        <td style="text-align:center">${s.rollNo || "—"}</td>\n        <td>${s.name || "—"}${(s.status||'').toLowerCase()==='left' ? ' <span class="badge badge-danger" style="font-size:10px">LEFT</span>' : ''}</td>\n        <td style="text-align:center">${cls}</td>\n        <td style="text-align:center">${gender}</td>\n        <td style="text-align:center"><span class="badge badge-info">${s.bloodGroup || "—"}</span></td>\n        <td style="text-align:center">${s.house ? houseMap[s.house] || s.house : "—"}</td>\n        <td style="font-size:12px">${s.whatsapp || s.contact || "—"}</td>\n        <td><div style="display:flex;gap:6px;flex-wrap:wrap">\n          <button class="btn btn-sm btn-outline" title="View" onclick='viewStudentDetails(${JSON.stringify(s)})'><i class="fas fa-eye"></i></button>\n          <button class="btn btn-sm btn-outline" title="Edit" onclick='editStudent("${docId}",${JSON.stringify(s)})'><i class="fas fa-edit"></i></button>\n          <button class="btn btn-sm" title="Login" onclick='openStudentLoginModal("${(s.studentId || "").replace(/"/g, "")}", "${(s.name || "").replace(/"/g, "")}", "${s.gender || "F"}", "${(s.email || "").replace(/"/g, "")}")' style="background:#1a4a8a;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px"><i class="fas fa-key"></i></button>\n          <button class="btn btn-sm" title="Link Siblings" onclick='openFamilyLinkModal("${(s.studentId || "").replace(/"/g, "")}", "${(s.name || "").replace(/"/g, "")}")' style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px"><i class="fas fa-link"></i></button>\n          <button class="btn btn-sm" title="${(s.status||'').toLowerCase()==='left' ? 'Put back on roll' : 'Mark as left school'}" onclick='toggleStudentLeft("${docId}","${(s.name || "").replace(/"/g, "")}","${s.status || ""}")' style="background:${(s.status||'').toLowerCase()==='left' ? '#16a34a' : '#b45309'};color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px"><i class="fas fa-${(s.status||'').toLowerCase()==='left' ? 'user-check' : 'user-slash'}"></i></button>
+          <button class="btn btn-sm btn-danger" title="Delete" onclick='promptDeleteStudent("${docId}","${(s.name || "").replace(/"/g, "")}")'><i class="fas fa-trash"></i></button>\n        </div></td>\n      </tr>`;
             })
             .join("");
         })(snap.docs);
@@ -3350,6 +3351,32 @@ function setVal(id, val) {
     }
   }),
   (window._pendingDeleteId = null),
+  // Mark a departed pupil as off the roll instead of deleting them. Deleting
+  // the record orphans every mark, attendance entry and co-scholastic grade
+  // that references them, and makes any released report card unreachable —
+  // the parent lookup matches class + roll + DOB against `students` first.
+  // This keeps the history intact while removing them from every entry
+  // surface (mark entry, attendance, class test, co-scholastic, generation).
+  (window.toggleStudentLeft = async function (docId, name, currentStatus) {
+    const leaving = String(currentStatus || "").toLowerCase() !== "left";
+    const msg = leaving
+      ? `Mark "${name}" as having left the school?
+
+They will no longer appear for mark entry, attendance or new report cards. Nothing already recorded is deleted, and this can be undone.`
+      : `Put "${name}" back on the roll?
+
+They will reappear for mark entry and attendance.`;
+    if (!confirm(msg)) return;
+    try {
+      await updateDoc(doc(db, "students", docId), leaving
+        ? { status: "left", leftOn: new Date().toISOString().split("T")[0], updatedAt: serverTimestamp() }
+        : { status: "active", leftOn: null, updatedAt: serverTimestamp() });
+      showToast(leaving ? `✓ ${name} marked as left` : `✓ ${name} restored to the roll`);
+      "function" == typeof window.loadAdminStudents && window.loadAdminStudents();
+    } catch (e) {
+      showToast("⚠️ Could not update: " + e.message);
+    }
+  }),
   (window.promptDeleteStudent = function (docId, name) {
     ((window._pendingDeleteId = docId),
       (document.getElementById("delete-confirm-msg").textContent =
@@ -5666,9 +5693,9 @@ function _arcCalcTotal(academics) {
             ),
           ),
           tStatStu = document.getElementById("t-stat-students");
-        (tStatStu && (tStatStu.textContent = sSnap.size),
-          (window._teacherStudentDocs = sSnap.docs),
-          renderTeacherStudentList(sSnap.docs),
+        (tStatStu && (tStatStu.textContent = (window.filterActiveStudentDocs ? window.filterActiveStudentDocs(sSnap.docs) : sSnap.docs).length),
+          (window._teacherStudentDocs = window.filterActiveStudentDocs ? window.filterActiveStudentDocs(sSnap.docs) : sSnap.docs),
+          renderTeacherStudentList(window._teacherStudentDocs || sSnap.docs),
           initTeacherAttendance(effectiveClass));
       }
       (populateHwClassSelect(),
@@ -7404,7 +7431,10 @@ function updateAttSummary() {
           orderBy("rollNo"),
         ),
       );
-      window._teacherStudentDocs = snap.docs;
+      // Departed pupils must not appear on the attendance sheet.
+      window._teacherStudentDocs = window.filterActiveStudentDocs
+        ? window.filterActiveStudentDocs(snap.docs)
+        : snap.docs;
     } catch (e) {
       showToast("⚠️ Could not load students: " + e.message);
     }
@@ -13780,10 +13810,10 @@ window.loadTeacherPortal = async function (user) {
           ),
         ),
         tStatStu = document.getElementById("t-stat-students");
-      (tStatStu && (tStatStu.textContent = sSnap.size),
-        (window._teacherStudentDocs = sSnap.docs),
+      (tStatStu && (tStatStu.textContent = (window.filterActiveStudentDocs ? window.filterActiveStudentDocs(sSnap.docs) : sSnap.docs).length),
+        (window._teacherStudentDocs = window.filterActiveStudentDocs ? window.filterActiveStudentDocs(sSnap.docs) : sSnap.docs),
         "function" == typeof window.renderTeacherStudentList &&
-          window.renderTeacherStudentList(sSnap.docs),
+          window.renderTeacherStudentList(window._teacherStudentDocs || sSnap.docs),
         "function" == typeof window.initTeacherAttendance &&
           window.initTeacherAttendance(classNum));
     } else if ("subject_teacher" === newRole) {

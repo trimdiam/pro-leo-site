@@ -73,7 +73,17 @@ export async function computeRange(classId, fromYM, toYM) {
     // The roster occasionally carries a duplicate roll; keep the first.
     if (seenRoll.has(s.rollNo)) return;
     seenRoll.add(s.rollNo);
-    students.push({ id: s.studentId || d.id, name: s.name || '—', gender: s.gender || '', rollNo: s.rollNo || 0 });
+    // Pupils who have LEFT are deliberately kept here. They are off the roll for
+    // mark entry and attendance-taking, but this is a historical report: a child
+    // who left in April genuinely attended February and March, and dropping them
+    // would quietly shrink the class and understate the days actually taught.
+    // Flagged instead, so the reader can see why a row stops part-way.
+    const hasLeft = String(s.status || '').toLowerCase() === 'left';
+    students.push({
+      id: s.studentId || d.id,
+      name: (s.name || '—') + (hasLeft ? ' (left)' : ''),
+      gender: s.gender || '', rollNo: s.rollNo || 0, hasLeft
+    });
   });
 
   const absentC = {}, lateC = {};

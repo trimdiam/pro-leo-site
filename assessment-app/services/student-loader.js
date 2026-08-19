@@ -26,7 +26,21 @@ const FALLBACK_FILES = {
   'Class 9':  'data/students/class9.json'
 };
 
-export async function loadStudentsForClass(className) {
+// A student who has left is off the roll: no marks, no attendance, no new report
+// card. Departure is a flag (status:'left'), never a deletion — see
+// student-status.js for why. Missing status means active: all 647 existing
+// records predate the field, so this default must never be inverted.
+//
+// `includeInactive` exists for HISTORY, not convenience. Reviewing a session a
+// departed pupil was marked in, or rendering a card already generated for them,
+// still needs their name — hiding it there would make real saved marks look
+// like they belonged to nobody.
+export function isActiveStudent(record) {
+  const s = record && record.status;
+  return !s || String(s).toLowerCase() === 'active';
+}
+
+export async function loadStudentsForClass(className, { includeInactive = false } = {}) {
   const firestoreClass = CLASS_MAP[className];
   if (!firestoreClass) return [];
 
@@ -38,7 +52,9 @@ export async function loadStudentsForClass(className) {
     );
     const snap = await getDocs(q);
     if (!snap.empty) {
-      return snap.docs.map(d => normalizeStudent(d.data()));
+      return snap.docs
+        .filter(d => includeInactive || isActiveStudent(d.data()))
+        .map(d => normalizeStudent(d.data()));
     }
   } catch (err) {
     console.warn(`Firestore student fetch failed for ${className}, falling back to local JSON:`, err);
@@ -51,7 +67,10 @@ export async function loadStudentsForClass(className) {
     const res = await fetch(path);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    return normalizeStudents(data);
+    const list = normalizeStudents(data);
+    // Same rule on the offline path, or a departed pupil reappears the moment
+    // Firestore is unreachable.
+    return includeInactive ? list : list.filter(isActiveStudent);
   } catch (err) {
     console.error(`Failed to load students for ${className}:`, err);
     return [];

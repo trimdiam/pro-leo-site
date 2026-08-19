@@ -1677,7 +1677,7 @@ async function handleResumeSession(sessionId) {
     return;
   }
 
-  state.students = await loadStudentsForClass(sess.class).catch(() => []);
+  state.students = await loadStudentsForClass(sess.class, { includeInactive: true }).catch(() => []);
 
   try {
     state.criteria = await loadCriteriaForSubject(state.selectedSubject, sess.class);

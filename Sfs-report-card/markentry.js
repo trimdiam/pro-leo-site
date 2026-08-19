@@ -23,6 +23,15 @@ function classNumFromId(classId) {
 // "null", which matches no student at all. That silently produced an empty
 // student list for SKG/LKG class teachers, which in turn blocked the Class
 // Attendance grid (it refuses to open without a loaded roster).
+// A student who has left the school is off the roll: no new marks, no
+// attendance. Departure is a flag, never a deletion — deleting the record
+// orphans every mark and makes a released report card unreachable. Missing
+// status means active (every pre-existing record has no status field).
+function isActiveStudentRec(d) {
+  const st = d && d.status;
+  return !st || String(st).toLowerCase() === 'active';
+}
+
 function classStrFromId(classId) {
   const base = String(classId ?? '').split('-')[0].trim().toUpperCase();
   const num  = classNumFromId(base);
@@ -621,13 +630,16 @@ async function openGrid(classId, classNum, section, subjectLabel, subjectKey, te
       .where('class', '==', classStr)
       .get();
 
-    if (studSnap.empty) {
+    // Departed pupils are off the roll — they must not appear in mark entry.
+    const activeStudDocs = studSnap.docs.filter(d => isActiveStudentRec(d.data()));
+
+    if (!activeStudDocs.length) {
       $('gridTableWrap').innerHTML = `<div class="me-empty">No students found for Class ${classId}.</div>`;
       return;
     }
 
     // Sort by rollNo client-side (avoids composite index requirement)
-    const students = studSnap.docs
+    const students = activeStudDocs
       .map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0));
     const termKey  = `${romanClassId}_${term}`;
@@ -1271,7 +1283,10 @@ async function recomputeAndSaveClassRanks(classId, classNum) {
     .where('class', '==', ctClassStr)
     .get();
 
+  // Off-the-roll pupils are excluded from the student list, the rank
+  // computation and the Class Attendance grid that reads from it.
   const students = studSnap.docs
+    .filter(d => isActiveStudentRec(d.data()))
     .map(d => ({ id: d.id, ...d.data() }))
     .sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0));
 

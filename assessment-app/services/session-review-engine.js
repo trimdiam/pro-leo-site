@@ -99,7 +99,7 @@ export async function updateSessionStatus(sessionId, newStatus) {
     clearAggregationCache();
     aggregateByMonth(yearMonth, className, { force: true })
       .then(agg => detectAndPersistWeakStudents(agg))
-      .then(() => loadStudentsForClass(className))
+      .then(() => loadStudentsForClass(className, { includeInactive: true }))
       .then(students => {
         students.forEach(s => {
           getStudentProfile(s.student_id, className)
@@ -192,7 +192,7 @@ export async function loadFullSessionData(sessionId) {
     criteria = await loadCriteriaForSubject(subject, sess.class).catch(() => []);
   }
 
-  const students = await loadStudentsForClass(sess.class).catch(() => []);
+  const students = await loadStudentsForClass(sess.class, { includeInactive: true }).catch(() => []);
 
   return {
     stored,

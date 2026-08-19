@@ -43,7 +43,7 @@ async function fetchStudentRecord(studentId, className) {
 
   // Fallback: load class list and find by studentId
   try {
-    const students = await loadStudentsForClass(className);
+    const students = await loadStudentsForClass(className, { includeInactive: true });
     return students.find(s => s.student_id === studentId) || null;
   } catch (err) {
     console.warn('Class student list fallback also failed:', err.message);
