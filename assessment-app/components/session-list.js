@@ -146,6 +146,35 @@ export function createSessionList({
   return section;
 }
 
+// Status changes AWAIT a Firestore write (deliberately — firestore.rules can
+// reject a review/lock, and that must be reported rather than silently
+// swallowed). On a school connection that is easily a second or more, and the
+// buttons previously gave no feedback at all: the click appeared to do
+// nothing, then the whole list rebuilt. That read as the screen hanging.
+//
+// So: disable on click, show progress, and swallow double-clicks — the same
+// treatment the Save button already had.
+function wireStatusButton(btn, sessionId, status, onStatusChange) {
+  btn.addEventListener('click', async () => {
+    if (btn.disabled) return;
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '…';
+    btn.classList.add('is-busy');
+    try {
+      await onStatusChange(sessionId, status);
+    } finally {
+      // The list is usually rebuilt by now and this node discarded; restoring
+      // matters only when the change failed and the row survives.
+      if (btn.isConnected) {
+        btn.disabled = false;
+        btn.textContent = label;
+        btn.classList.remove('is-busy');
+      }
+    }
+  });
+}
+
 function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDeleteSession, onEditPeriod, canReviewClass) {
   const sess = entry.session;
   const today = new Date().toISOString().split('T')[0];
@@ -213,7 +242,7 @@ function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDel
     submitBtn.type = 'button';
     submitBtn.className = 'btn btn-sm btn-primary';
     submitBtn.textContent = 'Submit';
-    submitBtn.addEventListener('click', () => onStatusChange(sess.session_id, 'submitted'));
+    wireStatusButton(submitBtn, sess.session_id, 'submitted', onStatusChange);
     actions.append(submitBtn);
   }
 
@@ -222,7 +251,7 @@ function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDel
     reviewBtn.type = 'button';
     reviewBtn.className = 'btn btn-sm btn-primary';
     reviewBtn.textContent = 'Review';
-    reviewBtn.addEventListener('click', () => onStatusChange(sess.session_id, 'reviewed'));
+    wireStatusButton(reviewBtn, sess.session_id, 'reviewed', onStatusChange);
     actions.append(reviewBtn);
   }
 
@@ -231,7 +260,7 @@ function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDel
     lockBtn.type = 'button';
     lockBtn.className = 'btn btn-sm btn-danger';
     lockBtn.textContent = 'Lock';
-    lockBtn.addEventListener('click', () => onStatusChange(sess.session_id, 'locked'));
+    wireStatusButton(lockBtn, sess.session_id, 'locked', onStatusChange);
     actions.append(lockBtn);
   }
 
@@ -243,7 +272,7 @@ function createSessionRow(entry, onViewSession, onStatusChange, canDelete, onDel
     reopenBtn.type = 'button';
     reopenBtn.className = 'btn btn-sm btn-secondary';
     reopenBtn.textContent = 'Reopen';
-    reopenBtn.addEventListener('click', () => onStatusChange(sess.session_id, 'draft'));
+    wireStatusButton(reopenBtn, sess.session_id, 'draft', onStatusChange);
     actions.append(reopenBtn);
   }
 

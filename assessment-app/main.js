@@ -1226,10 +1226,17 @@ function renderAdminSessions() {
       render();
     },
     onStatusChange: async (sessionId, newStatus) => {
+      // Working through a review queue means clicking one row after another in a
+      // list of ~142. render() rebuilds the whole list, which throws away scroll
+      // position and sends the admin back to the top after every single click —
+      // a large part of why reviewing felt painful. Restore it after the rebuild.
+      const scrollY = window.scrollY;
       const result = await updateSessionStatus(sessionId, newStatus);
       if (result.ok) {
         clearAggregationCache();
         render();
+        // After paint, or the browser clamps the restore against a half-built page.
+        requestAnimationFrame(() => window.scrollTo(0, scrollY));
       } else {
         alert(result.error);
       }

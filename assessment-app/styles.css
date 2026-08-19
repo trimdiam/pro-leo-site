@@ -1931,3 +1931,11 @@ select, .text-input {
     min-width: 76px;
   }
 }
+
+/* Status buttons (Review / Lock / Reopen) await a Firestore write. Make the
+   wait visible so the click never looks ignored — see wireStatusButton(). */
+.btn.is-busy {
+  opacity: 0.6;
+  cursor: progress;
+  min-width: 46px;
+}
