@@ -173,15 +173,17 @@ export function getTermDateRange(term) {
   const year = now.getFullYear();
   const startYear = month >= 4 ? year : year - 1;
 
-  // One-off exception for 2026-27: terms run Mar-Jun / Jul-Nov instead of the
+  // One-off exception for 2026-27: terms run Feb-Jun / Jul-Nov instead of the
   // usual Apr-Sep / Oct-Mar. Confirmed with school for this academic year only.
-  // HY1 starts from March (not April) so any sessions entered that early are
-  // still picked up, but it never reaches into July — that's HY2's window,
-  // covered in the school's final terms later.
+  // HY1 opens on 1 February because kindergarten assessment genuinely starts
+  // then — SKG has reviewed Literacy and Rhymes & Stories sessions dated
+  // 16-27 Feb 2026 that a March start silently dropped from the report card
+  // (the aggregator requires a session to be FULLY inside the window). It
+  // never reaches into July: that is HY2's window.
   if (getCurrentAcademicYear() === '2026-27') {
     if (term === 'HY1') {
       return {
-        dateFrom:  `${startYear}-03-01`,
+        dateFrom:  `${startYear}-02-01`,
         dateTo:    `${startYear}-06-30`,
         termLabel: 'First Half-Yearly'
       };
