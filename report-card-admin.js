@@ -98,20 +98,43 @@ let _state = {
 
 // ── Fetch cards ────────────────────────────────────────────────────────────────
 
+// Filters are applied in memory, and that is deliberate.
+//
+// This previously sent every filter to Firestore as a where() plus two
+// orderBy()s, which needs a COMPOSITE INDEX per filter combination —
+// class+term, class+status, term+status, all three, and so on. Picking a
+// combination nobody had indexed yet failed the whole screen with
+// "The query requires an index" (className + term + rollNo, 2026-08-19).
+// Indexing every permutation is not worth it here: report_cards holds at most
+// ~237 documents per term (75 LKG + 48 SKG + 59 I + 55 II), so one equality
+// filter server-side and the rest in JS is both faster to load and impossible
+// to break by choosing a new filter combination.
+//
+// The single server-side filter is className when set, because it is the most
+// selective and keeps the payload to one class. Report card documents carry
+// their full criteria arrays and are not small.
 async function fetchCards() {
   const database = await ensureDb();
-  const { collection, query, where, getDocs, orderBy } = await fsImport();
+  const { collection, query, where, getDocs } = await fsImport();
 
-  const constraints = [];
-  if (_state.classFilter)  constraints.push(where('className', '==', _state.classFilter));
-  if (_state.termFilter)   constraints.push(where('term', '==', _state.termFilter));
-  if (_state.statusFilter) constraints.push(where('status', '==', _state.statusFilter));
-  constraints.push(orderBy('className'));
-  constraints.push(orderBy('rollNo'));
+  const base = collection(database, 'report_cards');
+  // One equality filter only — never combined, so no composite index is needed.
+  const q = _state.classFilter
+    ? query(base, where('className', '==', _state.classFilter))
+    : query(base);
 
-  const q = query(collection(database, 'report_cards'), ...constraints);
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  let cards = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  if (_state.termFilter)   cards = cards.filter(c => c.term === _state.termFilter);
+  if (_state.statusFilter) cards = cards.filter(c => c.status === _state.statusFilter);
+
+  // Same ordering the query used to ask Firestore for: class, then roll.
+  cards.sort((a, b) =>
+    String(a.className || '').localeCompare(String(b.className || '')) ||
+    (Number(a.rollNo) || 0) - (Number(b.rollNo) || 0)
+  );
+  return cards;
 }
 
 // ── Row builder ────────────────────────────────────────────────────────────────
