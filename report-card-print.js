@@ -908,9 +908,24 @@ function buildCoScholasticSection(hy1Card, hy2Card, className) {
   // LKG/SKG use a 9-value scale (D/E added below C, plus NA for "not available")
   // instead of the 6-value scale everyone else uses — mirrors gradeScaleByClass
   // in assessment-app/data/coscholastic.json.
-  const legendScale = (className === 'LKG' || className === 'SKG')
-    ? 'O &middot; A+ &middot; A &middot; B+ &middot; B &middot; C &middot; D &middot; E &middot; NA'
-    : 'O &middot; A+ &middot; A &middot; B+ &middot; B &middot; C';
+  // The letters alone meant nothing to a parent, so the key is spelled out on
+  // the card itself. Two different scales, mirroring gradeScaleByClass /
+  // gradeLabelsByClass in assessment-app/data/coscholastic.json:
+  //   LKG/SKG  9 values, percentage bands, incl. NA for "not available"
+  //   I/II     6 values, word descriptors
+  const KG_SCALE = [
+    ['O', '90-100%'], ['A+', '80-89%'], ['A', '70-79%'], ['B+', '60-69%'],
+    ['B', '50-59%'], ['C', '40-49%'], ['D', '30-39%'], ['E', 'below 30%'],
+    ['NA', 'not available']
+  ];
+  const PRIMARY_SCALE = [
+    ['O', 'Outstanding'], ['A+', 'Excellent'], ['A', 'Very Good'],
+    ['B+', 'Good'], ['B', 'Satisfactory'], ['C', 'Needs Improvement']
+  ];
+  const scale = (className === 'LKG' || className === 'SKG') ? KG_SCALE : PRIMARY_SCALE;
+  const legendScale = scale
+    .map(function (p) { return '<b>' + p[0] + '</b>&nbsp;' + esc(p[1]); })
+    .join(' &middot; ');
 
   return `
     <section class="coschol">
