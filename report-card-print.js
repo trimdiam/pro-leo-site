@@ -905,18 +905,21 @@ function buildCoScholasticSection(hy1Card, hy2Card, className) {
           </div>
         </div>`).join('');
 
-  // LKG/SKG use a 9-value scale (D/E added below C, plus NA for "not available")
-  // instead of the 6-value scale everyone else uses — mirrors gradeScaleByClass
-  // in assessment-app/data/coscholastic.json.
-  // The letters alone meant nothing to a parent, so the key is spelled out on
-  // the card itself. Two different scales, mirroring gradeScaleByClass /
-  // gradeLabelsByClass in assessment-app/data/coscholastic.json:
-  //   LKG/SKG  9 values, percentage bands, incl. NA for "not available"
-  //   I/II     6 values, word descriptors
+  // The grade key, spelled out: the bare letters meant nothing to a parent.
+  // Two scales, because the classes genuinely differ --
+  //   LKG/SKG  9 values (D/E below C, plus NA)
+  //   I/II     6 values
+  // These are WORDS, not the percentage bands the teacher sees while entering.
+  // A percent implies a measured score, and nobody measures a 4-year-old's
+  // P.E. to one; it is a judgement, and a band label says so honestly. O..C are
+  // identical across both scales so the school keeps one vocabulary.
+  // Mirrors gradeMeaningsByClass in assessment-app/data/coscholastic.json
+  // (this template is self-contained and cannot import it) -- keep them in step.
   const KG_SCALE = [
-    ['O', '90-100%'], ['A+', '80-89%'], ['A', '70-79%'], ['B+', '60-69%'],
-    ['B', '50-59%'], ['C', '40-49%'], ['D', '30-39%'], ['E', 'below 30%'],
-    ['NA', 'not available']
+    ['O', 'Outstanding'], ['A+', 'Excellent'], ['A', 'Very Good'],
+    ['B+', 'Good'], ['B', 'Satisfactory'], ['C', 'Needs Improvement'],
+    ['D', 'Needs Much Improvement'], ['E', 'Needs Constant Support'],
+    ['NA', 'Not Assessed']
   ];
   const PRIMARY_SCALE = [
     ['O', 'Outstanding'], ['A+', 'Excellent'], ['A', 'Very Good'],

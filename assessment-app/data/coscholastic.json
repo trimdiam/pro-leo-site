@@ -24,6 +24,19 @@
       "B": "50-59%", "C": "40-49%", "D": "30-39%", "E": "Less than 30%", "NA": "Not available"
     }
   },
+  "_gradeMeaningsByClass_why": "Two labellings on purpose, split by AUDIENCE. gradeLabelsByClass above is what the TEACHER sees while entering — percentage bands, which is what keeps grading consistent between teachers. gradeMeaningsByClass below is what the PARENT sees on the report card: a percentage implies a measured score, but nobody measures a 4-year-old's P.E. to a percent — it is a judgement, and a band label says so honestly. O..C match Class I/II word-for-word so the school keeps one vocabulary; D/E/NA are the kindergarten-only additions, worded supportively because these go to parents of 4- and 5-year-olds. report-card-print.js carries its own copy of these words (self-contained template, no imports) — keep the two in step.",
+  "gradeMeaningsByClass": {
+    "LKG": {
+      "O": "Outstanding", "A+": "Excellent", "A": "Very Good", "B+": "Good",
+      "B": "Satisfactory", "C": "Needs Improvement",
+      "D": "Needs Much Improvement", "E": "Needs Constant Support", "NA": "Not Assessed"
+    },
+    "SKG": {
+      "O": "Outstanding", "A+": "Excellent", "A": "Very Good", "B+": "Good",
+      "B": "Satisfactory", "C": "Needs Improvement",
+      "D": "Needs Much Improvement", "E": "Needs Constant Support", "NA": "Not Assessed"
+    }
+  },
   "subjects": [
     { "key": "pe",                "label": "P.E.",               "classes": ["LKG", "SKG", "Class I", "Class II"] },
     { "key": "singing",           "label": "Singing",            "classes": ["LKG", "SKG", "Class I", "Class II"] },
