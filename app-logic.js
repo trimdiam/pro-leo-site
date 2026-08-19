@@ -5979,6 +5979,16 @@ function _arcCalcTotal(academics) {
         const base = d.id.split("-")[0].trim();
         if (!seen.has(base)) { seen.add(base); classes.push(base); }
       });
+      // Kindergarten is not part of this pipeline. LKG/SKG/PLG report cards are
+      // built by the assessment app into the report_cards collection (the
+      // "SKG - Class II" panel further down this page), never into
+      // marks/{class}_HY|FT. Their rows could therefore only ever read
+      // "Not started", which looks like outstanding work rather than
+      // "does not apply". Class I and II stay: they hold real marks data here.
+      const PIPELINE_EXCLUDED = new Set(["LKG", "SKG", "PLG"]);
+      for (let i = classes.length - 1; i >= 0; i--) {
+        if (PIPELINE_EXCLUDED.has(classes[i].toUpperCase())) classes.splice(i, 1);
+      }
       classes.sort((a, b) => a.length - b.length || a.localeCompare(b));
       if (!classes.length) {
         wrap.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">No classes found.</p>';
