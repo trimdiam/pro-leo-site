@@ -4,14 +4,41 @@ const STORAGE_KEY = 'sfds_assessment_sessions';
 
 // ── Local cache helpers ───────────────────────────────────────────────────────
 
+// The parsed cache is memoised. The blob is ~1.9 MB across 142 sessions
+// (~145k mark entries), and JSON.parse of it costs ~9 ms — which would be fine
+// if it happened once, but a SINGLE review/lock click used to trigger it ~150
+// times: getSession, the save path, aggregateByMonth, and then twice per student
+// for every pupil in the class. That is ~1.4 s of blocking main-thread work per
+// click, which is what made reviewing feel like it hung.
+//
+// Only this module writes the key, so invalidation is exact: _parsed is dropped
+// in writeLocalCache. The `storage` event covers another tab writing it.
+// Callers still get freshly-mapped entry objects, so existing code that mutates
+// entry.session (updateSessionStatus does) cannot leak into the cache.
+let _parsed = null;
+
+export function invalidateSessionCache() {
+  _parsed = null;
+}
+
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('storage', e => {
+    if (!e.key || e.key === STORAGE_KEY) invalidateSessionCache();
+  });
+}
+
 export function getAllSessions() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(entry => ({ ...entry, session: normalizeSession(entry.session) }));
+    if (!_parsed) {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      _parsed = parsed;
+    }
+    return _parsed.map(entry => ({ ...entry, session: normalizeSession(entry.session) }));
   } catch {
+    _parsed = null;
     return [];
   }
 }
@@ -19,7 +46,9 @@ export function getAllSessions() {
 function writeLocalCache(sessions) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    invalidateSessionCache();
   } catch (err) {
+    invalidateSessionCache();
     throw new Error('Failed to save session: storage may be full');
   }
 }

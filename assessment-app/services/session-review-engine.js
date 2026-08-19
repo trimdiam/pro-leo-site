@@ -67,6 +67,50 @@ export function canTransitionStatus(currentStatus, newStatus) {
   return allowed && allowed.includes(newStatus);
 }
 
+// Per-class debounce for the analytics/profile refresh above. Keyed by class so
+// reviewing LKG then SKG still refreshes both, rather than one cancelling the
+// other.
+const PROFILE_SWEEP_DELAY_MS = 2500;
+const _sweepTimers = new Map();
+
+function scheduleProfileSweep(className, sessionDate) {
+  if (!className) return;
+  const pending = _sweepTimers.get(className);
+  if (pending) clearTimeout(pending.timer);
+  // Keep the most recent date seen for this class, so the aggregate covers the
+  // month the admin is actually working in.
+  const yearMonth = extractYearMonth(sessionDate);
+  const timer = setTimeout(() => {
+    _sweepTimers.delete(className);
+    runProfileSweep(className, yearMonth);
+  }, PROFILE_SWEEP_DELAY_MS);
+  _sweepTimers.set(className, { timer, yearMonth });
+}
+
+function runProfileSweep(className, yearMonth) {
+  clearAggregationCache();
+  aggregateByMonth(yearMonth, className, { force: true })
+    .then(agg => detectAndPersistWeakStudents(agg))
+    .then(() => loadStudentsForClass(className, { includeInactive: true }))
+    .then(students => {
+      students.forEach(s => {
+        getStudentProfile(s.student_id, className)
+          .catch(err => console.warn(`Profile snapshot failed for ${s.student_id}:`, err.message));
+      });
+    })
+    .catch(err => console.warn('Background analytics persist failed:', err.message));
+}
+
+// Run any pending sweep immediately — call before leaving the review screen so a
+// final click is not left un-persisted.
+export function flushProfileSweeps() {
+  _sweepTimers.forEach((v, className) => {
+    clearTimeout(v.timer);
+    runProfileSweep(className, v.yearMonth);
+  });
+  _sweepTimers.clear();
+}
+
 export async function updateSessionStatus(sessionId, newStatus) {
   const stored = getSession(sessionId);
   if (!stored) {
@@ -91,22 +135,20 @@ export async function updateSessionStatus(sessionId, newStatus) {
       return { ok: false, error: saveResult.error || 'Could not save the status change.' };
     }
 
-    // Every status change recomputes analytics + persists every student
-    // profile in this class so the portal always reflects current data,
-    // regardless of which state the session is moving into.
-    const yearMonth = extractYearMonth(stored.session.date);
-    const className = stored.session.class;
-    clearAggregationCache();
-    aggregateByMonth(yearMonth, className, { force: true })
-      .then(agg => detectAndPersistWeakStudents(agg))
-      .then(() => loadStudentsForClass(className, { includeInactive: true }))
-      .then(students => {
-        students.forEach(s => {
-          getStudentProfile(s.student_id, className)
-            .catch(err => console.warn(`Profile snapshot failed for ${s.student_id}:`, err.message));
-        });
-      })
-      .catch(err => console.warn('Background analytics persist failed:', err.message));
+    // Refresh analytics + student profile snapshots for this class.
+    //
+    // DEBOUNCED, and deliberately so. This used to run in full on every single
+    // status change: one click re-aggregated the class and then rewrote a
+    // profile snapshot for EVERY pupil in it -- 75 Firestore writes and ~150
+    // parses of the 1.9 MB session cache for one LKG session. An admin working
+    // through a review queue clicks this dozens of times in a row, so the cost
+    // multiplied and the screen appeared to hang.
+    //
+    // Coalescing per class means a burst of reviews settles into ONE sweep once
+    // the admin pauses. The snapshots are a convenience cache for the portal,
+    // not the source of truth, so being a couple of seconds behind a click is
+    // harmless -- whereas blocking the click on them is not.
+    scheduleProfileSweep(stored.session.class, stored.session.date);
 
     return { ok: true, session: stored.session };
   } catch (error) {
