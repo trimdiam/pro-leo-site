@@ -22,7 +22,9 @@
 | `3f56854ed` | **Fix: "Needs Attention" showed the same criterion on every card** |
 | `e17bdd023` | **Fix: HY1 window now opens 1 February** — SKG had 0 counted sessions |
 | `59f499a78` | **Attendance Range Report** — totals days present over any span of months |
-| `551409645`, `7e0ab5593`, `452d46e98`, `af2ea0dc7`, `0a4f5a9fd`, `ac6b59272` | Service-worker cache bumps, one per deploy |
+| `be3d1b9f9` | **Co-scholastic grade key spelled out** on the card — letters alone meant nothing |
+| `5b7aa51d6` | **LKG/SKG key switched to words**, percentages kept for the teacher |
+| `551409645`, `7e0ab5593`, `452d46e98`, `af2ea0dc7`, `0a4f5a9fd`, `ac6b59272`, `3d3d06381`, `929f500a5` | Service-worker cache bumps, one per deploy |
 
 Hosting-only. No Cloud Functions or rules deploys this session.
 
@@ -285,7 +287,60 @@ was absent and LKG recomputes to 85 in minutes.
 
 ---
 
-## 7. Outstanding
+## 7. The co-scholastic grade key — and why it is worded twice
+
+The strip printed bare letters (`O · A+ · A · B+ · B · C · D · E · NA`), which
+tells a parent nothing. Each grade now carries its meaning on the card.
+
+It landed in two steps, and the second reversed the first for kindergarten:
+
+**`be3d1b9f9`** spelled the key out using each class's own scale — percentage
+bands for LKG/SKG, word descriptors for Class I/II.
+
+**`5b7aa51d6`** then replaced the kindergarten percentages with words. The
+reasoning is worth keeping: *"P.E. — 90-100%"* implies a measured score, but
+nobody measures a four-year-old's P.E. to a percent. It is a teacher's judgement,
+and a band label says so honestly. It also puts all four classes in one
+vocabulary instead of two different kinds of scale.
+
+### Split by audience — the part that will look redundant but is not
+
+The same labels serve two different readers, so **both wordings are kept**:
+
+| Consumer | Field | Shows |
+|---|---|---|
+| Report card (parent) | `gradeMeaningsByClass` | Outstanding … Needs Constant Support · Not Assessed |
+| Entry screen (teacher) | `gradeLabelsByClass` | 90-100% … Less than 30% · Not available |
+
+The percentage bands were **not** deleted. They are what keeps grading consistent
+between teachers, so the entry screen still shows them. Anyone tidying
+`coscholastic.json` later will see two labellings for the same nine grades and be
+tempted to merge them — **don't**; `_gradeMeaningsByClass_why` in the file explains
+this.
+
+`O`–`C` are word-for-word identical to Class I/II. Only three are new:
+
+```
+D   Needs Much Improvement    (was "30-39%")
+E   Needs Constant Support    (was "Less than 30%")
+NA  Not Assessed              (was "Not available")
+```
+
+D and E are worded supportively on purpose — these reach parents of four- and
+five-year-olds. "Not Assessed" replaced "Not available" because it states plainly
+that the school did not grade that activity, where the old wording left a parent
+guessing whether something had gone missing.
+
+### Layout was measured, not assumed
+
+Growing this strip is what clipped the Annual panel in an earlier session, so
+both versions were measured before shipping. The longer wording still renders on
+**one line (10px)**, no wrap, card does not overflow, no rows cut off — verified
+on the 9-value (SKG) and 6-value (Class II) scales.
+
+---
+
+## 8. Outstanding
 
 **LKG/SKG report cards are NOT ready to generate.** Attendance and co-scholastic
 flow correctly, but **51 of 54 sessions are still `submitted`, not
@@ -330,11 +385,17 @@ I/II used the Class Attendance grid directly and have no daily records at all.
 Only the daily route feeds the Range Report. **Decide which one is mandatory next
 year**, or the compliance check will show false negatives for grid users.
 
+**The co-scholastic grade wording exists in two places.** `report-card-print.js`
+is a self-contained template with no imports, so it carries its own copy of the
+nine words that `gradeMeaningsByClass` holds in `coscholastic.json`. Both sides
+cross-reference each other in comments, but a wording change must be made in
+**both** or the card and the registry will disagree silently.
+
 Everything from the previous handoff's Outstanding section is unchanged.
 
 ---
 
-## 8. Lessons — the ones specific to this session
+## 9. Lessons — the ones specific to this session
 
 **1. `node --check` is not a syntax gate for browser code.** It exited 0 on a
 file Chrome refused to parse, and that shipped a production outage. Use the
@@ -376,8 +437,13 @@ students. Both times, listing what *is* there found it immediately.
   docId fallback lives here
 - `assessment-app/services/report-card-grade-engine.js` — `getTermDateRange()`
   (the Feb window) and `computeOverallPerformance()` (improvementAreas ordering)
-- `report-card-print.js` — `pickNeedsAttention()`; keep in sync with
-  `report-card-lookup/report-card-print.js` (`diff` them before shipping)
+- `report-card-print.js` — `pickNeedsAttention()`, and `KG_SCALE`/`PRIMARY_SCALE`
+  (the printed grade key). Keep in sync with **two** things: its fork at
+  `report-card-lookup/report-card-print.js` (`diff` them before shipping) and
+  `gradeMeaningsByClass` in `assessment-app/data/coscholastic.json`
+- `assessment-app/data/coscholastic.json` — subjects, both grade scales, and
+  **both** labellings: `gradeLabelsByClass` (teacher, percentages) vs
+  `gradeMeaningsByClass` (parent, words). They are not duplicates — see §7
 - `report-card-admin.js` — Delete / Edit Attendance / Edit Remark actions
 - `app-logic.js` — `loadRCPipeline()` (`PIPELINE_EXCLUDED`),
   `generateMonthlySnapshot()`
