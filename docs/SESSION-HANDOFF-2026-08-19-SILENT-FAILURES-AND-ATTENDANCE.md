@@ -7,6 +7,10 @@
 > discarded a month of finished work. Four separate defects, none of which threw,
 > logged, or failed visibly. One of them I introduced myself, mid-session.
 >
+> **Starting the next session? Read §9 first** — two items were agreed and
+> deferred: the parent-facing wording of "Needs Attention", and a per-class
+> filter for the released report cards list.
+>
 > Continues from `SESSION-HANDOFF-2026-08-18-LKG-SKG-AND-LOOKUP-FIXES.md`.
 > Everything below is **committed, pushed and deployed**.
 
@@ -25,7 +29,9 @@
 | `be3d1b9f9` | **Co-scholastic grade key spelled out** on the card — letters alone meant nothing |
 | `5b7aa51d6` | **LKG/SKG key switched to words**, percentages kept for the teacher |
 | `fdce215e5` | **Students who leave are flagged, not deleted** (`student-status.js`) |
-| `551409645`, `7e0ab5593`, `452d46e98`, `af2ea0dc7`, `0a4f5a9fd`, `ac6b59272`, `3d3d06381`, `929f500a5`, `033c276bb` | Service-worker cache bumps, one per deploy |
+| `bafa766a1`, `2db76612e` | **Review/lock no longer hangs** — memoised cache, click feedback, scroll kept |
+| `df80fe701` | **Report card list no longer needs a Firestore composite index** |
+| `551409645`, `7e0ab5593`, `452d46e98`, `af2ea0dc7`, `0a4f5a9fd`, `ac6b59272`, `3d3d06381`, `929f500a5`, `033c276bb`, `3ed2b64a8`, `22cb533d6`, `3fb4a36c7` | Service-worker cache bumps, one per deploy |
 
 Hosting-only. No Cloud Functions or rules deploys this session.
 
@@ -426,7 +432,71 @@ references exist) was offered and declined for now.
 
 ---
 
-## 9. Outstanding
+## 9. NEXT SESSION — agreed work, not yet started
+
+Two items raised at the end of 2026-08-19 and explicitly deferred to the next
+session. Neither is a bug; both are quality problems the school has asked for.
+
+### 9a. "Needs Attention" wording is not parent-appropriate
+
+Live example from a real Class I card:
+
+> **NEEDS ATTENTION**
+> Show manners and help others in Mathematics
+
+Two things are wrong with it, and only one is cosmetic:
+
+1. **It reads as a judgement of character, not a learning target.** The criterion
+   names in `data/criteria/*.json` are written for a TEACHER filling in a
+   checklist ("Show manners and help others", "Work Independently", "Stays on
+   task"). Printed verbatim under a heading like "Needs Attention" and handed to a
+   parent, the register is wrong — it sounds like a complaint about the child.
+2. **The subject pairing reads oddly.** Work Habits criteria are duplicated across
+   every subject, so the weakest one can surface as "manners ... in Mathematics",
+   which sounds nonsensical to a parent even though it is arithmetically correct.
+
+Note this is NOT the earlier bug (`3f56854ed`), which was that every card showed
+the *same* criterion. That is fixed and the selection is now genuinely the
+lowest-scoring flagged criterion. This is about how the selected item is WORDED.
+
+Options, roughly in order of effort:
+
+- **Show the category, not the criterion** — "Work Habits in Mathematics". One-line
+  change in `pickNeedsAttention()`; loses precision but is immediately safe.
+- **Phrase it as a supportive sentence** — e.g. "Building more consistent work
+  habits in Mathematics will help". Needs a small template, no new data.
+- **Curated parent-facing phrasing per criterion** — a map from criterion_id to a
+  parent-appropriate phrase. Most precise, most work, and the school should write
+  the wording, not us. Precedent exists: `gradeMeaningsByClass` (§7) already
+  splits teacher-facing from parent-facing wording for the same underlying value.
+
+The school should decide the register before any code changes. Do not invent the
+phrasing.
+
+Where it lives: `pickNeedsAttention()` in `report-card-print.js` (and its synced
+fork in `report-card-lookup/`), fed by `improvementAreas` from
+`computeOverallPerformance()` in `report-card-grade-engine.js`.
+
+### 9b. Released report cards list is unwieldy
+
+The admin Report Cards table renders every card as one flat list — Class I alone
+is 59 rows, and with all four classes generated it will be ~237 per term. The
+screenshot shows the problem: page after page of near-identical rows.
+
+Asked for: **a dropdown / per-class filter** so an admin works one class at a
+time rather than scrolling one long table.
+
+Worth knowing before starting: the filter controls already exist in the panel
+(`_state.classFilter`, `termFilter`, `statusFilter`) and `fetchCards()` was
+rewritten on 2026-08-19 to filter in memory (`df80fe701`), so the data layer is
+already prepared — `classFilter` is passed to Firestore as the single equality
+filter. The work is UI: making the class selector prominent, sensible defaults
+(probably require a class before listing anything), and likely collapsing or
+paginating the rows.
+
+---
+
+## 10. Outstanding
 
 **LKG/SKG report cards are NOT ready to generate.** Attendance and co-scholastic
 flow correctly, but **51 of 54 sessions are still `submitted`, not
@@ -490,7 +560,7 @@ Everything from the previous handoff's Outstanding section is unchanged.
 
 ---
 
-## 10. Lessons — the ones specific to this session
+## 11. Lessons — the ones specific to this session
 
 **1. `node --check` is not a syntax gate for browser code.** It exited 0 on a
 file Chrome refused to parse, and that shipped a production outage. Use the
