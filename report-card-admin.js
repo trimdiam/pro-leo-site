@@ -310,13 +310,10 @@ function buildRow(card, container, onRefresh) {
     deleteBtn.addEventListener('click', async () => {
       const who = card.studentName || card.studentId;
       const msg =
-        'Permanently delete the draft report card for ' + who +
-        ' (' + (card.termLabel || card.term) + ')?
+        `Permanently delete the draft report card for ${who} (${card.termLabel || card.term})?
 
-' +
-        'This cannot be undone. The generated remark and any attendance entered on it will be lost.
-' +
-        'The student's marks and attendance records are NOT affected — the card can be generated again.';
+This cannot be undone. The generated remark and any attendance entered on it will be lost.
+The student's marks and attendance records are NOT affected — the card can be generated again.`;
       if (!confirm(msg)) return;
       deleteBtn.disabled = true;
       deleteBtn.textContent = 'Deleting…';
