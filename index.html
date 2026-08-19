@@ -3713,6 +3713,51 @@
             </div>
           </div>
 
+          <!-- ── Attendance Range Report (1 / 3 / 6 months or custom) ── -->
+          <div class="card" style="padding:24px;margin-bottom:24px">
+            <h4 style="color:var(--accent-dark);margin-bottom:6px"><i class="fas fa-calendar-week" style="margin-right:8px;color:var(--accent)"></i>Attendance Range Report</h4>
+            <p style="font-size:12.5px;color:var(--text-light);margin:0 0 16px">Totals the days each student was present across any span of months. Late is counted as present.</p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+              <div class="form-group" style="margin:0;flex:1;min-width:150px">
+                <label>Class</label>
+                <select id="ar-class-sel" style="width:100%"><option value="">— Select Class —</option><option value="PLG">Play Group</option><option value="SKG">SKG</option><option value="LKG">LKG</option><option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option><option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option><option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option><option value="10">Class 10</option></select>
+              </div>
+              <div class="form-group" style="margin:0;flex:1;min-width:130px">
+                <label>From</label>
+                <input type="month" id="ar-from" style="width:100%;padding:8px 10px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px;outline:none">
+              </div>
+              <div class="form-group" style="margin:0;flex:1;min-width:130px">
+                <label>To</label>
+                <input type="month" id="ar-to" style="width:100%;padding:8px 10px;border:1.5px solid var(--primary);border-radius:8px;font-family:var(--font-body);font-size:13px;outline:none">
+              </div>
+              <button class="btn btn-primary" onclick="loadAttendanceRange()" style="white-space:nowrap"><i class="fas fa-calculator"></i> Calculate</button>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <span style="font-size:12px;color:var(--text-light)">Quick range:</span>
+              <button class="btn btn-sm btn-outline" onclick="setAttendanceRangePreset(1)">This month</button>
+              <button class="btn btn-sm btn-outline" onclick="setAttendanceRangePreset(3)">Last 3 months</button>
+              <button class="btn btn-sm btn-outline" onclick="setAttendanceRangePreset(6)">Last 6 months</button>
+              <button class="btn btn-sm btn-outline" onclick="setAttendanceRangePreset(12)">Last 12 months</button>
+            </div>
+          </div>
+
+          <div id="ar-detail-wrap" class="card am-detail-wrap" style="padding:24px;margin-bottom:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+              <h4 style="color:var(--accent-dark)" id="ar-title"><i class="fas fa-calendar-week" style="margin-right:8px;color:var(--accent)"></i>Range Totals</h4>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-sm btn-outline att-export-btn" onclick="pdfExportAttendanceRange()"><i class="fas fa-file-pdf"></i> PDF</button>
+                <button class="btn btn-sm btn-outline att-export-btn" onclick="excelExportAttendanceRange()"><i class="fas fa-file-excel"></i> Excel</button>
+                <button class="btn btn-sm btn-outline att-export-btn" onclick="printAttendanceRange()"><i class="fas fa-print"></i> Print</button>
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('ar-detail-wrap').classList.remove('open')"><i class="fas fa-times"></i> Close</button>
+              </div>
+            </div>
+            <div id="ar-summary"></div>
+            <div class="table-wrap" style="margin-top:14px">
+              <table><thead><tr><th>Roll</th><th>Name</th><th>Gender</th><th>Present</th><th>Late</th><th>Absent</th><th>Working Days</th><th>Total Days Present</th><th>%</th></tr></thead>
+              <tbody id="ar-tbody"><tr><td colspan="9" style="text-align:center;padding:14px;color:var(--text-light)">Choose a class and range, then click Calculate.</td></tr></tbody></table>
+            </div>
+          </div>
+
           <div id="am-detail-wrap" class="card am-detail-wrap" style="padding:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px">
               <h4 style="color:var(--accent-dark)" id="am-detail-title"><i class="fas fa-calendar-check" style="margin-right:8px;color:var(--accent)"></i>Monthly Detail</h4>
@@ -4532,6 +4577,7 @@
 <script type="module" src="office-notifications.js"></script>
 <script type="module" src="admin-admissions.js"></script>
 <script type="module" src="report-card-admin-init.js"></script>
+<script type="module" src="attendance-range.js"></script>
 <script type="module" src="report-card-student-init.js"></script>
 <script type="module" src="student-progress-init.js"></script>
 <script defer src="back-button.js"></script>
