@@ -739,6 +739,28 @@ function buildTableRows(hy1Card, hy2Card, opts = {}) {
 
 // ── Right summary panels ──────────────────────────────────────────────────────
 
+// The single criterion most in need of attention: the LOWEST-scoring one that
+// is actually flagged (Beg/NY). improvementAreas[] cannot be used for this --
+// computeOverallPerformance() pushes flagged criteria in subject-then-file
+// order, so [0] is whichever criterion is listed first (in practice always
+// "Understand simple instructions in English I"). That made the panel read as
+// static boilerplate, and could contradict the same card's own weakest
+// subject. Recomputed from the card's stored criteria so already-generated
+// cards render correctly without being regenerated.
+function pickNeedsAttention(card) {
+  let worst = null;
+  (card && card.subjects || []).forEach(function (subj) {
+    (subj.criteria || []).forEach(function (c) {
+      if (typeof c.averageScore !== "number") return;
+      if (c.grade !== "Beg" && c.grade !== "NY") return;
+      if (!worst || c.averageScore < worst.score) {
+        worst = { score: c.averageScore, text: `${c.criterion_name} in ${subj.subject_name}` };
+      }
+    });
+  });
+  return worst ? worst.text : null;
+}
+
 function buildPanel(card, term, label, dateRange, isAnnual = false, gradesOnly = false) {
   const barClass = isAnnual ? 'panel-bar annual' : 'panel-bar';
   if (!card) {
@@ -755,7 +777,7 @@ function buildPanel(card, term, label, dateRange, isAnnual = false, gradesOnly =
   const avg = card.overallAverageScore;
 
   const strongest = card.strongestSubject || '—';
-  const weakest   = card.improvementAreas?.[0] || card.weakestSubject || null;
+  const weakest   = pickNeedsAttention(card) || card.weakestSubject || null;
   const mostImproved = card.mostImprovedSubject || null;
 
   const stat3Label = term === 'HY2' && mostImproved ? 'Most Improved' : 'Strongest Subject';

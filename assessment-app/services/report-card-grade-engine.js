@@ -109,17 +109,30 @@ export function computeOverallPerformance(gradedSubjects) {
     weakestSubject   = { subject_name: sorted[sorted.length - 1].subject_name, averageScore: sorted[sorted.length - 1].subjectAverage, grade: sorted[sorted.length - 1].subjectGrade };
   }
 
-  // Collect criteria graded Beg or NY as improvement areas
-  const flaggedCriteria = [];
-  const improvementAreas = [];
+  // Collect criteria graded Beg or NY as improvement areas, WORST FIRST.
+  // Order matters: consumers (the report card "Needs Attention" panel, the
+  // remark engine) read improvementAreas[0] as "the thing to work on". Pushed
+  // in subject-then-file order it was always whichever criterion was listed
+  // first, so every struggling student got the same sentence regardless of what
+  // they actually struggled with. Sorting by score makes [0] genuinely weakest.
+  const flagged = [];
   gradedSubjects.forEach(s => {
     (s.criteria || []).forEach(c => {
       if (c.grade && (c.grade.code === 'Beg' || c.grade.code === 'NY')) {
-        flaggedCriteria.push({ subject_name: s.subject_name, criterion_name: c.criterion_name, grade: c.grade });
-        improvementAreas.push(`${c.criterion_name} in ${s.subject_name}`);
+        flagged.push({
+          subject_name: s.subject_name,
+          criterion_name: c.criterion_name,
+          grade: c.grade,
+          averageScore: typeof c.averageScore === 'number' ? c.averageScore : Infinity
+        });
       }
     });
   });
+  flagged.sort((a, b) => a.averageScore - b.averageScore);
+  const flaggedCriteria = flagged.map(f => ({
+    subject_name: f.subject_name, criterion_name: f.criterion_name, grade: f.grade
+  }));
+  const improvementAreas = flagged.map(f => `${f.criterion_name} in ${f.subject_name}`);
 
   return {
     overallAverageScore,
