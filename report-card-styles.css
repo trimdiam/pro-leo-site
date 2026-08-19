@@ -196,6 +196,24 @@
   color: #fff;
 }
 
+/* Destructive, and only ever shown on drafts — red rather than the revoke
+   amber so it never reads as another reversible state change. */
+.rc-delete-btn {
+  background: #fbe3e3;
+  color: #b3261e;
+  border-color: #b3261e;
+}
+
+.rc-delete-btn:hover {
+  background: #b3261e;
+  color: #fff;
+}
+
+.rc-delete-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* ── Inline Remark Editor ─────────────────────────────────────────────────── */
 
 .rc-remark-editor {

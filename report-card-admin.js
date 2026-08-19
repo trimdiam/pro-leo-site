@@ -68,6 +68,16 @@ async function checkFeesCleared(studentId) {
   }
 }
 
+// Hard-deletes one report card. Draft-only by policy (see the Delete button):
+// a released card is revoked, never deleted, so a parent who has already been
+// told a card exists is never left with a dangling link. Nothing else in
+// Firestore references a report_cards doc, so this needs no cascade.
+async function deleteCard(docId) {
+  const database = await ensureDb();
+  const { doc, deleteDoc } = await fsImport();
+  await deleteDoc(doc(database, 'report_cards', docId));
+}
+
 async function updateCardField(docId, fields) {
   const database = await ensureDb();
   const { doc, updateDoc, serverTimestamp } = await fsImport();
@@ -284,6 +294,43 @@ function buildRow(card, container, onRefresh) {
       tr.replaceWith(buildRow(card, container, onRefresh));
     });
     tdActions.append(revokeBtn);
+  }
+
+  // ── Delete (draft only) ──
+  // Deliberately NOT offered for ready/released cards: 'Revoke' already covers
+  // taking a released card back, and deletion there would strand a parent who
+  // had already been pointed at it. A draft is the only state where the card is
+  // pure work-in-progress, which is the real cleanup case (a mis-generation).
+  // Destructive and irreversible — the AI-written remark and any hand-entered
+  // attendance go with it — so it confirms against the student's name.
+  if (card.status === 'draft') {
+    const deleteBtn = el('button', 'rc-action-btn rc-delete-btn', '🗑 Delete');
+    deleteBtn.type = 'button';
+    deleteBtn.title = 'Permanently delete this draft report card';
+    deleteBtn.addEventListener('click', async () => {
+      const who = card.studentName || card.studentId;
+      const msg =
+        'Permanently delete the draft report card for ' + who +
+        ' (' + (card.termLabel || card.term) + ')?
+
+' +
+        'This cannot be undone. The generated remark and any attendance entered on it will be lost.
+' +
+        'The student's marks and attendance records are NOT affected — the card can be generated again.';
+      if (!confirm(msg)) return;
+      deleteBtn.disabled = true;
+      deleteBtn.textContent = 'Deleting…';
+      try {
+        await deleteCard(card.id);
+        tr.remove();
+      } catch (err) {
+        deleteBtn.textContent = '❌ Failed';
+        deleteBtn.disabled = false;
+        console.error('Report card delete failed:', err);
+        alert('Could not delete: ' + (err.message || 'unknown error'));
+      }
+    });
+    tdActions.append(deleteBtn);
   }
 
   // ── Preview E-Book ──
