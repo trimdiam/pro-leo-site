@@ -117,7 +117,11 @@ export function generateTeacherRemark(profile) {
   const improvePart = profile.weakestSubject && profile.weakestSubject !== profile.strongestSubject
     ? fill(pick(IMPROVE_PHRASES), { name, subject: profile.weakestSubject })
     : profile.improvementAreas?.length > 0
-      ? fill(pick(IMPROVE_PHRASES), { name, subject: profile.improvementAreas[0].split(' in ')[0] })
+      // improvementAreas entries read "<criterion> in <subject>". Take the
+      // SUBJECT (last segment), never the criterion: the criterion is a
+      // teacher-facing checklist item and produced remarks like "Dedicating
+      // time to Show manners and help others will help".
+      ? fill(pick(IMPROVE_PHRASES), { name, subject: profile.improvementAreas[0].split(' in ').pop() })
       : '';
 
   let closer = '';
