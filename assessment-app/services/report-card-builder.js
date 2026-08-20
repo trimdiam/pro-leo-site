@@ -5,7 +5,7 @@
 
 import { db } from './firebase-config.js';
 import {
-  doc, getDoc, setDoc, serverTimestamp
+  doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs
 } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
 
 import { aggregateStudentForReportCard } from './report-card-aggregator.js';
@@ -48,6 +48,32 @@ async function fetchStudentRecord(studentId, className) {
   } catch (err) {
     console.warn('Class student list fallback also failed:', err.message);
     return null;
+  }
+}
+
+// True when the student has no outstanding fee transaction.
+//
+// This used to be hardcoded false at generation, so every freshly generated
+// card displayed a red "Fees Pending" badge whether or not the family owed
+// anything — and, because releasing is gated on fees being clear, "Release All"
+// silently matched nothing until an admin happened to click "Refresh Fee
+// Status". Computing it here means the card is right the moment it exists.
+//
+// Mirrors checkFeesCleared() in report-card-admin.js: 'pending' is the status
+// set when a transaction is raised; 'approved'/'rejected' have been dealt with.
+// Fails CLOSED (returns false) so a lookup error can never release a card that
+// should have been held.
+async function hasClearedFees(studentId) {
+  try {
+    const snap = await getDocs(query(
+      collection(db, 'fee_transactions'),
+      where('studentId', '==', studentId),
+      where('status', '==', 'pending')
+    ));
+    return snap.empty;
+  } catch (err) {
+    console.warn(`Fee check failed for ${studentId}:`, err.message);
+    return false;
   }
 }
 
@@ -261,7 +287,7 @@ export async function buildAndSaveReportCard(params) {
 
       // Workflow
       status:         'draft',
-      feesCleared:    false,
+      feesCleared:    await hasClearedFees(studentId),
       generatedBy:    generatedBy || 'Admin',
       generatedAt:    serverTimestamp(),
       releasedBy:     null,

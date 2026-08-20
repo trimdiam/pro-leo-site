@@ -697,3 +697,14 @@
   .sp-criterion-right .sp-band { display: none; }
   .sp-callout { min-width: 100%; }
 }
+
+/* Release is the consequential action in the bulk bar — Mark All Ready sits
+   beside it and is reversible, so only Release is emphasised. */
+.rc-bulk-btn.rc-bulk-primary {
+  background: var(--accent, #8B6F47);
+  color: #fff;
+  border-color: var(--accent, #8B6F47);
+  font-weight: 700;
+}
+.rc-bulk-btn.rc-bulk-primary:hover { filter: brightness(1.08); }
+.rc-bulk-btn:disabled { opacity: 0.55; cursor: progress; }

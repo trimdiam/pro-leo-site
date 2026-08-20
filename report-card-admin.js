@@ -93,6 +93,7 @@ let _state = {
   classFilter:  '',
   termFilter:   '',
   statusFilter: '',
+  feeFilter:    '',
   cards:        []
 };
 
@@ -128,6 +129,10 @@ async function fetchCards() {
 
   if (_state.termFilter)   cards = cards.filter(c => c.term === _state.termFilter);
   if (_state.statusFilter) cards = cards.filter(c => c.status === _state.statusFilter);
+  // Isolating who still owes money is the slow part of a release day, so it is
+  // a first-class filter rather than something to eyeball down a 59-row table.
+  if (_state.feeFilter === 'cleared') cards = cards.filter(c => c.feesCleared);
+  if (_state.feeFilter === 'pending') cards = cards.filter(c => !c.feesCleared);
 
   // Same ordering the query used to ask Firestore for: class, then roll.
   cards.sort((a, b) =>
@@ -443,21 +448,36 @@ export async function initReportCardAdmin() {
   statusSelect.value = _state.statusFilter;
   statusLabel.append(statusSelect);
 
+  const feeLabel = el('label', '', 'Fees');
+  const feeSelect = document.createElement('select');
+  [['', '— All Fees —'], ['cleared', '🟢 Fees Clear'], ['pending', '🔴 Fees Pending']].forEach(([v, t]) => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = t;
+    feeSelect.append(o);
+  });
+  feeSelect.value = _state.feeFilter;
+  feeLabel.append(feeSelect);
+
   const refreshBtn = el('button', '', '🔄 Refresh');
   refreshBtn.type = 'button';
 
-  filterBar.append(classLabel, termLabel, statusLabel, refreshBtn);
+  filterBar.append(classLabel, termLabel, statusLabel, feeLabel, refreshBtn);
   root.append(filterBar);
 
   // ── Bulk actions ──
   const bulkBar = el('div', 'rc-bulk-bar');
 
-  const releaseAllBtn = el('button', 'rc-bulk-btn', 'Release All (Fees Cleared)');
+  // Releasing a class means every card must first be moved draft -> ready.
+  // Doing that one row at a time is 59 clicks for Class I alone, which is why
+  // the bulk release appeared to do nothing: it only ever matched 'ready' cards.
+  const markReadyAllBtn = el('button', 'rc-bulk-btn', 'Mark All Ready');
+  markReadyAllBtn.type = 'button';
+  const releaseAllBtn = el('button', 'rc-bulk-btn rc-bulk-primary', 'Release All (Fees Cleared)');
   releaseAllBtn.type = 'button';
   const refreshFeeBtn = el('button', 'rc-bulk-btn', 'Refresh Fee Status');
   refreshFeeBtn.type = 'button';
 
-  bulkBar.append(releaseAllBtn, refreshFeeBtn);
+  bulkBar.append(markReadyAllBtn, releaseAllBtn, refreshFeeBtn);
   root.append(bulkBar);
 
   // ── Table ──
@@ -498,6 +518,7 @@ export async function initReportCardAdmin() {
       _state.classFilter  = classSelect.value;
       _state.termFilter   = termSelect.value;
       _state.statusFilter = statusSelect.value;
+      _state.feeFilter    = feeSelect.value;
 
       const cards = await fetchCards();
       _state.cards = cards;
@@ -529,6 +550,10 @@ export async function initReportCardAdmin() {
   }
 
   refreshBtn.addEventListener('click', loadAndRender);
+  // Changing a filter should just work — previously it needed a separate
+  // Refresh click, which is why the table looked stuck on 'all classes'.
+  [classSelect, termSelect, statusSelect, feeSelect].forEach(sel =>
+    sel.addEventListener('change', loadAndRender));
 
   // ── Refresh fee status for all loaded cards ──
   refreshFeeBtn.addEventListener('click', async () => {
@@ -545,11 +570,46 @@ export async function initReportCardAdmin() {
     setTimeout(() => { refreshFeeBtn.disabled = false; refreshFeeBtn.textContent = 'Refresh Fee Status'; }, 1000);
   });
 
+  // ── Bulk: draft -> ready ──
+  // Deliberately does NOT release. Fees are still the gate; this only clears the
+  // clerical hurdle of promoting 59 drafts one at a time so that Release All has
+  // something to act on.
+  markReadyAllBtn.addEventListener('click', async () => {
+    const drafts = _state.cards.filter(c => c.status === 'draft');
+    if (drafts.length === 0) { alert('No draft cards in the current view.'); return; }
+    if (!confirm(`Mark ${drafts.length} draft card(s) as Ready?\n\nThis does not release them — fees still have to be cleared before release.`)) return;
+    markReadyAllBtn.disabled = true;
+    let done = 0;
+    for (const card of drafts) {
+      markReadyAllBtn.textContent = `Marking ${++done}/${drafts.length}…`;
+      await updateCardField(card.id, { status: 'ready' });
+    }
+    await loadAndRender();
+    markReadyAllBtn.disabled = false;
+    markReadyAllBtn.textContent = 'Mark All Ready';
+  });
+
   // ── Bulk release ──
   releaseAllBtn.addEventListener('click', async () => {
-    const eligible = _state.cards.filter(c => c.feesCleared && c.status === 'ready');
-    if (eligible.length === 0) { alert('No cards ready for release with fees cleared.'); return; }
-    if (!confirm(`Release ${eligible.length} card(s) with fees cleared?`)) return;
+    // The fee gate is the original design and stays: a card is never released
+    // while money is outstanding. What changed is the reporting — a bare 'no
+    // cards ready' told an admin nothing about WHY, when the real reason was
+    // usually 59 unpromoted drafts or an unrefreshed fee flag.
+    const eligible   = _state.cards.filter(c => c.feesCleared && c.status === 'ready');
+    const feeBlocked = _state.cards.filter(c => !c.feesCleared && c.status === 'ready');
+    const stillDraft = _state.cards.filter(c => c.status === 'draft');
+
+    if (eligible.length === 0) {
+      const why = [];
+      if (stillDraft.length) why.push(`${stillDraft.length} still Draft — use "Mark All Ready" first`);
+      if (feeBlocked.length) why.push(`${feeBlocked.length} Ready but fees pending — filter Fees: Pending to deal with them`);
+      alert('Nothing to release.' + (why.length ? '\n\n' + why.join('\n') : ''));
+      return;
+    }
+    const note = feeBlocked.length
+      ? `\n\n${feeBlocked.length} card(s) will be SKIPPED — fees still pending.`
+      : '';
+    if (!confirm(`Release ${eligible.length} card(s) with fees cleared?${note}`)) return;
 
     releaseAllBtn.disabled = true;
     releaseAllBtn.textContent = 'Releasing…';
