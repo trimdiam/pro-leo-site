@@ -8217,7 +8217,7 @@ function updateAttSummary() {
     const classLabel = { PLG: "Play Group", SKG: "SKG", LKG: "LKG" };
     sel.innerHTML =
       '<option value="">— Select Class —</option>' +
-      ["PLG", "SKG", "LKG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+      ["PLG", "LKG", "SKG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
         .map(
           (c) =>
             `<option value="${c}"${c === String(window._currentTeacherClass) ? "selected" : ""}>${((c) => classLabel[c] || (c ? "Class " + c : ""))(c)}</option>`,
@@ -8796,8 +8796,8 @@ function updateAttSummary() {
         });
         const order = [
             "PLG",
-            "SKG",
             "LKG",
+            "SKG",
             "1",
             "2",
             "3",
@@ -10779,8 +10779,8 @@ function idToEmailLocal(id) {
                 '<p style="color:var(--text-light);font-size:13px">No fee structure set yet.</p>');
             const ORDER = [
                 "PLG",
-                "SKG",
                 "LKG",
+                "SKG",
                 "1",
                 "2",
                 "3",
@@ -10920,8 +10920,8 @@ function idToEmailLocal(id) {
       clsLabel = (c) => CLS[c] || (c ? "Class " + c : "—"),
       ORDER = [
         "PLG",
-        "SKG",
         "LKG",
+        "SKG",
         "1",
         "2",
         "3",
@@ -12161,8 +12161,8 @@ function idToEmailLocal(id) {
       _srSortDir = 1;
     const CLASS_ORDER = [
         "PLG",
-        "SKG",
         "LKG",
+        "SKG",
         "1",
         "2",
         "3",
