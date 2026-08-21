@@ -1,4 +1,4 @@
-const CACHE = 'sfs-1787213681841';
+const CACHE = 'sfs-1787306593247';
 
 // App shell — pre-cached on install for fast cold-start.
 const SHELL = [

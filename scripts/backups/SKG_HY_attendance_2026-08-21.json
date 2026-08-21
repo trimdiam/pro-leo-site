@@ -1,0 +1,338 @@
+[
+ {
+  "id": "7m5G7RwwfRtm6k41y77y",
+  "attendance": {
+   "hyPresent": 0,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260698",
+  "attendance": {
+   "hyPresent": 81,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260699",
+  "attendance": {
+   "hyPresent": 79,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260700",
+  "attendance": {
+   "hyPresent": 75,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260701",
+  "attendance": {
+   "hyPresent": 85,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260702",
+  "attendance": {
+   "hyPresent": 0,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260703",
+  "attendance": {
+   "hyPresent": 79,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260704",
+  "attendance": {
+   "hyPresent": 78,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260705",
+  "attendance": {
+   "hyPresent": 84,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260706",
+  "attendance": {
+   "hyPresent": 81,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260707",
+  "attendance": {
+   "hyPresent": 75,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260708",
+  "attendance": {
+   "hyPresent": 84,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260709",
+  "attendance": {
+   "hyPresent": 83,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260710",
+  "attendance": {
+   "hyPresent": 83,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260711",
+  "attendance": {
+   "hyPresent": 80,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260712",
+  "attendance": {
+   "hyPresent": 81,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260713",
+  "attendance": {
+   "hyPresent": 81,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260714",
+  "attendance": {
+   "hyPresent": 74,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260715",
+  "attendance": {
+   "hyPresent": 73,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260716",
+  "attendance": {
+   "hyPresent": 81,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260717",
+  "attendance": {
+   "hyPresent": 1,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260718",
+  "attendance": {
+   "hyPresent": 71,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260719",
+  "attendance": {
+   "hyPresent": 77,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260720",
+  "attendance": {
+   "hyPresent": 78,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260721",
+  "attendance": {
+   "hyPresent": 76,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260722",
+  "attendance": {
+   "hyPresent": 85,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260723",
+  "attendance": {
+   "hyPresent": 78,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260724",
+  "attendance": {
+   "hyPresent": 85,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260725",
+  "attendance": {
+   "hyPresent": 84,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260726",
+  "attendance": {
+   "hyPresent": 79,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260727",
+  "attendance": {
+   "hyPresent": 80,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260728",
+  "attendance": {
+   "hyPresent": 78,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260729",
+  "attendance": {
+   "hyPresent": 73,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260730",
+  "attendance": {
+   "hyPresent": 80,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260731",
+  "attendance": {
+   "hyPresent": 56,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260732",
+  "attendance": {
+   "hyPresent": 83,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260733",
+  "attendance": {
+   "hyPresent": 77,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260734",
+  "attendance": {
+   "hyPresent": 79,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260735",
+  "attendance": {
+   "hyPresent": 82,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260736",
+  "attendance": {
+   "hyPresent": 69,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260737",
+  "attendance": {
+   "hyPresent": 81,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260738",
+  "attendance": {
+   "hyPresent": 77,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260739",
+  "attendance": {
+   "hyPresent": 75,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260740",
+  "attendance": {
+   "hyPresent": 80,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260741",
+  "attendance": {
+   "hyPresent": 74,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260742",
+  "attendance": {
+   "hyPresent": 72,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260743",
+  "attendance": {
+   "hyPresent": 77,
+   "hyTotal": 85
+  }
+ },
+ {
+  "id": "SFS260744",
+  "attendance": {
+   "hyPresent": 72,
+   "hyTotal": 85
+  }
+ }
+]

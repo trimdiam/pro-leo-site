@@ -1,0 +1,1783 @@
+{
+  "takenAt": "2026-08-10T08:44:41.265Z",
+  "teachers": {
+    "AM": [
+      {
+        "subjectKey": "singing_music",
+        "class": "VII",
+        "subjectLabel": "Singing/Music"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "subjectKey": "val_edu_catechism",
+        "class": "II"
+      },
+      {
+        "subjectLabel": "Arts & Craft",
+        "class": "II",
+        "subjectKey": "arts_craft"
+      },
+      {
+        "subjectKey": "val_edu_catechism",
+        "class": "I",
+        "subjectLabel": "Val. Edu./Catechism"
+      },
+      {
+        "subjectKey": "arts_craft",
+        "class": "I",
+        "subjectLabel": "Arts & Craft"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "singing_music",
+        "subjectLabel": "Singing/Music"
+      }
+    ],
+    "AN": [
+      {
+        "class": "X",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "class": "VII",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "val_edu_catechism",
+        "subjectLabel": "Value Edu./Catechism"
+      },
+      {
+        "class": "X",
+        "subjectKey": "val_edu_catechism",
+        "subjectLabel": "Value Edu./Catechism"
+      }
+    ],
+    "AP": [
+      {
+        "class": "VI",
+        "subjectKey": "computer",
+        "subjectLabel": "Computer"
+      },
+      {
+        "class": "VII",
+        "subjectKey": "computer",
+        "subjectLabel": "Computer"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "computer",
+        "subjectLabel": "Computer"
+      }
+    ],
+    "ARLN": [
+      {
+        "subjectKey": "geography",
+        "class": "X",
+        "subjectLabel": "Geography"
+      },
+      {
+        "class": "IX",
+        "subjectLabel": "Geography",
+        "subjectKey": "geography"
+      },
+      {
+        "subjectKey": "geography",
+        "class": "VIII",
+        "subjectLabel": "Geography"
+      },
+      {
+        "subjectKey": "economics",
+        "class": "IX",
+        "subjectLabel": "Economics"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "arts_craft",
+        "subjectLabel": "Arts & Craft"
+      }
+    ],
+    "BK": [
+      {
+        "subjectLabel": "P.E.",
+        "subjectKey": "pe",
+        "class": "IV"
+      },
+      {
+        "subjectKey": "pe",
+        "class": "III",
+        "subjectLabel": "P.E."
+      },
+      {
+        "class": "VII",
+        "subjectKey": "pe",
+        "subjectLabel": "P.E."
+      },
+      {
+        "subjectLabel": "P.E.",
+        "subjectKey": "pe",
+        "class": "II"
+      },
+      {
+        "class": "I",
+        "subjectKey": "pe",
+        "subjectLabel": "P.E."
+      },
+      {
+        "subjectLabel": "P.E.",
+        "subjectKey": "pe",
+        "class": "V"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "pe",
+        "subjectLabel": "P.E."
+      }
+    ],
+    "DM": [
+      {
+        "class": "IV",
+        "subjectKey": "english_i",
+        "subjectLabel": "English I"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "computer",
+        "subjectLabel": "Computer"
+      },
+      {
+        "class": "VI",
+        "subjectKey": "hindi",
+        "subjectLabel": "Hindi"
+      }
+    ],
+    "DN": [
+      {
+        "class": "V",
+        "subjectKey": "mathematics",
+        "subjectLabel": "Mathematics"
+      },
+      {
+        "subjectKey": "english_i",
+        "class": "V",
+        "subjectLabel": "English I"
+      },
+      {
+        "subjectLabel": "Arts & Craft",
+        "subjectKey": "arts_craft",
+        "class": "V"
+      },
+      {
+        "subjectKey": "mathematics",
+        "class": "IV",
+        "subjectLabel": "Mathematics"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "class": "IV",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "subjectLabel": "Mathematics",
+        "class": "III",
+        "subjectKey": "mathematics"
+      },
+      {
+        "class": "V",
+        "subjectKey": "spelling",
+        "subjectLabel": "Spelling"
+      }
+    ],
+    "DOL": [
+      {
+        "class": "III",
+        "subjectKey": "hindi",
+        "subjectLabel": "Hindi"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "hindi",
+        "subjectLabel": "Hindi"
+      },
+      {
+        "class": "V",
+        "subjectKey": "hindi",
+        "subjectLabel": "Hindi"
+      }
+    ],
+    "DP": [
+      {
+        "subjectLabel": "Mathematics",
+        "subjectKey": "mathematics",
+        "class": "X"
+      },
+      {
+        "subjectLabel": "Mathematics",
+        "class": "IX",
+        "subjectKey": "mathematics"
+      },
+      {
+        "subjectKey": "mathematics",
+        "class": "VIII",
+        "subjectLabel": "Mathematics"
+      },
+      {
+        "subjectKey": "mathematics",
+        "class": "VII",
+        "subjectLabel": "Mathematics"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "chemistry",
+        "subjectLabel": "Chemistry"
+      },
+      {
+        "class": "X",
+        "subjectKey": "chemistry",
+        "subjectLabel": "Chemistry"
+      }
+    ],
+    "DS": [
+      {
+        "class": "VII",
+        "subjectKey": "science",
+        "subjectLabel": "Science"
+      },
+      {
+        "class": "VII",
+        "subjectKey": "h_education",
+        "subjectLabel": "H.Education"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "h_education",
+        "subjectLabel": "H.Education"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "biology",
+        "subjectLabel": "Biology"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "h_education",
+        "subjectLabel": "H.Education"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "val_edu_catechism",
+        "subjectLabel": "Value Edu./Catechism"
+      },
+      {
+        "class": "X",
+        "subjectKey": "biology",
+        "subjectLabel": "Biology"
+      },
+      {
+        "class": "X",
+        "subjectKey": "h_education",
+        "subjectLabel": "H.Education"
+      },
+      {
+        "class": "X",
+        "subjectKey": "val_edu_catechism",
+        "subjectLabel": "Value Edu./Catechism"
+      }
+    ],
+    "FS": [
+      {
+        "class": "II",
+        "subjectKey": "english_ii",
+        "subjectLabel": "English II"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "singing",
+        "subjectLabel": "Singing"
+      },
+      {
+        "subjectLabel": "Khasi/Alt. English",
+        "class": "VI",
+        "subjectKey": "khasi_alt_english"
+      },
+      {
+        "subjectLabel": "Singing",
+        "subjectKey": "singing",
+        "class": "VI"
+      },
+      {
+        "subjectLabel": "Geography",
+        "subjectKey": "geography",
+        "class": "VII"
+      },
+      {
+        "subjectLabel": "Arts & Craft",
+        "subjectKey": "arts_craft",
+        "class": "VII"
+      },
+      {
+        "class": "VII",
+        "subjectKey": "val_edu_catechism",
+        "subjectLabel": "Val. Edu./Catechism"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "english_i",
+        "subjectLabel": "English I"
+      },
+      {
+        "subjectLabel": "Aptitude",
+        "class": "VIII",
+        "subjectKey": "gk"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "val_edu_catechism",
+        "subjectLabel": "Val. Edu./Catechism"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "discipline",
+        "subjectLabel": "Discipline"
+      }
+    ],
+    "ID": [
+      {
+        "subjectLabel": "English II",
+        "class": "III",
+        "subjectKey": "english_ii"
+      },
+      {
+        "subjectKey": "english_ii",
+        "class": "IV",
+        "subjectLabel": "English II"
+      },
+      {
+        "subjectLabel": "English II",
+        "class": "V",
+        "subjectKey": "english_ii"
+      },
+      {
+        "subjectKey": "english_ii",
+        "class": "VI",
+        "subjectLabel": "English II"
+      },
+      {
+        "subjectLabel": "Arts & Craft",
+        "class": "IV",
+        "subjectKey": "arts_craft"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "spelling",
+        "subjectLabel": "Spelling"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "neatness",
+        "subjectLabel": "Neatness"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "discipline",
+        "subjectLabel": "Discipline"
+      }
+    ],
+    "IM": [
+      {
+        "subjectKey": "science",
+        "subjectLabel": "Science",
+        "class": "V"
+      },
+      {
+        "class": "V",
+        "subjectLabel": "Val. Edu./Catechism",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "subjectLabel": "Science",
+        "class": "VI",
+        "subjectKey": "science"
+      },
+      {
+        "subjectKey": "history",
+        "class": "VI",
+        "subjectLabel": "History"
+      },
+      {
+        "subjectLabel": "Civics",
+        "class": "VI",
+        "subjectKey": "civics"
+      },
+      {
+        "subjectKey": "health_education",
+        "class": "VI",
+        "subjectLabel": "Health Education"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "class": "VI",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "class": "VII",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "class": "VIII",
+        "subjectLabel": "Val. Edu./Catechism",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "class": "VI",
+        "subjectKey": "arts_craft",
+        "subjectLabel": "Arts & Craft"
+      }
+    ],
+    "IOH": [
+      {
+        "subjectKey": "english_i",
+        "class": "III",
+        "subjectLabel": "English I"
+      },
+      {
+        "class": "III",
+        "subjectKey": "science",
+        "subjectLabel": "Science"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "science",
+        "subjectLabel": "Science"
+      },
+      {
+        "class": "II",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      }
+    ],
+    "MBK": [
+      {
+        "class": "IV",
+        "subjectLabel": "Social Studies",
+        "subjectKey": "social_studies"
+      },
+      {
+        "class": "V",
+        "subjectKey": "computer",
+        "subjectLabel": "Computer"
+      },
+      {
+        "subjectLabel": "English I",
+        "subjectKey": "english_i",
+        "class": "VI"
+      },
+      {
+        "class": "VI",
+        "subjectKey": "geography",
+        "subjectLabel": "Geography"
+      },
+      {
+        "class": "VII",
+        "subjectLabel": "English I",
+        "subjectKey": "english_i"
+      },
+      {
+        "class": "VII",
+        "subjectLabel": "Khasi/Alt. English",
+        "subjectKey": "khasi_alt_english"
+      },
+      {
+        "class": "VII",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      },
+      {
+        "class": "V",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      },
+      {
+        "class": "VI",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      }
+    ],
+    "MP": [
+      {
+        "class": "VII",
+        "subjectKey": "english_ii",
+        "subjectLabel": "English II"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "english_i",
+        "subjectLabel": "English I"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "english_ii",
+        "subjectLabel": "English II"
+      },
+      {
+        "class": "X",
+        "subjectKey": "english_i",
+        "subjectLabel": "English I"
+      },
+      {
+        "class": "X",
+        "subjectKey": "english_ii",
+        "subjectLabel": "English II"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "english_ii",
+        "subjectLabel": "English II"
+      }
+    ],
+    "NS": [
+      {
+        "subjectKey": "arts_craft",
+        "class": "III",
+        "subjectLabel": "Arts & Craft"
+      },
+      {
+        "class": "III",
+        "subjectKey": "singing",
+        "subjectLabel": "Singing"
+      },
+      {
+        "class": "V",
+        "subjectKey": "singing",
+        "subjectLabel": "Singing"
+      }
+    ],
+    "PK": [
+      {
+        "class": "IX",
+        "subjectKey": "physics",
+        "subjectLabel": "Physics"
+      },
+      {
+        "class": "X",
+        "subjectKey": "physics",
+        "subjectLabel": "Physics"
+      },
+      {
+        "class": "VI",
+        "subjectKey": "mathematics",
+        "subjectLabel": "Mathematics"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "science",
+        "subjectLabel": "Science"
+      }
+    ],
+    "QM": [
+      {
+        "subjectLabel": "History",
+        "subjectKey": "history",
+        "class": "X"
+      },
+      {
+        "class": "X",
+        "subjectLabel": "Civics",
+        "subjectKey": "civics"
+      },
+      {
+        "subjectKey": "history",
+        "subjectLabel": "History",
+        "class": "IX"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "civics",
+        "subjectLabel": "Civics"
+      },
+      {
+        "subjectKey": "civics",
+        "subjectLabel": "Civics",
+        "class": "VII"
+      },
+      {
+        "subjectLabel": "History",
+        "subjectKey": "history",
+        "class": "VII"
+      },
+      {
+        "subjectKey": "civics",
+        "subjectLabel": "Civics",
+        "class": "VIII"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "history",
+        "subjectLabel": "History"
+      },
+      {
+        "class": "X",
+        "subjectKey": "economics",
+        "subjectLabel": "Economics"
+      }
+    ],
+    "VMK": [
+      {
+        "subjectKey": "khasi_alt_english",
+        "class": "V",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "subjectKey": "social_studies",
+        "class": "V",
+        "subjectLabel": "Social Studies"
+      },
+      {
+        "class": "III",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      },
+      {
+        "class": "I",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      }
+    ],
+    "YL": [
+      {
+        "class": "III",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "class": "III",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "subjectKey": "social_studies",
+        "class": "III",
+        "subjectLabel": "Social Studies"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "subjectLabel": "Khasi/Alt. English",
+        "subjectKey": "khasi_alt_english",
+        "class": "V"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "class": "V",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "subjectKey": "val_edu_catechism",
+        "class": "VI"
+      },
+      {
+        "subjectLabel": "Spelling",
+        "subjectKey": "spelling",
+        "class": "III"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      }
+    ]
+  },
+  "users": {
+    "2PrOECKsKeeqBWYGe3us09n2FZv1": [
+      {
+        "class": "V",
+        "subjectKey": "mathematics",
+        "subjectLabel": "Mathematics"
+      },
+      {
+        "subjectKey": "english_i",
+        "class": "V",
+        "subjectLabel": "English I"
+      },
+      {
+        "subjectLabel": "Arts & Craft",
+        "subjectKey": "arts_craft",
+        "class": "V"
+      },
+      {
+        "subjectKey": "mathematics",
+        "class": "IV",
+        "subjectLabel": "Mathematics"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "class": "IV",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "subjectLabel": "Mathematics",
+        "class": "III",
+        "subjectKey": "mathematics"
+      },
+      {
+        "class": "V",
+        "subjectKey": "spelling",
+        "subjectLabel": "Spelling"
+      }
+    ],
+    "AXb7D8Kkm9O1KmseY2E74Tvm9gv2": [
+      {
+        "class": "VII",
+        "subjectKey": "science",
+        "subjectLabel": "Science"
+      },
+      {
+        "class": "VII",
+        "subjectKey": "h_education",
+        "subjectLabel": "H.Education"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "h_education",
+        "subjectLabel": "H.Education"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "biology",
+        "subjectLabel": "Biology"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "h_education",
+        "subjectLabel": "H.Education"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "val_edu_catechism",
+        "subjectLabel": "Value Edu./Catechism"
+      },
+      {
+        "class": "X",
+        "subjectKey": "biology",
+        "subjectLabel": "Biology"
+      },
+      {
+        "class": "X",
+        "subjectKey": "h_education",
+        "subjectLabel": "H.Education"
+      },
+      {
+        "class": "X",
+        "subjectKey": "val_edu_catechism",
+        "subjectLabel": "Value Edu./Catechism"
+      }
+    ],
+    "BmmsapBM18O0CsZPGMIKFurNELS2": [
+      {
+        "class": "X",
+        "subjectKey": "history",
+        "subjectLabel": "History"
+      },
+      {
+        "class": "X",
+        "subjectLabel": "Civics",
+        "subjectKey": "civics"
+      },
+      {
+        "subjectLabel": "History",
+        "subjectKey": "history",
+        "class": "IX"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "civics",
+        "subjectLabel": "Civics"
+      },
+      {
+        "class": "VII",
+        "subjectKey": "civics",
+        "subjectLabel": "Civics"
+      },
+      {
+        "subjectKey": "history",
+        "subjectLabel": "History",
+        "class": "VII"
+      },
+      {
+        "subjectKey": "civics",
+        "subjectLabel": "Civics",
+        "class": "VIII"
+      },
+      {
+        "class": "VIII",
+        "subjectLabel": "History",
+        "subjectKey": "history"
+      },
+      {
+        "class": "X",
+        "subjectKey": "economics",
+        "subjectLabel": "Economics"
+      }
+    ],
+    "C5KcnTmHV1Mh57xF4ufLZ8YgwEj2": [
+      {
+        "subjectLabel": "English II",
+        "class": "III",
+        "subjectKey": "english_ii"
+      },
+      {
+        "subjectKey": "english_ii",
+        "class": "IV",
+        "subjectLabel": "English II"
+      },
+      {
+        "subjectLabel": "English II",
+        "class": "V",
+        "subjectKey": "english_ii"
+      },
+      {
+        "subjectKey": "english_ii",
+        "class": "VI",
+        "subjectLabel": "English II"
+      },
+      {
+        "subjectLabel": "Arts & Craft",
+        "class": "IV",
+        "subjectKey": "arts_craft"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "spelling",
+        "subjectLabel": "Spelling"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "neatness",
+        "subjectLabel": "Neatness"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "discipline",
+        "subjectLabel": "Discipline"
+      }
+    ],
+    "Cz9hrXv5WhRIHFEyqmY5xSUWcNA3": [
+      {
+        "class": "IV",
+        "subjectLabel": "Social Studies",
+        "subjectKey": "social_studies"
+      },
+      {
+        "class": "V",
+        "subjectKey": "computer",
+        "subjectLabel": "Computer"
+      },
+      {
+        "subjectLabel": "English I",
+        "subjectKey": "english_i",
+        "class": "VI"
+      },
+      {
+        "class": "VI",
+        "subjectKey": "geography",
+        "subjectLabel": "Geography"
+      },
+      {
+        "class": "VII",
+        "subjectLabel": "English I",
+        "subjectKey": "english_i"
+      },
+      {
+        "class": "VII",
+        "subjectLabel": "Khasi/Alt. English",
+        "subjectKey": "khasi_alt_english"
+      },
+      {
+        "class": "VII",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      },
+      {
+        "class": "V",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      },
+      {
+        "class": "VI",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      }
+    ],
+    "L4fzwFP8j6eVgdVLIUC8w9lf2Lf2": [
+      {
+        "subjectKey": "arts_craft",
+        "class": "III",
+        "subjectLabel": "Arts & Craft"
+      },
+      {
+        "class": "III",
+        "subjectKey": "singing",
+        "subjectLabel": "Singing"
+      },
+      {
+        "class": "V",
+        "subjectKey": "singing",
+        "subjectLabel": "Singing"
+      }
+    ],
+    "OnDRaQHqfFdDOKy3PbHyQ1AVcy52": [
+      {
+        "subjectKey": "english_i",
+        "class": "III",
+        "subjectLabel": "English I"
+      },
+      {
+        "class": "III",
+        "subjectKey": "science",
+        "subjectLabel": "Science"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "science",
+        "subjectLabel": "Science"
+      },
+      {
+        "class": "II",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      }
+    ],
+    "atl1FsUlDEYQjrsDBCnAYcZ30Za2": [
+      {
+        "class": "VII",
+        "subjectKey": "english_ii",
+        "subjectLabel": "English II"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "english_i",
+        "subjectLabel": "English I"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "english_ii",
+        "subjectLabel": "English II"
+      },
+      {
+        "class": "X",
+        "subjectKey": "english_i",
+        "subjectLabel": "English I"
+      },
+      {
+        "class": "X",
+        "subjectKey": "english_ii",
+        "subjectLabel": "English II"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "english_ii",
+        "subjectLabel": "English II"
+      }
+    ],
+    "b1Lrq3EooLTuyrHsXAaXLLAKll92": [
+      {
+        "class": "III",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "class": "III",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "subjectKey": "social_studies",
+        "class": "III",
+        "subjectLabel": "Social Studies"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "subjectLabel": "Khasi/Alt. English",
+        "subjectKey": "khasi_alt_english",
+        "class": "V"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "class": "V",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "subjectKey": "val_edu_catechism",
+        "class": "VI"
+      },
+      {
+        "subjectLabel": "Spelling",
+        "subjectKey": "spelling",
+        "class": "III"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      }
+    ],
+    "e1yeLUkAFKXVnlX982e8hOK0VR23": [
+      {
+        "class": "IV",
+        "subjectKey": "english_i",
+        "subjectLabel": "English I"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "computer",
+        "subjectLabel": "Computer"
+      },
+      {
+        "class": "VI",
+        "subjectKey": "hindi",
+        "subjectLabel": "Hindi"
+      }
+    ],
+    "e7vIRiRuogTnFOsZM6gzupRx7gm1": [
+      {
+        "subjectLabel": "P.E.",
+        "subjectKey": "pe",
+        "class": "IV"
+      },
+      {
+        "subjectKey": "pe",
+        "class": "III",
+        "subjectLabel": "P.E."
+      },
+      {
+        "class": "VII",
+        "subjectKey": "pe",
+        "subjectLabel": "P.E."
+      },
+      {
+        "subjectLabel": "P.E.",
+        "subjectKey": "pe",
+        "class": "II"
+      },
+      {
+        "class": "I",
+        "subjectKey": "pe",
+        "subjectLabel": "P.E."
+      },
+      {
+        "subjectLabel": "P.E.",
+        "subjectKey": "pe",
+        "class": "V"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "pe",
+        "subjectLabel": "P.E."
+      }
+    ],
+    "klq03XWo3sRMz91UJWg0IRaRMdO2": [
+      {
+        "class": "III",
+        "subjectKey": "hindi",
+        "subjectLabel": "Hindi"
+      },
+      {
+        "class": "IV",
+        "subjectKey": "hindi",
+        "subjectLabel": "Hindi"
+      },
+      {
+        "class": "V",
+        "subjectKey": "hindi",
+        "subjectLabel": "Hindi"
+      }
+    ],
+    "krrZ3Ee4jocicLX2NI7klz8Q1xt2": [
+      {
+        "subjectKey": "singing_music",
+        "class": "VII",
+        "subjectLabel": "Singing/Music"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "subjectKey": "val_edu_catechism",
+        "class": "II"
+      },
+      {
+        "subjectLabel": "Arts & Craft",
+        "class": "II",
+        "subjectKey": "arts_craft"
+      },
+      {
+        "subjectKey": "val_edu_catechism",
+        "class": "I",
+        "subjectLabel": "Val. Edu./Catechism"
+      },
+      {
+        "subjectKey": "arts_craft",
+        "class": "I",
+        "subjectLabel": "Arts & Craft"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "singing_music",
+        "subjectLabel": "Singing/Music"
+      }
+    ],
+    "mUBTZfsNpUSwQH5x5tKJJODRHPg1": [
+      {
+        "subjectKey": "science",
+        "subjectLabel": "Science",
+        "class": "V"
+      },
+      {
+        "class": "V",
+        "subjectLabel": "Val. Edu./Catechism",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "subjectLabel": "Science",
+        "class": "VI",
+        "subjectKey": "science"
+      },
+      {
+        "subjectKey": "history",
+        "class": "VI",
+        "subjectLabel": "History"
+      },
+      {
+        "subjectLabel": "Civics",
+        "class": "VI",
+        "subjectKey": "civics"
+      },
+      {
+        "subjectKey": "health_education",
+        "class": "VI",
+        "subjectLabel": "Health Education"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "class": "VI",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "subjectLabel": "Val. Edu./Catechism",
+        "class": "VII",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "class": "VIII",
+        "subjectLabel": "Val. Edu./Catechism",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "class": "VI",
+        "subjectKey": "arts_craft",
+        "subjectLabel": "Arts & Craft"
+      }
+    ],
+    "n8F4Zj8LugZ3N1zDMlia5u3IESV2": [
+      {
+        "subjectLabel": "Mathematics",
+        "subjectKey": "mathematics",
+        "class": "X"
+      },
+      {
+        "subjectLabel": "Mathematics",
+        "class": "IX",
+        "subjectKey": "mathematics"
+      },
+      {
+        "subjectKey": "mathematics",
+        "class": "VIII",
+        "subjectLabel": "Mathematics"
+      },
+      {
+        "subjectKey": "mathematics",
+        "class": "VII",
+        "subjectLabel": "Mathematics"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "chemistry",
+        "subjectLabel": "Chemistry"
+      },
+      {
+        "class": "X",
+        "subjectKey": "chemistry",
+        "subjectLabel": "Chemistry"
+      }
+    ],
+    "qjRLWHvnfadxVF9yjtP9OnCJ3K02": [
+      {
+        "class": "X",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "class": "VII",
+        "subjectKey": "khasi_alt_english",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "class": "IX",
+        "subjectKey": "val_edu_catechism",
+        "subjectLabel": "Value Edu./Catechism"
+      },
+      {
+        "class": "X",
+        "subjectKey": "val_edu_catechism",
+        "subjectLabel": "Value Edu./Catechism"
+      }
+    ],
+    "rbxMSwxHYSTSqu1nB6EpNdfJNjJ2": [
+      {
+        "subjectKey": "khasi_alt_english",
+        "class": "V",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "subjectKey": "social_studies",
+        "class": "V",
+        "subjectLabel": "Social Studies"
+      },
+      {
+        "class": "III",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      },
+      {
+        "class": "I",
+        "subjectKey": "gk",
+        "subjectLabel": "Aptitude"
+      }
+    ],
+    "s4zmH3dHLsPR6zWOgFqGeTmhloz1": [
+      {
+        "subjectKey": "geography",
+        "class": "X",
+        "subjectLabel": "Geography"
+      },
+      {
+        "class": "IX",
+        "subjectLabel": "Geography",
+        "subjectKey": "geography"
+      },
+      {
+        "subjectKey": "geography",
+        "class": "VIII",
+        "subjectLabel": "Geography"
+      },
+      {
+        "subjectKey": "economics",
+        "class": "IX",
+        "subjectLabel": "Economics"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "arts_craft",
+        "subjectLabel": "Arts & Craft"
+      }
+    ],
+    "uM0IyZKU2Rakf1AXychn6Vad1R13": [
+      {
+        "class": "II",
+        "subjectLabel": "English II",
+        "subjectKey": "english_ii"
+      },
+      {
+        "subjectKey": "singing",
+        "subjectLabel": "Singing",
+        "class": "IV"
+      },
+      {
+        "subjectKey": "khasi_alt_english",
+        "class": "VI",
+        "subjectLabel": "Khasi/Alt. English"
+      },
+      {
+        "class": "VI",
+        "subjectLabel": "Singing",
+        "subjectKey": "singing"
+      },
+      {
+        "class": "VII",
+        "subjectLabel": "Geography",
+        "subjectKey": "geography"
+      },
+      {
+        "subjectLabel": "Arts & Craft",
+        "class": "VII",
+        "subjectKey": "arts_craft"
+      },
+      {
+        "subjectKey": "val_edu_catechism",
+        "subjectLabel": "Val. Edu./Catechism",
+        "class": "VII"
+      },
+      {
+        "subjectKey": "english_i",
+        "class": "VIII",
+        "subjectLabel": "English I"
+      },
+      {
+        "subjectLabel": "Aptitude",
+        "class": "VIII",
+        "subjectKey": "gk"
+      },
+      {
+        "class": "VIII",
+        "subjectLabel": "Val. Edu./Catechism",
+        "subjectKey": "val_edu_catechism"
+      },
+      {
+        "class": "VIII",
+        "subjectKey": "discipline",
+        "subjectLabel": "Discipline"
+      }
+    ]
+  },
+  "marks": {
+    "III_FT/SFS260215": "locked",
+    "III_FT/SFS260216": "locked",
+    "III_FT/SFS260217": "locked",
+    "III_FT/SFS260218": "locked",
+    "III_FT/SFS260219": "locked",
+    "III_FT/SFS260220": "locked",
+    "III_FT/SFS260221": "locked",
+    "III_FT/SFS260222": "locked",
+    "III_FT/SFS260223": "locked",
+    "III_FT/SFS260224": "locked",
+    "III_FT/SFS260225": "locked",
+    "III_FT/SFS260226": "locked",
+    "III_FT/SFS260227": "locked",
+    "III_FT/SFS260228": "locked",
+    "III_FT/SFS260229": "locked",
+    "III_FT/SFS260230": "locked",
+    "III_FT/SFS260231": "locked",
+    "III_FT/SFS260232": "locked",
+    "III_FT/SFS260233": "locked",
+    "III_FT/SFS260234": "locked",
+    "III_FT/SFS260235": "locked",
+    "III_FT/SFS260236": "locked",
+    "III_FT/SFS260237": "locked",
+    "III_FT/SFS260238": "locked",
+    "III_FT/SFS260239": "locked",
+    "III_FT/SFS260240": "locked",
+    "III_FT/SFS260241": "locked",
+    "III_FT/SFS260242": "locked",
+    "III_FT/SFS260243": "locked",
+    "III_FT/SFS260244": "locked",
+    "III_FT/SFS260245": "locked",
+    "III_FT/SFS260246": "locked",
+    "III_FT/SFS260247": "locked",
+    "III_FT/SFS260248": "locked",
+    "III_FT/SFS260249": "locked",
+    "III_FT/SFS260250": "locked",
+    "III_FT/SFS260251": "locked",
+    "III_FT/SFS260252": "locked",
+    "III_FT/SFS260253": "locked",
+    "III_FT/SFS260254": "locked",
+    "III_FT/SFS260255": "locked",
+    "III_FT/SFS260256": "locked",
+    "III_FT/SFS260257": "locked",
+    "III_FT/SFS260258": "locked",
+    "III_FT/SFS260259": "locked",
+    "III_FT/SFS260260": "locked",
+    "III_FT/SFS260261": "locked",
+    "III_FT/SFS260262": "locked",
+    "III_FT/SFS260263": "locked",
+    "III_FT/SFS260264": "locked",
+    "III_FT/SFS260265": "locked",
+    "III_FT/SFS260266": "locked",
+    "III_FT/SFS260267": "locked",
+    "III_FT/SFS260268": "locked",
+    "III_FT/SFS260269": "locked",
+    "III_FT/SFS260270": "locked",
+    "III_FT/SFS260271": "locked",
+    "III_FT/SFS260272": "locked",
+    "III_FT/SFS260273": "locked",
+    "III_FT/SFS260274": "locked",
+    "III_FT/SFS260275": "locked",
+    "III_FT/SFS260276": "locked",
+    "III_FT/SFS260277": "locked",
+    "IV_FT/SFS260278": "locked",
+    "IV_FT/SFS260279": "locked",
+    "IV_FT/SFS260280": "locked",
+    "IV_FT/SFS260281": "locked",
+    "IV_FT/SFS260282": "locked",
+    "IV_FT/SFS260283": "locked",
+    "IV_FT/SFS260284": "locked",
+    "IV_FT/SFS260285": "locked",
+    "IV_FT/SFS260286": "locked",
+    "IV_FT/SFS260287": "locked",
+    "IV_FT/SFS260288": "locked",
+    "IV_FT/SFS260289": "locked",
+    "IV_FT/SFS260290": "locked",
+    "IV_FT/SFS260291": "locked",
+    "IV_FT/SFS260292": "locked",
+    "IV_FT/SFS260293": "locked",
+    "IV_FT/SFS260294": "locked",
+    "IV_FT/SFS260295": "locked",
+    "IV_FT/SFS260296": "locked",
+    "IV_FT/SFS260297": "locked",
+    "IV_FT/SFS260298": "locked",
+    "IV_FT/SFS260299": "locked",
+    "IV_FT/SFS260300": "locked",
+    "IV_FT/SFS260301": "locked",
+    "IV_FT/SFS260302": "locked",
+    "IV_FT/SFS260303": "locked",
+    "IV_FT/SFS260304": "locked",
+    "IV_FT/SFS260305": "locked",
+    "IV_FT/SFS260306": "locked",
+    "IV_FT/SFS260307": "locked",
+    "IV_FT/SFS260308": "locked",
+    "IV_FT/SFS260309": "locked",
+    "IV_FT/SFS260310": "locked",
+    "IV_FT/SFS260311": "locked",
+    "IV_FT/SFS260312": "locked",
+    "IV_FT/SFS260313": "locked",
+    "IV_FT/SFS260314": "locked",
+    "IV_FT/SFS260315": "locked",
+    "IV_FT/SFS260316": "locked",
+    "IV_FT/SFS260317": "locked",
+    "IV_FT/SFS260318": "locked",
+    "IV_FT/SFS260319": "locked",
+    "IV_FT/SFS260320": "locked",
+    "IV_FT/SFS260321": "locked",
+    "IV_FT/SFS260322": "locked",
+    "IV_FT/SFS260323": "locked",
+    "IV_FT/SFS260324": "locked",
+    "IV_FT/SFS260325": "locked",
+    "IV_FT/SFS260326": "locked",
+    "IV_FT/SFS260327": "locked",
+    "IV_FT/SFS260328": "locked",
+    "IV_FT/SFS260329": "locked",
+    "IV_FT/SFS260330": "locked",
+    "IV_FT/SFS260331": "locked",
+    "IV_FT/SFS260332": "locked",
+    "IV_FT/SFS260333": "locked",
+    "IV_FT/SFS260334": "locked",
+    "IV_FT/SFS260335": "locked",
+    "IV_FT/SFS260336": "locked",
+    "IV_FT/SFS260337": "locked",
+    "IV_FT/SFS260338": "locked",
+    "IV_FT/SFS260339": "locked",
+    "IV_FT/SFS260340": "locked",
+    "V_FT/SFS260341": "locked",
+    "V_FT/SFS260342": "locked",
+    "V_FT/SFS260343": "locked",
+    "V_FT/SFS260344": "locked",
+    "V_FT/SFS260345": "locked",
+    "V_FT/SFS260346": "locked",
+    "V_FT/SFS260347": "locked",
+    "V_FT/SFS260348": "locked",
+    "V_FT/SFS260349": "locked",
+    "V_FT/SFS260350": "locked",
+    "V_FT/SFS260351": "locked",
+    "V_FT/SFS260352": "locked",
+    "V_FT/SFS260353": "locked",
+    "V_FT/SFS260354": "locked",
+    "V_FT/SFS260355": "locked",
+    "V_FT/SFS260356": "locked",
+    "V_FT/SFS260357": "locked",
+    "V_FT/SFS260358": "locked",
+    "V_FT/SFS260359": "locked",
+    "V_FT/SFS260360": "locked",
+    "V_FT/SFS260361": "locked",
+    "V_FT/SFS260362": "locked",
+    "V_FT/SFS260363": "locked",
+    "V_FT/SFS260364": "locked",
+    "V_FT/SFS260365": "locked",
+    "V_FT/SFS260366": "locked",
+    "V_FT/SFS260367": "locked",
+    "V_FT/SFS260368": "locked",
+    "V_FT/SFS260369": "locked",
+    "V_FT/SFS260370": "locked",
+    "V_FT/SFS260371": "locked",
+    "V_FT/SFS260372": "locked",
+    "V_FT/SFS260373": "locked",
+    "V_FT/SFS260374": "locked",
+    "V_FT/SFS260375": "locked",
+    "V_FT/SFS260376": "locked",
+    "V_FT/SFS260377": "locked",
+    "V_FT/SFS260378": "locked",
+    "V_FT/SFS260379": "locked",
+    "V_FT/SFS260380": "locked",
+    "V_FT/SFS260381": "locked",
+    "V_FT/SFS260382": "locked",
+    "V_FT/SFS260383": "locked",
+    "V_FT/SFS260384": "locked",
+    "V_FT/SFS260385": "locked",
+    "V_FT/SFS260386": "locked",
+    "V_FT/SFS260387": "locked",
+    "V_FT/SFS260388": "locked",
+    "V_FT/SFS260389": "locked",
+    "V_FT/SFS260390": "locked",
+    "V_FT/SFS260391": "locked",
+    "V_FT/SFS260392": "locked",
+    "V_FT/SFS260393": "locked",
+    "V_FT/SFS260394": "locked",
+    "V_FT/SFS260395": "locked",
+    "V_FT/SFS260396": "locked",
+    "V_FT/SFS260397": "locked",
+    "V_FT/SFS260398": "locked",
+    "V_FT/SFS260399": "locked",
+    "VI_FT/SFS260400": "locked",
+    "VI_FT/SFS260401": "locked",
+    "VI_FT/SFS260402": "locked",
+    "VI_FT/SFS260403": "locked",
+    "VI_FT/SFS260404": "locked",
+    "VI_FT/SFS260405": "locked",
+    "VI_FT/SFS260406": "locked",
+    "VI_FT/SFS260407": "locked",
+    "VI_FT/SFS260408": "locked",
+    "VI_FT/SFS260409": "locked",
+    "VI_FT/SFS260410": "locked",
+    "VI_FT/SFS260411": "locked",
+    "VI_FT/SFS260412": "locked",
+    "VI_FT/SFS260413": "locked",
+    "VI_FT/SFS260414": "locked",
+    "VI_FT/SFS260415": "locked",
+    "VI_FT/SFS260416": "locked",
+    "VI_FT/SFS260417": "locked",
+    "VI_FT/SFS260418": "locked",
+    "VI_FT/SFS260419": "locked",
+    "VI_FT/SFS260420": "locked",
+    "VI_FT/SFS260421": "locked",
+    "VI_FT/SFS260422": "locked",
+    "VI_FT/SFS260423": "locked",
+    "VI_FT/SFS260424": "locked",
+    "VI_FT/SFS260425": "locked",
+    "VI_FT/SFS260426": "locked",
+    "VI_FT/SFS260427": "locked",
+    "VI_FT/SFS260428": "locked",
+    "VI_FT/SFS260429": "locked",
+    "VI_FT/SFS260430": "locked",
+    "VI_FT/SFS260431": "locked",
+    "VI_FT/SFS260432": "locked",
+    "VI_FT/SFS260433": "locked",
+    "VI_FT/SFS260434": "locked",
+    "VI_FT/SFS260435": "locked",
+    "VI_FT/SFS260436": "locked",
+    "VI_FT/SFS260437": "locked",
+    "VI_FT/SFS260438": "locked",
+    "VI_FT/SFS260439": "locked",
+    "VI_FT/SFS260440": "locked",
+    "VI_FT/SFS260441": "locked",
+    "VI_FT/SFS260442": "locked",
+    "VI_FT/SFS260443": "locked",
+    "VI_FT/SFS260444": "locked",
+    "VI_FT/SFS260445": "locked",
+    "VI_FT/SFS260446": "locked",
+    "VI_FT/SFS260447": "locked",
+    "VII_FT/SFS260448": "locked",
+    "VII_FT/SFS260449": "locked",
+    "VII_FT/SFS260450": "locked",
+    "VII_FT/SFS260451": "locked",
+    "VII_FT/SFS260452": "locked",
+    "VII_FT/SFS260453": "locked",
+    "VII_FT/SFS260454": "locked",
+    "VII_FT/SFS260455": "locked",
+    "VII_FT/SFS260456": "locked",
+    "VII_FT/SFS260457": "locked",
+    "VII_FT/SFS260458": "locked",
+    "VII_FT/SFS260459": "locked",
+    "VII_FT/SFS260460": "locked",
+    "VII_FT/SFS260461": "locked",
+    "VII_FT/SFS260462": "locked",
+    "VII_FT/SFS260463": "locked",
+    "VII_FT/SFS260464": "locked",
+    "VII_FT/SFS260465": "locked",
+    "VII_FT/SFS260466": "locked",
+    "VII_FT/SFS260467": "locked",
+    "VII_FT/SFS260468": "locked",
+    "VII_FT/SFS260469": "locked",
+    "VII_FT/SFS260470": "locked",
+    "VII_FT/SFS260471": "locked",
+    "VII_FT/SFS260472": "locked",
+    "VII_FT/SFS260473": "locked",
+    "VII_FT/SFS260474": "locked",
+    "VII_FT/SFS260475": "locked",
+    "VII_FT/SFS260476": "locked",
+    "VII_FT/SFS260477": "locked",
+    "VII_FT/SFS260478": "locked",
+    "VII_FT/SFS260479": "locked",
+    "VII_FT/SFS260480": "locked",
+    "VII_FT/SFS260481": "locked",
+    "VII_FT/SFS260482": "locked",
+    "VII_FT/SFS260483": "locked",
+    "VII_FT/SFS260484": "locked",
+    "VII_FT/SFS260485": "locked",
+    "VII_FT/SFS260486": "locked",
+    "VII_FT/SFS260487": "locked",
+    "VII_FT/SFS260488": "locked",
+    "VII_FT/SFS260489": "locked",
+    "VII_FT/SFS260490": "locked",
+    "VII_FT/SFS260491": "locked",
+    "VII_FT/SFS260492": "locked",
+    "VII_FT/SFS260493": "locked",
+    "VII_FT/SFS260494": "locked",
+    "VII_FT/SFS260495": "locked",
+    "VII_FT/SFS260496": "locked",
+    "VII_FT/SFS260497": "locked",
+    "VIII_FT/SFS260498": "locked",
+    "VIII_FT/SFS260499": "locked",
+    "VIII_FT/SFS260500": "locked",
+    "VIII_FT/SFS260501": "locked",
+    "VIII_FT/SFS260502": "locked",
+    "VIII_FT/SFS260503": "locked",
+    "VIII_FT/SFS260504": "locked",
+    "VIII_FT/SFS260505": "locked",
+    "VIII_FT/SFS260506": "locked",
+    "VIII_FT/SFS260507": "locked",
+    "VIII_FT/SFS260508": "locked",
+    "VIII_FT/SFS260509": "locked",
+    "VIII_FT/SFS260510": "locked",
+    "VIII_FT/SFS260511": "locked",
+    "VIII_FT/SFS260512": "locked",
+    "VIII_FT/SFS260513": "locked",
+    "VIII_FT/SFS260514": "locked",
+    "VIII_FT/SFS260515": "locked",
+    "VIII_FT/SFS260516": "locked",
+    "VIII_FT/SFS260517": "locked",
+    "VIII_FT/SFS260518": "locked",
+    "VIII_FT/SFS260519": "locked",
+    "VIII_FT/SFS260520": "locked",
+    "VIII_FT/SFS260521": "locked",
+    "VIII_FT/SFS260522": "locked",
+    "VIII_FT/SFS260523": "locked",
+    "VIII_FT/SFS260524": "locked",
+    "VIII_FT/SFS260525": "locked",
+    "VIII_FT/SFS260526": "locked",
+    "VIII_FT/SFS260527": "locked",
+    "VIII_FT/SFS260528": "locked",
+    "VIII_FT/SFS260529": "locked",
+    "VIII_FT/SFS260530": "locked",
+    "VIII_FT/SFS260531": "locked",
+    "VIII_FT/SFS260532": "locked",
+    "VIII_FT/SFS260533": "locked",
+    "VIII_FT/SFS260534": "locked",
+    "VIII_FT/SFS260535": "locked",
+    "VIII_FT/SFS260536": "locked",
+    "VIII_FT/SFS260537": "locked",
+    "VIII_FT/SFS260538": "locked",
+    "VIII_FT/SFS260539": "locked",
+    "VIII_FT/SFS260540": "locked",
+    "VIII_FT/SFS260541": "locked",
+    "IX_FT/SFS260542": "locked",
+    "IX_FT/SFS260543": "locked",
+    "IX_FT/SFS260544": "locked",
+    "IX_FT/SFS260545": "locked",
+    "IX_FT/SFS260546": "locked",
+    "IX_FT/SFS260547": "locked",
+    "IX_FT/SFS260548": "locked",
+    "IX_FT/SFS260549": "locked",
+    "IX_FT/SFS260550": "locked",
+    "IX_FT/SFS260551": "locked",
+    "IX_FT/SFS260552": "locked",
+    "IX_FT/SFS260553": "locked",
+    "IX_FT/SFS260554": "locked",
+    "IX_FT/SFS260555": "locked",
+    "IX_FT/SFS260556": "locked",
+    "IX_FT/SFS260557": "locked",
+    "IX_FT/SFS260558": "locked",
+    "IX_FT/SFS260559": "locked",
+    "IX_FT/SFS260560": "locked",
+    "IX_FT/SFS260561": "locked",
+    "IX_FT/SFS260562": "locked",
+    "IX_FT/SFS260563": "locked",
+    "IX_FT/SFS260564": "locked",
+    "IX_FT/SFS260565": "locked",
+    "IX_FT/SFS260566": "locked",
+    "IX_FT/SFS260567": "locked",
+    "IX_FT/SFS260568": "locked",
+    "IX_FT/SFS260569": "locked",
+    "IX_FT/SFS260570": "locked",
+    "IX_FT/SFS260571": "locked",
+    "IX_FT/SFS260572": "locked",
+    "IX_FT/SFS260573": "locked",
+    "IX_FT/SFS260574": "locked",
+    "IX_FT/SFS260575": "locked",
+    "IX_FT/SFS260576": "locked",
+    "IX_FT/SFS260577": "locked",
+    "IX_FT/SFS260578": "locked",
+    "IX_FT/SFS260579": "locked",
+    "IX_FT/SFS260580": "locked",
+    "IX_FT/SFS260581": "locked",
+    "IX_FT/SFS260582": "locked",
+    "IX_FT/SFS260583": "locked",
+    "IX_FT/SFS260584": "locked",
+    "IX_FT/SFS260585": "locked",
+    "X_FT/BbLJKxgGBaGIa8I7dBVc": "locked",
+    "X_FT/SFS260586": "locked",
+    "X_FT/SFS260587": "locked",
+    "X_FT/SFS260588": "locked",
+    "X_FT/SFS260589": "locked",
+    "X_FT/SFS260590": "locked",
+    "X_FT/SFS260591": "locked",
+    "X_FT/SFS260592": "locked",
+    "X_FT/SFS260593": "locked",
+    "X_FT/SFS260594": "locked",
+    "X_FT/SFS260595": "locked",
+    "X_FT/SFS260596": "locked",
+    "X_FT/SFS260597": "locked",
+    "X_FT/SFS260598": "locked",
+    "X_FT/SFS260599": "locked",
+    "X_FT/SFS260600": "locked",
+    "X_FT/SFS260601": "locked",
+    "X_FT/SFS260602": "locked",
+    "X_FT/SFS260603": "locked",
+    "X_FT/SFS260604": "locked",
+    "X_FT/SFS260605": "locked",
+    "X_FT/SFS260606": "locked",
+    "X_FT/SFS260607": "locked",
+    "X_FT/SFS260608": "locked",
+    "X_FT/SFS260609": "locked",
+    "X_FT/SFS260610": "locked",
+    "X_FT/SFS260611": "locked",
+    "X_FT/SFS260612": "locked",
+    "X_FT/SFS260613": "locked",
+    "X_FT/SFS260614": "locked",
+    "X_FT/SFS260615": "locked",
+    "X_FT/SFS260616": "locked",
+    "X_FT/SFS260617": "locked",
+    "X_FT/SFS260618": "locked",
+    "X_FT/SFS260619": "locked",
+    "X_FT/SFS260620": "locked",
+    "X_FT/SFS260621": "locked",
+    "X_FT/SFS260622": "locked"
+  }
+}
