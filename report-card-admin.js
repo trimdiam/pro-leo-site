@@ -405,7 +405,7 @@ export async function initReportCardAdmin() {
   root.innerHTML = '';
   root.className = 'rc-admin-panel';
 
-  const heading = el('h2', '', '📋 SKG – Class II Report Cards');
+  const heading = el('h2', '', '📋 Play Group – Class II Report Cards');
 
   const sourceLabel = el('p', '');
   sourceLabel.style.cssText = 'font-size:12px;color:#6b7280;margin:2px 0 16px';
@@ -420,7 +420,7 @@ export async function initReportCardAdmin() {
 
   const classLabel = el('label', '', 'Class');
   const classSelect = document.createElement('select');
-  ['', 'LKG', 'SKG', 'Class I', 'Class II'].forEach(c => {
+  ['', 'Play Group', 'LKG', 'SKG', 'Class I', 'Class II'].forEach(c => {
     const o = document.createElement('option');
     o.value = c; o.textContent = c || '— All Classes —';
     classSelect.append(o);

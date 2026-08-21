@@ -45,7 +45,7 @@ function syncFailureMessage(failed) {
     `Check the connection and try again.`;
 }
 
-const CLASSES = ['LKG', 'SKG', 'Class I', 'Class II'];
+const CLASSES = ['Play Group', 'LKG', 'SKG', 'Class I', 'Class II'];
 const TERM_KEYS = ['HY1', 'HY2'];
 
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

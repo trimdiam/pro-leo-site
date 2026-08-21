@@ -10,6 +10,13 @@ import { createStudentProfile } from './components/student-profile.js';
 import { createQuickEntryGrid } from './components/quick-entry-grid.js';
 import { createClassTestEntry } from './components/class-test-entry.js';
 import { createCoScholasticEntry } from './components/coscholastic-entry.js';
+import { createPlaygroupNarrativeEntry } from './components/playgroup-narrative-entry.js';
+import {
+  getGrowthPromptsForClass,
+  syncNarrativesFromFirestore,
+  getNarrative,
+  saveNarrativeAndConfirm
+} from './services/playgroup-narrative-service.js';
 import {
   loadCoScholasticRegistry, getCoScholasticForClass, getCoScholastic,
   saveCoScholasticAndConfirm, syncCoScholasticFromFirestore, setCoScholasticLock,
@@ -38,9 +45,20 @@ import { saveClassTest, saveClassTestAndConfirm, getClassTest, syncClassTestsFro
 // enforced server-side in firestore.rules.
 const NUM_TO_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
+// The only class with a Growth Observation section. Named once here rather than
+// spelled inline so the nav gate, the render guard and the default selection
+// cannot drift apart — and so adding a second such class is one edit.
+const PG_NARRATIVE_CLASS = 'Play Group';
+
 function classNameMatchesClassTeacherOf(className, classTeacherOf) {
   if (!classTeacherOf) return false;
-  if (className === classTeacherOf) return true; // LKG/SKG/PLG direct match
+  if (className === classTeacherOf) return true; // LKG/SKG: code equals display name
+  // Stored code form, e.g. 'Play Group' -> 'PLG'. LKG/SKG pass on the line
+  // above only because their code happens to equal their display name; Play
+  // Group is the first class where it does not, and without this its class
+  // teacher (stored as 'PLG') matches nothing and the co-scholastic screen
+  // tells her she is not the class teacher of any class.
+  if (CLASS_MAP[className] === classTeacherOf) return true;
   const num = Number(CLASS_MAP[className]);
   return Number.isInteger(num) && NUM_TO_ROMAN[num] === classTeacherOf;
 }
@@ -81,7 +99,15 @@ async function getAdminComponents() {
   return _adminLazy;
 }
 
-const classes = ['LKG', 'SKG', 'Class I', 'Class II', 'Class 9'];
+// Feeds three screens: academic session setup, co-scholastic entry, and the
+// admin co-scholastic lock list. 'Play Group' is here for the latter two — it
+// has no academic subjects in subjects.json at all, so picking it in session
+// setup lands on session-setup.js's own "No subjects found for this class"
+// message with the subject dropdown disabled. That is a deliberate soft stop,
+// not an oversight: it cannot produce a session or any bad data, and splitting
+// this into two arrays would touch a dozen call sites to hide one dropdown row
+// that already explains itself.
+const classes = ['Play Group', 'LKG', 'SKG', 'Class I', 'Class II', 'Class 9'];
 
 // auth-service.js prepends the teacher's title (e.g. "Miss") to their login
 // name, but session.teacher_name is stored without it -- strip it before
@@ -155,6 +181,17 @@ const state = {
   coSchSaveStatus: 'idle',
   coSchLastSaved: null,
   coSchLocked: false,
+
+  // Play Group narratives (Growth Observation + per-term remarks). Reuses the
+  // co-scholastic registry, so there is no separate registry field here.
+  pgClass: '',
+  pgStudents: [],
+  pgNarratives: {},
+  pgStudentId: '',
+  pgSaveStatus: 'idle',
+  pgLastSaved: null,
+  pgLocked: false,
+  pgSynced: false,
 
   // Class test (Half-Yearly, 30% of blended score) — Class I/II only
   classTestConfig: null,
@@ -283,6 +320,9 @@ function render() {
   } else if (state.mode === 'coscholastic') {
     setupRoot.replaceChildren();
     renderCoScholastic();
+  } else if (state.mode === 'pgnarrative') {
+    setupRoot.replaceChildren();
+    renderPlaygroupNarrative();
   } else if (state.mode === 'mysubmissions') {
     setupRoot.replaceChildren();
     renderMySubmissions();
@@ -358,6 +398,18 @@ function renderNav() {
     coSchBtn.addEventListener('click', () => switchMode('coscholastic'));
     nav.append(coSchBtn);
 
+    // Play Group is the only class with a narrative section, so this tab would
+    // be dead weight for every other class teacher. canReviewClass() is the
+    // same gate the co-scholastic screen uses, and admin keeps everything.
+    if (canReviewClass(PG_NARRATIVE_CLASS)) {
+      const pgBtn = document.createElement('button');
+      pgBtn.type = 'button';
+      pgBtn.className = `nav-btn ${state.mode === 'pgnarrative' ? 'active' : ''}`;
+      pgBtn.textContent = 'Observations';
+      pgBtn.addEventListener('click', () => switchMode('pgnarrative'));
+      nav.append(pgBtn);
+    }
+
     const mySubBtn = document.createElement('button');
     mySubBtn.type = 'button';
     mySubBtn.className = `nav-btn ${state.mode === 'mysubmissions' ? 'active' : ''}`;
@@ -420,6 +472,17 @@ function switchMode(mode) {
       saveCoScholasticAndConfirm(state.coSchTerm, state.coSchClass, state.coSchGrades,
         { enteredBy: getCurrentUser()?.name || 'Unknown' })
         .then(r => { if (!r.ok) alert(`Could not save co-scholastic grades: ${r.error}`); });
+    }
+  }
+
+  // Typed prose is far more expensive to lose than a re-picked grade, so this
+  // guard matters more than the ones above, not less.
+  if (state.mode === 'pgnarrative' && state.pgSaveStatus === 'unsaved') {
+    const ok = confirm('You have unsaved observations and remarks. Save before leaving?');
+    if (ok) {
+      saveNarrativeAndConfirm(state.pgClass, state.pgNarratives,
+        { enteredBy: getCurrentUser()?.name || 'Unknown' })
+        .then(r => { if (!r.ok) alert(`Could not save observations: ${r.error}`); });
     }
   }
 
@@ -833,6 +896,164 @@ function loadCoSchGrades() {
   state.coSchLastSaved = rec?.updated_at || null;
   state.coSchLocked = (rec?.status || 'draft') === 'locked';
   state.coSchSaveStatus = 'idle';
+}
+
+// ── Play Group narratives ─────────────────────────────────────────────────────
+
+function renderPlaygroupNarrative() {
+  if (!isTeacher() && !isAdmin()) {
+    assessmentRoot.replaceChildren(createStatus('Access denied: teacher role required.'));
+    return;
+  }
+
+  assessmentRoot.replaceChildren();
+
+  // Shares the co-scholastic registry — the prompts live in coscholastic.json
+  // beside the grade scale so one file describes the whole class.
+  if (!state.coSchRegistry) {
+    assessmentRoot.append(createStatus('Loading observation areas…'));
+    loadCoScholasticRegistry()
+      .then(reg => { state.coSchRegistry = reg; render(); })
+      .catch(err => {
+        state.errorMessage = `Failed to load observation areas: ${err.message}`;
+        render();
+      });
+    return;
+  }
+
+  // Narratives live in their own collection, so they need their own sync — the
+  // co-scholastic sync above does not bring them down.
+  if (!state.pgSynced) {
+    assessmentRoot.append(createStatus('Loading observations…'));
+    syncNarrativesFromFirestore()
+      .catch(() => null)
+      .then(() => { state.pgSynced = true; render(); });
+    return;
+  }
+
+  const allowed = classes.filter(c =>
+    canReviewClass(c) && getGrowthPromptsForClass(state.coSchRegistry, c).length > 0
+  );
+
+  if (!allowed.length) {
+    assessmentRoot.append(createStatus(
+      'Observations are written by the class teacher of a class that has them. ' +
+      'Only Play Group does, and you are not set as its class teacher.'
+    ));
+    return;
+  }
+
+  // Only one class has prompts, so pick it rather than making the teacher
+  // choose from a list of one.
+  if (!state.pgClass || !allowed.includes(state.pgClass)) {
+    state.pgClass = allowed[0];
+    state.pgStudents = [];
+    state.pgStudentId = '';
+  }
+
+  if (!state.pgStudents.length) {
+    assessmentRoot.append(createStatus('Loading students…'));
+    loadStudentsForClass(state.pgClass)
+      .catch(() => [])
+      .then(list => {
+        state.pgStudents = list;
+        state.pgStudentId = list[0]?.studentId || '';
+        loadPgNarratives();
+        render();
+      });
+    return;
+  }
+
+  const prompts = getGrowthPromptsForClass(state.coSchRegistry, state.pgClass);
+
+  assessmentRoot.append(createPlaygroupNarrativeEntry({
+    classes: allowed,
+    selectedClass: state.pgClass,
+    students: state.pgStudents,
+    prompts,
+    narratives: state.pgNarratives,
+    selectedStudentId: state.pgStudentId,
+    locked: state.pgLocked,
+    saveStatus: state.pgSaveStatus,
+    lastSaved: state.pgLastSaved,
+
+    onClassChange: async className => {
+      state.pgClass = className;
+      state.pgStudents = [];
+      state.pgStudentId = '';
+      state.pgNarratives = {};
+      state.pgLastSaved = null;
+      render();
+    },
+
+    onStudentChange: studentId => {
+      state.pgStudentId = studentId;
+      render();
+    },
+
+    // `col` is null for remarks, which are a flat term -> string map; growth is
+    // promptKey -> { start, half, end }.
+    onNarrativeChange: (studentId, kind, key, col, value) => {
+      const rec = state.pgNarratives[studentId] || (state.pgNarratives[studentId] = {});
+      if (kind === 'growth') {
+        const g = rec.growth || (rec.growth = {});
+        const cell = g[key] || (g[key] = {});
+        cell[col] = value;
+      } else if (kind === 'attendance') {
+        const a = rec.attendance || (rec.attendance = {});
+        a[key] = value;
+      } else {
+        const r = rec.remarks || (rec.remarks = {});
+        r[key] = value;
+      }
+      state.pgSaveStatus = 'unsaved';
+      // No re-render: the textarea already holds the text, and rebuilding the
+      // panel mid-sentence would drop the caret to the end of the field.
+    },
+
+    // Working Days belongs to the class, not the child on screen, so it is
+    // written onto every student in the roster. Stored per student (rather than
+    // once at doc level) to match how Class III-X stores it, which keeps one
+    // student's record readable on its own.
+    onWorkingDaysChange: (totalKey, value) => {
+      state.pgStudents.forEach(s => {
+        const rec = state.pgNarratives[s.studentId] || (state.pgNarratives[s.studentId] = {});
+        const a = rec.attendance || (rec.attendance = {});
+        a[totalKey] = value;
+      });
+      state.pgSaveStatus = 'unsaved';
+      // No re-render — the input already holds the value, and the percentage
+      // beside it is refreshed by the component itself.
+    },
+
+    onSave: async () => {
+      state.pgSaveStatus = 'saving';
+      render();
+      const result = await saveNarrativeAndConfirm(
+        state.pgClass, state.pgNarratives,
+        { enteredBy: getCurrentUser()?.name || 'Unknown' }
+      );
+      if (result.ok) {
+        state.pgSaveStatus = 'idle';
+        state.pgLastSaved = new Date().toISOString();
+      } else {
+        state.pgSaveStatus = 'unsaved';
+        alert(`Could not save: ${result.error}`);
+      }
+      render();
+    }
+  }));
+}
+
+// Pulls the saved narratives for the current class out of the local cache.
+// Deep-copied so editing the form never mutates the cached document in place —
+// a failed save must leave the last good copy intact.
+function loadPgNarratives() {
+  const rec = getNarrative(state.pgClass);
+  state.pgNarratives = rec?.students ? JSON.parse(JSON.stringify(rec.students)) : {};
+  state.pgLastSaved = rec?.updated_at || null;
+  state.pgLocked = (rec?.status || 'draft') === 'locked';
+  state.pgSaveStatus = 'idle';
 }
 
 function renderClassTest() {

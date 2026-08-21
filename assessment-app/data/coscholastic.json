@@ -10,11 +10,17 @@
     "C": "Needs Improvement"
   },
   "_gradeScaleByClass_why": "LKG/SKG co-scholastic uses the school's percentage-band scale (D/E added below C, plus NA for 'not available') instead of the 6-value word-scale above, which stays as-is for Class I/II. Additive only — O/A+/A/B+/B/C mean the same letters in both scales, so nothing already saved under the base scale is invalidated by this.",
+  "_gradeScalePlayGroup_why": "Play Group is the one class that carries C+, which exists in no other scale in this school (the base scale jumps B+ -> B -> C). Confirmed against the class teacher's own register, which shows A+/A/B/C+/C in use. It is therefore its OWN scale rather than an edit to the shared one — adding C+ to the base scale would silently change the meaning of every grade already saved for Class I/II. NA carries the register's literal 'Absent' entries. Play Group has no academic subjects and no class test: it appears in this file only, never in subjects.json or class-test-config.json.",
   "gradeScaleByClass": {
+    "Play Group": ["O", "A+", "A", "B+", "B", "C+", "C", "NA"],
     "LKG": ["O", "A+", "A", "B+", "B", "C", "D", "E", "NA"],
     "SKG": ["O", "A+", "A", "B+", "B", "C", "D", "E", "NA"]
   },
   "gradeLabelsByClass": {
+    "Play Group": {
+      "O": "90-100%", "A+": "80-89%", "A": "70-79%", "B+": "60-69%",
+      "B": "50-59%", "C+": "40-49%", "C": "Below 40%", "NA": "Absent / not assessed"
+    },
     "LKG": {
       "O": "90-100%", "A+": "80-89%", "A": "70-79%", "B+": "60-69%",
       "B": "50-59%", "C": "40-49%", "D": "30-39%", "E": "Less than 30%", "NA": "Not available"
@@ -26,6 +32,11 @@
   },
   "_gradeMeaningsByClass_why": "Two labellings on purpose, split by AUDIENCE. gradeLabelsByClass above is what the TEACHER sees while entering — percentage bands, which is what keeps grading consistent between teachers. gradeMeaningsByClass below is what the PARENT sees on the report card: a percentage implies a measured score, but nobody measures a 4-year-old's P.E. to a percent — it is a judgement, and a band label says so honestly. O..C match Class I/II word-for-word so the school keeps one vocabulary; D/E/NA are the kindergarten-only additions, worded supportively because these go to parents of 4- and 5-year-olds. report-card-print.js carries its own copy of these words (self-contained template, no imports) — keep the two in step.",
   "gradeMeaningsByClass": {
+    "Play Group": {
+      "O": "Outstanding", "A+": "Excellent", "A": "Very Good", "B+": "Good",
+      "B": "Satisfactory", "C+": "Needs Improvement", "C": "Needs Much Improvement",
+      "NA": "Not Assessed"
+    },
     "LKG": {
       "O": "Outstanding", "A+": "Excellent", "A": "Very Good", "B+": "Good",
       "B": "Satisfactory", "C": "Needs Improvement",
@@ -39,8 +50,8 @@
   },
   "subjects": [
     { "key": "pe",                "label": "P.E.",               "classes": ["LKG", "SKG", "Class I", "Class II"] },
-    { "key": "singing",           "label": "Singing",            "classes": ["LKG", "SKG", "Class I", "Class II"] },
-    { "key": "discipline",        "label": "Discipline",         "classes": ["LKG", "SKG", "Class I", "Class II"] },
+    { "key": "singing",           "label": "Singing",            "classes": ["Play Group", "LKG", "SKG", "Class I", "Class II"] },
+    { "key": "discipline",        "label": "Discipline",         "classes": ["Play Group", "LKG", "SKG", "Class I", "Class II"] },
     { "key": "gk",                "label": "Aptitude",           "classes": ["Class I", "Class II"] },
     { "_why": "SKG replaces Aptitude with Science. Its own key, not a relabelled 'gk', so a grade entered for one is never read as the other. Safe against the Arts problem below: LKG/SKG have no academic Science in subjects.json (their four are Literacy, Numeracy, Rhymes & Stories, Arts/Colouring), so this is the only Science on a KG card.",
       "key": "science",           "label": "Science",            "classes": ["SKG"] },
@@ -48,9 +59,39 @@
       "key": "general_awareness", "label": "General Awareness", "classes": ["LKG"] },
     { "_why": "Class I/II only. LKG and SKG already carry ART 'Arts/Colouring' as a full academic subject in subjects.json — 14 criteria, criteria-scored fortnightly, counted in the overall average. Listing it here too put two Arts marks on two different scales on the same kindergarten card. Do not add LKG/SKG back without first removing ART from subjects.json.",
       "key": "arts_craft",        "label": "Arts & Craft",       "classes": ["Class I", "Class II"] },
-    { "key": "neatness",          "label": "Neatness",           "classes": ["Class I", "Class II"] },
+    { "key": "neatness",          "label": "Neatness",           "classes": ["Play Group", "Class I", "Class II"] },
     { "_why": "Kindergarten replaces Neatness with Spelling. Separate key for the same reason as Science above.",
       "key": "spelling",          "label": "Spelling",           "classes": ["LKG", "SKG"] },
-    { "key": "val_edu_catechism", "label": "Val. Edu./Catechism","classes": ["LKG", "SKG", "Class I", "Class II"] }
-  ]
+    { "key": "val_edu_catechism", "label": "Val. Edu./Catechism","classes": ["LKG", "SKG", "Class I", "Class II"] },
+
+    { "_why": "── Play Group-only activities ──────────────────────────────────────────── Eight new keys, taken from the class teacher's register verbatim and kept in her column order so entry order matches the book she is copying from. New keys rather than reused ones on purpose: 'value_education' is NOT val_edu_catechism (Play Group has no Catechism component and the card prints the shorter name), and 'rhymes'/'colouring' are NOT the LKG/SKG academic subjects of similar name in subjects.json — those are criteria-scored fortnightly, these are a single letter grade per term. Play Group has no academic subjects at all, so unlike the arts_craft case below there is no risk of two marks for one activity landing on one card. Attendance is deliberately absent: it comes from the attendance system as days-present/total, exactly as for every other class, and is never hand-entered here.",
+      "key": "value_education",   "label": "Value Education",     "classes": ["Play Group"] },
+    { "key": "colouring",         "label": "Colouring",           "classes": ["Play Group"] },
+    { "key": "rhymes",            "label": "Rhymes",              "classes": ["Play Group"] },
+    { "key": "id_pictures",       "label": "Identification of Pictures", "classes": ["Play Group"] },
+    { "key": "id_letters",        "label": "Identification of Letters",  "classes": ["Play Group"] },
+    { "key": "conversation",      "label": "Conversation",        "classes": ["Play Group"] },
+    { "key": "id_shapes",         "label": "Identification of Shapes",   "classes": ["Play Group"] },
+    { "key": "id_colours",        "label": "Identification of Colours",  "classes": ["Play Group"] }
+  ],
+
+  "_subjectOrderByClass_why": "Play Group's activities do not come out of the subjects array in the order its teacher wrote them, because singing/discipline/neatness are shared keys defined higher up for the other classes. That put Singing first and Value Education fourth, while her register runs Value Education, Colouring, Rhymes, Singing... She enters these by copying down a physical book, so a column order that disagrees with it means hunting for each activity and is exactly how a grade lands in the wrong column. This list is the authority on order for both the entry screen and the printed card; keys not listed fall back to array order. Only needed for Play Group — every other class already reads in a sensible order.",
+  "subjectOrderByClass": {
+    "Play Group": [
+      "value_education", "colouring", "rhymes", "singing",
+      "id_pictures", "id_letters", "conversation",
+      "id_shapes", "id_colours", "neatness", "discipline"
+    ]
+  },
+
+  "_growthPromptsByClass_why": "Play Group's card carries a 'Growth Observation' table that no other class has: five rows, each read left to right across three columns (as noted at the start of the year / as observed at half yearly / term end progress). This list fixes HOW MANY rows there are, nothing more. The prompt strings are deliberately left blank: the class teacher decides what each row is about and writes it in her own words, exactly as the LKG reference card does — that card's rows carry no labels either, only the teacher's parallel statements. Because a blank prompt is the intended state, the entry screen falls back to a neutral 'Observation 1..5' heading purely so she can tell the rows apart while typing; none of that reaches the printed card, which shows only what she wrote. To change the number of rows, add or remove entries here — the entry screen and the print template both read this list, so they cannot drift apart. Give a row a non-empty prompt only if the school later decides to standardise what that row must cover.",
+  "growthPromptsByClass": {
+    "Play Group": [
+      { "key": "row1", "prompt": "" },
+      { "key": "row2", "prompt": "" },
+      { "key": "row3", "prompt": "" },
+      { "key": "row4", "prompt": "" },
+      { "key": "row5", "prompt": "" }
+    ]
+  }
 }

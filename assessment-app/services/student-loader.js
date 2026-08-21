@@ -4,7 +4,15 @@ import { collection, query, where, orderBy, getDocs } from 'https://www.gstatic.
 // Canonical class name contract for the entire ecosystem.
 // Display names (left) are used throughout assessment-app UI and session data.
 // Firestore values (right) are stored in the students collection by pro-leo-site.
+// Display name -> the value actually stored on the student doc's `class` field.
+// 'Play Group' maps to 'PLG', which is what the office-side admission flow in
+// app-logic.js has always written (its classLabel maps read PLG -> "Play Group"
+// in ~20 places). The display name keeps the space for the same reason: it is
+// the label the rest of the school already uses, and coScholasticDocId()
+// derives the Firestore doc id from it, so a "Playgroup" spelling here would
+// quietly write grades to a second, wrong document.
 export const CLASS_MAP = {
+  'Play Group': 'PLG',
   'LKG':      'LKG',
   'SKG':      'SKG',
   'Class I':  '1',
@@ -19,6 +27,7 @@ export const FIRESTORE_TO_DISPLAY_CLASS = Object.fromEntries(
 
 // Local JSON fallback paths (used if Firestore fetch fails)
 const FALLBACK_FILES = {
+  'Play Group': 'data/students/playgroup.json',
   'LKG':      'data/students/lkg.json',
   'SKG':      'data/students/skg.json',
   'Class I':  'data/students/class1.json',

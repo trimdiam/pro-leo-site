@@ -926,6 +926,228 @@ function buildCoScholasticSection(hy1Card, hy2Card, className) {
     </section>`;
 }
 
+// ── Play Group ────────────────────────────────────────────────────────────────
+// Play Group's card is a different document from every other class's, not a
+// variant of one: no academic subjects, no criteria, no numeric scores, and one
+// section — the three-column Growth Observation record — that exists nowhere
+// else. It reuses this file's shell (header, info strip, footer, seal, PDF
+// capture) so it stays visually part of the same family, but its body is built
+// here rather than by buildTableRows/buildPanel, which both assume subjects.
+const PG_CSS = `
+.pg-body { flex:1; display:flex; flex-direction:column; min-height:0; padding:9px 26px 10px; gap:9px; }
+.pg-block { display:flex; flex-direction:column; min-height:0; border:1px solid var(--edge); border-radius:2px; overflow:hidden; }
+.pg-block.growth { flex:1.15 1 0; }
+.pg-block.term { flex:1 1 0; }
+.pg-bar { background:var(--cd-700); color:var(--cream); flex:0 0 auto; font-size:9px; font-weight:800;
+  letter-spacing:2.1px; text-transform:uppercase; padding:4px 12px; display:flex; align-items:center;
+  justify-content:space-between; gap:10px; }
+.pg-bar .tag { font-size:7.5px; font-weight:600; letter-spacing:0.7px; color:var(--cd-200); text-transform:none; }
+.pg-block.term.hy .pg-bar { background:var(--cd-900); }
+table.pg-growth { width:100%; height:100%; border-collapse:collapse; table-layout:fixed; }
+table.pg-growth thead th { background:var(--cd-200); color:var(--cd-900); font-weight:800; letter-spacing:0.7px;
+  text-transform:uppercase; padding:4px 11px; border-right:1px solid var(--cd-400);
+  border-bottom:1.5px solid var(--edge); text-align:left; font-size:7.8px; }
+table.pg-growth thead th:last-child { border-right:none; }
+table.pg-growth td { border-right:1px solid var(--cd-100); border-bottom:1px solid var(--cd-100);
+  padding:4px 11px; vertical-align:top; line-height:1.42; font-size:9.2px; color:var(--txt-mid); }
+table.pg-growth td:last-child { border-right:none; }
+table.pg-growth tbody tr:nth-child(even) td { background:var(--cream-3); }
+table.pg-growth tbody tr:last-child td { border-bottom:none; }
+table.pg-subj { width:100%; border-collapse:collapse; table-layout:fixed; flex:0 0 auto; }
+table.pg-subj th { background:var(--cd-200); color:var(--cd-900); font-weight:700; text-transform:uppercase;
+  letter-spacing:0.3px; padding:4px 2px; border-right:1px solid var(--cd-400);
+  border-bottom:1.5px solid var(--edge); text-align:center; font-size:7.1px; line-height:1.2; vertical-align:middle; }
+table.pg-subj th:last-child { border-right:none; }
+table.pg-subj td { border-right:1px solid var(--cd-100); text-align:center; padding:6px 3px; background:var(--cream); }
+table.pg-subj td:last-child { border-right:none; }
+.pg-att { font-size:11.5px; font-weight:800; color:var(--txt); font-variant-numeric:tabular-nums; }
+.pg-remark { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:2px;
+  background:var(--cream-2); border-top:1.5px solid var(--edge); padding:5px 12px 6px; overflow:hidden; }
+.pg-remark .r-label { font-size:7.3px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase;
+  color:var(--cd-500); flex:0 0 auto; }
+.pg-remark .r-text { flex:1 1 auto; font-size:9.4px; line-height:1.5; color:var(--cd-900); font-style:italic;
+  overflow:hidden; }
+.pg-remark .r-text.empty { font-style:normal; color:var(--txt-dim); }
+.pg-result { margin-top:3px; font-weight:800; letter-spacing:0.8px; text-transform:uppercase;
+  font-size:9.5px; color:var(--adv-c); font-style:normal; }
+.pg-scale { padding:5px 26px 6px; display:flex; align-items:center; gap:16px;
+  border-bottom:1px solid var(--cd-200); }
+.pg-scale .lbl { font-size:8px; font-weight:800; color:var(--cd-700); letter-spacing:1.4px;
+  text-transform:uppercase; white-space:nowrap; }
+.pg-scale .items { display:flex; gap:13px; flex-wrap:wrap; align-items:center; }
+.pg-scale .si { display:inline-flex; align-items:center; gap:5px; font-size:8.5px; color:var(--txt-mid); }
+`;
+
+/** Letter grade -> the same achievement colours the rest of the card uses. */
+function pgGradeClass(g) {
+  switch (String(g || '').toUpperCase()) {
+    case 'O': case 'A+': return 'adv';
+    case 'A':            return 'prof';
+    case 'B+': case 'B': return 'dev';
+    case 'C+': case 'C': return 'beg';
+    default:             return 'ex';   // NA, blank, anything unrecognised
+  }
+}
+
+function pgPill(grade) {
+  const g = grade ? String(grade) : '—';
+  return `<span class="ach ${pgGradeClass(grade)}">${esc(g)}</span>`;
+}
+
+/**
+ * One term's row of activity grades, its attendance cell and its remark.
+ * `activities` fixes the column order for both terms, so a grade never lands
+ * under the wrong heading when one term has been filled in and the other has not.
+ */
+function pgTermBlock(card, activities, label, tagText, isHY1, resultLine) {
+  const byKey = {};
+  (card?.coScholastic || []).forEach(c => { byKey[c.key] = c.grade; });
+
+  const heads = activities.map(a =>
+    `<th>${esc(a.label).replace(/ /g, '<br/>')}</th>`).join('') + '<th>Attendance</th>';
+  const cells = activities.map(a => `<td>${pgPill(byKey[a.key])}</td>`).join('') +
+    `<td><span class="pg-att">${pgAtt(card)}</span></td>`;
+
+  const remark = String(card?.teacherRemark || '').trim();
+  const remarkHTML = remark
+    ? `<div class="r-text">“${esc(remark)}”</div>`
+    : `<div class="r-text empty">Not yet written.</div>`;
+
+  return `
+    <div class="pg-block term${isHY1 ? ' hy' : ''}">
+      <div class="pg-bar"><span>${esc(label)}</span><span class="tag">${esc(tagText)}</span></div>
+      <table class="pg-subj">
+        <tr>${heads}</tr>
+        <tr>${cells}</tr>
+      </table>
+      <div class="pg-remark">
+        <div class="r-label">Class Teacher's Remark — ${esc(label)}</div>
+        ${remarkHTML}
+        ${resultLine ? `<div class="pg-result">${esc(resultLine)}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function pgAtt(card) {
+  const p = card?.attendancePresentDays;
+  const w = card?.attendanceWorkingDays;
+  // Missing must not render as 0 — see numOrNull in playgroup-narrative-service.
+  if (p === null || p === undefined || w === null || w === undefined || Number(w) <= 0) return '—';
+  return `${p}/${w}`;
+}
+
+function buildPlaygroupCardHTML(hy1Card, hy2Card, info, ctx) {
+  const { crestHTML, sealHTML, classLabel, academicYear, hy1Range, hy2Range } = ctx;
+
+  // Column order comes from whichever card actually has activities, so the two
+  // term rows are always built from one list.
+  const activities = (hy2Card?.coScholastic?.length ? hy2Card.coScholastic : hy1Card?.coScholastic) || [];
+
+  // The growth record spans the year, so both cards carry a copy; the later one
+  // is the more complete (its "Term End Progress" column may have been filled
+  // in after HY1 was generated).
+  const growth = (hy2Card?.growthObservation?.length ? hy2Card.growthObservation
+                                                    : hy1Card?.growthObservation) || [];
+
+  const growthRows = growth.length
+    ? growth.map(g => `
+          <tr>
+            <td>${esc(g.start || '')}</td>
+            <td>${esc(g.half  || '')}</td>
+            <td>${esc(g.end   || '')}</td>
+          </tr>`).join('')
+    : `<tr><td colspan="3" style="text-align:center;color:var(--txt-dim);font-style:italic">
+         No observations have been written yet.</td></tr>`;
+
+  const promoted = hy2Card?.promotedToClass
+    ? `Promoted to ${hy2Card.promotedToClass}` : '';
+
+  return `<main class="rc">
+
+  <header class="hdr">
+    ${crestHTML}
+    <div class="hdr-school">
+      <div class="hdr-name">St. Francis De Sales School</div>
+      <div class="hdr-loc">Laitkor, Shillong — Meghalaya</div>
+      <div class="hdr-meta">Ph: 9612946550</div>
+    </div>
+    <div class="hdr-right">
+      <div class="hdr-title">Play Group Report Card</div>
+      <div class="hdr-year">Academic Year ${esc(academicYear)}</div>
+      <div class="hdr-class">Kindergarten Section · ${esc(info.className)}</div>
+    </div>
+  </header>
+
+  <section class="info-strip">
+    <div class="info-cell">
+      <div class="info-eyebrow">Child's Name</div>
+      <div class="info-value">${esc(info.studentName)}</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-eyebrow">Class &amp; Section</div>
+      <div class="info-value">${classLabel}</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-eyebrow">Roll No.</div>
+      <div class="info-value">${esc(info.rollNo)}</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-eyebrow">Student ID</div>
+      <div class="info-value">${esc(info.studentId)}</div>
+    </div>
+  </section>
+
+  <div class="pg-body">
+
+    <div class="pg-block growth">
+      <div class="pg-bar">
+        <span>Growth Observation</span>
+        <span class="tag">Class teacher's running record across the year</span>
+      </div>
+      <table class="pg-growth">
+        <thead>
+          <tr>
+            <th style="width:33.3%">As Noted in the Beginning of the Year</th>
+            <th style="width:33.4%">As Observed in Half Yearly</th>
+            <th style="width:33.3%">Term End Progress</th>
+          </tr>
+        </thead>
+        <tbody>${growthRows}</tbody>
+      </table>
+    </div>
+
+    ${pgTermBlock(hy1Card, activities, 'Half Yearly', hy1Range, true, '')}
+    ${pgTermBlock(hy2Card, activities, 'Final Term', hy2Range, false, promoted)}
+
+  </div>
+
+  <footer class="footer">
+    <div class="pg-scale">
+      <span class="lbl">Grade Scale</span>
+      <div class="items">
+        <span class="si">${pgPill('O')}Outstanding</span>
+        <span class="si">${pgPill('A+')}Excellent</span>
+        <span class="si">${pgPill('A')}Very Good</span>
+        <span class="si">${pgPill('B+')}Good</span>
+        <span class="si">${pgPill('B')}Satisfactory</span>
+        <span class="si">${pgPill('C+')}Needs Improvement</span>
+        <span class="si">${pgPill('C')}Needs Much Improvement</span>
+        <span class="si">${pgPill('')}Not Assessed / Absent</span>
+      </div>
+    </div>
+    <div class="sign-row">
+      <div class="sign"><div class="sign-line"></div><div class="sign-label">Class Teacher</div></div>
+      <div class="seal">${sealHTML}<div class="sign-label">School Seal</div></div>
+      <div class="sign"><div class="sign-line"></div><div class="sign-label">Headmistress</div></div>
+      <div class="sign"><div class="sign-line"></div><div class="sign-label">Parent's Signature</div></div>
+    </div>
+    <div class="disclaimer">This report card reflects the child's performance in class-based observation
+      and activity assessment for ${esc(info.className)}, Academic Year ${esc(academicYear)}.</div>
+  </footer>
+
+</main>`;
+}
+
 export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   const info = studentInfo || {
     studentName: hy1Card?.studentName || hy2Card?.studentName || '—',
@@ -976,6 +1198,10 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   const isClassI  = ['class i', 'class 1', 'i', '1'].includes(classNorm);
   const isClassII = ['class ii', 'class 2', 'ii', '2'].includes(classNorm);
   const isKg      = ['lkg', 'skg'].includes(classNorm);
+  // Play Group deliberately NOT folded into isKg: it shares the palette but not
+  // the layout — no subjects table, no annual panel, plus a Growth Observation
+  // section the KG card has no concept of.
+  const isPlaygroup = ['play group', 'playgroup', 'plg'].includes(classNorm);
   const isPrimary = isClassI || isClassII;
   const groupByCategory = isPrimary || isKg;
   // Kindergarten (LKG/SKG) is reported by grade only — no numeric scores.
@@ -1000,7 +1226,11 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
   // Built once, reused by both the visible template and the pdfMode capture
   // doc. Single source of truth → the PDF you download matches exactly what
   // the admin preview window shows on desktop.
-  const cardHTML = `<main class="rc">
+  const cardHTML = isPlaygroup
+    ? buildPlaygroupCardHTML(hy1Card, hy2Card, info, {
+        crestHTML, sealHTML, classLabel, academicYear, hy1Range, hy2Range
+      })
+    : `<main class="rc">
 
   <header class="hdr">
     ${crestHTML}
@@ -1141,8 +1371,8 @@ export function buildPrintableHTML(hy1Card, hy2Card, studentInfo, opts = {}) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1400, initial-scale=1.0, user-scalable=yes" />
-  <title>Annual Progress Report — ${esc(info.studentName)}</title>
-  <style>${BASE_CSS}</style>
+  <title>${isPlaygroup ? 'Play Group Report Card' : 'Annual Progress Report'} — ${esc(info.studentName)}</title>
+  <style>${BASE_CSS}${isPlaygroup ? PG_CSS : ''}</style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>

@@ -1939,3 +1939,123 @@ select, .text-input {
   cursor: progress;
   min-width: 46px;
 }
+
+/* ── Play Group narrative entry ──────────────────────────────────────────────
+   Growth Observation and per-term remarks: free text, not a grid of selects.
+   Same full-width escape as .coschol-panel above — .selector-panel goes
+   two-column at >=660px, which would drop these textareas into a half-width
+   cell and make three-column prose entry unusable. */
+@media (min-width: 660px) {
+  .pg-narrative-panel > .section-heading,
+  .pg-narrative-panel > .section-subheading,
+  .pg-narrative-panel > .class-test-subtitle,
+  .pg-narrative-panel > .pg-student-strip,
+  .pg-narrative-panel > .pg-current-student,
+  .pg-narrative-panel > .pg-prompt-block,
+  .pg-narrative-panel > .pg-remark,
+  .pg-narrative-panel > .locked-banner,
+  .pg-narrative-panel > .field-label,
+  .pg-narrative-panel > .review-actions,
+  .pg-narrative-panel > .empty-state {
+    grid-column: 1 / -1;
+  }
+}
+
+.pg-narrative-panel .section-subheading {
+  margin: 18px 0 2px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2B270A;
+  border-bottom: 2px solid #CEBF7A;
+  padding-bottom: 4px;
+}
+
+.pg-student-strip { flex-wrap: wrap; gap: 6px; }
+.pg-current-student {
+  margin: 8px 0 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #4E471A;
+}
+
+/* One observation area: its prompt, then the three columns answering it. */
+.pg-prompt-block {
+  margin-top: 12px;
+  padding: 10px 12px 12px;
+  border: 1px solid #E0D49A;
+  border-radius: 6px;
+  background: #FAF8F0;
+}
+.pg-prompt-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #2B270A;
+  margin-bottom: 8px;
+}
+
+/* Three across on a real screen, stacked on a phone — three columns of prose
+   at ~100px each would be unwritable. */
+.pg-prompt-cols { display: grid; gap: 10px; grid-template-columns: 1fr; }
+@media (min-width: 780px) {
+  .pg-prompt-cols { grid-template-columns: repeat(3, 1fr); }
+}
+
+.pg-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pg-col-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7A7030;
+}
+.pg-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 62px;
+  line-height: 1.45;
+  font-family: inherit;
+}
+.pg-textarea:disabled { background: #f2f0e8; color: #6E6745; }
+
+.pg-remark { margin-top: 12px; }
+
+/* A numbered stand-in heading ("Observation 3") is scaffolding, not content —
+   the teacher decides what the row is about. Muted so it does not read as a
+   label she must write to. */
+.pg-prompt-label-blank {
+  color: #7A7030;
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Attendance — hand-entered for Play Group, mirroring the Class III-X grid. */
+.pg-att-grid { display: grid; gap: 10px; grid-template-columns: 1fr; margin-top: 10px; }
+@media (min-width: 560px) {
+  .pg-att-grid { grid-template-columns: 1fr 1fr; }
+}
+.pg-att-card {
+  border: 1px solid #E0D49A;
+  border-radius: 6px;
+  background: #FAF8F0;
+  padding: 10px 12px 12px;
+}
+.pg-att-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #2B270A;
+  margin-bottom: 8px;
+}
+.pg-att-row { display: flex; gap: 10px; }
+.pg-att-field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 0; min-width: 0; }
+.pg-att-input { width: 100%; }
+.pg-att-pct {
+  margin-top: 8px;
+  font-weight: 800;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  color: #6E6745;
+}
+.pg-att-pct.low { color: #7B241C; }
+.pg-att-pct.ok  { color: #1D6A3A; }

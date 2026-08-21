@@ -15,6 +15,11 @@ import { loadStudentsForClass } from './student-loader.js';
 import { getTermAttendance } from './report-card-attendance.js';
 import { getClassTest } from './class-test-storage.js';
 import { loadCoScholasticForClass, getStudentCoScholastic } from './coscholastic-service.js';
+import {
+  loadGrowthPromptsForClass,
+  getStudentNarrative,
+  syncNarrativesFromFirestore
+} from './playgroup-narrative-service.js';
 
 const REPORT_CARDS_COL = 'report_cards';
 
@@ -128,6 +133,21 @@ export async function buildAndSaveReportCard(params) {
     const firstName   = extractFirstName(studentName);
     const rollNo      = studentRec?.roll_no || studentRec?.rollNo || '';
     const section     = studentRec?.section || '';
+
+    // 1b. Narrative classes (Play Group) never reach the academic pipeline.
+    // They have no subjects in subjects.json, so no sessions can exist for
+    // them, so the totalSessionsIncluded === 0 guard below would reject every
+    // card forever. Their card is assembled from hand-entered data instead:
+    // co-scholastic grades, observations, remarks and attendance.
+    const growthPrompts = await loadGrowthPromptsForClass(className).catch(() => []);
+    if (growthPrompts.length) {
+      return await buildNarrativeReportCard({
+        studentId, studentName, firstName, rollNo, section,
+        className, term, academicYear, dateFrom, dateTo, generatedBy,
+        growthPrompts,
+        attendancePresentDays, attendanceWorkingDays
+      });
+    }
 
     // 2. Aggregate session marks
     const aggregated = await aggregateStudentForReportCard(studentId, dateFrom, dateTo, className);
@@ -304,4 +324,104 @@ export async function buildAndSaveReportCard(params) {
     console.error(`buildAndSaveReportCard failed for ${studentId}:`, err);
     return { ok: false, docId: null, error: err.message };
   }
+}
+
+/**
+ * Builds a card for a class whose report is written rather than computed —
+ * currently Play Group only.
+ *
+ * Everything here is typed in by the class teacher: letter grades on the
+ * co-scholastic screen, and observations, remarks and attendance on the
+ * Observations screen. Nothing is aggregated, graded or AI-generated, so the
+ * academic fields are present but empty rather than absent: the report card
+ * admin panel, the release flow and the parent lookup all read this same shape
+ * for every class, and a card missing `subjects` or `overallGrade` would break
+ * them in ways that only show up at release time.
+ */
+async function buildNarrativeReportCard({
+  studentId, studentName, firstName, rollNo, section,
+  className, term, academicYear, dateFrom, dateTo, generatedBy,
+  growthPrompts, attendancePresentDays, attendanceWorkingDays
+}) {
+  const docId = `${sanitizeDocId(studentId)}_${sanitizeDocId(academicYear)}_${term}`;
+  const termLabel = getTermLabel(term);
+
+  // The narrative service is local-cache-first; the admin generating cards may
+  // never have opened the Observations screen in this browser, so pull the
+  // collection down before reading it or every card comes out blank.
+  await syncNarrativesFromFirestore().catch(() => null);
+  const narrative = getStudentNarrative(className, studentId, growthPrompts);
+
+  // Co-scholastic letter grades — the same source and helper every other class
+  // uses, so Play Group's grades are read exactly like Class I's.
+  let coScholastic = [];
+  try {
+    const csSubjects = await loadCoScholasticForClass(className);
+    if (csSubjects.length) {
+      coScholastic = getStudentCoScholastic(term, className, studentId, csSubjects);
+    }
+  } catch (err) {
+    console.warn(`Co-scholastic unavailable for ${studentId}:`, err.message);
+  }
+
+  // Attendance: an explicitly passed value (admin's Edit Attendance) wins,
+  // otherwise use what the teacher typed on the Observations screen. Note the
+  // `??` — a genuine 0 days present must not fall through to the teacher's
+  // value the way `||` would let it.
+  const typed = narrative.attendance?.[term] || { present: null, total: null };
+  const presentDays = attendancePresentDays ?? typed.present ?? null;
+  const workingDays = attendanceWorkingDays ?? typed.total   ?? null;
+
+  const teacherRemark = narrative.remarks?.[term] || '';
+
+  const reportCard = {
+    studentId, docId, studentName, firstName, className,
+    rollNo: String(rollNo), section,
+
+    term, termLabel, academicYear, dateFrom, dateTo,
+
+    // No academic subjects by design — see the doc comment above.
+    subjects: [],
+    overallAverageScore: null,
+    overallGrade:        'Ex',
+    overallLabel:        'Not Applicable',
+    strongestSubject:    null,
+    weakestSubject:      null,
+    improvementAreas:    [],
+    trendDirection:      'stable',
+    attendanceRisk:      false,
+
+    // Written by the class teacher, not generated — so the two "was this
+    // touched by a human" flags are the inverse of every other class's.
+    teacherRemark,
+    remarkGeneratedByAI: false,
+    remarkEditedByAdmin: false,
+
+    attendancePresentDays: presentDays,
+    attendanceWorkingDays: workingDays,
+
+    coScholastic: coScholastic.map(c => ({ key: c.key, label: c.label, grade: c.grade || null })),
+    coScholasticPending: coScholastic.filter(c => !c.grade).map(c => c.label),
+
+    // The one field no other class has: the three-column running record. Stored
+    // resolved against the configured prompts so the printed card does not have
+    // to re-read the registry to know how many rows there are.
+    growthObservation: (narrative.growth || []).map(g => ({
+      key: g.key, prompt: g.prompt, start: g.start, half: g.half, end: g.end
+    })),
+
+    promotedToClass: null,
+    subjectsPendingReview: [],
+
+    status:         'draft',
+    feesCleared:    await hasClearedFees(studentId),
+    generatedBy:    generatedBy || 'Admin',
+    generatedAt:    serverTimestamp(),
+    releasedBy:     null,
+    releasedAt:     null,
+    lastModifiedAt: serverTimestamp()
+  };
+
+  await setDoc(doc(db, REPORT_CARDS_COL, docId), reportCard, { merge: false });
+  return { ok: true, docId, studentName, subjectsPendingReview: [] };
 }

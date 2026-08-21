@@ -54,6 +54,12 @@ service cloud.firestore {
     // this is the actual enforcement boundary.
     function classTeacherOfMatchesClass(classTeacherOf, className) {
       return classTeacherOf == className
+        // Play Group is stored as the code 'PLG' on the user doc but reaches
+        // here as the display name 'Play Group'. LKG and SKG need no such line
+        // because their code and display name are the same string; every
+        // Class I..X needs one for the same reason this does. Without it the
+        // Play Group class teacher is refused on every co-scholastic write.
+        || (className == 'Play Group' && classTeacherOf == 'PLG')
         || (className == 'Class I'   && classTeacherOf == 'I')
         || (className == 'Class II'  && classTeacherOf == 'II')
         || (className == 'Class III' && classTeacherOf == 'III')
@@ -351,6 +357,38 @@ service cloud.firestore {
       // they cannot touch it again, and they can never set or clear the flag
       // themselves. Absent status reads as 'draft' so documents written before
       // this existed stay editable.
+      allow create: if !rolloverLocked(database) && (
+        isAdmin() ||
+        (
+          isTeacherAny() && !teacherLocked(database, request.auth.uid) &&
+          isClassTeacherOf(request.resource.data.class) &&
+          request.resource.data.get('status', 'draft') == 'draft'
+        )
+      );
+      allow update: if !rolloverLocked(database) && (
+        isAdmin() ||
+        (
+          isTeacherAny() && !teacherLocked(database, request.auth.uid) &&
+          isClassTeacherOf(request.resource.data.class) &&
+          resource.data.get('status', 'draft') != 'locked' &&
+          request.resource.data.get('status', 'draft') == resource.data.get('status', 'draft')
+        )
+      );
+      allow delete: if isAdmin() && !rolloverLocked(database);
+    }
+
+    // ── Play Group observations & remarks ─────────────────────────────
+    // One doc per class ("Play_Group") holding, per student, the Growth
+    // Observation grid and one remark per term. Deliberately mirrors the
+    // coscholastic_marks block above rather than inventing a second shape:
+    // same class-teacher-or-admin write gate, same admin-only locking, same
+    // rollover guard. One doc per CLASS not per class+term, because a growth
+    // row spans the year — see playgroup-narrative-service.js.
+    match /playgroup_narratives/{docId} {
+      allow read:  if isAnyStaff();
+      allow read:  if request.auth != null
+        && isRole('student')
+        && resource.data.class == studentAssessmentClass();
       allow create: if !rolloverLocked(database) && (
         isAdmin() ||
         (
